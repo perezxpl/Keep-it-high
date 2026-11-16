@@ -26,6 +26,33 @@ export const BARREL_ROW_MAP = {
 let _barrelSpritesheetImg = null;
 let _isLoaded = false;
 let _offscreenCanvas = null;
+let _acidPoolCanvas = null;
+
+/**
+ * Zwraca zbuforowane płótno kałuży kwasu (OffscreenCanvas) do szybkiego drawImage
+ */
+function getAcidPoolCanvas() {
+  if (!_acidPoolCanvas && typeof document !== 'undefined') {
+    try {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 32;
+      const offCtx = c.getContext('2d');
+      if (offCtx) {
+        const grad = offCtx.createRadialGradient(64, 16, 2, 64, 16, 64);
+        grad.addColorStop(0, 'rgba(74, 222, 128, 1.0)');
+        grad.addColorStop(0.65, 'rgba(22, 163, 74, 0.75)');
+        grad.addColorStop(1, 'rgba(20, 83, 45, 0)');
+        offCtx.fillStyle = grad;
+        offCtx.beginPath();
+        offCtx.ellipse(64, 16, 64, 15, 0, 0, Math.PI * 2);
+        offCtx.fill();
+      }
+      _acidPoolCanvas = c;
+    } catch (_) {}
+  }
+  return _acidPoolCanvas;
+}
 
 /**
  * Inicjalizuje i wczytuje arkusz sprite'ów beczek do pamięci podręcznej Canvas
@@ -137,7 +164,7 @@ function drawDynamicFuseSparks(ctx, b, w, h) {
 function drawProceduralFallbackBarrel(ctx, b, w, h) {
   const hw = w * 0.5;
   const hh = h * 0.5;
-  const typeDef = b.typeDef;
+  const typeDef = b.typeDef || {};
 
   ctx.fillStyle = typeDef.color || '#dc2626';
   ctx.beginPath();
@@ -148,14 +175,11 @@ function drawProceduralFallbackBarrel(ctx, b, w, h) {
   }
   ctx.fill();
 
-  // Cieniowanie 3D
-  const grad = ctx.createLinearGradient(-hw, 0, hw, 0);
-  grad.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
-  grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
-  grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.15)');
-  grad.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(-hw, -hh, w, h);
+  // Lekkie cieniowanie 3D bez alokacji gradientu (proste półprzezroczyste pasy)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+  ctx.fillRect(-hw, -hh, hw * 0.6, h);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.fillRect(hw * 0.2, -hh, hw * 0.8, h);
 
   // Stalowe pierścienie
   ctx.fillStyle = typeDef.rimColor || '#18181b';
@@ -212,52 +236,67 @@ function drawSingleBarrel(ctx, b) {
 }
 
 /**
- * Rysuje kałuże rozlanego kwasu na podłożu
+ * Rysuje kałuże rozlanego kwasu na podłożu ze zbuforowanego OffscreenCanvas oraz cullingiem
  */
-function drawAcidPools(ctx) {
-  for (const pool of hazardsState.acidPools) {
+function drawAcidPools(ctx, viewLeft, viewRight, viewTop, viewBottom) {
+  const pools = hazardsState.acidPools;
+  if (!pools || pools.length === 0) return;
+
+  const acidCanv = getAcidPoolCanvas();
+
+  for (let i = 0; i < pools.length; i++) {
+    const pool = pools[i];
+    const r = pool.radius || 65;
+
+    // Culling w przestrzeni widoku kamery 2D
+    if (pool.x + r < viewLeft || pool.x - r > viewRight || pool.y + 20 < viewTop || pool.y - 20 > viewBottom) {
+      continue;
+    }
+
     const alpha = Math.min(1.0, pool.timer / 1.5) * 0.78;
-    ctx.save();
-    ctx.translate(pool.x, pool.y);
 
-    // Zielona pulsująca plama kwasu (Radial Gradient)
-    const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, pool.radius);
-    grad.addColorStop(0, `rgba(74, 222, 128, ${alpha})`);
-    grad.addColorStop(0.65, `rgba(22, 163, 74, ${alpha * 0.75})`);
-    grad.addColorStop(1, 'rgba(20, 83, 45, 0)');
-
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, pool.radius, 7.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Drobne bąble kwasu na powierzchni z delikatnym pękaniem
-    ctx.fillStyle = `rgba(187, 247, 208, ${alpha * 0.9})`;
-    for (let j = 0; j < 5; j++) {
-      const bx = Math.sin(pool.bubbleAnim + j * 1.6) * (pool.radius * 0.68);
-      const by = Math.cos(pool.bubbleAnim * 0.8 + j) * 3.2;
+    if (acidCanv) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(acidCanv, pool.x - r, pool.y - 7.5, r * 2, 15);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = `rgba(22, 163, 74, ${alpha * 0.65})`;
       ctx.beginPath();
-      ctx.arc(bx, by - 2, 1.8, 0, Math.PI * 2);
+      ctx.ellipse(pool.x, pool.y, r, 7.5, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    ctx.restore();
+    // 3 bąble kwasu w pojedynczym wywołaniu fill (zero createRadialGradient na klatkę)
+    ctx.fillStyle = `rgba(187, 247, 208, ${alpha * 0.9})`;
+    ctx.beginPath();
+    for (let j = 0; j < 3; j++) {
+      const bx = pool.x + Math.sin(pool.bubbleAnim + j * 1.6) * (r * 0.6);
+      const by = pool.y + Math.cos(pool.bubbleAnim * 0.8 + j) * 2.5;
+      ctx.moveTo(bx + 1.5, by - 2);
+      ctx.arc(bx, by - 2, 1.5, 0, Math.PI * 2);
+    }
+    ctx.fill();
   }
 }
 
 /**
- * Główna procedura renderowania zagrożeń na świecie gry
+ * Główna procedura renderowania zagrożeń na świecie gry z pełnym cullingiem 2D
  */
 export function drawHazards(ctx, camera) {
   const viewLeft = camera.x - 120;
   const viewRight = camera.x + (camera.viewWidth || (window.innerWidth / (camera.zoom || 0.6))) + 120;
+  const viewTop = camera.y - 120;
+  const viewBottom = camera.y + (camera.viewHeight || (window.innerHeight / (camera.zoom || 0.6))) + 120;
 
   // 1. Kałuże kwasu na podłożu (renderowane pod beczkami)
-  drawAcidPools(ctx);
+  drawAcidPools(ctx, viewLeft, viewRight, viewTop, viewBottom);
 
-  // 2. Aktywne beczki ze sprite sheetu
-  for (const b of hazardsState.barrels) {
-    if (b.x < viewLeft || b.x > viewRight) continue;
+  // 2. Aktywne beczki ze sprite sheetu z cullingiem X i Y
+  const barrels = hazardsState.barrels;
+  for (let i = 0; i < barrels.length; i++) {
+    const b = barrels[i];
+    if (b.x + b.w < viewLeft || b.x > viewRight || b.y + b.h < viewTop || b.y > viewBottom) continue;
     drawSingleBarrel(ctx, b);
   }
 }

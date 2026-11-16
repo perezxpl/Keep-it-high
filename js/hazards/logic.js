@@ -323,16 +323,22 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
 
   // 5. Dla beczek kwasowych: utworzenie kałuży kwasu na podłożu
   if (isToxic) {
+    const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+    const isA3 = (curArena?.id === 'arena-3');
     const surfaceY = getBarrelSurfaceY(bx, by, groundY);
-    hazardsState.acidPools.push({
-      x: bx,
-      y: surfaceY,
-      radius: typeDef.poolRadius || 65,
-      timer: typeDef.poolDuration || 8.0,
-      maxTimer: typeDef.poolDuration || 8.0,
-      dps: typeDef.poolDps || 14.0,
-      bubbleAnim: 0
-    });
+
+    // Na Arenie 3 kwas wpadający do rzeki (surfaceY >= 1280) zostaje natychmiast rozmyty przez nurt
+    if (!(isA3 && surfaceY >= 1280)) {
+      hazardsState.acidPools.push({
+        x: bx,
+        y: surfaceY,
+        radius: typeDef.poolRadius || 65,
+        timer: typeDef.poolDuration || 8.0,
+        maxTimer: typeDef.poolDuration || 8.0,
+        dps: typeDef.poolDps || 14.0,
+        bubbleAnim: 0
+      });
+    }
   }
 
   // 6. Kolejka odradzania (respawn po 35s dla stałych punktów na arenach 1-4)
@@ -439,11 +445,13 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       }
     }
 
-    // Zagrożenia środowiskowe niszczące beczkę (kwas na A2, lawa na A4, utylizator na A5)
+    // Zagrożenia środowiskowe niszczące beczkę (kwas na A2, rzeka na A3, lawa na A4, utylizator na A5)
     let envDestroy = false;
     if (arenaId === 'arena-2') {
       const acidY = (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM) ? window.ACID_SURGE_SYSTEM.currentY : 1440;
       if (feetY >= acidY - 4) envDestroy = true;
+    } else if (arenaId === 'arena-3') {
+      if (feetY >= 1290) envDestroy = true;
     } else if (arenaId === 'arena-4') {
       if (feetY >= 1390) envDestroy = true;
     } else if (arenaId === 'arena-5' || arenaId === 'prefab-tower') {
@@ -489,6 +497,23 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     if (pool.timer <= 0) {
       hazardsState.acidPools.splice(i, 1);
     }
+  }
+
+  // Czyszczenie kałuż w rzece na Arenie 3 oraz limit maksymalnej liczby kałuż (max 6)
+  if (arenaId === 'arena-3') {
+    for (let i = hazardsState.acidPools.length - 1; i >= 0; i--) {
+      if (hazardsState.acidPools[i].y >= 1280) {
+        hazardsState.acidPools.splice(i, 1);
+      }
+    }
+  }
+  while (hazardsState.acidPools.length > 6) {
+    hazardsState.acidPools.shift();
+  }
+
+  // Twardy limit na maksymalną liczbę beczek (max 6)
+  while (hazardsState.barrels.length > 6) {
+    hazardsState.barrels.shift();
   }
 
   // -------------------------------------------------------------------------
@@ -593,6 +618,7 @@ export function spawnRandomValidBarrel(arenaId, groundY = 800) {
     if (surfaceY === Infinity || surfaceY > 1320) continue;
 
     if (isA2 && surfaceY >= 1350) continue;
+    if (isA3 && surfaceY >= 1270) continue;
     if (isA4 && surfaceY >= 1350) continue;
 
     let tooClose = false;
@@ -652,4 +678,9 @@ export function checkBarrelKickInteraction(char, isSlide = false) {
     }
   }
   return null;
+}
+
+if (typeof window !== 'undefined') {
+  window.damageBarrel = damageBarrel;
+  window.detonateBarrel = detonateBarrel;
 }

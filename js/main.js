@@ -1044,12 +1044,17 @@ function draw() {
   if (!isArena2Active && !isArena3Active && !isArena4Active && !isArena5Active) {
     drawGround(ctx, worldLeft, worldWidth);
   }
-  drawParticles(ctx);
   drawDistanceMarkers(ctx, worldLeft, worldRight);
   drawObstacles(ctx, GROUND_Y);
-
-  drawBloodDecals(ctx);
   endSection('fx_obstacles');
+
+  beginSection('fx_particles');
+  drawParticles(ctx);
+  endSection('fx_particles');
+
+  beginSection('fx_decals');
+  drawBloodDecals(ctx);
+  endSection('fx_decals');
 
   if (editorState.active) {
     if (editorState.snapToGrid) {
@@ -1233,9 +1238,15 @@ function draw() {
   drawPickupsWorld(ctx, camera);
   endSection('fx_pickups');
 
-  beginSection('fx_misc');
+  beginSection('fx_zombies');
   drawZombieSystem(ctx, camera);
+  endSection('fx_zombies');
+
+  beginSection('fx_hazards');
   drawHazards(ctx, camera);
+  endSection('fx_hazards');
+
+  beginSection('fx_misc');
 
   const isDeathmatch = (
     activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||

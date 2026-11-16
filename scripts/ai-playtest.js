@@ -35,8 +35,8 @@ const PORT = parseInt(getArg('port', '8000'), 10);
 const HEADLESS = getArg('headless', 'true') !== 'false';
 const STRESS = getArg('stress', 'none');
 const STRICT = getArg('strict', '0') === '1' || args.includes('--strict=1') || args.includes('--strict');
-const CAM_X = getArg('camX', (ARENA === 'arena-3' || ARENA === '3') ? '1560' : null);
-const CAM_Y = getArg('camY', (ARENA === 'arena-3' || ARENA === '3') ? '650' : null);
+const CAM_X = getArg('camX', (ARENA === 'arena-3' || ARENA === '3') ? '1250' : null);
+const CAM_Y = getArg('camY', (ARENA === 'arena-3' || ARENA === '3') ? '750' : null);
 
 // Typy MIME dla wbudowanego lekkiego serwera HTTP
 const MIME_TYPES = {
@@ -321,6 +321,14 @@ async function runPlaytest() {
               ];
               const t = targets[Math.floor(Math.random() * targets.length)];
               window.onArena3Explosion(t.x, t.y, 160);
+            }
+
+            // Stresowe uszkodzenie beczki wybuchowej lub kwasowej
+            if (window.hazardsBarrels && window.hazardsBarrels.length > 0 && typeof window.damageBarrel === 'function') {
+              const b = window.hazardsBarrels[Math.floor(Math.random() * window.hazardsBarrels.length)];
+              if (b && !b.isDead) {
+                window.damageBarrel(b, 50);
+              }
             }
           } catch (_) {}
         });

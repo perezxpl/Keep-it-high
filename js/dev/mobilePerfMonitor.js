@@ -12,6 +12,7 @@ import { rubbleParticles, explosionCraters } from '../projectiles.js';
 import { pickupState } from '../pickup/state.js';
 import { lightingState } from '../lighting/state.js';
 import { bulletCasings } from '../particles.js';
+import { hazardsState } from '../hazards/state.js';
 
 const RING_BUFFER_SIZE = 120;
 const MAX_RECORDED_SPIKES = 20;
@@ -195,11 +196,15 @@ export function beginFrame(now) {
   perfState.currentTimings.playersMs = 0;
   perfState.currentTimings.fxMs = 0;
   perfState.currentTimings.fx_obstaclesMs = 0;
+  perfState.currentTimings.fx_particlesMs = 0;
+  perfState.currentTimings.fx_decalsMs = 0;
   perfState.currentTimings.fx_bulletsMs = 0;
   perfState.currentTimings.fx_projectilesMs = 0;
   perfState.currentTimings.fx_jetpackMs = 0;
   perfState.currentTimings.fx_goreMs = 0;
   perfState.currentTimings.fx_pickupsMs = 0;
+  perfState.currentTimings.fx_zombiesMs = 0;
+  perfState.currentTimings.fx_hazardsMs = 0;
   perfState.currentTimings.fx_miscMs = 0;
   perfState.currentTimings.fx_lightingMs = 0;
   perfState.currentTimings.fx_vignetteMs = 0;
@@ -362,11 +367,15 @@ function recordLagSpike(now) {
     },
     fxBreakdown: {
       obst: Number((timingSource.fx_obstaclesMs || 0).toFixed(1)),
+      part: Number((timingSource.fx_particlesMs || 0).toFixed(1)),
+      decal: Number((timingSource.fx_decalsMs || 0).toFixed(1)),
       bul: Number((timingSource.fx_bulletsMs || 0).toFixed(1)),
       proj: Number((timingSource.fx_projectilesMs || 0).toFixed(1)),
       jet: Number((timingSource.fx_jetpackMs || 0).toFixed(1)),
       gore: Number((timingSource.fx_goreMs || 0).toFixed(1)),
       pick: Number((timingSource.fx_pickupsMs || 0).toFixed(1)),
+      haz: Number((timingSource.fx_hazardsMs || 0).toFixed(1)),
+      zomb: Number((timingSource.fx_zombiesMs || 0).toFixed(1)),
       misc: Number((timingSource.fx_miscMs || 0).toFixed(1)),
       light: Number((timingSource.fx_lightingMs || 0).toFixed(1)),
       vig: Number((timingSource.fx_vignetteMs || 0).toFixed(1))
@@ -377,6 +386,8 @@ function recordLagSpike(now) {
       bulletHoles: bhList ? bhList.length : 0,
       blood: bloodList ? bloodList.length : 0,
       bloodDecals: decalList ? decalList.length : 0,
+      barrels: (hazardsState && Array.isArray(hazardsState.barrels)) ? hazardsState.barrels.length : 0,
+      acidPools: (hazardsState && Array.isArray(hazardsState.acidPools)) ? hazardsState.acidPools.length : 0,
       rubble: rubbleList ? rubbleList.length : 0,
       craters: craterList ? craterList.length : 0,
       gibs: (headGibs ? headGibs.length : 0) + (bodyGibs ? bodyGibs.length : 0),
@@ -664,9 +675,9 @@ export function generatePerfReportText() {
       lines.push(`     Współrzędne: Kamera (${sp.cam.x}, ${sp.cam.y}), Gracz (${sp.player.x}, ${sp.player.y}, HP: ${sp.player.hp})`);
       lines.push(`     Podział JS: update=${sp.timings.updateMs}ms, bg=${sp.timings.bgMs}ms, fg=${sp.timings.fgMs}ms, players=${sp.timings.playersMs}ms, fx=${sp.timings.fxMs}ms, hud=${sp.timings.hudMs}ms${sp.isStallFrame ? ' [STALL PRZED KLATKĄ / GPU WAIT]' : ''}`);
       if (sp.fxBreakdown) {
-        lines.push(`     Podział FX: obst=${sp.fxBreakdown.obst}ms, bul=${sp.fxBreakdown.bul}ms, proj=${sp.fxBreakdown.proj}ms, jet=${sp.fxBreakdown.jet}ms, gore=${sp.fxBreakdown.gore}ms, pick=${sp.fxBreakdown.pick}ms, light=${sp.fxBreakdown.light}ms, vig=${sp.fxBreakdown.vig}ms`);
+        lines.push(`     Podział FX: obst=${sp.fxBreakdown.obst}ms, part=${sp.fxBreakdown.part}ms, decal=${sp.fxBreakdown.decal}ms, bul=${sp.fxBreakdown.bul}ms, proj=${sp.fxBreakdown.proj}ms, jet=${sp.fxBreakdown.jet}ms, gore=${sp.fxBreakdown.gore}ms, pick=${sp.fxBreakdown.pick}ms, haz=${sp.fxBreakdown.haz}ms, zomb=${sp.fxBreakdown.zomb}ms, misc=${sp.fxBreakdown.misc}ms, light=${sp.fxBreakdown.light}ms, vig=${sp.fxBreakdown.vig}ms`);
       }
-      lines.push(`     Obiekty: pociski=${sp.objects.bullets}, iskry=${sp.objects.bulletParticles}, dziury=${sp.objects.bulletHoles}, krew_cząstki=${sp.objects.blood}, plamy_krwi=${sp.objects.bloodDecals || 0}, gruz=${sp.objects.rubble || 0}`);
+      lines.push(`     Obiekty: pociski=${sp.objects.bullets}, iskry=${sp.objects.bulletParticles}, dziury=${sp.objects.bulletHoles}, krew_cząstki=${sp.objects.blood}, plamy_krwi=${sp.objects.bloodDecals || 0}, beczki=${sp.objects.barrels || 0}, kałuże_kwasu=${sp.objects.acidPools || 0}, gruz=${sp.objects.rubble || 0}`);
       const extObj = [];
       if (sp.objects.gibs !== undefined) extObj.push(`gibs=${sp.objects.gibs}`);
       if (sp.objects.droppedGore !== undefined) extObj.push(`hełmy_złom=${sp.objects.droppedGore}`);
