@@ -7,7 +7,8 @@
 
 import { bullets, bulletParticles } from '../weapons/transform.js';
 import { bulletHoles } from '../weapons/bulletRenderer.js';
-import { bloodParticles } from '../world/gore.js';
+import { bloodParticles, bloodDecals } from '../world/gore.js';
+import { rubbleParticles, explosionCraters } from '../projectiles.js';
 
 const RING_BUFFER_SIZE = 120;
 const MAX_RECORDED_SPIKES = 20;
@@ -291,6 +292,9 @@ function recordLagSpike(now) {
   const bpList = (typeof window !== 'undefined' && Array.isArray(window.bulletParticles)) ? window.bulletParticles : bulletParticles;
   const bhList = (typeof window !== 'undefined' && Array.isArray(window.bulletHoles)) ? window.bulletHoles : bulletHoles;
   const bloodList = (typeof window !== 'undefined' && Array.isArray(window.bloodParticles)) ? window.bloodParticles : bloodParticles;
+  const decalList = (typeof window !== 'undefined' && Array.isArray(window.bloodDecals)) ? window.bloodDecals : bloodDecals;
+  const rubbleList = (typeof window !== 'undefined' && Array.isArray(window.rubbleParticles)) ? window.rubbleParticles : rubbleParticles;
+  const craterList = (typeof window !== 'undefined' && Array.isArray(window.explosionCraters)) ? window.explosionCraters : explosionCraters;
 
   const stoneDebris = (typeof window !== 'undefined' && Array.isArray(window.STONE_DEBRIS)) ? window.STONE_DEBRIS.length : 0;
   const waterSplashes = (typeof window !== 'undefined' && Array.isArray(window.ARENA_3_WATER_SPLASHES)) ? window.ARENA_3_WATER_SPLASHES.length : 0;
@@ -351,6 +355,9 @@ function recordLagSpike(now) {
       bulletParticles: bpList ? bpList.length : 0,
       bulletHoles: bhList ? bhList.length : 0,
       blood: bloodList ? bloodList.length : 0,
+      bloodDecals: decalList ? decalList.length : 0,
+      rubble: rubbleList ? rubbleList.length : 0,
+      craters: craterList ? craterList.length : 0,
       stoneDebris,
       waterSplashes,
       splinters,
@@ -630,7 +637,7 @@ export function generatePerfReportText() {
       lines.push(`[#${idx + 1}] Czas: ${sp.timeSec}s rundy | Delta: ${sp.frameDeltaMs}ms (${sp.fps} FPS) | JS Exec: ${sp.execTotalMs}ms | GPU Wait: ${sp.gpuGapMs}ms`);
       lines.push(`     Współrzędne: Kamera (${sp.cam.x}, ${sp.cam.y}), Gracz (${sp.player.x}, ${sp.player.y}, HP: ${sp.player.hp})`);
       lines.push(`     Podział JS: update=${sp.timings.updateMs}ms, bg=${sp.timings.bgMs}ms, fg=${sp.timings.fgMs}ms, players=${sp.timings.playersMs}ms, fx=${sp.timings.fxMs}ms, hud=${sp.timings.hudMs}ms${sp.isStallFrame ? ' [STALL PRZED KLATKĄ / GPU WAIT]' : ''}`);
-      lines.push(`     Obiekty: pociski=${sp.objects.bullets}, iskry=${sp.objects.bulletParticles}, dziury=${sp.objects.bulletHoles}, krew=${sp.objects.blood}`);
+      lines.push(`     Obiekty: pociski=${sp.objects.bullets}, iskry=${sp.objects.bulletParticles}, dziury=${sp.objects.bulletHoles}, krew_cząstki=${sp.objects.blood}, plamy_krwi=${sp.objects.bloodDecals || 0}, gruz=${sp.objects.rubble || 0}`);
       lines.push(`              odłamki=${sp.objects.stoneDebris}, rozbryzgi_wody=${sp.objects.waterSplashes}, drzazgi=${sp.objects.splinters}, boty_w_kadrze=${sp.objects.botsInView}`);
       lines.push(`     Stan Areny: ${sp.bridgeStatus}`);
     });

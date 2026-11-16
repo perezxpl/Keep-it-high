@@ -854,6 +854,20 @@ export function updateArena3(dt, players, ball) {
       ARENA_3_WATER_SPLASHES.splice(i, 1);
     }
   }
+
+  // 8. Aktualizacja kraterów w terenie (ARENA_3_CRATERS: max 25 sztuk, wygasanie po 15 sekundach = 900 klatek)
+  for (let i = ARENA_3_CRATERS.length - 1; i >= 0; i--) {
+    const cr = ARENA_3_CRATERS[i];
+    if (cr.life !== undefined) {
+      cr.life--;
+      if (cr.life <= 0) {
+        ARENA_3_CRATERS.splice(i, 1);
+      }
+    }
+  }
+  while (ARENA_3_CRATERS.length > 25) {
+    ARENA_3_CRATERS.shift();
+  }
 }
 
 

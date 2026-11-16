@@ -1676,10 +1676,15 @@ export function destroyPlatformSegments(platforms, expX, expY, radius = 90, grou
 /**
  * Fizyczne cząsteczki gruzu i betonu odbijające się od podłoża
  */
-export function spawnRubbleDebris(x, y, count = 15) {
+export function spawnRubbleDebris(x, y, count = 12) {
   const colors = ['#475569', '#334155', '#64748b', '#94a3b8', '#1e293b', '#f97316'];
+  const clampedCount = Math.min(count, 12);
 
-  for (let i = 0; i < count; i++) {
+  while (rubbleParticles.length + clampedCount > 40 && rubbleParticles.length > 0) {
+    rubbleParticles.shift();
+  }
+
+  for (let i = 0; i < clampedCount; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * 6.5 + 2.5;
 
@@ -1703,6 +1708,10 @@ export function spawnRubbleDebris(x, y, count = 15) {
 }
 
 export function updateRubbleParticles(groundY, platforms) {
+  while (rubbleParticles.length > 40) {
+    rubbleParticles.shift();
+  }
+
   const curArena = getActiveArena?.();
   const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
   const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
@@ -1775,6 +1784,10 @@ export function updateRubbleParticles(groundY, platforms) {
       }
     }
   }
+
+  while (rubbleParticles.length > 40) {
+    rubbleParticles.shift();
+  }
 }
 
 function getProjectileViewBounds(ctx, pad = 100) {
@@ -1790,16 +1803,43 @@ function getProjectileViewBounds(ctx, pad = 100) {
 export function drawRubbleParticles(ctx) {
   if (!ctx || rubbleParticles.length === 0) return;
   const { viewLeft, viewRight } = getProjectileViewBounds(ctx);
-  for (const r of rubbleParticles) {
-    if (r.x + (r.size || 10) < viewLeft || r.x - (r.size || 10) > viewRight) continue;
-    ctx.save();
-    ctx.globalAlpha = r.alpha;
-    ctx.translate(r.x, r.y);
-    ctx.rotate(r.angle);
-    ctx.fillStyle = r.color;
-    ctx.fillRect(-r.size / 2, -r.size / 2, r.size, r.size * 0.75);
-    ctx.restore();
+
+  ctx.save();
+  // 1. Gruz szary/betonowy – 1 wspólna ścieżka i 1 wywołanie fill()
+  ctx.fillStyle = '#475569';
+  ctx.beginPath();
+  let hasRubble = false;
+
+  for (let i = 0; i < rubbleParticles.length; i++) {
+    const r = rubbleParticles[i];
+    if (r.color === '#f97316') continue;
+    if (r.x + (r.size || 6) < viewLeft || r.x - (r.size || 6) > viewRight) continue;
+    hasRubble = true;
+    const s = r.size || 4;
+    ctx.rect(r.x - s * 0.5, r.y - s * 0.38, s, s * 0.75);
   }
+  if (hasRubble) {
+    ctx.fill();
+  }
+
+  // 2. Żarzące iskry / odłamki pomarańczowe – 1 wspólny fill()
+  ctx.fillStyle = '#f97316';
+  ctx.beginPath();
+  let hasSparks = false;
+
+  for (let i = 0; i < rubbleParticles.length; i++) {
+    const r = rubbleParticles[i];
+    if (r.color !== '#f97316') continue;
+    if (r.x + (r.size || 6) < viewLeft || r.x - (r.size || 6) > viewRight) continue;
+    hasSparks = true;
+    const s = r.size || 4;
+    ctx.rect(r.x - s * 0.5, r.y - s * 0.38, s, s * 0.75);
+  }
+  if (hasSparks) {
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
 export function clearRubbleParticles() {
@@ -1810,6 +1850,9 @@ export function clearRubbleParticles() {
  * Błysk i rozrastająca się fala uderzeniowa eksplozji
  */
 export function spawnExplosionEffect(x, y, maxRadius = 145, options = {}) {
+  while (explosionEffects.length >= 15) {
+    explosionEffects.shift();
+  }
   explosionEffects.push({
     x,
     y,
@@ -1828,6 +1871,9 @@ export function spawnExplosionEffect(x, y, maxRadius = 145, options = {}) {
 }
 
 export function updateExplosionEffects() {
+  while (explosionEffects.length > 15) {
+    explosionEffects.shift();
+  }
   for (let i = explosionEffects.length - 1; i >= 0; i--) {
     const ef = explosionEffects[i];
     ef.life--;
@@ -1906,10 +1952,18 @@ export function clearExplosionEffects() {
 
 /**
  * Ślady przypalenia po wybuchu (Craters / Scorch marks)
- * Usunięto sztuczną nakładkę (Fake Decal) - zastąpiono realną wyrwą w geometrii
+ * Twardy limit 25 sztuk, wygasanie po 15 sekundach (900 klatek przy 60 FPS)
  */
 export function addExplosionCrater(x, y, r) {
-  // Pusta funkcja dla kompatybilności API – brak sztucznego malowania elipsy
+  explosionCraters.push({
+    x,
+    y,
+    r: r || 25,
+    life: 900
+  });
+  while (explosionCraters.length > 25) {
+    explosionCraters.shift();
+  }
 }
 
 export function drawExplosionCraters(ctx) {
@@ -2006,6 +2060,23 @@ export function updateProjectiles(groundY, platforms, customObs, combatants, bal
   updateRubbleParticles(groundY, platforms);
   updateExplosionEffects();
   updateGrenadeSmoke();
+
+  // Twarde ograniczenie i wygaszanie kraterów (maks. 25 sztuk, 15 sekund = 900 klatek)
+  for (let i = explosionCraters.length - 1; i >= 0; i--) {
+    const c = explosionCraters[i];
+    if (c.life !== undefined) {
+      c.life--;
+      if (c.life <= 0) {
+        explosionCraters.splice(i, 1);
+      }
+    }
+  }
+  while (explosionCraters.length > 25) {
+    explosionCraters.shift();
+  }
+  while (activeProjectiles.length > 20) {
+    activeProjectiles.shift();
+  }
 }
 
 /**
@@ -2057,6 +2128,9 @@ if (typeof window !== 'undefined') {
   window.AeroSuperGrenade = AeroSuperGrenade;
   window.spawnAeroSuperGrenade = spawnAeroSuperGrenade;
   window.activeProjectiles = activeProjectiles;
+  window.rubbleParticles = rubbleParticles;
+  window.explosionCraters = explosionCraters;
+  window.explosionEffects = explosionEffects;
   window.updateProjectiles = updateProjectiles;
   window.drawProjectiles = drawProjectiles;
 }

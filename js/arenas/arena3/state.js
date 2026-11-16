@@ -131,9 +131,10 @@ export function carveTerrainCrater(expX, expY, radius = 140) {
     ARENA_3_CRATERS.push({
       x: expX,
       y: expY,
-      r: carveR
+      r: carveR,
+      life: 900 // 15 sekund przy 60 FPS
     });
-    if (ARENA_3_CRATERS.length > 25) {
+    while (ARENA_3_CRATERS.length > 25) {
       ARENA_3_CRATERS.shift();
     }
     // Wyrzucenie odłamków ziemi i skalnego pyłu

@@ -35,7 +35,11 @@ export function clearGore() {
 
 export function spawnBloodSpurt(x, y, dirX, dirY, count = 10, speedMult = 1.0) {
   if (!CONFIG.GORE_ENABLED) return;
-  for (let i = 0; i < count; i++) {
+  const clampedCount = Math.min(count, 10);
+  while (bloodParticles.length + clampedCount > 40 && bloodParticles.length > 0) {
+    bloodParticles.shift();
+  }
+  for (let i = 0; i < clampedCount; i++) {
     const spread = (Math.random() - 0.5) * 0.85;
     const spd = (Math.random() * 4.5 + 2.0) * speedMult;
     const baseAngle = Math.atan2(dirY, dirX) + spread;
@@ -46,7 +50,7 @@ export function spawnBloodSpurt(x, y, dirX, dirY, count = 10, speedMult = 1.0) {
       vy: Math.sin(baseAngle) * spd,
       size: Math.random() * 2.6 + 1.8,
       life: 1.0,
-      decay: Math.random() * 0.003 + 0.002, // Trwałe w locie – swobodnie spada grawitacyjnie
+      decay: Math.random() * 0.008 + 0.006, // Szybsze opadanie i zanikanie
       color: Math.random() < 0.35 ? '#7f1d1d' : (Math.random() < 0.7 ? '#991b1b' : '#b91c1c')
     });
   }
@@ -54,7 +58,11 @@ export function spawnBloodSpurt(x, y, dirX, dirY, count = 10, speedMult = 1.0) {
 
 export function spawnBloodFountain(x, y, facing, count = 4) {
   if (!CONFIG.GORE_ENABLED) return;
-  for (let i = 0; i < count; i++) {
+  const clampedCount = Math.min(count, 4);
+  while (bloodParticles.length + clampedCount > 40 && bloodParticles.length > 0) {
+    bloodParticles.shift();
+  }
+  for (let i = 0; i < clampedCount; i++) {
     bloodParticles.push({
       x: x + (Math.random() * 4 - 2),
       y: y,
@@ -62,7 +70,7 @@ export function spawnBloodFountain(x, y, facing, count = 4) {
       vy: -(Math.random() * 4.5 + 2.8),
       size: Math.random() * 2.6 + 2.0,
       life: 1.0,
-      decay: Math.random() * 0.003 + 0.002,
+      decay: Math.random() * 0.008 + 0.006,
       color: Math.random() < 0.35 ? '#7f1d1d' : (Math.random() < 0.7 ? '#991b1b' : '#b91c1c')
     });
   }
@@ -70,7 +78,11 @@ export function spawnBloodFountain(x, y, facing, count = 4) {
 
 export function spawnBloodDrip(x, y, vx = 0, vy = 1.0, count = 2) {
   if (!CONFIG.GORE_ENABLED) return;
-  for (let i = 0; i < count; i++) {
+  const clampedCount = Math.min(count, 2);
+  while (bloodParticles.length + clampedCount > 40 && bloodParticles.length > 0) {
+    bloodParticles.shift();
+  }
+  for (let i = 0; i < clampedCount; i++) {
     bloodParticles.push({
       x: x + (Math.random() * 4 - 2),
       y: y + (Math.random() * 2),
@@ -78,7 +90,7 @@ export function spawnBloodDrip(x, y, vx = 0, vy = 1.0, count = 2) {
       vy: vy + Math.random() * 1.5,
       size: Math.random() * 2.4 + 1.8,
       life: 1.0,
-      decay: 0.002,
+      decay: 0.006,
       color: Math.random() < 0.35 ? '#7f1d1d' : (Math.random() < 0.7 ? '#991b1b' : '#b91c1c')
     });
   }
@@ -179,40 +191,46 @@ export function addBloodDecal(x, y, radiusMult = 1.0, impactVx = 0, targetPlatfo
   for (let j = bloodDecals.length - 1; j >= Math.max(0, bloodDecals.length - 20); j--) {
     const d = bloodDecals[j];
     if (Math.abs(d.y - surfaceY) <= 4 && Math.abs(d.x - x) <= 14) {
-      d.w = Math.min(28, d.w + (Math.random() * 1.5 + 0.6) * radiusMult);
-      d.h = Math.min(7.0, d.h + (Math.random() * 0.45 + 0.15) * radiusMult);
-      d.lifeTime = Math.min(360, (d.lifeTime || 300) + 40);
-      d.alpha = Math.min(0.95, (d.alpha || 0.7) + 0.05);
+      // Zablokuj nieskończone przedłużanie życia starych plam krwi:
+      // Po maksymalnie 6 sekundach (360 klatkach) od utworzenia plama musi zniknąć!
+      if ((d.totalAge || 0) < 360) {
+        d.w = Math.min(28, d.w + (Math.random() * 1.5 + 0.6) * radiusMult);
+        d.h = Math.min(7.0, d.h + (Math.random() * 0.45 + 0.15) * radiusMult);
+        const remainingLife = Math.max(0, 360 - (d.totalAge || 0));
+        d.lifeTime = Math.min(remainingLife, (d.lifeTime || 300) + 40);
+        d.alpha = Math.min(0.95, (d.alpha || 0.7) + 0.05);
+      }
       if (plat && !d.platformRef) {
         d.platformRef = plat;
         d.cellRef = plat.cellRef || (plat.isA5Block ? plat : null);
         d.offsetX = d.x - (plat.x !== undefined ? plat.x : 0);
         d.offsetY = d.y - (plat.y !== undefined ? plat.y : 0);
       }
-      if (d.splats && d.splats.length < 6 && Math.random() < 0.65) {
+      if (d.splats && d.splats.length < 4 && Math.random() < 0.50) {
         d.splats.push({
           dx: (x - d.x) + (Math.random() - 0.5) * 8,
           dy: (Math.random() - 0.5) * 2,
-          r: (Math.random() * 1.8 + 0.8) * radiusMult
+          r: (Math.random() * 1.5 + 0.6) * radiusMult
         });
       }
       return;
     }
   }
 
-  if (bloodDecals.length >= (CONFIG.MAX_BLOOD_DECALS || 70)) {
+  // Twarde ograniczenie liczby plam krwi: maks. 50
+  while (bloodDecals.length >= 50) {
     bloodDecals.shift();
   }
 
   // Generuj mikro-odpryski wokół plamy dla realistycznego rozbryzgu
-  const splatCount = Math.floor(Math.random() * 3) + 2;
+  const splatCount = Math.floor(Math.random() * 2) + 2;
   const splats = [];
   for (let s = 0; s < splatCount; s++) {
-    const spreadX = (Math.random() * 18 - 9) + (impactVx || 0) * 1.1;
+    const spreadX = (Math.random() * 16 - 8) + (impactVx || 0) * 1.1;
     splats.push({
       dx: spreadX,
-      dy: (Math.random() - 0.5) * 2.2,
-      r: (Math.random() * 1.6 + 0.6) * radiusMult
+      dy: (Math.random() - 0.5) * 2.0,
+      r: (Math.random() * 1.4 + 0.5) * radiusMult
     });
   }
 
@@ -229,6 +247,7 @@ export function addBloodDecal(x, y, radiusMult = 1.0, impactVx = 0, targetPlatfo
     splats,
     baseAlpha: Math.random() * 0.30 + 0.65,
     alpha: Math.random() * 0.30 + 0.65,
+    totalAge: 0,
     lifeTime: 300,      // 5 sekund przy 60 FPS – pełne krycie
     fadeDuration: 60,   // 1 sekunda płynnego wygaszania
     fadeTimer: 60,
@@ -354,8 +373,8 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
   // Uaktualnij czas życia i alpha plam krwi (zanikanie po 5 sekundach)
   updateBloodDecals();
 
-  if (bloodParticles.length > 70) {
-    bloodParticles.splice(0, bloodParticles.length - 70);
+  while (bloodParticles.length > 40) {
+    bloodParticles.shift();
   }
 
   for (let i = bloodParticles.length - 1; i >= 0; i--) {
@@ -412,8 +431,8 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       addBloodDecal(p.x, surfaceY, Math.min(1.5, (p.size || 2.0) / 2.0), p.vx, hitPlatform);
 
       // 2. Dynamiczny rozbryzg kropel (micro-splash) odbijających się od powierzchni
-      if (!p.isSplash && impactSpeed > 1.8 && Math.random() < 0.65) {
-        const splashCount = Math.min(3, Math.floor(impactSpeed * 0.4) + 1);
+      if (!p.isSplash && impactSpeed > 1.8 && Math.random() < 0.40 && bloodParticles.length < 38) {
+        const splashCount = Math.min(2, Math.floor(impactSpeed * 0.4) + 1);
         for (let s = 0; s < splashCount; s++) {
           bloodParticles.push({
             x: p.x + (Math.random() * 4 - 2),
@@ -421,8 +440,8 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
             vx: (Math.random() - 0.5) * (impactSpeed * 0.5 + 1.2) + p.vx * 0.25,
             vy: -(Math.random() * 1.8 + 0.6),
             size: Math.random() * 1.4 + 1.0,
-            life: 0.45,
-            decay: 0.035,
+            life: 0.35,
+            decay: 0.045,
             color: '#b91c1c',
             isSplash: true
           });
@@ -439,6 +458,10 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     if (p.life <= 0) {
       bloodParticles.splice(i, 1);
     }
+  }
+
+  while (bloodParticles.length > 40) {
+    bloodParticles.shift();
   }
 
   for (let i = headGibs.length - 1; i >= 0; i--) {
@@ -786,10 +809,25 @@ export function drawSeveredHeads(ctx, chars) {
 }
 
 export function updateBloodDecals() {
+  while (bloodDecals.length > 50) {
+    bloodDecals.shift();
+  }
+
   const activePlats = (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) ? window.ARENA_PLATFORMS : _worldPlatforms;
 
   for (let i = bloodDecals.length - 1; i >= 0; i--) {
     const d = bloodDecals[i];
+    d.totalAge = (d.totalAge || 0) + 1;
+
+    // Plama po maksymalnie 6 sekundach (360 klatkach) MUSI zacząć wygasać, nawet jeśli krew na nią kapała
+    if (d.totalAge >= 360) {
+      d.lifeTime = 0;
+    }
+    // Po 7 sekundach bezwzględne usunięcie ze sceny
+    if (d.totalAge >= 420) {
+      bloodDecals.splice(i, 1);
+      continue;
+    }
 
     // 1. Sprawdzanie powiazania z platforma (np. klocki w Arenie 5)
     if (d.platformRef) {
@@ -827,7 +865,6 @@ export function updateBloodDecals() {
     }
 
     if (d.lifeTime === undefined) {
-      // Stare dekale bez lifetime – dodaj pola
       d.lifeTime = 300;
       d.fadeDuration = 60;
       d.fadeTimer = 60;
@@ -835,9 +872,8 @@ export function updateBloodDecals() {
     }
     if (d.lifeTime > 0) {
       d.lifeTime--;
-      d.alpha = d.baseAlpha; // pelne krycie przez 5 sekund
+      d.alpha = d.baseAlpha;
     } else {
-      // Plynne wygaszanie przez 1 sekunde
       d.fadeTimer = Math.max(0, d.fadeTimer - 1);
       d.alpha = d.baseAlpha * (d.fadeTimer / d.fadeDuration);
       if (d.alpha <= 0.005) {
@@ -896,7 +932,7 @@ export function drawBloodDecals(ctx) {
   ctx.save();
   ctx.fillStyle = '#881313';
 
-  // 1. Plamy w pełni widoczne (lifeTime > 0) - batching w jedną ścieżkę (jeden draw-call)
+  // 1. Plamy w pełni widoczne (lifeTime > 0) - batching w jedną ścieżkę (jeden draw-call dla wszystkich plam)
   ctx.globalAlpha = 0.80;
   ctx.beginPath();
   let hasFull = false;
@@ -907,14 +943,14 @@ export function drawBloodDecals(ctx) {
     if (d.lifeTime <= 0) continue;
 
     hasFull = true;
-    ctx.moveTo(d.x + d.w, d.y);
     ctx.ellipse(d.x, d.y, d.w, d.h, 0, 0, Math.PI * 2);
 
     if (d.splats && d.splats.length > 0) {
       for (let s = 0; s < d.splats.length; s++) {
         const sp = d.splats[s];
-        ctx.moveTo(d.x + sp.dx + sp.r, d.y + sp.dy);
-        ctx.arc(d.x + sp.dx, d.y + sp.dy, sp.r, 0, Math.PI * 2);
+        const sr = Math.max(1, sp.r);
+        // Mikro-odpryski jako szybkie rect zamiast arc
+        ctx.rect(d.x + sp.dx - sr, d.y + sp.dy - sr, sr * 2, sr * 2);
       }
     }
   }
@@ -922,24 +958,29 @@ export function drawBloodDecals(ctx) {
     ctx.fill();
   }
 
-  // 2. Plamy wygasające w ostatniej sekundzie (fadeTimer)
+  // 2. Plamy wygasające - jeden zbiorczy przebieg zamiast dziesiątek oddzielnych fill()
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath();
+  let hasFading = false;
+
   for (let i = 0; i < bloodDecals.length; i++) {
     const d = bloodDecals[i];
     if (d.x < minX || d.x > maxX || d.y < minY || d.y > maxY) continue;
     if (d.lifeTime > 0) continue;
-    if ((d.alpha || 0) <= 0.01) continue;
+    if ((d.alpha || 0) <= 0.02) continue;
 
-    ctx.globalAlpha = d.alpha;
-    ctx.beginPath();
+    hasFading = true;
     ctx.ellipse(d.x, d.y, d.w, d.h, 0, 0, Math.PI * 2);
 
     if (d.splats && d.splats.length > 0) {
       for (let s = 0; s < d.splats.length; s++) {
         const sp = d.splats[s];
-        ctx.moveTo(d.x + sp.dx + sp.r, d.y + sp.dy);
-        ctx.arc(d.x + sp.dx, d.y + sp.dy, sp.r, 0, Math.PI * 2);
+        const sr = Math.max(1, sp.r);
+        ctx.rect(d.x + sp.dx - sr, d.y + sp.dy - sr, sr * 2, sr * 2);
       }
     }
+  }
+  if (hasFading) {
     ctx.fill();
   }
 
@@ -1263,5 +1304,10 @@ export function drawGore(ctx) {
 
     ctx.restore();
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.bloodParticles = bloodParticles;
+  window.bloodDecals = bloodDecals;
 }
 
