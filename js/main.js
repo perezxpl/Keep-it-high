@@ -1040,7 +1040,7 @@ function draw() {
     ? ((typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200)
     : (isArena2Active ? 1600 : (isArena3Active ? 1200 : (isArena4Active ? 1200 : GROUND_Y)));
 
-  beginSection('fx');
+  beginSection('fx_obstacles');
   if (!isArena2Active && !isArena3Active && !isArena4Active && !isArena5Active) {
     drawGround(ctx, worldLeft, worldWidth);
   }
@@ -1049,6 +1049,7 @@ function draw() {
   drawObstacles(ctx, GROUND_Y);
 
   drawBloodDecals(ctx);
+  endSection('fx_obstacles');
 
   if (editorState.active) {
     if (editorState.snapToGrid) {
@@ -1124,13 +1125,20 @@ function draw() {
     }
   }
 
+  beginSection('fx_bullets');
   drawBullets(ctx);
+  endSection('fx_bullets');
+
+  beginSection('fx_projectiles');
   drawProjectiles(ctx);
+  endSection('fx_projectiles');
+
+  beginSection('fx_jetpack');
   const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
   const activeRemotePlayers = (typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : (remotePlayer?.active ? [remotePlayer] : []);
   drawSeveredHeads(ctx, [player, ...activeBots, ...activeRemotePlayers]);
   drawJetpackParticles(ctx);
-  endSection('fx');
+  endSection('fx_jetpack');
 
   beginSection('players');
   // Celownik laserowy snajperki Barrett .50 w stylu Soldat
@@ -1216,10 +1224,16 @@ function draw() {
   }
   endSection('players');
 
-  beginSection('fx');
+  beginSection('fx_gore');
   // Renderowanie efektów gore (krew w locie, odcięte głowy, urwane kończyny, upuszczona broń)
   drawGore(ctx);
+  endSection('fx_gore');
+
+  beginSection('fx_pickups');
   drawPickupsWorld(ctx, camera);
+  endSection('fx_pickups');
+
+  beginSection('fx_misc');
   drawZombieSystem(ctx, camera);
   drawHazards(ctx, camera);
 
@@ -1268,14 +1282,14 @@ function draw() {
       drawCrosshair(ctx, player.aimX, player.aimY);
     }
   }
-  endSection('fx');
+  endSection('fx_misc');
 
   // Renderowanie elementów areny na pierwszym planie (np. łańcuchy, ołtarz, stemple)
   beginSection('fg');
   renderArenaForeground(ctx, camera);
   endSection('fg');
 
-  beginSection('fx');
+  beginSection('fx_lighting');
   const isDebugCol = (typeof isDebugCollidersEnabled === 'function') ? isDebugCollidersEnabled() : DEBUG_COLLIDERS;
   if (isDebugCol && typeof drawDebugColliders === 'function') {
     drawDebugColliders(ctx, effectiveDrawGroundY, player, { activeBots, remotePlayer, ball });
@@ -1283,9 +1297,11 @@ function draw() {
 
   drawShockwaves(ctx, camera);
   drawLighting(ctx, camera, activeArenaId);
+  endSection('fx_lighting');
 
   ctx.restore();
 
+  beginSection('fx_vignette');
   drawCinematicVignette(ctx);
   drawZombieHUD(ctx);
 
@@ -1300,7 +1316,7 @@ function draw() {
     ctx.fillText(dbgTxt, 16, 24);
     ctx.restore();
   }
-  endSection('fx');
+  endSection('fx_vignette');
 
   beginSection('hud');
   const isMatchRunning = (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED' || (GAME_STATE.current === 'SETTINGS' && GAME_STATE.previous !== 'MENU'));

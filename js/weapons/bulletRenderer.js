@@ -123,7 +123,7 @@ const DEFAULT_PROFILE = BALLISTIC_PROFILES.AK47;
 
 // Pula fizycznych przestrzelin / kraterów na ścianach (Bullet Hole Decals)
 export const bulletHoles = [];
-export const MAX_BULLET_HOLES = 30;
+export const MAX_BULLET_HOLES = 20;
 
 // Pre-renderowane szablony przestrzelin na małym offscreen canvasie (optymalizacja GPU)
 let bulletHoleCanvases = null;
@@ -190,8 +190,8 @@ function initBulletHoleCanvases() {
 // Pule cząstek w locie (Tracer Smoke & Mach Condensation Rings)
 const machRings = [];
 const tracerVaporPuffs = [];
-const MAX_MACH_RINGS = 35;
-const MAX_VAPOR_PUFFS = 50;
+const MAX_MACH_RINGS = 16;
+const MAX_VAPOR_PUFFS = 20;
 
 /**
  * Zwraca konfigurację balistyczną dla danego identyfikatora broni

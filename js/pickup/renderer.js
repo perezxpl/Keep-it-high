@@ -46,7 +46,11 @@ export function drawPickupsWorld(ctx, camera) {
       ctx.ellipse(dw.x, dw.y + 4, 18, 5, 0, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      const surfaceBelowY = getGroundSurfaceBelow(dw.x, dw.y, dw.startY);
+      if (dw._cachedSurfaceY === undefined || Math.abs((dw._cachedX || 0) - dw.x) > 16) {
+        dw._cachedSurfaceY = getGroundSurfaceBelow(dw.x, dw.y, dw.startY);
+        dw._cachedX = dw.x;
+      }
+      const surfaceBelowY = dw._cachedSurfaceY;
       if (surfaceBelowY >= dw.y) {
         const heightAbove = surfaceBelowY - dw.y;
         const shadowFactor = Math.max(0.15, Math.min(1.0, 1.0 - heightAbove / 250));

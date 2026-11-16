@@ -315,7 +315,7 @@ export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 
     groundTimer: 1.2 + Math.random() * 0.6
   });
 
-  if (bulletCasings.length > 50) {
+  if (bulletCasings.length > 25) {
     bulletCasings.shift();
   }
   bulletCasings.push(casing);
@@ -359,7 +359,7 @@ export function spawnRevolverEjectCasings(x, y, count = 6, facing = 1, inheritVx
       groundTimer: 1.5 + Math.random() * 0.6
     });
 
-    if (bulletCasings.length > 50) {
+    if (bulletCasings.length > 25) {
       bulletCasings.shift();
     }
     bulletCasings.push(casing);
@@ -403,7 +403,7 @@ export function spawnSawedOffEjectCasings(x, y, count = 2, facing = 1, inheritVx
       groundTimer: 1.5 + Math.random() * 0.6
     });
 
-    if (bulletCasings.length > 50) {
+    if (bulletCasings.length > 25) {
       bulletCasings.shift();
     }
     bulletCasings.push(casing);
@@ -446,7 +446,7 @@ export function spawnDroppedMagazine(x, y, weaponType = 'AK47', facing = 1, inhe
   });
   casing.isMagazine = true;
 
-  if (bulletCasings.length > 160) {
+  if (bulletCasings.length > 30) {
     bulletCasings.shift();
   }
   bulletCasings.push(casing);
@@ -732,19 +732,12 @@ export class ConcreteDebris {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
 
+    const half = (this.size || 6) * 0.5;
     ctx.fillStyle = this.color;
+    ctx.fillRect(-half, -half, this.size, this.size);
     ctx.strokeStyle = '#181a1f';
     ctx.lineWidth = 0.8;
-
-    ctx.beginPath();
-    const pts = this.points;
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(pts[i].x, pts[i].y);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    ctx.strokeRect(-half, -half, this.size, this.size);
 
     ctx.restore();
   }
@@ -1015,8 +1008,8 @@ export function spawnRicochetSparks(x, y, nx, ny, count = 3) {
 }
 
 export function spawnConcreteDebris(x, y, count = 10, baseVx = 0, baseVy = 0) {
-  if (concreteDebrisList.length > 25) {
-    concreteDebrisList.splice(0, concreteDebrisList.length - 25);
+  if (concreteDebrisList.length > 16) {
+    concreteDebrisList.splice(0, concreteDebrisList.length - 16);
   }
   const concreteColors = ['#2A2D34', '#333842', '#3E4450', '#262930', '#4A505D'];
   for (let i = 0; i < count; i++) {
@@ -1598,8 +1591,8 @@ export function spawnShockwaveRing(x, y) {
 }
 
 export function spawnHeavySmokePuff(x, y, count = 8) {
-  if (heavySmokePuffs.length > 16) {
-    heavySmokePuffs.splice(0, heavySmokePuffs.length - 16);
+  if (heavySmokePuffs.length > 10) {
+    heavySmokePuffs.splice(0, heavySmokePuffs.length - 10);
   }
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;

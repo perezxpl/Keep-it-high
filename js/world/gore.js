@@ -262,6 +262,9 @@ export const spawnBloodDecal = addBloodDecal;
 
 export function spawnHeadGib(x, y, vx, vy, facing, visuals) {
   if (!CONFIG.GORE_ENABLED) return;
+  while (headGibs.length >= 8) {
+    headGibs.shift();
+  }
   headGibs.push({
     x,
     y,
@@ -282,6 +285,9 @@ export function spawnHeadGib(x, y, vx, vy, facing, visuals) {
 
 export function spawnLimbGib(type, x, y, vx = 0, vy = 0, facing = 1, visuals = {}) {
   if (!CONFIG.GORE_ENABLED) return;
+  while (bodyGibs.length >= 16) {
+    bodyGibs.shift();
+  }
   bodyGibs.push({
     type,
     x,
@@ -302,6 +308,9 @@ export function spawnLimbGib(type, x, y, vx = 0, vy = 0, facing = 1, visuals = {
 export function spawnBodyGibs(cx, cy, facing, visuals) {
   if (!CONFIG.GORE_ENABLED) return;
   const types = ['arm', 'leg', 'torso_chunk', 'boot', 'pelvis'];
+  while (bodyGibs.length + types.length > 16 && bodyGibs.length > 0) {
+    bodyGibs.shift();
+  }
   for (const t of types) {
     const angle = Math.random() * Math.PI * 2;
     const spd = Math.random() * 7.0 + 3.5;
@@ -330,6 +339,9 @@ export function spawnDroppedWeapon(x, y, vx, vy, weapon, facing, ammoState = nul
 
 export function spawnKnockedHelmet(x, y, vx, vy, facing = 1, visuals = null) {
   const dir = (vx && Math.abs(vx) > 0.2) ? Math.sign(vx) : -facing;
+  while (droppedWeapons.length >= 20) {
+    droppedWeapons.shift();
+  }
   droppedWeapons.push({
     isHelmet: true,
     helmetColor: visuals?.helmetColor || '#27272a',
@@ -347,6 +359,9 @@ export function spawnKnockedHelmet(x, y, vx, vy, facing = 1, visuals = null) {
 }
 
 export function spawnVestShreds(x, y, vx = 0, vy = 0, vestColor = '#18181b') {
+  while (droppedWeapons.length + 6 > 20 && droppedWeapons.length > 0) {
+    droppedWeapons.shift();
+  }
   for (let i = 0; i < 6; i++) {
     const ang = -Math.PI * 0.85 + Math.random() * Math.PI * 0.7;
     const spd = 2.2 + Math.random() * 3.8;
@@ -1074,14 +1089,9 @@ export function drawGore(ctx) {
     ctx.fillRect(-1.0, 3.8, 2.0, 2.2);
 
     // 2. Anatomiczny owal głowy z karnacją postaci
-    const faceGrad = ctx.createLinearGradient(-4.8, -6.0, 4.8, 6.0);
-    faceGrad.addColorStop(0.0, skinBack);
-    faceGrad.addColorStop(0.5, skinMid);
-    faceGrad.addColorStop(1.0, skinLight);
-
     ctx.beginPath();
     ctx.ellipse(0, -1.0, 5.0, 5.8, 0, 0, Math.PI * 2);
-    ctx.fillStyle = faceGrad;
+    ctx.fillStyle = skinMid;
     ctx.fill();
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 0.8;

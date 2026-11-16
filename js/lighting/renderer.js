@@ -47,7 +47,9 @@ export function drawLighting(ctx, camera, activeArenaId) {
   // Tryb mieszania 'lighter' daje sprzętowo akcelerowany rozbłysk
   ctx.globalCompositeOperation = 'lighter';
 
-  for (let i = 0; i < lights.length; i++) {
+  // Na GPU mobilnym ograniczamy liczbę jednoczesnych rozbłysków do max 12
+  const startIndex = Math.max(0, lights.length - 12);
+  for (let i = startIndex; i < lights.length; i++) {
     const l = lights[i];
     const progress = 1 - (l.life / l.maxDuration);
 
@@ -65,7 +67,7 @@ export function drawLighting(ctx, camera, activeArenaId) {
       alpha *= (0.88 + Math.sin(performance.now() * 0.045 + l.x) * 0.12);
     }
 
-    if (alpha <= 0.01) continue;
+    if (alpha <= 0.04) continue;
 
     const sprite = getCachedLightSprite(l.color || '#ffaa33');
     if (!sprite) continue;

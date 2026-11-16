@@ -467,6 +467,9 @@ export function spawnGroundPuff(x, y) {
 }
 
 export function updateParticles() {
+  while (grassParticles.length > 30) {
+    grassParticles.shift();
+  }
   for (let i = grassParticles.length - 1; i >= 0; i--) {
     const gp = grassParticles[i];
     gp.x += gp.vx;

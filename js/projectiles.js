@@ -1893,6 +1893,45 @@ export function updateExplosionEffects() {
   }
 }
 
+let _normalFireSprite = null;
+let _toxicFireSprite = null;
+
+function getExplosionFireSprite(isToxic = false) {
+  if (typeof document === 'undefined') return null;
+  if (isToxic) {
+    if (!_toxicFireSprite) {
+      _toxicFireSprite = document.createElement('canvas');
+      _toxicFireSprite.width = 128;
+      _toxicFireSprite.height = 128;
+      const c = _toxicFireSprite.getContext('2d');
+      const g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+      g.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+      g.addColorStop(0.25, 'rgba(220, 252, 231, 0.95)');
+      g.addColorStop(0.55, 'rgba(74, 222, 128, 0.85)');
+      g.addColorStop(0.85, 'rgba(22, 163, 74, 0.55)');
+      g.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+      c.fillStyle = g;
+      c.fillRect(0, 0, 128, 128);
+    }
+    return _toxicFireSprite;
+  }
+  if (!_normalFireSprite) {
+    _normalFireSprite = document.createElement('canvas');
+    _normalFireSprite.width = 128;
+    _normalFireSprite.height = 128;
+    const c = _normalFireSprite.getContext('2d');
+    const g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+    g.addColorStop(0.25, 'rgba(254, 215, 170, 0.95)');
+    g.addColorStop(0.55, 'rgba(249, 115, 22, 0.80)');
+    g.addColorStop(0.85, 'rgba(239, 68, 68, 0.50)');
+    g.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 128, 128);
+  }
+  return _normalFireSprite;
+}
+
 export function drawExplosionEffects(ctx) {
   if (!ctx || explosionEffects.length === 0) return;
   const { viewLeft, viewRight } = getProjectileViewBounds(ctx);
@@ -1905,26 +1944,12 @@ export function drawExplosionEffects(ctx) {
 
     ctx.save();
 
-    // 1. Kula ognia
-    const grad = ctx.createRadialGradient(ef.x, ef.y, 0, ef.x, ef.y, ef.currentRadius);
-    if (ef.isToxic) {
-      grad.addColorStop(0.0, `rgba(255, 255, 255, ${ef.flashAlpha})`);
-      grad.addColorStop(0.25, `rgba(220, 252, 231, ${alpha * 0.95})`);
-      grad.addColorStop(0.55, `rgba(74, 222, 128, ${alpha * 0.85})`);
-      grad.addColorStop(0.85, `rgba(22, 163, 74, ${alpha * 0.55})`);
-      grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    } else {
-      grad.addColorStop(0.0, `rgba(255, 255, 255, ${ef.flashAlpha})`);
-      grad.addColorStop(0.25, `rgba(254, 215, 170, ${alpha * 0.9})`);
-      grad.addColorStop(0.55, `rgba(249, 115, 22, ${alpha * 0.75})`);
-      grad.addColorStop(0.85, `rgba(239, 68, 68, ${alpha * 0.45})`);
-      grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    // 1. Kula ognia (zbuforowany sprajt 128x128 bez alokacji gradientu)
+    const sprite = getExplosionFireSprite(ef.isToxic);
+    if (sprite) {
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(sprite, ef.x - ef.currentRadius, ef.y - ef.currentRadius, ef.currentRadius * 2, ef.currentRadius * 2);
     }
-
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(ef.x, ef.y, ef.currentRadius, 0, Math.PI * 2);
-    ctx.fill();
 
     // 3. Krótkotrwały intensywny biały błysk (flash: 2 klatki, promień 60px, kolor: '#FFFFFF')
     if (ef.flashFrames > 0) {

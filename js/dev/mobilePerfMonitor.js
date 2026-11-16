@@ -7,8 +7,11 @@
 
 import { bullets, bulletParticles } from '../weapons/transform.js';
 import { bulletHoles } from '../weapons/bulletRenderer.js';
-import { bloodParticles, bloodDecals } from '../world/gore.js';
+import { bloodParticles, bloodDecals, headGibs, bodyGibs, droppedWeapons as droppedGoreWeapons } from '../world/gore.js';
 import { rubbleParticles, explosionCraters } from '../projectiles.js';
+import { pickupState } from '../pickup/state.js';
+import { lightingState } from '../lighting/state.js';
+import { bulletCasings } from '../particles.js';
 
 const RING_BUFFER_SIZE = 120;
 const MAX_RECORDED_SPIKES = 20;
@@ -191,6 +194,15 @@ export function beginFrame(now) {
   perfState.currentTimings.fgMs = 0;
   perfState.currentTimings.playersMs = 0;
   perfState.currentTimings.fxMs = 0;
+  perfState.currentTimings.fx_obstaclesMs = 0;
+  perfState.currentTimings.fx_bulletsMs = 0;
+  perfState.currentTimings.fx_projectilesMs = 0;
+  perfState.currentTimings.fx_jetpackMs = 0;
+  perfState.currentTimings.fx_goreMs = 0;
+  perfState.currentTimings.fx_pickupsMs = 0;
+  perfState.currentTimings.fx_miscMs = 0;
+  perfState.currentTimings.fx_lightingMs = 0;
+  perfState.currentTimings.fx_vignetteMs = 0;
   perfState.currentTimings.hudMs = 0;
 }
 
@@ -212,6 +224,9 @@ export function endSection(name) {
     const elapsed = performance.now() - start;
     const key = name.endsWith('Ms') ? name : `${name}Ms`;
     perfState.currentTimings[key] = (perfState.currentTimings[key] || 0) + elapsed;
+    if (name.startsWith('fx_')) {
+      perfState.currentTimings.fxMs = (perfState.currentTimings.fxMs || 0) + elapsed;
+    }
     perfState.sectionStarts[name] = 0;
   }
 }
@@ -258,12 +273,7 @@ export function endFrame() {
 
   // Zapisujemy lastTimings tylko gdy klatka wykonała rzeczywiste rysowanie/fizykę
   if (execTotal > 0) {
-    perfState.lastTimings.updateMs = t.updateMs;
-    perfState.lastTimings.bgMs = t.bgMs;
-    perfState.lastTimings.fgMs = t.fgMs;
-    perfState.lastTimings.playersMs = t.playersMs;
-    perfState.lastTimings.fxMs = t.fxMs;
-    perfState.lastTimings.hudMs = t.hudMs;
+    Object.assign(perfState.lastTimings, t);
   }
 }
 
@@ -350,6 +360,17 @@ function recordLagSpike(now) {
       fxMs: Number(timingSource.fxMs.toFixed(1)),
       hudMs: Number(timingSource.hudMs.toFixed(1))
     },
+    fxBreakdown: {
+      obst: Number((timingSource.fx_obstaclesMs || 0).toFixed(1)),
+      bul: Number((timingSource.fx_bulletsMs || 0).toFixed(1)),
+      proj: Number((timingSource.fx_projectilesMs || 0).toFixed(1)),
+      jet: Number((timingSource.fx_jetpackMs || 0).toFixed(1)),
+      gore: Number((timingSource.fx_goreMs || 0).toFixed(1)),
+      pick: Number((timingSource.fx_pickupsMs || 0).toFixed(1)),
+      misc: Number((timingSource.fx_miscMs || 0).toFixed(1)),
+      light: Number((timingSource.fx_lightingMs || 0).toFixed(1)),
+      vig: Number((timingSource.fx_vignetteMs || 0).toFixed(1))
+    },
     objects: {
       bullets: bList ? bList.length : 0,
       bulletParticles: bpList ? bpList.length : 0,
@@ -358,6 +379,11 @@ function recordLagSpike(now) {
       bloodDecals: decalList ? decalList.length : 0,
       rubble: rubbleList ? rubbleList.length : 0,
       craters: craterList ? craterList.length : 0,
+      gibs: (headGibs ? headGibs.length : 0) + (bodyGibs ? bodyGibs.length : 0),
+      droppedGore: droppedGoreWeapons ? droppedGoreWeapons.length : 0,
+      droppedPickups: pickupState?.droppedWeapons ? pickupState.droppedWeapons.length : 0,
+      lights: lightingState?.activeLights ? lightingState.activeLights.length : 0,
+      casings: bulletCasings ? bulletCasings.length : 0,
       stoneDebris,
       waterSplashes,
       splinters,
@@ -637,7 +663,19 @@ export function generatePerfReportText() {
       lines.push(`[#${idx + 1}] Czas: ${sp.timeSec}s rundy | Delta: ${sp.frameDeltaMs}ms (${sp.fps} FPS) | JS Exec: ${sp.execTotalMs}ms | GPU Wait: ${sp.gpuGapMs}ms`);
       lines.push(`     Współrzędne: Kamera (${sp.cam.x}, ${sp.cam.y}), Gracz (${sp.player.x}, ${sp.player.y}, HP: ${sp.player.hp})`);
       lines.push(`     Podział JS: update=${sp.timings.updateMs}ms, bg=${sp.timings.bgMs}ms, fg=${sp.timings.fgMs}ms, players=${sp.timings.playersMs}ms, fx=${sp.timings.fxMs}ms, hud=${sp.timings.hudMs}ms${sp.isStallFrame ? ' [STALL PRZED KLATKĄ / GPU WAIT]' : ''}`);
+      if (sp.fxBreakdown) {
+        lines.push(`     Podział FX: obst=${sp.fxBreakdown.obst}ms, bul=${sp.fxBreakdown.bul}ms, proj=${sp.fxBreakdown.proj}ms, jet=${sp.fxBreakdown.jet}ms, gore=${sp.fxBreakdown.gore}ms, pick=${sp.fxBreakdown.pick}ms, light=${sp.fxBreakdown.light}ms, vig=${sp.fxBreakdown.vig}ms`);
+      }
       lines.push(`     Obiekty: pociski=${sp.objects.bullets}, iskry=${sp.objects.bulletParticles}, dziury=${sp.objects.bulletHoles}, krew_cząstki=${sp.objects.blood}, plamy_krwi=${sp.objects.bloodDecals || 0}, gruz=${sp.objects.rubble || 0}`);
+      const extObj = [];
+      if (sp.objects.gibs !== undefined) extObj.push(`gibs=${sp.objects.gibs}`);
+      if (sp.objects.droppedGore !== undefined) extObj.push(`hełmy_złom=${sp.objects.droppedGore}`);
+      if (sp.objects.droppedPickups !== undefined) extObj.push(`bronie_gleba=${sp.objects.droppedPickups}`);
+      if (sp.objects.lights !== undefined) extObj.push(`światła=${sp.objects.lights}`);
+      if (sp.objects.casings !== undefined) extObj.push(`łuski=${sp.objects.casings}`);
+      if (extObj.length > 0) {
+        lines.push(`              ${extObj.join(', ')}`);
+      }
       lines.push(`              odłamki=${sp.objects.stoneDebris}, rozbryzgi_wody=${sp.objects.waterSplashes}, drzazgi=${sp.objects.splinters}, boty_w_kadrze=${sp.objects.botsInView}`);
       lines.push(`     Stan Areny: ${sp.bridgeStatus}`);
     });

@@ -54,6 +54,10 @@ export const lightingState = {
 export function addDynamicLight(lightDef) {
   if (!lightingState.enabled || !lightDef) return;
 
+  while (lightingState.activeLights.length >= 20) {
+    lightingState.activeLights.shift();
+  }
+
   lightingState.activeLights.push({
     x: lightDef.x || 0,
     y: lightDef.y || 0,
