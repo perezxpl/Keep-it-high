@@ -95,11 +95,7 @@ export function sendZombiesState() {
  * Klient odbiera autorytatywny stan zombie od Hosta i synchronizuje encje
  */
 export function applyRemoteZombiesState(data) {
-  if (!data) return;
-
-  if (!zombieState.enabled) {
-    setZombieModeActive(true);
-  }
+  if (!data || !isZombieModeActive()) return;
 
   // 1. Synchronizacja aktywnych zombie
   if (Array.isArray(data.zombies)) {

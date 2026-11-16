@@ -13,6 +13,7 @@ import { pickupState } from '../pickup/state.js';
 import { lightingState } from '../lighting/state.js';
 import { bulletCasings } from '../particles.js';
 import { hazardsState } from '../hazards/state.js';
+import { zombieState } from '../zombie/state.js';
 
 const RING_BUFFER_SIZE = 120;
 const MAX_RECORDED_SPIKES = 20;
@@ -388,6 +389,8 @@ function recordLagSpike(now) {
       bloodDecals: decalList ? decalList.length : 0,
       barrels: (hazardsState && Array.isArray(hazardsState.barrels)) ? hazardsState.barrels.length : 0,
       acidPools: (hazardsState && Array.isArray(hazardsState.acidPools)) ? hazardsState.acidPools.length : 0,
+      zombiesActive: (zombieState && Array.isArray(zombieState.zombies)) ? zombieState.zombies.length : 0,
+      zombieCorpses: (zombieState && Array.isArray(zombieState.corpses)) ? zombieState.corpses.length : 0,
       rubble: rubbleList ? rubbleList.length : 0,
       craters: craterList ? craterList.length : 0,
       gibs: (headGibs ? headGibs.length : 0) + (bodyGibs ? bodyGibs.length : 0),
@@ -677,7 +680,7 @@ export function generatePerfReportText() {
       if (sp.fxBreakdown) {
         lines.push(`     Podział FX: obst=${sp.fxBreakdown.obst}ms, part=${sp.fxBreakdown.part}ms, decal=${sp.fxBreakdown.decal}ms, bul=${sp.fxBreakdown.bul}ms, proj=${sp.fxBreakdown.proj}ms, jet=${sp.fxBreakdown.jet}ms, gore=${sp.fxBreakdown.gore}ms, pick=${sp.fxBreakdown.pick}ms, haz=${sp.fxBreakdown.haz}ms, zomb=${sp.fxBreakdown.zomb}ms, misc=${sp.fxBreakdown.misc}ms, light=${sp.fxBreakdown.light}ms, vig=${sp.fxBreakdown.vig}ms`);
       }
-      lines.push(`     Obiekty: pociski=${sp.objects.bullets}, iskry=${sp.objects.bulletParticles}, dziury=${sp.objects.bulletHoles}, krew_cząstki=${sp.objects.blood}, plamy_krwi=${sp.objects.bloodDecals || 0}, beczki=${sp.objects.barrels || 0}, kałuże_kwasu=${sp.objects.acidPools || 0}, gruz=${sp.objects.rubble || 0}`);
+      lines.push(`     Obiekty: pociski=${sp.objects.bullets}, iskry=${sp.objects.bulletParticles}, dziury=${sp.objects.bulletHoles}, krew_cząstki=${sp.objects.blood}, plamy_krwi=${sp.objects.bloodDecals || 0}, beczki=${sp.objects.barrels || 0}, kałuże_kwasu=${sp.objects.acidPools || 0}, zombie_aktywne=${sp.objects.zombiesActive || 0}, zombie_zwłoki=${sp.objects.zombieCorpses || 0}, gruz=${sp.objects.rubble || 0}`);
       const extObj = [];
       if (sp.objects.gibs !== undefined) extObj.push(`gibs=${sp.objects.gibs}`);
       if (sp.objects.droppedGore !== undefined) extObj.push(`hełmy_złom=${sp.objects.droppedGore}`);

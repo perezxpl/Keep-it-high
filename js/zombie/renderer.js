@@ -6,7 +6,7 @@
 // krwawiącą szczęką i żółtymi ślepiami.
 // =========================================================================
 
-import { zombieState, ZOMBIE_CONFIG } from './state.js';
+import { zombieState, ZOMBIE_CONFIG, isZombieModeActive, resetZombieState } from './state.js';
 import { drawPlayer } from '../player/renderer.js';
 
 /**
@@ -91,35 +91,57 @@ function drawZombieOverlay(ctx, z, floorY) {
 }
 
 /**
- * Główna procedura rysowania jednostek zombie i ciał na świecie gry
+ * Główna procedura rysowania jednostek zombie i ciał na świecie gry z pełnym Frustum Culling 2D
  */
 export function drawZombieSystem(ctx, camera) {
-  if (!zombieState.enabled) return;
+  if (!isZombieModeActive()) {
+    if (zombieState.zombies.length > 0 || zombieState.corpses.length > 0) {
+      resetZombieState();
+    }
+    return;
+  }
 
-  const viewLeft = camera.x - 120;
-  const viewRight = camera.x + (camera.viewWidth || (window.innerWidth / (camera.zoom || 0.6))) + 120;
+  if (zombieState.corpses.length === 0 && zombieState.zombies.length === 0) return;
 
-  // 1. Rysowanie reanimujących się ciał poległych postaci
-  for (const corpse of zombieState.corpses) {
-    if (corpse.x < viewLeft || corpse.x > viewRight) continue;
-    const floorY = corpse.feetY || corpse.groundY || (corpse.y + (corpse.h || 70));
+  const viewWidth = camera.viewWidth || (window.innerWidth / (camera.zoom || 0.6));
+  const viewHeight = camera.viewHeight || (window.innerHeight / (camera.zoom || 0.6));
+  const viewLeft = camera.x - 60;
+  const viewRight = camera.x + viewWidth + 60;
+  const viewTop = camera.y - 60;
+  const viewBottom = camera.y + viewHeight + 60;
+
+  // 1. Rysowanie reanimujących się ciał poległych postaci z pełnym Frustum Culling 2D
+  for (let i = 0; i < zombieState.corpses.length; i++) {
+    const corpse = zombieState.corpses[i];
+    const cw = corpse.w || 24;
+    const ch = corpse.h || 70;
+    if (corpse.x + cw < viewLeft || corpse.x > viewRight || corpse.y + ch < viewTop || corpse.y > viewBottom) {
+      continue;
+    }
+    const floorY = corpse.feetY || corpse.groundY || (corpse.y + ch);
     drawPlayer(ctx, floorY, corpse);
     drawCorpseOverlay(ctx, corpse, floorY);
   }
 
-  // 2. Rysowanie aktywnych oraz powalonych zombie
-  for (const z of zombieState.zombies) {
-    if (z.x < viewLeft || z.x > viewRight) continue;
-    const floorY = (typeof z.groundY === 'number') ? z.groundY : (z.y + (z.h || 68));
+  // 2. Rysowanie aktywnych oraz powalonych zombie z pełnym Frustum Culling 2D
+  for (let i = 0; i < zombieState.zombies.length; i++) {
+    const z = zombieState.zombies[i];
+    const zw = z.w || 34;
+    const zh = z.h || 70;
+    if (z.x + zw < viewLeft || z.x > viewRight || z.y + zh < viewTop || z.y > viewBottom) {
+      continue;
+    }
+    const floorY = (typeof z.groundY === 'number') ? z.groundY : (z.y + zh);
     drawPlayer(ctx, floorY, z);
     drawZombieOverlay(ctx, z, floorY);
   }
 }
 
 /**
- * Rysuje kinową winietę zakażenia i taktyczny licznik zarazy w HUD
+ * Rysuje taktyczny licznik zarazy i winietę zakażenia w HUD bez dynamicznych gradientów
  */
 export function drawZombieHUD(ctx) {
+  if (!isZombieModeActive()) return;
   if (typeof window === 'undefined') return;
 
   const player = window.player;
@@ -131,20 +153,16 @@ export function drawZombieHUD(ctx) {
 
   ctx.save();
 
-  // Pulsująca zielona winieta na obrzeżach ekranu
+  // Lekka winieta zakażenia obrysowa bez createRadialGradient
   const pulse = Math.sin(Date.now() * 0.005) * 0.15 + 0.50;
-  const grad = ctx.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.85);
-  grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  grad.addColorStop(0.65, `rgba(20, 83, 45, ${pulse * 0.45})`);
-  grad.addColorStop(1.0, `rgba(5, 46, 22, ${pulse * 0.85})`);
-
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = `rgba(20, 83, 45, ${pulse * 0.75})`;
+  ctx.lineWidth = 14;
+  ctx.strokeRect(7, 7, w - 14, h - 14);
 
   // Żyłki na krawędziach ekranu (efekt skażenia krwi)
-  ctx.strokeStyle = `rgba(34, 197, 94, ${pulse * 0.35})`;
+  ctx.strokeStyle = `rgba(34, 197, 94, ${pulse * 0.45})`;
   ctx.lineWidth = 3;
-  ctx.strokeRect(4, 4, w - 8, h - 8);
+  ctx.strokeRect(14, 14, w - 28, h - 28);
 
   // Baner ostrzegawczy infekcji
   const timeLeft = Math.max(1, Math.ceil((player.hp || 10) / ZOMBIE_CONFIG.INFECTION_DPS));

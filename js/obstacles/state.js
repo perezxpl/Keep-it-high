@@ -38,6 +38,7 @@ import { initDeathmatch, resetDeathmatchState, deathmatchState, deathmatchConfig
 import { balanceBotClasses } from '../bot.js';
 import { resetPickups } from '../pickup/index.js';
 import { restorePlayerArmoryLoadout } from '../loadout/index.js';
+import { resetZombieState } from '../zombie/index.js';
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
@@ -438,6 +439,9 @@ export function saveArenaSnapshot() {
 }
 
 export function resetArena() {
+  if (typeof resetZombieState === 'function') {
+    resetZombieState();
+  }
   if (!arenaSnapshot) {
     saveArenaSnapshot();
   }
@@ -576,6 +580,9 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     resetColliders();
   }
   resetPickups();
+  if (typeof resetZombieState === 'function') {
+    resetZombieState();
+  }
   ARENA_PLATFORMS.length = 0;
   GROUND_BARRICADES.length = 0;
   GOALS.length = 0;

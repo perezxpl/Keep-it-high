@@ -7,7 +7,7 @@
 // - Wstawanie po zwykłym powaleniu i permanentną śmierć wyłącznie przez dekapitację
 // =========================================================================
 
-import { zombieState, ZOMBIE_CONFIG, createZombieInstance, registerCorpseForReanimation } from './state.js';
+import { zombieState, ZOMBIE_CONFIG, isZombieModeActive, resetZombieState, createZombieInstance, registerCorpseForReanimation } from './state.js';
 import { triggerScreenShake, spawnBloodSpurt, spawnBloodDrip, spawnBloodFountain, spawnHeadGib } from '../world.js';
 import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
@@ -421,7 +421,20 @@ export function refreshActiveZombiesCache() {
  * Główna pętla aktualizacji systemu zombie
  */
 export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
-  if (!zombieState.enabled) return;
+  if (!isZombieModeActive()) {
+    if (zombieState.zombies.length > 0 || zombieState.corpses.length > 0) {
+      resetZombieState();
+    }
+    return;
+  }
+
+  // Twarde ograniczenie limitów kolekcji w pętli
+  while (zombieState.corpses.length > ZOMBIE_CONFIG.MAX_CORPSES) {
+    zombieState.corpses.shift();
+  }
+  while (zombieState.zombies.length > ZOMBIE_CONFIG.MAX_ZOMBIES) {
+    zombieState.zombies.shift();
+  }
 
   refreshActiveZombiesCache();
 
@@ -445,6 +458,13 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
   // -------------------------------------------------------------------------
   for (let i = zombieState.corpses.length - 1; i >= 0; i--) {
     const corpse = zombieState.corpses[i];
+
+    // Ograniczenie czasu leżenia zwłok (maksymalnie 8 sekund)
+    corpse.lifespan = (corpse.lifespan !== undefined ? corpse.lifespan : ZOMBIE_CONFIG.CORPSE_LIFESPAN || 8.0) - dt;
+    if (corpse.lifespan <= 0) {
+      zombieState.corpses.splice(i, 1);
+      continue;
+    }
 
     // Ciało z odciętą głową nie może powstać
     if (corpse.decapitated || !corpse.hasHead) {
@@ -585,7 +605,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       if (z.decapitated || !z.hasHead) {
         // Permanentna śmierć przez dekapitację: naturalny rozkład i zwolnienie slotu w tablicy
         z.decayTimer = (z.decayTimer || 0) + dt;
-        if (z.decayTimer >= 14.0) {
+        if (z.decayTimer >= (ZOMBIE_CONFIG.DECAY_DURATION || 6.0)) {
           zombieState.zombies.splice(i, 1);
         }
         continue;
@@ -842,7 +862,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
  * Rejestruje zgon postaci i tworzy leżące ciało do późniejszej reanimacji
  */
 export function onCharacterRespawnCorpse(char, groundY) {
-  if (!zombieState.enabled || !char) return;
+  if (!isZombieModeActive() || !char) return;
 
   // Ciała pozbawione głów (decapitated) oraz zmiażdżone (squashed/crushed/gibbed) NIE wstają
   if (char.isSquashed || char.isCrushed || char.isGibbed || char.decapitated || !char.hasHead || (char.acidDeath && char.acidDeath.dissolved)) {

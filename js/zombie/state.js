@@ -6,7 +6,7 @@
 import { DEFAULT_VISUALS } from '../player/hair.js';
 import { CLASSES } from '../classes/index.js';
 
-export const STORAGE_KEY_ZOMBIE_MODE = 'kih_zombie_mode_v1';
+export const STORAGE_KEY_ZOMBIE_MODE = 'kih_zombie_mode_v2';
 
 export const ZOMBIE_CONFIG = {
   SPEED: 1.35,              // Powolny, człapiący chód (~35% prędkości sprintu gracza)
@@ -18,7 +18,10 @@ export const ZOMBIE_CONFIG = {
   INFECTION_DPS: 2.2,       // Utrata życia na sekundę podczas infekcji
   REANIMATE_DELAY: 2.8,     // Czas leżenia ciała przed powstaniem jako zombie (sekundy)
   REVIVE_DELAY: 4.0,        // Czas po powaleniu bez dekapitacji przed ponownym wstaniem (sekundy)
-  MAX_ZOMBIES: 35           // Limit jednoczesnych zombie na arenie
+  MAX_ZOMBIES: 8,           // Twardy limit maksymalnie 8 aktywnych zombie na arenie (zamiast 35!)
+  MAX_CORPSES: 6,           // Twardy limit maksymalnie 6 ciał na arenie
+  CORPSE_LIFESPAN: 8.0,     // Skrócenie czasu zanikania zwłok do 8 sekund
+  DECAY_DURATION: 6.0       // Czas rozkładu po dekapitacji (6 sekund)
 };
 
 function getStoredZombieMode() {
@@ -43,9 +46,20 @@ export const zombieState = {
 
 /**
  * Zwraca czy plaga zombie jest aktualnie włączona
+ * W standardowym Deathmatchu (Areny 1-5 bez aktywnego mutatora zombie) ZAWSZE zwraca false!
  */
 export function isZombieModeActive() {
-  return !!zombieState.enabled;
+  if (!zombieState.enabled) return false;
+
+  // Weryfikacja: W standardowym trybie (Settings / Briefing) tryb musi być jawnie ustawiony na 'on'
+  if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings) {
+    const zm = window.uiManager.settings.zombieMode;
+    if (zm !== 'on' && zm !== true) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -318,7 +332,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
  * Rejestruje leżące ciało do późniejszej reanimacji
  */
 export function registerCorpseForReanimation(char, surfaceY) {
-  if (!zombieState.enabled) return;
+  if (!isZombieModeActive()) return;
   if (!char) return;
 
   // Ciała pozbawione głowy (decapitated) oraz zmiażdżone (squashed/crushed/gibbed) NIGDY nie wstają jako zombie
@@ -329,6 +343,11 @@ export function registerCorpseForReanimation(char, surfaceY) {
   // Zabezpieczenie przed przekroczeniem limitu zombie na arenie
   if (zombieState.zombies.length + zombieState.corpses.length >= ZOMBIE_CONFIG.MAX_ZOMBIES) {
     return;
+  }
+
+  // Twarde ograniczenie limitu ciał (maksymalnie 6 ciał)
+  while (zombieState.corpses.length >= ZOMBIE_CONFIG.MAX_CORPSES) {
+    zombieState.corpses.shift();
   }
 
   const corpseX = char.ragdoll?.pelvis?.x ?? (char.x + (char.w || 24) * 0.5);
@@ -384,7 +403,8 @@ export function registerCorpseForReanimation(char, surfaceY) {
     facing: facing,
     yaw: (facing < 0 ? Math.PI : 0),
     groundY: floorY,
-    timer: ZOMBIE_CONFIG.REANIMATE_DELAY,
+    timer: Math.min(ZOMBIE_CONFIG.REANIMATE_DELAY, ZOMBIE_CONFIG.CORPSE_LIFESPAN || 8.0),
+    lifespan: ZOMBIE_CONFIG.CORPSE_LIFESPAN || 8.0,
     twitch: 0,
     originalName: char.name || (char.isBot ? 'BOT' : 'OPERATOR'),
 
