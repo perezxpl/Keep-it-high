@@ -32,6 +32,7 @@ import { playSound, playWeaponFireSound } from './audio/index.js';
 import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
 import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRenderer.js';
 import { isEnforcerPoiseActive } from './classes/enforcer.js';
+import { triggerCombatFeedBanner } from './ui/combatFeed.js';
 
 export {
   spawnBulletCasing,

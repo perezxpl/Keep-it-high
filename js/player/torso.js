@@ -363,12 +363,16 @@ export function drawTorsoShirt(
       buildShirtPath();
     }
   } else {
-    const shirtGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
-    shirtGrad.addColorStop(0.0, pal.dark);
-    shirtGrad.addColorStop(0.35, pal.base);
-    shirtGrad.addColorStop(0.75, pal.light);
-    shirtGrad.addColorStop(1.0, pal.dark);
-    ctx.fillStyle = shirtGrad;
+    if (p && p.isZombie) {
+      ctx.fillStyle = pal.base || '#27272a';
+    } else {
+      const shirtGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
+      shirtGrad.addColorStop(0.0, pal.dark);
+      shirtGrad.addColorStop(0.35, pal.base);
+      shirtGrad.addColorStop(0.75, pal.light);
+      shirtGrad.addColorStop(1.0, pal.dark);
+      ctx.fillStyle = shirtGrad;
+    }
     ctx.fill();
   }
 

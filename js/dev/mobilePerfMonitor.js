@@ -74,6 +74,7 @@ export const perfState = {
   spikes: [],
   lastSpikeTimeMs: 0,
   lastRecentSpike: null,
+  lastSnapshot: null,
 
   // Referencje DOM
   copyBtnEl: null
@@ -280,24 +281,21 @@ export function endFrame() {
   // Zapisujemy lastTimings tylko gdy klatka wykonała rzeczywiste rysowanie/fizykę
   if (execTotal > 0) {
     Object.assign(perfState.lastTimings, t);
+    if (perfState.frameCount % 60 === 0) {
+      perfState.lastSnapshot = createSnapshotEntry(now, t);
+    }
   }
 }
 
 /**
- * Rejestruje szczegółowy zrzut kontekstu zacięcia (Lag Spike)
+ * Tworzy pełny obiekt kontekstu wydajnościowego z licznikami obiektów
  */
-function recordLagSpike(now) {
+function createSnapshotEntry(now, timingSource) {
   const delta = perfState.currentFrameDelta;
   const fps = perfState.currentFps;
   const execTotal = perfState.currentExecTotalMs;
   const gpuGap = perfState.currentGpuGapMs;
   const isStallFrame = (execTotal === 0);
-  const timingSource = isStallFrame ? perfState.lastTimings : perfState.currentTimings;
-
-  // Grupowanie / throttle: zapisujemy zdarzenie max raz na 500ms
-  // Jeśli w oknie 500ms wystąpi gorszy lag, aktualizujemy ostatni wpis
-  const timeSinceLastSpike = now - perfState.lastSpikeTimeMs;
-  const isWithinWindow = timeSinceLastSpike < 500 && perfState.lastRecentSpike !== null;
 
   const curArenaId = (typeof window !== 'undefined' && (window.activeArenaId || (window.getActiveArena && window.getActiveArena()?.id))) || 'arena-3';
   const cam = (typeof window !== 'undefined' && window.camera) ? window.camera : { x: 0, y: 0, zoom: 1 };
@@ -348,7 +346,7 @@ function recordLagSpike(now) {
     bridgeStatus = `Pylony: L=${leftPylon}, R=${rightPylon} | Zniszczone belki: most=${brokenBridge}/${bridgeBlocks.length}, rampy=${brokenRamp}/${rampBlocks.length}`;
   }
 
-  const spikeEntry = {
+  return {
     timeSec: ((now - (perfState.roundStartTime || now)) / 1000).toFixed(1),
     arenaId: curArenaId,
     fps: Number(fps.toFixed(1)),
@@ -405,6 +403,22 @@ function recordLagSpike(now) {
     },
     bridgeStatus
   };
+}
+
+/**
+ * Rejestruje szczegółowy zrzut kontekstu zacięcia (Lag Spike)
+ */
+function recordLagSpike(now) {
+  const isStallFrame = (perfState.currentExecTotalMs === 0);
+  const timingSource = isStallFrame ? perfState.lastTimings : perfState.currentTimings;
+
+  // Grupowanie / throttle: zapisujemy zdarzenie max raz na 500ms
+  // Jeśli w oknie 500ms wystąpi gorszy lag, aktualizujemy ostatni wpis
+  const timeSinceLastSpike = now - perfState.lastSpikeTimeMs;
+  const isWithinWindow = timeSinceLastSpike < 500 && perfState.lastRecentSpike !== null;
+
+  const spikeEntry = createSnapshotEntry(now, timingSource);
+  perfState.lastSnapshot = spikeEntry;
 
   if (isWithinWindow && perfState.lastRecentSpike) {
     // Nadpisz jeśli obecne zacięcie było dłuższe
@@ -693,6 +707,19 @@ export function generatePerfReportText() {
       lines.push(`              odłamki=${sp.objects.stoneDebris}, rozbryzgi_wody=${sp.objects.waterSplashes}, drzazgi=${sp.objects.splinters}, boty_w_kadrze=${sp.objects.botsInView}`);
       lines.push(`     Stan Areny: ${sp.bridgeStatus}`);
     });
+  }
+
+  if (perfState.lastSnapshot) {
+    const ls = perfState.lastSnapshot;
+    lines.push(``);
+    lines.push(`------------------------------------------------------------------------`);
+    lines.push(`BIEŻĄCY STAN PODSYSTEMÓW (OSTATNIA PRÓBKA):`);
+    lines.push(`------------------------------------------------------------------------`);
+    lines.push(`Podział JS: update=${ls.timings.updateMs}ms, bg=${ls.timings.bgMs}ms, fg=${ls.timings.fgMs}ms, players=${ls.timings.playersMs}ms, fx=${ls.timings.fxMs}ms, hud=${ls.timings.hudMs}ms`);
+    if (ls.fxBreakdown) {
+      lines.push(`Podział FX: obst=${ls.fxBreakdown.obst}ms, part=${ls.fxBreakdown.part}ms, decal=${ls.fxBreakdown.decal}ms, bul=${ls.fxBreakdown.bul}ms, proj=${ls.fxBreakdown.proj}ms, jet=${ls.fxBreakdown.jet}ms, gore=${ls.fxBreakdown.gore}ms, pick=${ls.fxBreakdown.pick}ms, haz=${ls.fxBreakdown.haz}ms, zomb=${ls.fxBreakdown.zomb}ms, misc=${ls.fxBreakdown.misc}ms, light=${ls.fxBreakdown.light}ms, vig=${ls.fxBreakdown.vig}ms`);
+    }
+    lines.push(`Obiekty: pociski=${ls.objects.bullets}, iskry=${ls.objects.bulletParticles}, krew_cząstki=${ls.objects.blood}, plamy_krwi=${ls.objects.bloodDecals || 0}, zombie_aktywne=${ls.objects.zombiesActive || 0}, zombie_zwłoki=${ls.objects.zombieCorpses || 0}, gruz=${ls.objects.rubble || 0}`);
   }
 
   lines.push(``);

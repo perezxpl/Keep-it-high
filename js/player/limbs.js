@@ -362,14 +362,20 @@ export function drawBloodSpecks(ctx, specks, alpha) {
  * Rysuje nakładaną kamizelkę kuloodporną / Plate Carrier PMC (warstwa modularna)
  */
 export function drawPlateCarrierOverlay(ctx, p, v, absCos, absSin, cosYaw, isLookingAway, shoulderHalfW, waistHalfW, waistY) {
-  const vestGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
   const vestBaseCol = isLookingAway ? (v.jerseyBack1 || '#18181b') : (v.jerseyFront1 || '#27272a');
-  const vestLightCol = isLookingAway ? (v.jerseyBack0 || '#27272a') : (v.jerseyFront2 || '#3f3f46');
-  const vestDarkCol = isLookingAway ? (v.jerseyBack2 || '#09090b') : (v.jerseyFront0 || '#18181b');
-  vestGrad.addColorStop(0.0, vestDarkCol);
-  vestGrad.addColorStop(0.35, vestBaseCol);
-  vestGrad.addColorStop(0.75, vestLightCol);
-  vestGrad.addColorStop(1.0, vestDarkCol);
+  let vestFill;
+  if ((p && p.isZombie) || (v && v.isZombieVisuals)) {
+    vestFill = vestBaseCol;
+  } else {
+    const vestGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
+    const vestLightCol = isLookingAway ? (v.jerseyBack0 || '#27272a') : (v.jerseyFront2 || '#3f3f46');
+    const vestDarkCol = isLookingAway ? (v.jerseyBack2 || '#09090b') : (v.jerseyFront0 || '#18181b');
+    vestGrad.addColorStop(0.0, vestDarkCol);
+    vestGrad.addColorStop(0.35, vestBaseCol);
+    vestGrad.addColorStop(0.75, vestLightCol);
+    vestGrad.addColorStop(1.0, vestDarkCol);
+    vestFill = vestGrad;
+  }
 
   const strapLeftX = -shoulderHalfW * 0.48;
   const strapRightX = shoulderHalfW * 0.48;
@@ -386,7 +392,7 @@ export function drawPlateCarrierOverlay(ctx, p, v, absCos, absSin, cosYaw, isLoo
   ctx.lineTo(waistHalfW, waistY);
   ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
   ctx.closePath();
-  ctx.fillStyle = vestGrad;
+  ctx.fillStyle = vestFill;
   ctx.fill();
 
   ctx.strokeStyle = '#09090b';
@@ -651,16 +657,22 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
   const palmTop = -2.4 * handScale;
   const palmBottom = 2.2 * handScale;
 
-  const palmGrad = ctx.createLinearGradient(hX, palmTop, hX + palmLen, palmBottom);
-  if (useGloves) {
-    palmGrad.addColorStop(0.0, isFront ? gloveCol1 : gloveCol0);
-    palmGrad.addColorStop(0.4, isFront ? gloveCol2 : gloveCol1);
-    palmGrad.addColorStop(0.85, isFront ? gloveCol1 : gloveCol0);
-    palmGrad.addColorStop(1.0, '#09090b');
+  let palmFill;
+  if (v && v.isZombieVisuals) {
+    palmFill = useGloves ? gloveCol0 : (v.skinMid || '#4a5d4e');
   } else {
-    palmGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
-    palmGrad.addColorStop(0.55, isFront ? v.skinMid : v.skinBack);
-    palmGrad.addColorStop(1.0, v.skinDark);
+    const palmGrad = ctx.createLinearGradient(hX, palmTop, hX + palmLen, palmBottom);
+    if (useGloves) {
+      palmGrad.addColorStop(0.0, isFront ? gloveCol1 : gloveCol0);
+      palmGrad.addColorStop(0.4, isFront ? gloveCol2 : gloveCol1);
+      palmGrad.addColorStop(0.85, isFront ? gloveCol1 : gloveCol0);
+      palmGrad.addColorStop(1.0, '#09090b');
+    } else {
+      palmGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
+      palmGrad.addColorStop(0.55, isFront ? v.skinMid : v.skinBack);
+      palmGrad.addColorStop(1.0, v.skinDark);
+    }
+    palmFill = palmGrad;
   }
 
   // Anatomiczny profil dłoni w chwycie bojowym (nie owal, lecz ścięte śródręcze przechodzące w palce)
@@ -674,7 +686,7 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
   ctx.lineTo(hX + palmLen * 0.35, palmBottom);
   ctx.lineTo(hX + 0.8, palmBottom * 0.75);
   ctx.closePath();
-  ctx.fillStyle = palmGrad;
+  ctx.fillStyle = palmFill;
   ctx.fill();
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 1.0;
@@ -760,6 +772,7 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
 
 export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals, armUpperLen = 14, armForeLen = 13, playerRef = null) {
   const v = visuals || DEFAULT_VISUALS;
+  const isZombie = Boolean((playerRef && playerRef.isZombie) || (v && v.isZombieVisuals));
   const upperLen = armUpperLen || 14;
   const foreLen = armForeLen || 13;
   const muscle = v.muscleMult || 1.0;
@@ -833,16 +846,22 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
       }
     }
 
-    const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
-    if (isFront) {
-      bicepGrad.addColorStop(0.0, v.skinLight);
-      bicepGrad.addColorStop(0.35, v.skinMid);
-      bicepGrad.addColorStop(0.85, v.skinDark);
-      bicepGrad.addColorStop(1.0, '#78350f');
+    let bicepFill;
+    if (isZombie) {
+      bicepFill = v.skinMid || '#4a5d4e';
     } else {
-      bicepGrad.addColorStop(0.0, v.skinMid);
-      bicepGrad.addColorStop(0.4, v.skinBack);
-      bicepGrad.addColorStop(1.0, v.skinDark);
+      const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
+      if (isFront) {
+        bicepGrad.addColorStop(0.0, v.skinLight);
+        bicepGrad.addColorStop(0.35, v.skinMid);
+        bicepGrad.addColorStop(0.85, v.skinDark);
+        bicepGrad.addColorStop(1.0, '#78350f');
+      } else {
+        bicepGrad.addColorStop(0.0, v.skinMid);
+        bicepGrad.addColorStop(0.4, v.skinBack);
+        bicepGrad.addColorStop(1.0, v.skinDark);
+      }
+      bicepFill = bicepGrad;
     }
 
     ctx.beginPath();
@@ -873,7 +892,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
       else ctx.rect(startX, -armHalfH, bareLen, armHalfH * 2);
     }
     ctx.closePath();
-    ctx.fillStyle = bicepGrad;
+    ctx.fillStyle = bicepFill;
     ctx.fill();
 
     if (isSculpted) {
@@ -889,10 +908,16 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   // 2. Rękaw koszulki / bluzy (krótki lub długi – rysowany na wierzchu ramienia)
   if (!isSleevelessArm && sleeveLen > 0) {
-    const sleeveGrad = ctx.createLinearGradient(0, -deltoidW, 0, deltoidW);
-    sleeveGrad.addColorStop(0.0, pal.light);
-    sleeveGrad.addColorStop(0.45, pal.base);
-    sleeveGrad.addColorStop(1.0, pal.dark);
+    let sleeveFill;
+    if (isZombie) {
+      sleeveFill = pal.base || '#27272a';
+    } else {
+      const sleeveGrad = ctx.createLinearGradient(0, -deltoidW, 0, deltoidW);
+      sleeveGrad.addColorStop(0.0, pal.light);
+      sleeveGrad.addColorStop(0.45, pal.base);
+      sleeveGrad.addColorStop(1.0, pal.dark);
+      sleeveFill = sleeveGrad;
+    }
 
     // Organiczny obrys rękawa z gładką główką barku i lekko podwiniętym mankietem
     const traceSleeve = () => {
@@ -929,7 +954,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
         traceSleeve();
       }
     } else {
-      ctx.fillStyle = sleeveGrad;
+      ctx.fillStyle = sleeveFill;
       ctx.fill();
     }
 
@@ -1041,11 +1066,15 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
         traceForeSleeve();
       }
     } else {
-      const foreSleeveGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
-      foreSleeveGrad.addColorStop(0.0, pal.light);
-      foreSleeveGrad.addColorStop(0.5, pal.base);
-      foreSleeveGrad.addColorStop(1.0, pal.dark);
-      ctx.fillStyle = foreSleeveGrad;
+      if (isZombie) {
+        ctx.fillStyle = pal.base || '#27272a';
+      } else {
+        const foreSleeveGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
+        foreSleeveGrad.addColorStop(0.0, pal.light);
+        foreSleeveGrad.addColorStop(0.5, pal.base);
+        foreSleeveGrad.addColorStop(1.0, pal.dark);
+        ctx.fillStyle = foreSleeveGrad;
+      }
       ctx.fill();
     }
     ctx.strokeStyle = '#09090b';
@@ -1076,15 +1105,21 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.fillStyle = isFront ? v.skinMid : v.skinBack;
     ctx.fill();
 
-    const forearmGrad = ctx.createLinearGradient(0, -elbowR * 1.4, 0, elbowR * 1.4);
-    if (isFront) {
-      forearmGrad.addColorStop(0.0, v.skinLight);
-      forearmGrad.addColorStop(0.35, v.skinMid);
-      forearmGrad.addColorStop(1.0, v.skinDark);
+    let forearmFill;
+    if (isZombie) {
+      forearmFill = v.skinMid || '#4a5d4e';
     } else {
-      forearmGrad.addColorStop(0.0, v.skinMid);
-      forearmGrad.addColorStop(0.4, v.skinBack);
-      forearmGrad.addColorStop(1.0, v.skinDark);
+      const forearmGrad = ctx.createLinearGradient(0, -elbowR * 1.4, 0, elbowR * 1.4);
+      if (isFront) {
+        forearmGrad.addColorStop(0.0, v.skinLight);
+        forearmGrad.addColorStop(0.35, v.skinMid);
+        forearmGrad.addColorStop(1.0, v.skinDark);
+      } else {
+        forearmGrad.addColorStop(0.0, v.skinMid);
+        forearmGrad.addColorStop(0.4, v.skinBack);
+        forearmGrad.addColorStop(1.0, v.skinDark);
+      }
+      forearmFill = forearmGrad;
     }
 
     ctx.beginPath();
@@ -1101,7 +1136,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
       ctx.lineTo(0, elbowR);
     }
     ctx.closePath();
-    ctx.fillStyle = forearmGrad;
+    ctx.fillStyle = forearmFill;
     ctx.fill();
   }
 
@@ -1164,6 +1199,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
 export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, ankleRot, facing, colorThigh, colorShin, colorBoot, isFront, visuals, playerRef = null, legSide = 'right') {
   const v = visuals || DEFAULT_VISUALS;
+  const isZombie = Boolean((playerRef && playerRef.isZombie) || (v && v.isZombieVisuals));
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;
@@ -1222,15 +1258,21 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     const shortsCuffHalfW = thighHalfH * 1.15; // Szeroki, luźny mankiet cargo
 
     // A. Odsłonięta dolna część uda tuż nad kolanem (Distal Thigh Skin)
-    const skinGrad = ctx.createLinearGradient(0, -3.2 * muscle, 0, 3.2 * muscle);
-    if (isFrontLeg) {
-      skinGrad.addColorStop(0.0, v.skinLight);
-      skinGrad.addColorStop(0.42, v.skinMid);
-      skinGrad.addColorStop(1.0, v.skinDark);
+    let skinFill;
+    if (isZombie) {
+      skinFill = v.skinMid || '#4a5d4e';
     } else {
-      skinGrad.addColorStop(0.0, v.skinMid);
-      skinGrad.addColorStop(0.45, v.skinBack);
-      skinGrad.addColorStop(1.0, v.skinDark);
+      const skinGrad = ctx.createLinearGradient(0, -3.2 * muscle, 0, 3.2 * muscle);
+      if (isFrontLeg) {
+        skinGrad.addColorStop(0.0, v.skinLight);
+        skinGrad.addColorStop(0.42, v.skinMid);
+        skinGrad.addColorStop(1.0, v.skinDark);
+      } else {
+        skinGrad.addColorStop(0.0, v.skinMid);
+        skinGrad.addColorStop(0.45, v.skinBack);
+        skinGrad.addColorStop(1.0, v.skinDark);
+      }
+      skinFill = skinGrad;
     }
 
     ctx.beginPath();
@@ -1239,7 +1281,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.lineTo(l1, 2.4 * muscle);
     ctx.lineTo(shortsEnd - 2.5, 2.6 * muscle);
     ctx.closePath();
-    ctx.fillStyle = skinGrad;
+    ctx.fillStyle = skinFill;
     ctx.fill();
 
     // Naturalny obrys przejścia w kolano
@@ -1295,11 +1337,15 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
         traceShorts();
       }
     } else {
-      const pantsGrad = ctx.createLinearGradient(0, -shortsCuffHalfW, 0, shortsCuffHalfW);
-      pantsGrad.addColorStop(0.0, pantsPal.light);
-      pantsGrad.addColorStop(0.4, pantsPal.base);
-      pantsGrad.addColorStop(1.0, pantsPal.dark);
-      ctx.fillStyle = pantsGrad;
+      if (isZombie) {
+        ctx.fillStyle = pantsPal.base || '#27272a';
+      } else {
+        const pantsGrad = ctx.createLinearGradient(0, -shortsCuffHalfW, 0, shortsCuffHalfW);
+        pantsGrad.addColorStop(0.0, pantsPal.light);
+        pantsGrad.addColorStop(0.4, pantsPal.base);
+        pantsGrad.addColorStop(1.0, pantsPal.dark);
+        ctx.fillStyle = pantsGrad;
+      }
       ctx.fill();
     }
 
@@ -1415,11 +1461,15 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
         traceThigh();
       }
     } else {
-      const pantsGrad = ctx.createLinearGradient(0, -thighHalfH, 0, thighHalfH);
-      pantsGrad.addColorStop(0.0, pantsPal.light);
-      pantsGrad.addColorStop(0.4, pantsPal.base);
-      pantsGrad.addColorStop(1.0, pantsPal.dark);
-      ctx.fillStyle = pantsGrad;
+      if (isZombie) {
+        ctx.fillStyle = pantsPal.base || '#27272a';
+      } else {
+        const pantsGrad = ctx.createLinearGradient(0, -thighHalfH, 0, thighHalfH);
+        pantsGrad.addColorStop(0.0, pantsPal.light);
+        pantsGrad.addColorStop(0.4, pantsPal.base);
+        pantsGrad.addColorStop(1.0, pantsPal.dark);
+        ctx.fillStyle = pantsGrad;
+      }
       ctx.fill();
     }
 
@@ -1555,15 +1605,21 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.fill();
 
     // B. Płynny profil kości piszczelowej i brzuśca łydki
-    const calfGrad = ctx.createLinearGradient(0, -calfBulge, 0, calfBulge);
-    if (isFrontLeg) {
-      calfGrad.addColorStop(0.0, v.skinLight);
-      calfGrad.addColorStop(0.40, v.skinMid);
-      calfGrad.addColorStop(1.0, v.skinDark);
+    let calfFill;
+    if (isZombie) {
+      calfFill = v.skinMid || '#4a5d4e';
     } else {
-      calfGrad.addColorStop(0.0, v.skinMid);
-      calfGrad.addColorStop(0.45, v.skinBack);
-      calfGrad.addColorStop(1.0, v.skinDark);
+      const calfGrad = ctx.createLinearGradient(0, -calfBulge, 0, calfBulge);
+      if (isFrontLeg) {
+        calfGrad.addColorStop(0.0, v.skinLight);
+        calfGrad.addColorStop(0.40, v.skinMid);
+        calfGrad.addColorStop(1.0, v.skinDark);
+      } else {
+        calfGrad.addColorStop(0.0, v.skinMid);
+        calfGrad.addColorStop(0.45, v.skinBack);
+        calfGrad.addColorStop(1.0, v.skinDark);
+      }
+      calfFill = calfGrad;
     }
 
     ctx.beginPath();
@@ -1576,7 +1632,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.quadraticCurveTo(l2 * 0.12, calfBulge * 0.85, 0, kneeR * 0.85);
     ctx.closePath();
 
-    ctx.fillStyle = calfGrad;
+    ctx.fillStyle = calfFill;
     ctx.fill();
 
     // Naturalny obrys boczny nogi (TYLKO przednia i tylna krawędź – ZERO czarnej kreski w poprzek kolana!)
@@ -1622,11 +1678,15 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
         ctx.restore();
       }
     } else {
-      const kneeGrad = ctx.createLinearGradient(0, -kneeCapR, 0, kneeCapR);
-      kneeGrad.addColorStop(0.0, pantsPal.light);
-      kneeGrad.addColorStop(0.5, pantsPal.base);
-      kneeGrad.addColorStop(1.0, pantsPal.dark);
-      ctx.fillStyle = kneeGrad;
+      if (isZombie) {
+        ctx.fillStyle = pantsPal.base || '#27272a';
+      } else {
+        const kneeGrad = ctx.createLinearGradient(0, -kneeCapR, 0, kneeCapR);
+        kneeGrad.addColorStop(0.0, pantsPal.light);
+        kneeGrad.addColorStop(0.5, pantsPal.base);
+        kneeGrad.addColorStop(1.0, pantsPal.dark);
+        ctx.fillStyle = kneeGrad;
+      }
       ctx.fill();
     }
 
@@ -1666,11 +1726,15 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
         traceShinPants();
       }
     } else {
-      const pantsShinGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
-      pantsShinGrad.addColorStop(0.0, pantsPal.light);
-      pantsShinGrad.addColorStop(0.5, pantsPal.base);
-      pantsShinGrad.addColorStop(1.0, pantsPal.dark);
-      ctx.fillStyle = pantsShinGrad;
+      if (isZombie) {
+        ctx.fillStyle = pantsPal.base || '#27272a';
+      } else {
+        const pantsShinGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
+        pantsShinGrad.addColorStop(0.0, pantsPal.light);
+        pantsShinGrad.addColorStop(0.5, pantsPal.base);
+        pantsShinGrad.addColorStop(1.0, pantsPal.dark);
+        ctx.fillStyle = pantsShinGrad;
+      }
       ctx.fill();
     }
 

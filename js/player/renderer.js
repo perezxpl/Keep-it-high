@@ -1069,162 +1069,177 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     pose.initialized = true;
   }
 
-  const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
-  let footBlend = (p.isDead || p.isZombie) ? 0.90 : 0.32;
-  let armBlend = (p.isDead || p.isZombie) ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? 0.98 : 0.28);
+  const isStationaryZombieCorpse = !!(p.isZombie && p.isDead && (p.onGround || p.isSettled) && Math.abs(p.vx || 0) < 0.05 && Math.abs(p.vy || 0) < 0.05);
 
-  // Dynamiczny, natychmiastowy czas reakcji kończyn podczas ataku wręcz (brak opóźnienia i dławienia klatek animacji)
-  if (p.meleeState && !p.isDead) {
-    armBlend = 0.96;
-    footBlend = 0.65;
-  }
-
-  if (p.jumpTakeoffTimer > 0) {
-    footBlend = 0.85;
-    armBlend = 0.55;
-  } else if (!isGrounded && p.vy > 0.8) {
-    footBlend = 0.45;
-  } else if (p.kickMode === 'BACKFLIP') {
-    footBlend = 0.85;
-    armBlend = 0.65;
-  } else if (p.kickMode === 'BACKFLIP_LAND') {
-    footBlend = 0.60;
-    armBlend = 0.45;
-  } else if (isGrounded && p.isJumpCharging && speed < 0.8) {
-    footBlend = 0.40;
-    armBlend = 0.35;
-  } else if (p.kickState === 'SWING') {
-    footBlend = 0.65;
-    armBlend = 0.45;
-  } else if (p.isSliding || p.kickMode === 'SCISSOR') {
-    footBlend = 0.50;
-    armBlend = 0.35;
-  } else if (p.kickMode === 'SPIN_VOLLEY') {
-    footBlend = 0.75;
-    armBlend = 0.45;
-  } else if (p.kickMode === 'SPARTAN') {
-    footBlend = 0.75;
-    armBlend = 0.55;
-  } else if (p.staggerTimer > 0) {
-    footBlend = 0.85;
-    armBlend = 0.85;
-  } else if (p.isProne) {
-    footBlend = 0.55;
-    armBlend = 0.45;
-  }
-
-  if (p.throwAnim && p.throwAnim.active) {
-    armBlend = 0.85;
-  } else if (p.isReloading && !p.isDead) {
-    armBlend = 0.96;
-  }
-
-  // Kompensacja inercyjna układu odniesienia ciała w locie:
-  // Aktualizujemy pozycję stóp o wektor prędkości (vx, vy), aby bezwładność nie podwijała nóg pod miednicę podczas spadania
-  if (!isGrounded || p.isJumping) {
-    const deltaY = (typeof p.vy === 'number' && !isNaN(p.vy)) ? p.vy : 0;
-    const deltaX = (typeof p.vx === 'number' && !isNaN(p.vx)) ? p.vx : 0;
-    pose.footFrontX += deltaX;
-    pose.footFrontY += deltaY;
-    pose.footBackX += deltaX;
-    pose.footBackY += deltaY;
-  }
-
-  if (p.isSliding) {
-    pose.footFrontX = rawFootFrontTargetX;
-    pose.footFrontY = rawFootFrontTargetY;
-    pose.footFrontAnkle = rawFootFrontAnkle;
+  if (isStationaryZombieCorpse && pose.isStationaryCorpse && pose._cachedCorpsePlantY === plantFloorY && pose._cachedCorpseCenterX === centerX && pose._cachedFacing === p.facing) {
+    // Zachowaj obliczone pozycje kończyn i kąty leżącego ciała bez zbędnego przeliczania
   } else {
-    pose.footFrontX += (rawFootFrontTargetX - pose.footFrontX) * footBlend;
-    pose.footFrontY += (rawFootFrontTargetY - pose.footFrontY) * footBlend;
-    pose.footFrontAnkle = lerpAngle(pose.footFrontAnkle, rawFootFrontAnkle, footBlend);
-  }
+    const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
+    let footBlend = (p.isDead || p.isZombie) ? 0.90 : 0.32;
+    let armBlend = (p.isDead || p.isZombie) ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? 0.98 : 0.28);
 
-  pose.footBackX += (rawFootBackTargetX - pose.footBackX) * footBlend;
-  pose.footBackY += (rawFootBackTargetY - pose.footBackY) * footBlend;
-  pose.footBackAnkle = lerpAngle(pose.footBackAnkle, rawFootBackAnkle, footBlend);
+    // Dynamiczny, natychmiastowy czas reakcji kończyn podczas ataku wręcz (brak opóźnienia i dławienia klatek animacji)
+    if (p.meleeState && !p.isDead) {
+      armBlend = 0.96;
+      footBlend = 0.65;
+    }
 
-  pose.armFrontSwing = lerpAngle(pose.armFrontSwing, rawFrontSwing, armBlend);
-  pose.armFrontElbow = lerpAngle(pose.armFrontElbow, rawFrontElbow, armBlend);
-  pose.armBackSwing = lerpAngle(pose.armBackSwing, rawBackSwing, armBlend);
-  pose.armBackElbow = lerpAngle(pose.armBackElbow, rawBackElbow, armBlend);
+    if (p.jumpTakeoffTimer > 0) {
+      footBlend = 0.85;
+      armBlend = 0.55;
+    } else if (!isGrounded && p.vy > 0.8) {
+      footBlend = 0.45;
+    } else if (p.kickMode === 'BACKFLIP') {
+      footBlend = 0.85;
+      armBlend = 0.65;
+    } else if (p.kickMode === 'BACKFLIP_LAND') {
+      footBlend = 0.60;
+      armBlend = 0.45;
+    } else if (isGrounded && p.isJumpCharging && speed < 0.8) {
+      footBlend = 0.40;
+      armBlend = 0.35;
+    } else if (p.kickState === 'SWING') {
+      footBlend = 0.65;
+      armBlend = 0.45;
+    } else if (p.isSliding || p.kickMode === 'SCISSOR') {
+      footBlend = 0.50;
+      armBlend = 0.35;
+    } else if (p.kickMode === 'SPIN_VOLLEY') {
+      footBlend = 0.75;
+      armBlend = 0.45;
+    } else if (p.kickMode === 'SPARTAN') {
+      footBlend = 0.75;
+      armBlend = 0.55;
+    } else if (p.staggerTimer > 0) {
+      footBlend = 0.85;
+      armBlend = 0.85;
+    } else if (p.isProne) {
+      footBlend = 0.55;
+      armBlend = 0.45;
+    }
 
-  if (p.isDead || p.isZombie) {
-    pose.torsoTilt = p.torsoTilt;
-    pose.headPitch = p.headPitch;
-  } else if (p.kickMode === 'BACKFLIP') {
-    pose.torsoTilt = p.torsoTilt;
-    pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
-  } else if (p.staggerTimer > 0) {
-    // Sylwetka leży płasko na plecach: tors i głowa płasko równolegle do platformy (-90 stopni odchylenia)
-    pose.torsoTilt = -Math.PI / 2 * p.facing;
-    pose.headPitch = 0;
-  } else if (p.kickMode === 'SPARTAN') {
-    const t = p.spartanTimer || 0;
-    if (t <= 4) {
-      // Faza 1: Chambering (klatki 0-4): korpus lekko pochylony ku celowi
-      pose.torsoTilt = 0.15 * p.facing;
-      pose.headPitch = 0.08 * p.facing;
-    } else if (t <= 15) {
-      // Fazy 2 i 3: Piston Thrust i Impact Hold (klatki 5-15): tors mocno w tył w geście zaparcia (-0.45 * facing)
-      pose.torsoTilt = -0.45 * p.facing;
-      pose.headPitch = 0.14 * p.facing;
+    if (p.throwAnim && p.throwAnim.active) {
+      armBlend = 0.85;
+    } else if (p.isReloading && !p.isDead) {
+      armBlend = 0.96;
+    }
+
+    // Kompensacja inercyjna układu odniesienia ciała w locie:
+    // Aktualizujemy pozycję stóp o wektor prędkości (vx, vy), aby bezwładność nie podwijała nóg pod miednicę podczas spadania
+    if (!isGrounded || p.isJumping) {
+      const deltaY = (typeof p.vy === 'number' && !isNaN(p.vy)) ? p.vy : 0;
+      const deltaX = (typeof p.vx === 'number' && !isNaN(p.vx)) ? p.vx : 0;
+      pose.footFrontX += deltaX;
+      pose.footFrontY += deltaY;
+      pose.footBackX += deltaX;
+      pose.footBackY += deltaY;
+    }
+
+    if (p.isSliding) {
+      pose.footFrontX = rawFootFrontTargetX;
+      pose.footFrontY = rawFootFrontTargetY;
+      pose.footFrontAnkle = rawFootFrontAnkle;
     } else {
-      // Faza 4: Recovery (klatki 16-22): płynny powrót do pionu
-      const w = Math.min(1.0, (t - 15) / 7);
-      pose.torsoTilt = lerp(-0.45, 0.0, w) * p.facing;
-      pose.headPitch = lerp(0.14, 0.0, w) * p.facing;
-    }
-  } else if (p.isProne) {
-    const isCrawlingNow = speed > 0.08;
-    const crawlP = p.crawlPhase || 0;
-
-    let proneWorldAimPitch = isCrawlingNow ? (0.06 + Math.sin(crawlP * 2) * 0.03) : 0.0;
-    if (typeof p.aimX === 'number' && typeof p.aimY === 'number' && !isNaN(p.aimX) && !isNaN(p.aimY)) {
-      const shEstX = hipX + 20 * currentFacingDir;
-      const shEstY = hipY - 7;
-      const dxAim = (p.aimX - shEstX) * currentFacingDir;
-      const dyAim = p.aimY - shEstY;
-      const rawAimP = Math.atan2(dyAim, Math.max(12, dxAim));
-      // Pełny, dynamiczny kąt celowania w leżeniu (od -67.6 st w górę do +24 st w dół)
-      proneWorldAimPitch = Math.max(-1.18, Math.min(0.42, rawAimP));
+      pose.footFrontX += (rawFootFrontTargetX - pose.footFrontX) * footBlend;
+      pose.footFrontY += (rawFootFrontTargetY - pose.footFrontY) * footBlend;
+      pose.footFrontAnkle = lerpAngle(pose.footFrontAnkle, rawFootFrontAnkle, footBlend);
     }
 
-    // Dynamiczne unoszenie klatki piersiowej na łokciach:
-    // W poziomie (~1.25 rad / 71 st), przy celowaniu w górę korpus unosi się płynnie ku górze (~0.84 rad / 48 st),
-    // a przy celowaniu w dół lub czołganiu klatka przylega nisko do ziemi (~1.34 rad / 77 st)
-    let targetProneTilt = isCrawlingNow
-      ? (1.28 + Math.sin(crawlP * 2) * 0.025)
-      : 1.25;
+    pose.footBackX += (rawFootBackTargetX - pose.footBackX) * footBlend;
+    pose.footBackY += (rawFootBackTargetY - pose.footBackY) * footBlend;
+    pose.footBackAnkle = lerpAngle(pose.footBackAnkle, rawFootBackAnkle, footBlend);
 
-    if (proneWorldAimPitch < 0) {
-      targetProneTilt = Math.max(0.84, targetProneTilt + proneWorldAimPitch * 0.38);
+    pose.armFrontSwing = lerpAngle(pose.armFrontSwing, rawFrontSwing, armBlend);
+    pose.armFrontElbow = lerpAngle(pose.armFrontElbow, rawFrontElbow, armBlend);
+    pose.armBackSwing = lerpAngle(pose.armBackSwing, rawBackSwing, armBlend);
+    pose.armBackElbow = lerpAngle(pose.armBackElbow, rawBackElbow, armBlend);
+
+    if (p.isDead || p.isZombie) {
+      pose.torsoTilt = p.torsoTilt;
+      pose.headPitch = p.headPitch;
+    } else if (p.kickMode === 'BACKFLIP') {
+      pose.torsoTilt = p.torsoTilt;
+      pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
+    } else if (p.staggerTimer > 0) {
+      // Sylwetka leży płasko na plecach: tors i głowa płasko równolegle do platformy (-90 stopni odchylenia)
+      pose.torsoTilt = -Math.PI / 2 * p.facing;
+      pose.headPitch = 0;
+    } else if (p.kickMode === 'SPARTAN') {
+      const t = p.spartanTimer || 0;
+      if (t <= 4) {
+        // Faza 1: Chambering (klatki 0-4): korpus lekko pochylony ku celowi
+        pose.torsoTilt = 0.15 * p.facing;
+        pose.headPitch = 0.08 * p.facing;
+      } else if (t <= 15) {
+        // Fazy 2 i 3: Piston Thrust i Impact Hold (klatki 5-15): tors mocno w tył w geście zaparcia (-0.45 * facing)
+        pose.torsoTilt = -0.45 * p.facing;
+        pose.headPitch = 0.14 * p.facing;
+      } else {
+        // Faza 4: Recovery (klatki 16-22): płynny powrót do pionu
+        const w = Math.min(1.0, (t - 15) / 7);
+        pose.torsoTilt = lerp(-0.45, 0.0, w) * p.facing;
+        pose.headPitch = lerp(0.14, 0.0, w) * p.facing;
+      }
+    } else if (p.isProne) {
+      const isCrawlingNow = speed > 0.08;
+      const crawlP = p.crawlPhase || 0;
+
+      let proneWorldAimPitch = isCrawlingNow ? (0.06 + Math.sin(crawlP * 2) * 0.03) : 0.0;
+      if (typeof p.aimX === 'number' && typeof p.aimY === 'number' && !isNaN(p.aimX) && !isNaN(p.aimY)) {
+        const shEstX = hipX + 20 * currentFacingDir;
+        const shEstY = hipY - 7;
+        const dxAim = (p.aimX - shEstX) * currentFacingDir;
+        const dyAim = p.aimY - shEstY;
+        const rawAimP = Math.atan2(dyAim, Math.max(12, dxAim));
+        // Pełny, dynamiczny kąt celowania w leżeniu (od -67.6 st w górę do +24 st w dół)
+        proneWorldAimPitch = Math.max(-1.18, Math.min(0.42, rawAimP));
+      }
+
+      // Dynamiczne unoszenie klatki piersiowej na łokciach:
+      // W poziomie (~1.25 rad / 71 st), przy celowaniu w górę korpus unosi się płynnie ku górze (~0.84 rad / 48 st),
+      // a przy celowaniu w dół lub czołganiu klatka przylega nisko do ziemi (~1.34 rad / 77 st)
+      let targetProneTilt = isCrawlingNow
+        ? (1.28 + Math.sin(crawlP * 2) * 0.025)
+        : 1.25;
+
+      if (proneWorldAimPitch < 0) {
+        targetProneTilt = Math.max(0.84, targetProneTilt + proneWorldAimPitch * 0.38);
+      } else {
+        targetProneTilt = Math.min(1.36, targetProneTilt + proneWorldAimPitch * 0.25);
+      }
+
+      const finalProneTilt = targetProneTilt * currentFacingDir;
+      pose.torsoTilt += (finalProneTilt - pose.torsoTilt) * 0.28;
+
+      // Głowa uniesiona ku górze (-abs(torsoTilt)) + podążanie za kątem celowania + przyłożenie policzka do kolby
+      const absTorso = Math.abs(pose.torsoTilt);
+      const proneCheekWeld = (hasActiveWeapon && (p.shootPoseWeight || 0) > 0.05) ? (0.12 * p.shootPoseWeight) : 0;
+      const targetProneHeadPitch = -absTorso + proneWorldAimPitch + proneCheekWeld;
+      pose.headPitch += (targetProneHeadPitch - pose.headPitch) * 0.28;
     } else {
-      targetProneTilt = Math.min(1.36, targetProneTilt + proneWorldAimPitch * 0.25);
+      pose.torsoTilt += (p.torsoTilt - pose.torsoTilt) * 0.24;
+      pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
+
+      // Przyłożenie policzka do baki kolby (Cheek Weld) podczas celowania/strzału
+      if (hasActiveWeapon && (p.shootPoseWeight || 0) > 0.05) {
+        const cheekWeld = 0.10 * p.shootPoseWeight * currentFacingDir;
+        pose.headPitch += (cheekWeld - pose.headPitch) * 0.25;
+      }
     }
 
-    const finalProneTilt = targetProneTilt * currentFacingDir;
-    pose.torsoTilt += (finalProneTilt - pose.torsoTilt) * 0.28;
-
-    // Głowa uniesiona ku górze (-abs(torsoTilt)) + podążanie za kątem celowania + przyłożenie policzka do kolby
-    const absTorso = Math.abs(pose.torsoTilt);
-    const proneCheekWeld = (hasActiveWeapon && (p.shootPoseWeight || 0) > 0.05) ? (0.12 * p.shootPoseWeight) : 0;
-    const targetProneHeadPitch = -absTorso + proneWorldAimPitch + proneCheekWeld;
-    pose.headPitch += (targetProneHeadPitch - pose.headPitch) * 0.28;
-  } else {
-    pose.torsoTilt += (p.torsoTilt - pose.torsoTilt) * 0.24;
-    pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
-
-    // Przyłożenie policzka do baki kolby (Cheek Weld) podczas celowania/strzału
-    if (hasActiveWeapon && (p.shootPoseWeight || 0) > 0.05) {
-      const cheekWeld = 0.10 * p.shootPoseWeight * currentFacingDir;
-      pose.headPitch += (cheekWeld - pose.headPitch) * 0.25;
+    // Dynamiczne wychylenie torsu w natarciu bronią białą (Melee Torso Tilt)
+    if (p.meleeTorsoTilt) {
+      pose.torsoTilt += p.meleeTorsoTilt;
     }
-  }
 
-  // Dynamiczne wychylenie torsu w natarciu bronią białą (Melee Torso Tilt)
-  if (p.meleeTorsoTilt) {
-    pose.torsoTilt += p.meleeTorsoTilt;
+    if (isStationaryZombieCorpse) {
+      pose.isStationaryCorpse = true;
+      pose._cachedCorpsePlantY = plantFloorY;
+      pose._cachedCorpseCenterX = centerX;
+      pose._cachedFacing = p.facing;
+    } else {
+      pose.isStationaryCorpse = false;
+    }
   }
 
   let shoulderCounterTilt = 0;
@@ -1342,20 +1357,25 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   // SZYJA (Anatomiczny cylinder szyi łączący podstawę czaszki i żuchwę z kołnierzem koszulki)
   const neckBackX = -fDir * (3.1 * absCos + 2.6 * (1 - absCos)) * muscle;
   const neckFrontX = fDir * (1.9 * absCos + 2.6 * (1 - absCos)) * muscle;
-  const neckGrad = ctx.createLinearGradient(
-    Math.min(neckBackX, neckFrontX), 0,
-    Math.max(neckBackX, neckFrontX), 0
-  );
-  if (fDir > 0) {
-    neckGrad.addColorStop(0.0, v.skinDark);
-    neckGrad.addColorStop(0.45, v.skinBack);
-    neckGrad.addColorStop(0.85, v.skinMid);
-    neckGrad.addColorStop(1.0, v.skinLight);
+  if (p.isZombie) {
+    ctx.fillStyle = v.skinMid || '#4a5d4e';
   } else {
-    neckGrad.addColorStop(0.0, v.skinLight);
-    neckGrad.addColorStop(0.15, v.skinMid);
-    neckGrad.addColorStop(0.55, v.skinBack);
-    neckGrad.addColorStop(1.0, v.skinDark);
+    const neckGrad = ctx.createLinearGradient(
+      Math.min(neckBackX, neckFrontX), 0,
+      Math.max(neckBackX, neckFrontX), 0
+    );
+    if (fDir > 0) {
+      neckGrad.addColorStop(0.0, v.skinDark);
+      neckGrad.addColorStop(0.45, v.skinBack);
+      neckGrad.addColorStop(0.85, v.skinMid);
+      neckGrad.addColorStop(1.0, v.skinLight);
+    } else {
+      neckGrad.addColorStop(0.0, v.skinLight);
+      neckGrad.addColorStop(0.15, v.skinMid);
+      neckGrad.addColorStop(0.55, v.skinBack);
+      neckGrad.addColorStop(1.0, v.skinDark);
+    }
+    ctx.fillStyle = neckGrad;
   }
 
   ctx.beginPath();
@@ -1364,7 +1384,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.lineTo(neckFrontX * 1.15, -22.6);
   ctx.quadraticCurveTo(neckFrontX * 0.92, -25.2, neckFrontX * 0.95, -27.8);
   ctx.closePath();
-  ctx.fillStyle = neckGrad;
   ctx.fill();
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.95;
@@ -1434,11 +1453,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       tracePelvis();
     }
   } else {
-    const pelvisGrad = ctx.createLinearGradient(0, pelvisTopY, -fDir * waistHalfW, pelvisBottomY);
-    pelvisGrad.addColorStop(0.0, pantsPal.light);
-    pelvisGrad.addColorStop(0.45, pantsPal.base);
-    pelvisGrad.addColorStop(1.0, pantsPal.dark);
-    ctx.fillStyle = pelvisGrad;
+    if (p.isZombie) {
+      ctx.fillStyle = pantsPal.base || '#27272a';
+    } else {
+      const pelvisGrad = ctx.createLinearGradient(0, pelvisTopY, -fDir * waistHalfW, pelvisBottomY);
+      pelvisGrad.addColorStop(0.0, pantsPal.light);
+      pelvisGrad.addColorStop(0.45, pantsPal.base);
+      pelvisGrad.addColorStop(1.0, pantsPal.dark);
+      ctx.fillStyle = pelvisGrad;
+    }
     ctx.fill();
   }
 
@@ -1478,10 +1501,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   // PAS TAKTYCZNY PMC (Duty / Riggers Belt – na wysokości anatomicznej talii powyżej stawu biodrowego)
   const beltTopY = -4.6;
   const beltBotY = -1.4;
-  const beltGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
-  beltGrad.addColorStop(0.0, '#09090b');
-  beltGrad.addColorStop(0.5, '#18181b');
-  beltGrad.addColorStop(1.0, '#09090b');
+  if (p.isZombie) {
+    ctx.fillStyle = '#18181b';
+  } else {
+    const beltGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
+    beltGrad.addColorStop(0.0, '#09090b');
+    beltGrad.addColorStop(0.5, '#18181b');
+    beltGrad.addColorStop(1.0, '#09090b');
+    ctx.fillStyle = beltGrad;
+  }
 
   ctx.beginPath();
   ctx.moveTo(-waistHalfW - 0.2, beltTopY);
@@ -1489,7 +1517,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.lineTo(waistHalfW + 0.1, beltBotY);
   ctx.quadraticCurveTo(0, beltBotY + 0.7, -waistHalfW - 0.1, beltBotY);
   ctx.closePath();
-  ctx.fillStyle = beltGrad;
   ctx.fill();
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 1.0;
@@ -1515,7 +1542,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const plateW = Math.min(shoulderHalfW, waistHalfW) * 1.5;
 
   // WIDOCZNE ŚLADY KRWI I OBRAŻEŃ OD KUL/WYBUCHÓW NA TORSIE
-  drawTorsoWounds(ctx, dmgRatio, absCos, absSin, cosYaw, plateW, waistHalfW, shoulderHalfW, isLookingAway);
+  if (!p.isZombie) {
+    drawTorsoWounds(ctx, dmgRatio, absCos, absSin, cosYaw, plateW, waistHalfW, shoulderHalfW, isLookingAway);
+  }
 
   // MODEL JETPACKA NA PLECACH POSTACI
   drawJetpack(ctx, p, currentFacingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW, v);
@@ -1550,10 +1579,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.rotate(pose.headPitch);
 
     // 1. ANATOMICZNA CZASZKA (ŁYSA GŁOWA / MILITARY SHAVED HEAD)
-    const faceGrad = ctx.createLinearGradient(-5.0, 0, 7.0, 0);
-    faceGrad.addColorStop(0.0, v.skinBack);
-    faceGrad.addColorStop(0.5, v.skinMid);
-    faceGrad.addColorStop(1.0, v.skinLight);
+    if (p.isZombie) {
+      ctx.fillStyle = v.skinMid || '#4a5d4e';
+    } else {
+      const faceGrad = ctx.createLinearGradient(-5.0, 0, 7.0, 0);
+      faceGrad.addColorStop(0.0, v.skinBack);
+      faceGrad.addColorStop(0.5, v.skinMid);
+      faceGrad.addColorStop(1.0, v.skinLight);
+      ctx.fillStyle = faceGrad;
+    }
 
     ctx.beginPath();
     // Potylica i ciemieniowa kopuła czaszki (okrągła, czysta łysa głowa)
@@ -1573,7 +1607,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.lineTo(0.2, 4.4);
     ctx.lineTo(-3.5, 3.8);
     ctx.closePath();
-    ctx.fillStyle = faceGrad;
     ctx.fill();
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 1.0;
@@ -1610,10 +1643,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony)
     if (hasHelmet) {
-      const helmGrad = ctx.createLinearGradient(-6.0, -11.0, 6.0, -2.0);
-      helmGrad.addColorStop(0.0, '#18181b');
-      helmGrad.addColorStop(0.5, v.helmetColor || '#27272a');
-      helmGrad.addColorStop(1.0, '#09090b');
+      if (p.isZombie) {
+        ctx.fillStyle = v.helmetColor || '#27272a';
+      } else {
+        const helmGrad = ctx.createLinearGradient(-6.0, -11.0, 6.0, -2.0);
+        helmGrad.addColorStop(0.0, '#18181b');
+        helmGrad.addColorStop(0.5, v.helmetColor || '#27272a');
+        helmGrad.addColorStop(1.0, '#09090b');
+        ctx.fillStyle = helmGrad;
+      }
 
       ctx.beginPath();
       ctx.moveTo(-5.5, -1.8);
@@ -1720,7 +1758,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.stroke();
 
     // Rany na twarzy w profilu (tylko na odsłoniętej twarzy)
-    if (!isBalaclava) {
+    if (!isBalaclava && !p.isZombie) {
       drawHeadWoundsProfile(ctx, dmgRatio);
     }
 
@@ -1730,14 +1768,18 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.rotate(pose.headPitch * 0.5);
 
     // Anatomiczna potylica czaszki (okrągła, czysta łysa głowa)
-    const headBackGrad = ctx.createLinearGradient(-4.8, -8.0, 4.8, 4.0);
-    headBackGrad.addColorStop(0.0, v.skinBack);
-    headBackGrad.addColorStop(0.5, v.skinMid);
-    headBackGrad.addColorStop(1.0, v.skinLight);
+    if (p.isZombie) {
+      ctx.fillStyle = v.skinMid || '#4a5d4e';
+    } else {
+      const headBackGrad = ctx.createLinearGradient(-4.8, -8.0, 4.8, 4.0);
+      headBackGrad.addColorStop(0.0, v.skinBack);
+      headBackGrad.addColorStop(0.5, v.skinMid);
+      headBackGrad.addColorStop(1.0, v.skinLight);
+      ctx.fillStyle = headBackGrad;
+    }
 
     ctx.beginPath();
     ctx.ellipse(0, -1.5, 4.9, 5.8, 0, 0, Math.PI * 2);
-    ctx.fillStyle = headBackGrad;
     ctx.fill();
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 1.0;
@@ -1748,15 +1790,19 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Hełm z tyłu (jeśli założony)
     if (hasHelmet) {
-      const helmBackGrad = ctx.createLinearGradient(-5.5, -9.0, 5.5, 0);
-      helmBackGrad.addColorStop(0.0, '#18181b');
-      helmBackGrad.addColorStop(0.5, v.helmetColor || '#27272a');
-      helmBackGrad.addColorStop(1.0, '#09090b');
+      if (p.isZombie) {
+        ctx.fillStyle = v.helmetColor || '#27272a';
+      } else {
+        const helmBackGrad = ctx.createLinearGradient(-5.5, -9.0, 5.5, 0);
+        helmBackGrad.addColorStop(0.0, '#18181b');
+        helmBackGrad.addColorStop(0.5, v.helmetColor || '#27272a');
+        helmBackGrad.addColorStop(1.0, '#09090b');
+        ctx.fillStyle = helmBackGrad;
+      }
 
       ctx.beginPath();
       ctx.arc(0, -2.0, 5.5, Math.PI * 0.85, Math.PI * 0.15, true);
       ctx.closePath();
-      ctx.fillStyle = helmBackGrad;
       ctx.fill();
       ctx.strokeStyle = '#09090b';
       ctx.lineWidth = 1.0;
@@ -1771,20 +1817,26 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     // Rany z tyłu głowy
-    drawHeadWoundsAway(ctx, dmgRatio);
+    if (!p.isZombie) {
+      drawHeadWoundsAway(ctx, dmgRatio);
+    }
 
   } else {
     ctx.rotate(pose.headPitch * 0.5);
 
     // Anatomiczna twarz z przodu
-    const faceFrontGrad = ctx.createLinearGradient(-4.8, -6.0, 4.8, 6.0);
-    faceFrontGrad.addColorStop(0.0, v.skinBack);
-    faceFrontGrad.addColorStop(0.5, v.skinMid);
-    faceFrontGrad.addColorStop(1.0, v.skinLight);
+    if (p.isZombie) {
+      ctx.fillStyle = v.skinMid || '#4a5d4e';
+    } else {
+      const faceFrontGrad = ctx.createLinearGradient(-4.8, -6.0, 4.8, 6.0);
+      faceFrontGrad.addColorStop(0.0, v.skinBack);
+      faceFrontGrad.addColorStop(0.5, v.skinMid);
+      faceFrontGrad.addColorStop(1.0, v.skinLight);
+      ctx.fillStyle = faceFrontGrad;
+    }
 
     ctx.beginPath();
     ctx.ellipse(0, -0.6, 4.8, 5.8, 0, 0, Math.PI * 2);
-    ctx.fillStyle = faceFrontGrad;
     ctx.fill();
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 1.0;
@@ -1796,15 +1848,19 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Hełm z przodu (jeśli założony)
     if (hasHelmet) {
-      const helmFrontGrad = ctx.createLinearGradient(-5.5, -8.0, 5.5, 0);
-      helmFrontGrad.addColorStop(0.0, '#18181b');
-      helmFrontGrad.addColorStop(0.5, v.helmetColor || '#27272a');
-      helmFrontGrad.addColorStop(1.0, '#09090b');
+      if (p.isZombie) {
+        ctx.fillStyle = v.helmetColor || '#27272a';
+      } else {
+        const helmFrontGrad = ctx.createLinearGradient(-5.5, -8.0, 5.5, 0);
+        helmFrontGrad.addColorStop(0.0, '#18181b');
+        helmFrontGrad.addColorStop(0.5, v.helmetColor || '#27272a');
+        helmFrontGrad.addColorStop(1.0, '#09090b');
+        ctx.fillStyle = helmFrontGrad;
+      }
 
       ctx.beginPath();
       ctx.arc(0, -1.8, 5.4, Math.PI * 0.9, Math.PI * 0.1, true);
       ctx.closePath();
-      ctx.fillStyle = helmFrontGrad;
       ctx.fill();
       ctx.strokeStyle = '#09090b';
       ctx.lineWidth = 1.0;
@@ -1869,14 +1925,16 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.stroke();
 
     // Rany na twarzy z przodu
-    drawHeadWoundsFront(ctx, dmgRatio);
+    if (!p.isZombie) {
+      drawHeadWoundsFront(ctx, dmgRatio);
+    }
   }
 
   ctx.restore();
 
   // OZDOBA SZYI I KLATKI PIERSIOWEJ (nieśmiertelnik wojskowy / złoty łańcuch)
   // Rysowana na torsie na dekolcie koszulki – całkowicie niezależna od obrotu głowy (headPitch)
-  if (isNearProfile && (!p.isDead || p.hasHead)) {
+  if (!p.isZombie && isNearProfile && (!p.isDead || p.hasHead)) {
     const headBobOffset = (p.headBob || 0);
     const neckBaseX = (p.isProne && !p.isDead) ? -2.0 * currentFacingDir : 0.0;
     const neckBaseY = (p.isProne && !p.isDead) ? -29.4 + (headBobOffset * 0.25) : -30.5 + (headBobOffset * 0.35);

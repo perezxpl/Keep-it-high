@@ -63,7 +63,7 @@ import { updateDeathmatch, resetDeathmatchState, refreshDeathmatchParticipants, 
 import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { initPickups, resetPickups, updatePickups, drawPickupsWorld, drawPickupPrompt } from './pickup/index.js';
 import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
-import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, isZombieModeActive, resetZombieState, sendZombiesState } from './zombie/index.js';
+import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, isZombieModeActive, setZombieModeActive, resetZombieState, sendZombiesState } from './zombie/index.js';
 import { updateHazards, drawHazards, initHazardsForArena, checkBarrelKickInteraction } from './hazards/index.js';
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
@@ -1686,6 +1686,11 @@ if (typeof window !== 'undefined') {
     }
     if (isAiTest && typeof checkAndInitAutoPlaytest === 'function') {
       checkAndInitAutoPlaytest();
+    }
+    if (urlParams.has('zombie')) {
+      const zVal = urlParams.get('zombie');
+      const zActive = (zVal === '1' || zVal === 'true' || zVal === 'on');
+      setZombieModeActive(zActive);
     }
     if (urlParams.has('breach')) {
       const bx = Number(urlParams.get('breach')) || 1400;

@@ -26,6 +26,14 @@ export const ZOMBIE_CONFIG = {
 
 function getStoredZombieMode() {
   try {
+    if (typeof window !== 'undefined' && window.location && window.location.search) {
+      const params = new URLSearchParams(window.location.search);
+      const qz = params.get('zombie');
+      if (qz === '1' || qz === 'true' || qz === 'on') return true;
+      if (qz === '0' || qz === 'false' || qz === 'off') return false;
+    }
+  } catch (_) {}
+  try {
     const val = localStorage.getItem(STORAGE_KEY_ZOMBIE_MODE);
     return val === 'true' || val === 'on';
   } catch (_) {
@@ -46,32 +54,25 @@ export const zombieState = {
 
 /**
  * Zwraca czy plaga zombie jest aktualnie włączona
- * W standardowym Deathmatchu (Areny 1-5 bez aktywnego mutatora zombie) ZAWSZE zwraca false!
  */
 export function isZombieModeActive() {
-  if (!zombieState.enabled) return false;
-
-  // Weryfikacja: W standardowym trybie (Settings / Briefing) tryb musi być jawnie ustawiony na 'on'
-  if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings) {
-    const zm = window.uiManager.settings.zombieMode;
-    if (zm !== 'on' && zm !== true) {
-      return false;
-    }
-  }
-
-  return true;
+  return !!zombieState.enabled;
 }
 
 /**
- * Przełącza stan aktywności trybu zombie i zapisuje w localStorage
+ * Przełącza stan aktywności trybu zombie i zapisuje w localStorage oraz synchronizuje z uiManager
  */
 export function setZombieModeActive(active, options = {}) {
   const isRemote = !!(options && options.isRemote);
-  const changed = (zombieState.enabled !== !!active);
-  zombieState.enabled = !!active;
+  const boolVal = !!active;
+  const changed = (zombieState.enabled !== boolVal);
+  zombieState.enabled = boolVal;
   try {
-    localStorage.setItem(STORAGE_KEY_ZOMBIE_MODE, zombieState.enabled ? 'true' : 'false');
+    localStorage.setItem(STORAGE_KEY_ZOMBIE_MODE, boolVal ? 'true' : 'false');
   } catch (_) {}
+  if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings) {
+    window.uiManager.settings.zombieMode = boolVal ? 'on' : 'off';
+  }
   if (!zombieState.enabled) {
     resetZombieState();
   }

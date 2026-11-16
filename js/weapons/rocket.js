@@ -33,6 +33,7 @@ import { activeSentryGuns } from '../killstreaks/sentryGun.js';
 import { ARENA_LEFT, ARENA_RIGHT } from '../config.js';
 import { DEFAULT_VISUALS } from '../player/hair.js';
 import { isEnforcerPoiseActive } from '../classes/enforcer.js';
+import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 
 /**
  * Wyznacza odległość punktu (px, py) od odcinka (x1, y1)-(x2, y2)
