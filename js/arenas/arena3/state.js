@@ -333,9 +333,17 @@ export function spawnBridgeSplinters(x, y, vxBase = 0, vyBase = 0, count = 8) {
 
 // Cząsteczki rozbryzgu wody w rzece Areny 3 (pociski, granaty, gejzery)
 export const ARENA_3_WATER_SPLASHES = [];
+let _lastWaterSplashTime = 0;
+let _lastWaterSplashX = -9999;
 
 export function spawnArena3WaterSplash(x, y, count = 10, isGeyser = false) {
-  const num = isGeyser ? Math.round(count * 2.2) : count;
+  const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+  if (!isGeyser && now - _lastWaterSplashTime < 40 && Math.abs(x - _lastWaterSplashX) < 90) {
+    return;
+  }
+  _lastWaterSplashTime = now;
+  _lastWaterSplashX = x;
+  const num = isGeyser ? Math.round(count * 2.2) : Math.min(count, 8);
   for (let i = 0; i < num; i++) {
     ARENA_3_WATER_SPLASHES.push({
       x: x + (Math.random() - 0.5) * (isGeyser ? 44 : 14),
@@ -349,8 +357,8 @@ export function spawnArena3WaterSplash(x, y, count = 10, isGeyser = false) {
       color: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#ffffff'][Math.floor(Math.random() * 5)]
     });
   }
-  if (ARENA_3_WATER_SPLASHES.length > 50) {
-    ARENA_3_WATER_SPLASHES.splice(0, ARENA_3_WATER_SPLASHES.length - 50);
+  if (ARENA_3_WATER_SPLASHES.length > 24) {
+    ARENA_3_WATER_SPLASHES.splice(0, ARENA_3_WATER_SPLASHES.length - 24);
   }
 }
 
@@ -1059,9 +1067,18 @@ export function resetArena3() {
 // 2E. CZĄSTECZKI ODŁAMKÓW SKALNYCH I PYŁU (STONE DEBRIS)
 // =========================================================================
 export const STONE_DEBRIS = [];
+let _lastStoneDebrisTime = 0;
+let _lastStoneDebrisX = -9999;
 
 export function spawnStoneDebris(x, y, vxBase = 0, vyBase = 0, count = 10) {
-  for (let i = 0; i < count; i++) {
+  const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+  if (now - _lastStoneDebrisTime < 40 && Math.abs(x - _lastStoneDebrisX) < 90) {
+    return;
+  }
+  _lastStoneDebrisTime = now;
+  _lastStoneDebrisX = x;
+  const num = Math.min(count, 8);
+  for (let i = 0; i < num; i++) {
     STONE_DEBRIS.push({
       x,
       y,
@@ -1075,8 +1092,8 @@ export function spawnStoneDebris(x, y, vxBase = 0, vyBase = 0, count = 10) {
       color: ['#475569', '#334155', '#1e293b', '#64748b', '#3f4738', '#52525b'][Math.floor(Math.random() * 6)]
     });
   }
-  if (STONE_DEBRIS.length > 35) {
-    STONE_DEBRIS.splice(0, STONE_DEBRIS.length - 35);
+  if (STONE_DEBRIS.length > 18) {
+    STONE_DEBRIS.splice(0, STONE_DEBRIS.length - 18);
   }
 }
 

@@ -123,7 +123,7 @@ const DEFAULT_PROFILE = BALLISTIC_PROFILES.AK47;
 
 // Pula fizycznych przestrzelin / kraterów na ścianach (Bullet Hole Decals)
 export const bulletHoles = [];
-export const MAX_BULLET_HOLES = 45;
+export const MAX_BULLET_HOLES = 30;
 
 // Pre-renderowane szablony przestrzelin na małym offscreen canvasie (optymalizacja GPU)
 let bulletHoleCanvases = null;
@@ -297,7 +297,7 @@ export function updateBulletVisuals(bulletsList, dt = 1 / 60) {
 
     // C. Drobne żarzące się odpryski prochu (dla strzelb)
     if (prof.sparkChance && Math.random() < prof.sparkChance) {
-      if (bulletParticles.length < 120) {
+      if (bulletParticles.length < 50) {
         const spreadAngle = Math.atan2(b.vy, b.vx) + (Math.random() - 0.5) * 0.7;
         const sparkSpd = Math.random() * 2.5 + 1.0;
         bulletParticles.push({
@@ -368,11 +368,12 @@ export function spawnImpactVisuals(hitX, hitY, nx = 0, ny = -1, weaponId = 'AK47
   playSound('hit_ricochet', { x: hitX, y: hitY });
 
   // 2. Szybkie, ostre iskry rykoszetowe (Motion-stretched Sparks) odbijające się od powierzchni
-  const sparkCount = prof.impactSparks || 5;
+  const isShotgun = weaponId === 'SHOTGUN' || weaponId === 'SAWED_OFF';
+  const sparkCount = isShotgun ? Math.min(2, prof.impactSparks || 2) : (prof.impactSparks || 5);
   const baseAngle = Math.atan2(ny, nx);
 
-  if (bulletParticles.length > 120) {
-    bulletParticles.splice(0, bulletParticles.length - 110);
+  if (bulletParticles.length > 50) {
+    bulletParticles.splice(0, bulletParticles.length - 42);
   }
 
   for (let i = 0; i < sparkCount; i++) {

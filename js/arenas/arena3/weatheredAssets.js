@@ -22,8 +22,9 @@ export function resetWeatheredAssetsCache() {
  * W wersji nienaruszonej (damageRatio === 0) rysowana błyskawicznie z bufora Offscreen Canvas!
  */
 export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
-  const damageRatio = options.damageRatio || 0;
-  if (damageRatio === 0 && typeof document !== 'undefined') {
+  if (typeof document !== 'undefined') {
+    const rawDmg = options.damageRatio || 0;
+    const dmgTier = rawDmg <= 0.05 ? 0 : (rawDmg < 0.55 ? 1 : 2);
     const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(x * 11 + y * 17) % 100);
     const isWet = options.isWet !== undefined ? options.isWet : (y + h >= 1290);
     const plankCount = options.plankCount || (w > 32 ? 2 : 1);
@@ -31,7 +32,7 @@ export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
     const hasMoss = options.hasMoss !== false;
     const hangingVines = !!options.hangingVines;
 
-    const cacheKey = `${Math.round(w)}_${Math.round(h)}_${seed % 16}_${isWet ? 1 : 0}_${plankCount}_${hasMetal ? 1 : 0}_${hasMoss ? 1 : 0}_${hangingVines ? 1 : 0}`;
+    const cacheKey = `${Math.round(w)}_${Math.round(h)}_${seed % 8}_${isWet ? 1 : 0}_${plankCount}_${hasMetal ? 1 : 0}_${hasMoss ? 1 : 0}_${hangingVines ? 1 : 0}_${dmgTier}`;
     let cached = _deckCanvasCache.get(cacheKey);
     if (!cached) {
       cached = document.createElement('canvas');
@@ -42,7 +43,8 @@ export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
       if (cCtx) {
         cCtx.save();
         cCtx.translate(2, 2);
-        renderWeatheredTimberDeckVectors(cCtx, 0, 0, w, h, options);
+        const optWithTier = { ...options, damageRatio: dmgTier === 0 ? 0 : (dmgTier === 1 ? 0.35 : 0.75) };
+        renderWeatheredTimberDeckVectors(cCtx, 0, 0, w, h, optWithTier);
         cCtx.restore();
       }
       _deckCanvasCache.set(cacheKey, cached);

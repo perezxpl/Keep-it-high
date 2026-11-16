@@ -239,12 +239,14 @@ export function playSound(soundId, opts = {}) {
   }
 
   const nowMs = getNowMs();
-  const cooldownMs = opts.cooldownMs !== undefined ? opts.cooldownMs : (def.cooldownMs || 0);
+  const minSoundCooldown = soundId.startsWith('hit_') ? 55 : (soundId.startsWith('weapon_') ? 45 : 0);
+  const cooldownMs = opts.cooldownMs !== undefined ? opts.cooldownMs : Math.max(def.cooldownMs || 0, minSoundCooldown);
   if (cooldownMs > 0) {
     const lastMs = audioState.lastPlayedAt.get(soundId) || 0;
     if (nowMs - lastMs < cooldownMs) return false;
   }
 
+  // Twardy limit maksymalnej liczby jednoczesnych głosów Web Audio (polyphony cap)
   if (audioState.activeVoiceCount >= AUDIO_CONFIG.MAX_ACTIVE_VOICES) {
     return false;
   }

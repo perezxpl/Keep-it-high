@@ -7,7 +7,7 @@ export const AUDIO_CONFIG = {
   DEFAULT_BASE_PATH: './assets/audio/',
   ENABLE_GAMEPLAY_SYNTH: false,
   ENABLE_UI_SYNTH_FALLBACK: true,
-  MAX_ACTIVE_VOICES: 28,
+  MAX_ACTIVE_VOICES: 14,
   DEFAULT_HEARING_RADIUS: 1850,
   PAN_MAX: 0.88,
   MASTER_HEADROOM: 0.72
@@ -29,13 +29,13 @@ export const WEAPON_FIRE_SOUND_MAP = {
  */
 export const SOUND_CATALOG = {
   // --- Uzbrojenie ---
-  weapon_ak47: { bus: 'sfx', volume: 0.56, pitchJitter: 0.03, cooldownMs: 40, spatial: true, maxDistance: 1750 },
-  weapon_shotgun: { bus: 'sfx', volume: 0.68, pitchJitter: 0.03, cooldownMs: 85, spatial: true, maxDistance: 1850 },
+  weapon_ak47: { bus: 'sfx', volume: 0.56, pitchJitter: 0.03, cooldownMs: 55, spatial: true, maxDistance: 1750 },
+  weapon_shotgun: { bus: 'sfx', volume: 0.68, pitchJitter: 0.03, cooldownMs: 90, spatial: true, maxDistance: 1850 },
   weapon_pump: { bus: 'sfx', volume: 0.42, pitchJitter: 0.03, cooldownMs: 80, spatial: true, maxDistance: 950 },
   weapon_sniper: { bus: 'sfx', volume: 0.76, pitchJitter: 0.02, cooldownMs: 120, spatial: true, maxDistance: 2200 },
-  weapon_glock: { bus: 'sfx', volume: 0.52, pitchJitter: 0.04, cooldownMs: 45, spatial: true, maxDistance: 1600 },
+  weapon_glock: { bus: 'sfx', volume: 0.52, pitchJitter: 0.04, cooldownMs: 55, spatial: true, maxDistance: 1600 },
   weapon_revolver: { bus: 'sfx', volume: 0.64, pitchJitter: 0.03, cooldownMs: 70, spatial: true, maxDistance: 1850 },
-  weapon_sawed_off: { bus: 'sfx', volume: 0.68, pitchJitter: 0.03, cooldownMs: 85, spatial: true, maxDistance: 1800 },
+  weapon_sawed_off: { bus: 'sfx', volume: 0.68, pitchJitter: 0.03, cooldownMs: 90, spatial: true, maxDistance: 1800 },
   weapon_rpg7: { bus: 'sfx', volume: 0.72, pitchJitter: 0.03, cooldownMs: 140, spatial: true, maxDistance: 2050 },
   weapon_melee_swing: { bus: 'sfx', volume: 0.22, pitchJitter: 0.05, cooldownMs: 65, spatial: true, maxDistance: 850 },
   weapon_melee_hit: { bus: 'sfx', volume: 0.56, pitchJitter: 0.04, cooldownMs: 60, spatial: true, maxDistance: 1100 },
@@ -52,12 +52,12 @@ export const SOUND_CATALOG = {
   explosion_toxic: { bus: 'sfx', volume: 0.72, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2300 },
 
   // --- Trafienia, Pancerz i Rykoszety ---
-  hit_flesh: { bus: 'sfx', volume: 0.48, pitchJitter: 0.05, cooldownMs: 55, spatial: true, maxDistance: 1150 },
-  hit_headshot: { bus: 'sfx', volume: 0.64, pitchJitter: 0.03, cooldownMs: 60, spatial: true, maxDistance: 1300 },
-  hit_armor: { bus: 'sfx', volume: 0.48, pitchJitter: 0.05, cooldownMs: 55, spatial: true, maxDistance: 1150 },
+  hit_flesh: { bus: 'sfx', volume: 0.48, pitchJitter: 0.05, cooldownMs: 60, spatial: true, maxDistance: 1150 },
+  hit_headshot: { bus: 'sfx', volume: 0.64, pitchJitter: 0.03, cooldownMs: 65, spatial: true, maxDistance: 1300 },
+  hit_armor: { bus: 'sfx', volume: 0.48, pitchJitter: 0.05, cooldownMs: 60, spatial: true, maxDistance: 1150 },
   hit_helmet_break: { bus: 'sfx', volume: 0.64, pitchJitter: 0.04, cooldownMs: 70, spatial: true, maxDistance: 1450 },
   hit_shield: { bus: 'sfx', volume: 0.42, pitchJitter: 0.05, cooldownMs: 70, spatial: true, maxDistance: 1100 },
-  hit_ricochet: { bus: 'sfx', volume: 0.20, pitchJitter: 0.06, cooldownMs: 130, spatial: true, maxDistance: 1000 },
+  hit_ricochet: { bus: 'sfx', volume: 0.20, pitchJitter: 0.06, cooldownMs: 70, spatial: true, maxDistance: 1000 },
 
   // --- Klasy i Ruch Gracza ---
   jetpack_loop: { bus: 'sfx', volume: 0.16, pitchJitter: 0.0, cooldownMs: 0, spatial: true, maxDistance: 1050, loop: true },

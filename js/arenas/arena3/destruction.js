@@ -87,50 +87,21 @@ export function onArena3BulletHit(bullet) {
     return false;
   }
 
-  // 1. Lustro wody w rzece (X: 1600 do 2800, linia wody Y: 1305) - absorpcja i rozbryzg wodny
+  // 1. Lustro wody w rzece (X: 1600 do 2800, linia wody Y: 1305) - błyskawiczna absorpcja i rozbryzg
   if ((by >= 1305 || (by0 < 1305 && by >= 1305)) && bx >= 1600 && bx <= 2800) {
     spawnArena3WaterSplash(bx, 1305, 8);
     return true;
   }
 
-  // 2. Liny nośne pomostów wiszących (swept ray zapobiega przenikaniu pocisków snajperskich)
-  for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
-    const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
-
-    // Lewa lina
-    if (plat.ropeLeft.intact) {
-      const attachX = plat.attachLX !== undefined ? plat.attachLX : plat.ropeLeft.x;
-      const attachY = plat.attachLY !== undefined ? plat.attachLY : plat.origY;
-      if (rayIntersectsVerticalLine(bx0, by0, bx, by, attachX, 0, attachY + 6, 8)) {
-        plat.ropeLeft.hp -= bDamage * 0.60;
-        spawnBridgeSplinters(attachX, by, (bullet.vx || 0) * 0.15, -1.5, 5);
-        if (plat.ropeLeft.hp <= 0) {
-          plat.ropeLeft.intact = false;
-          onCanopyRopeSnapped(plat, 'left');
-        }
-        return true;
-      }
-    }
-
-    // Prawa lina
-    if (plat.ropeRight.intact) {
-      const attachX = plat.attachRX !== undefined ? plat.attachRX : plat.ropeRight.x;
-      const attachY = plat.attachRY !== undefined ? plat.attachRY : plat.origY;
-      if (rayIntersectsVerticalLine(bx0, by0, bx, by, attachX, 0, attachY + 6, 8)) {
-        plat.ropeRight.hp -= bDamage * 0.60;
-        spawnBridgeSplinters(attachX, by, (bullet.vx || 0) * 0.15, -1.5, 5);
-        if (plat.ropeRight.hp <= 0) {
-          plat.ropeRight.intact = false;
-          onCanopyRopeSnapped(plat, 'right');
-        }
-        return true;
-      }
-    }
-  }
-
-  // 3. Pylony mostu (drewniana wieża A-frame oraz masywne podwodne kesony kamienne)
+  // 2. Masywne kamienne kesony i pylony mostu oraz monolityczne bloki kotwiące (główne cele rykoszetów)
   for (const k of ['left', 'right']) {
     const p = ARENA_3_PYLONS[k];
+    // Kamienny fundament kesonu w wodzie (Y: baseY do caissonBottomY)
+    const caissonBot = p.caissonBottomY || 1395;
+    if (rayIntersectsAABB(bx0, by0, bx, by, p.x - 30, p.baseY, p.x + 30, caissonBot)) {
+      spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
+      return true;
+    }
     // Drewniana wieża A-frame (Y: topY do baseY)
     if (p.intact && rayIntersectsAABB(bx0, by0, bx, by, p.x - 28, p.topY, p.x + 28, p.baseY)) {
       p.hp -= bDamage * 0.40;
@@ -140,15 +111,9 @@ export function onArena3BulletHit(bullet) {
       }
       return true;
     }
-    // Kamienny fundament kesonu w wodzie (Y: baseY do caissonBottomY)
-    const caissonBot = p.caissonBottomY || 1395;
-    if (rayIntersectsAABB(bx0, by0, bx, by, p.x - 30, p.baseY, p.x + 30, caissonBot)) {
-      spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
-      return true;
-    }
   }
 
-  // 3B. Żelbetowe monolityczne bloki kotwiące odciągi mostu (X: 1140 oraz X: 3260)
+  // Żelbetowe monolityczne bloki kotwiące odciągi mostu (X: 1140 oraz X: 3260)
   for (const ax of [1140, 3260]) {
     if (rayIntersectsAABB(bx0, by0, bx, by, ax - 28, 1154, ax + 28, 1400)) {
       spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
@@ -156,10 +121,47 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
+  // 3. Liny nośne pomostów wiszących (sprawdzane tylko w górnej strefie Y < 1050)
+  if (minObjY < 1050) {
+    for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
+      const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
+
+      // Lewa lina
+      if (plat.ropeLeft.intact) {
+        const attachX = plat.attachLX !== undefined ? plat.attachLX : plat.ropeLeft.x;
+        const attachY = plat.attachLY !== undefined ? plat.attachLY : plat.origY;
+        if (rayIntersectsVerticalLine(bx0, by0, bx, by, attachX, 0, attachY + 6, 8)) {
+          plat.ropeLeft.hp -= bDamage * 0.60;
+          spawnBridgeSplinters(attachX, by, (bullet.vx || 0) * 0.15, -1.5, 5);
+          if (plat.ropeLeft.hp <= 0) {
+            plat.ropeLeft.intact = false;
+            onCanopyRopeSnapped(plat, 'left');
+          }
+          return true;
+        }
+      }
+
+      // Prawa lina
+      if (plat.ropeRight.intact) {
+        const attachX = plat.attachRX !== undefined ? plat.attachRX : plat.ropeRight.x;
+        const attachY = plat.attachRY !== undefined ? plat.attachRY : plat.origY;
+        if (rayIntersectsVerticalLine(bx0, by0, bx, by, attachX, 0, attachY + 6, 8)) {
+          plat.ropeRight.hp -= bDamage * 0.60;
+          spawnBridgeSplinters(attachX, by, (bullet.vx || 0) * 0.15, -1.5, 5);
+          if (plat.ropeRight.hp <= 0) {
+            plat.ropeRight.intact = false;
+            onCanopyRopeSnapped(plat, 'right');
+          }
+          return true;
+        }
+      }
+    }
+  }
+
   // 4. Klocki ramp podejścia do mostu (ARENA_3_RAMP_BLOCKS) - całe i zawalone
   for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
     const b = ARENA_3_RAMP_BLOCKS[i];
-    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
+    if (!b.intact && (b.y >= 1295 || b.y + b.h >= 1295 || b.isAsleep)) continue;
     if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 12 || minObjY > b.y + b.h + 18) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 10, b.x + b.w + 2, b.y + b.h + 16)) {
       if (b.intact) {
@@ -186,7 +188,7 @@ export function onArena3BulletHit(bullet) {
   // 5. Klocki mostu głównego (ARENA_3_BRIDGE_BLOCKS) - całe i zawalone pływające deski
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
-    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
+    if (!b.intact && (b.y >= 1295 || b.y + b.h >= 1295 || b.isAsleep)) continue;
     if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 10 || minObjY > b.y + b.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
@@ -213,7 +215,7 @@ export function onArena3BulletHit(bullet) {
   // 6. Klocki wiszących pomostów taktycznych (ALL_CANOPY_BLOCKS)
   for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
     const b = ALL_CANOPY_BLOCKS[i];
-    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
+    if (!b.intact && (b.y >= 1295 || b.y + b.h >= 1295 || b.isAsleep)) continue;
     if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 10 || minObjY > b.y + b.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {

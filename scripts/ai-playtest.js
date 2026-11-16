@@ -233,6 +233,7 @@ async function runPlaytest() {
     const totalTicks = Math.floor((DURATION * 1000) / tickMs);
     let nextArena5StressMs = 2500;
     let nextArena3StressMs = 3000;
+    let nextArena3ShootingMs = 1500;
     let nextLogMs = 5000;
 
     for (let t = 1; t <= totalTicks; t++) {
@@ -320,6 +321,28 @@ async function runPlaytest() {
               ];
               const t = targets[Math.floor(Math.random() * targets.length)];
               window.onArena3Explosion(t.x, t.y, 160);
+            }
+          } catch (_) {}
+        });
+      }
+
+      // Wymuszony ostrzał pylonów i wody ze Shotguna / AK-47 na Arenie 3 (co 1.5s)
+      if (isArena3 && isHighStress && currentElapsedMs >= nextArena3ShootingMs) {
+        nextArena3ShootingMs += 1500;
+        await page.evaluate(() => {
+          try {
+            const combatants = (window.combatants || [window.player, ...(window.bots || [])]).filter(p => p && p.hp > 0 && !p.isDead);
+            if (combatants.length > 0 && typeof window.shootWeapon === 'function' && window.WEAPONS) {
+              const shooter = combatants[Math.floor(Math.random() * combatants.length)];
+              const wep = Math.random() < 0.6 ? window.WEAPONS.SHOTGUN : window.WEAPONS.AK47;
+              const targets = [
+                { x: 1755, y: 1150 }, // lewy kamienny fundament pylonu
+                { x: 2645, y: 1150 }, // prawy kamienny fundament pylonu
+                { x: 2200, y: 1310 }  // tafla rzeki
+              ];
+              const t = targets[Math.floor(Math.random() * targets.length)];
+              const angle = Math.atan2(t.y - shooter.y, t.x - shooter.x);
+              window.shootWeapon(shooter, wep, shooter.x, shooter.y - 20, angle);
             }
           } catch (_) {}
         });

@@ -823,7 +823,7 @@ export function updateArena3(dt, players, ball) {
     sp.y += sp.vy;
     sp.vy += 0.34;
     sp.rot += sp.vRot;
-    sp.life -= (sp.y >= 1300 ? 3 : 1);
+    sp.life -= (sp.y >= 1300 ? 12 : 1);
     if (sp.life <= 0 || sp.y > 1390) {
       BRIDGE_SPLINTERS.splice(i, 1);
     }
@@ -836,7 +836,7 @@ export function updateArena3(dt, players, ball) {
     sd.y += sd.vy;
     sd.vy += 0.38;
     sd.rot += sd.vRot;
-    sd.life -= (sd.y >= 1300 ? 3 : 1);
+    sd.life -= (sd.y >= 1300 ? 12 : 1);
     if (sd.life <= 0 || sd.y > 1390) {
       STONE_DEBRIS.splice(i, 1);
     }

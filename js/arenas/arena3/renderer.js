@@ -2879,30 +2879,26 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.stroke();
   }
 
-  // F2. CZĄSTECZKI OSTROKRAWĘDZIOWYCH ODŁAMKÓW SKALNYCH (Stone Debris - zgrupowane w 1 fill)
+  // F2. CZĄSTECZKI OSTROKRAWĘDZIOWYCH ODŁAMKÓW SKALNYCH (Stone Debris - szybki fillRect)
   if (STONE_DEBRIS.length > 0) {
     ctx.fillStyle = '#475569';
-    ctx.beginPath();
     for (let i = 0; i < STONE_DEBRIS.length; i++) {
       const sd = STONE_DEBRIS[i];
       if (sd.x < camL - 20 || sd.x > camR + 20) continue;
       const s = (sd.size || 5) * 0.5;
-      ctx.rect(sd.x - s, sd.y - s, s * 2, s * 2);
+      ctx.fillRect(sd.x - s, sd.y - s * 0.8, s * 2, s * 1.6);
     }
-    ctx.fill();
   }
 
-  // F3. ROZBRYZGI WODY W RZECE (Arena 3 Water Splashes - zgrupowane w 1 fill)
+  // F3. ROZBRYZGI WODY W RZECE (Arena 3 Water Splashes - szybki fillRect)
   if (ARENA_3_WATER_SPLASHES.length > 0) {
-    ctx.fillStyle = 'rgba(125, 215, 235, 0.65)';
-    ctx.beginPath();
+    ctx.fillStyle = 'rgba(125, 215, 235, 0.75)';
     for (let i = 0; i < ARENA_3_WATER_SPLASHES.length; i++) {
       const ws = ARENA_3_WATER_SPLASHES[i];
       if (ws.x < camL - 20 || ws.x > camR + 20) continue;
-      ctx.moveTo(ws.x + ws.size, ws.y);
-      ctx.arc(ws.x, ws.y, ws.size, 0, Math.PI * 2);
+      const sz = ws.size || 3;
+      ctx.fillRect(ws.x - sz * 0.5, ws.y - sz * 0.5, sz, sz);
     }
-    ctx.fill();
   }
 
   ctx.restore();

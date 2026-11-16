@@ -284,6 +284,8 @@ window.world = (typeof world !== 'undefined' && world) ? world : {
 window.camera = (typeof camera !== 'undefined') ? camera : null;
 window.resetArena = resetArena;
 window.throwTacticalGrenade = () => throwTacticalGrenade(player);
+window.shootWeapon = shootWeapon;
+window.WEAPONS = WEAPONS;
 
 export function startRound() {
   resetArena();

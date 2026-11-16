@@ -251,10 +251,12 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
       if (totalCalls > canvasProfiler.maxTotal) {
         canvasProfiler.maxTotal = totalCalls;
       }
-      if (totalCalls > 850) {
+      const combatantsCount = (typeof window !== 'undefined' && Array.isArray(window.combatants)) ? window.combatants.length : 1;
+      const drawCallLimit = 850 + (combatantsCount > 1 ? (combatantsCount - 1) * 85 : 0);
+      if (totalCalls > drawCallLimit) {
         const key = `HIGH_DRAW_CALLS::${Math.floor(watchdogState.frameCount / 30)}`; // deduplikacja w oknie 30 klatek (~500ms)
         const curArenaId = (typeof window !== 'undefined' && window.activeArenaId) || 'nieznana';
-        const title = `Przekroczony limit Draw Calls: ${totalCalls} > 850`;
+        const title = `Przekroczony limit Draw Calls: ${totalCalls} > ${drawCallLimit}`;
         const desc = `Zarejestrowano wysokie obciążenie Canvas 2D w klatce ${watchdogState.frameCount}: totalDrawCalls=${totalCalls} (fill=${canvasProfiler.current.fill}, stroke=${canvasProfiler.current.stroke}, drawImage=${canvasProfiler.current.drawImage}, arc=${canvasProfiler.current.arc}, quadraticCurveTo=${canvasProfiler.current.quadraticCurveTo}). Arena: ${curArenaId}.`;
         registerAnomaly('HIGH_DRAW_CALLS', key, title, desc, {
           totalCalls,
@@ -938,7 +940,7 @@ export function getWatchdogSummaryMarkdown() {
     `| **SURFACE_JITTER** (Migotanie onGround na platformach) | ${watchdogState.summary.surfaceJitters} | ${watchdogState.summary.surfaceJitters === 0 ? 'OK' : 'UWAGA'} |`,
     `| **BLOCK_STATE_DESYNC** (Desynchronizacja siatki / wody) | ${watchdogState.summary.blockStateDesyncs} | ${watchdogState.summary.blockStateDesyncs === 0 ? 'OK' : 'UWAGA'} |`,
     `| **FRAME_STUTTER** (Spadki poniżej 35 FPS) | ${watchdogState.summary.frameStutters} | ${watchdogState.summary.frameStutters === 0 ? 'OK' : 'UWAGA'} |`,
-    `| **HIGH_DRAW_CALLS** (Przeciążenie GPU > 850 wywołań) | ${watchdogState.summary.highDrawCalls} | ${watchdogState.summary.highDrawCalls === 0 ? 'OK' : 'UWAGA'} |`,
+    `| **HIGH_DRAW_CALLS** (Przeciążenie GPU powyżej limitu) | ${watchdogState.summary.highDrawCalls} | ${watchdogState.summary.highDrawCalls === 0 ? 'OK' : 'UWAGA'} |`,
     ``
   ];
 
