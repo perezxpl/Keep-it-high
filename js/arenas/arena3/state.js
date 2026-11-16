@@ -1,6 +1,7 @@
 // ARENAS/ARENA3/STATE.JS - JUNGLE ARENA / MILITARNA DŻUNGLA (4400x1400 PX)
 // Geometria, platformy, punkty terenu i fizyka zniszczeń (Strict DAG)
 import { triggerScreenShake } from '../../camera.js';
+import { resetWeatheredAssetsCache } from './weatheredAssets.js';
 export const bgImg = null;
 
 // 2. STAN ANIMACJI I EFEKTY RUCHOME
@@ -37,6 +38,14 @@ export const GROUND_WATER_TABLE_Y = 1345;
 export const GROUND_BEDROCK_Y = 1370;
 
 export const ARENA_3_CRATERS = [];
+
+let _arena3CliffDirty = true;
+export function isArena3CliffDirty() {
+  return _arena3CliffDirty;
+}
+export function setArena3CliffDirty(val) {
+  _arena3CliffDirty = !!val;
+}
 
 function createGroundPoints(startX, endX, step = 10, defaultY = 1200) {
   const pts = [];
@@ -112,6 +121,7 @@ export function carveTerrainCrater(expX, expY, radius = 140) {
   }
 
   if (carvedAny) {
+    setArena3CliffDirty(true);
     if (GROUND_LEFT_POINTS.length > 0 && LEFT_OVAL_POINTS.length > 0) {
       LEFT_OVAL_POINTS[0].y = GROUND_LEFT_POINTS[GROUND_LEFT_POINTS.length - 1].y;
     }
@@ -816,6 +826,8 @@ export function evaluateBridgeIntegrity() {
 }
 
 export function resetArena3() {
+  setArena3CliffDirty(true);
+  resetWeatheredAssetsCache();
   // 0. Przywrócenie usuniętych zniszczonych platform do ARENA_3_PLATFORMS i window.ARENA_PLATFORMS
   if (typeof ALL_DESTRUCTIBLE_BLOCKS !== 'undefined' && Array.isArray(ALL_DESTRUCTIBLE_BLOCKS)) {
     for (let i = 0; i < ALL_DESTRUCTIBLE_BLOCKS.length; i++) {

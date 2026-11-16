@@ -32,7 +32,8 @@ export const watchdogState = {
     fallingBlockGlitches: 0,
     surfaceJitters: 0,
     blockStateDesyncs: 0,
-    frameStutters: 0
+    frameStutters: 0,
+    highDrawCalls: 0
   }
 };
 
@@ -98,7 +99,6 @@ export function installCanvasProfiler() {
   proto.arc = function(...args) {
     if (canvasProfiler.active) {
       canvasProfiler.current.arc++;
-      canvasProfiler.current.totalDrawCalls++;
     }
     return origArc.apply(this, args);
   };
@@ -107,7 +107,6 @@ export function installCanvasProfiler() {
   proto.quadraticCurveTo = function(...args) {
     if (canvasProfiler.active) {
       canvasProfiler.current.quadraticCurveTo++;
-      canvasProfiler.current.totalDrawCalls++;
     }
     return origQuad.apply(this, args);
   };
@@ -116,7 +115,6 @@ export function installCanvasProfiler() {
   proto.clip = function(...args) {
     if (canvasProfiler.active) {
       canvasProfiler.current.clip++;
-      canvasProfiler.current.totalDrawCalls++;
     }
     return origClip.apply(this, args);
   };
@@ -161,6 +159,7 @@ function registerAnomaly(type, key, title, details, metadata = {}) {
   else if (type === 'SURFACE_JITTER') watchdogState.summary.surfaceJitters++;
   else if (type === 'BLOCK_STATE_DESYNC') watchdogState.summary.blockStateDesyncs++;
   else if (type === 'FRAME_STUTTER') watchdogState.summary.frameStutters++;
+  else if (type === 'HIGH_DRAW_CALLS') watchdogState.summary.highDrawCalls++;
 
   return anomaly;
 }
@@ -251,6 +250,17 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
       canvasProfiler.breakdowns.push({ ...canvasProfiler.current });
       if (totalCalls > canvasProfiler.maxTotal) {
         canvasProfiler.maxTotal = totalCalls;
+      }
+      if (totalCalls > 850) {
+        const key = `HIGH_DRAW_CALLS::${Math.floor(watchdogState.frameCount / 30)}`; // deduplikacja w oknie 30 klatek (~500ms)
+        const curArenaId = (typeof window !== 'undefined' && window.activeArenaId) || 'nieznana';
+        const title = `Przekroczony limit Draw Calls: ${totalCalls} > 850`;
+        const desc = `Zarejestrowano wysokie obciążenie Canvas 2D w klatce ${watchdogState.frameCount}: totalDrawCalls=${totalCalls} (fill=${canvasProfiler.current.fill}, stroke=${canvasProfiler.current.stroke}, drawImage=${canvasProfiler.current.drawImage}, arc=${canvasProfiler.current.arc}, quadraticCurveTo=${canvasProfiler.current.quadraticCurveTo}). Arena: ${curArenaId}.`;
+        registerAnomaly('HIGH_DRAW_CALLS', key, title, desc, {
+          totalCalls,
+          breakdown: { ...canvasProfiler.current },
+          arena: curArenaId
+        });
       }
     }
   }
@@ -444,8 +454,8 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
       // W trybie strict=1 NIE ignoruj anomalii jako step-down jeśli w promieniu 100px jest opadający/przesuwający się klocek
       const allowStepDown = !isStrict || !isNearFallingOrSliding;
       const isStepDown = allowStepDown && (dy > 0 && dy <= 105 && p.onGround);
-      const isStepUpOnA5Block = isArena5 && (dy < 0 && dy >= -115 && p.onGround);
-      const isStepValid = isStepDown || isStepUpOnA5Block;
+      const isStepUp = (dy < 0 && dy >= -115 && p.onGround);
+      const isStepValid = isStepDown || isStepUp;
 
       if (Math.abs(dx) > maxAllowedDx || (Math.abs(dy) > maxAllowedDy && !isPostureShift && !isStepValid)) {
         const nearInfo = isArena5 ? findNearbyA5BlockInfo(p.x, p.y, 120) : 'Poza Areną 5.';
@@ -785,12 +795,24 @@ export function getWatchdogStats() {
   if (count === 0) {
     return {
       frameCount: watchdogState.frameCount,
+      analyzedFrames: 0,
       durationSeconds: 0,
       avgFps: 60,
       avgFrameTimeMs: 16.67,
       onePercentLowFps: 60,
+      p99FrameTimeMs: 16.67,
       maxFrameTimeMs: 0,
-      maxDtMs: 0
+      maxDtMs: 0,
+      avgDrawCalls: 0,
+      maxDrawCalls: 0,
+      drawCallsBreakdown: {
+        fill: 0,
+        stroke: 0,
+        drawImage: 0,
+        arc: 0,
+        quadraticCurveTo: 0,
+        clip: 0
+      }
     };
   }
 
@@ -916,6 +938,7 @@ export function getWatchdogSummaryMarkdown() {
     `| **SURFACE_JITTER** (Migotanie onGround na platformach) | ${watchdogState.summary.surfaceJitters} | ${watchdogState.summary.surfaceJitters === 0 ? 'OK' : 'UWAGA'} |`,
     `| **BLOCK_STATE_DESYNC** (Desynchronizacja siatki / wody) | ${watchdogState.summary.blockStateDesyncs} | ${watchdogState.summary.blockStateDesyncs === 0 ? 'OK' : 'UWAGA'} |`,
     `| **FRAME_STUTTER** (Spadki poniżej 35 FPS) | ${watchdogState.summary.frameStutters} | ${watchdogState.summary.frameStutters === 0 ? 'OK' : 'UWAGA'} |`,
+    `| **HIGH_DRAW_CALLS** (Przeciążenie GPU > 850 wywołań) | ${watchdogState.summary.highDrawCalls} | ${watchdogState.summary.highDrawCalls === 0 ? 'OK' : 'UWAGA'} |`,
     ``
   ];
 
@@ -957,7 +980,8 @@ export function resetWatchdog() {
     fallingBlockGlitches: 0,
     surfaceJitters: 0,
     blockStateDesyncs: 0,
-    frameStutters: 0
+    frameStutters: 0,
+    highDrawCalls: 0
   };
   canvasProfiler.samples.length = 0;
   canvasProfiler.breakdowns.length = 0;

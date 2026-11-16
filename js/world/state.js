@@ -99,9 +99,9 @@ export function getOptimizedDPR() {
   if (typeof window === 'undefined') return 1;
   const isTouchMobile = (window.innerWidth <= 1024) && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
   if (isTouchMobile) {
-    // Na urządzeniach mobilnych (iOS Safari, Android Mali GPU) DPR 1.5 zapewnia pełną ostrość Retina
-    // jednocześnie redukując obciążenie pamięci bufora graficznego i przegrzewanie o ponad 40%
-    return Math.min(window.devicePixelRatio || 1, 1.5);
+    // Na urządzeniach mobilnych (iOS Safari, Android Mali/Adreno GPU) DPR 1.25 zapewnia ostry obraz
+    // jednocześnie drastycznie redukując overdraw i obciążenie rasteryzacji GPU o ponad 50%
+    return Math.min(window.devicePixelRatio || 1, 1.25);
   }
   // Na PC (w tym Opera GX / Chrome) zachowujemy stabilne 1.0 (natywne 1080p/1440p)
   // eliminując 4-krotne przeciążenie karty graficznej i gwarantując stałe 60 FPS
@@ -387,9 +387,9 @@ export function resize(player) {
   DPR = getOptimizedDPR();
   if (canvas && ctx) {
     const isTouch = (W <= 1024) && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
-    // Fill-Rate Limiter dla przeglądarek: 1920x1080 dla PC, 1440x810 dla urządzeń mobilnych
-    // Zapobiega dławieniu GPU Metal na iOS oraz throttlowi układów Mali/Adreno w telefonach Poco
-    const MAX_PIXELS = isTouch ? (1440 * 810) : (1920 * 1080);
+    // Fill-Rate Limiter dla przeglądarek: 1920x1080 dla PC, 1280x720 (720p) dla urządzeń mobilnych
+    // Zapobiega dławieniu GPU Metal na iOS oraz throttlowi układów Mali/Adreno w telefonach
+    const MAX_PIXELS = isTouch ? (1280 * 720) : (1920 * 1080);
     const currentPixels = (W * DPR) * (H * DPR);
     let scaleDown = 1.0;
     if (currentPixels > MAX_PIXELS) {

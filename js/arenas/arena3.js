@@ -63,7 +63,8 @@ import {
 
 import {
   drawArena3Background,
-  drawArena3Foreground
+  drawArena3Foreground,
+  resetArena3RenderCache
 } from './arena3/renderer.js';
 
 import {
@@ -887,6 +888,7 @@ const arena3 = {
     resetArena3();
     resetArena3Minecarts();
     resetArena3Breaches();
+    resetArena3RenderCache();
   },
   drawBackground(ctx, camera) {
     drawArena3Background(ctx, camera);

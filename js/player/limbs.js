@@ -282,28 +282,12 @@ export function drawShrapnelSlash(ctx, x1, y1, x2, y2, width, alpha) {
   ctx.globalAlpha = Math.min(1.0, alpha);
   ctx.lineCap = 'round';
 
-  // Otoczka krwi wsiąkniętej w materiał lub skórę
-  ctx.strokeStyle = 'rgba(69, 10, 10, 0.70)';
-  ctx.lineWidth = width + 2.0;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-
-  // Głęboki bordowy rdzeń rozcięcia
+  // Głęboki bordowy rdzeń rozcięcia z realistycznym obrysem rany
   ctx.strokeStyle = '#7f1d1d';
-  ctx.lineWidth = width + 0.6;
+  ctx.lineWidth = width + 1.2;
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
-  ctx.stroke();
-
-  // Świeża jasnoczerwona krew w centrum rany
-  ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = Math.max(0.6, width * 0.45);
-  ctx.beginPath();
-  ctx.moveTo(x1 * 0.85 + x2 * 0.15, y1 * 0.85 + y2 * 0.15);
-  ctx.lineTo(x1 * 0.15 + x2 * 0.85, y1 * 0.15 + y2 * 0.85);
   ctx.stroke();
 
   ctx.restore();
@@ -324,23 +308,16 @@ export function drawBloodTrickle(ctx, startX, startY, len, curveX, width, alpha)
   const midY = startY + len * 0.55;
 
   // Główna ciemnoczerwona stróżka
-  ctx.strokeStyle = '#7f1d1d';
+  ctx.strokeStyle = '#991b1b';
   ctx.lineWidth = width + 0.6;
   ctx.beginPath();
   ctx.moveTo(startX, startY);
-  ctx.quadraticCurveTo(midX, midY, endX, endY);
-  ctx.stroke();
-
-  // Jaśniejszy rdzeń krwi
-  ctx.strokeStyle = '#dc2626';
-  ctx.lineWidth = Math.max(0.5, width * 0.55);
-  ctx.beginPath();
-  ctx.moveTo(startX, startY);
-  ctx.quadraticCurveTo(midX, midY, endX, endY);
+  ctx.lineTo(midX, midY);
+  ctx.lineTo(endX, endY);
   ctx.stroke();
 
   // Kropla zbierająca się na końcu stróżki
-  ctx.fillStyle = '#991b1b';
+  ctx.fillStyle = '#7f1d1d';
   ctx.beginPath();
   ctx.arc(endX, endY + 0.4, width * 0.9, 0, Math.PI * 2);
   ctx.fill();
@@ -355,34 +332,29 @@ export function drawBloodSoak(ctx, cx, cy, rx, ry, alpha) {
   if (alpha <= 0.02) return;
   ctx.save();
   const effAlpha = Math.min(1.0, alpha);
-  ctx.fillStyle = '#450a0a';
-  ctx.globalAlpha = effAlpha * 0.35;
+  ctx.fillStyle = '#7f1d1d';
+  ctx.globalAlpha = effAlpha * 0.65;
   ctx.beginPath();
   ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#7f1d1d';
-  ctx.globalAlpha = effAlpha * 0.75;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, rx * 0.6, ry * 0.6, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
 
 /**
- * Rysuje mikro-odpryski i plamki krwi w stałych współrzędnych
+ * Rysuje mikro-odpryski i plamki krwi w stałych współrzędnych (zgrupowane w 1 fill)
  */
 export function drawBloodSpecks(ctx, specks, alpha) {
-  if (alpha <= 0.02) return;
+  if (alpha <= 0.02 || !specks || specks.length === 0) return;
   ctx.save();
   ctx.globalAlpha = Math.min(1.0, alpha);
   ctx.fillStyle = '#991b1b';
+  ctx.beginPath();
   for (let i = 0; i < specks.length; i++) {
     const s = specks[i];
-    ctx.beginPath();
+    ctx.moveTo(s[0] + s[2], s[1]);
     ctx.arc(s[0], s[1], s[2], 0, Math.PI * 2);
-    ctx.fill();
   }
+  ctx.fill();
   ctx.restore();
 }
 

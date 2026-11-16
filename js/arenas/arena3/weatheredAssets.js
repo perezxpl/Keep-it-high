@@ -5,12 +5,58 @@
 // kute żelazne okucia ze śladami rdzy, nity, listwy oraz organiczny mech dżungli.
 // =========================================================================
 
+// Mapy buforowanych sprajtów nienaruszonych elementów (Offscreen Canvas Caching)
+// Eliminuje setki powtarzających się wywołań stroke/fill na deski, słupy i bloki kamienne
+const _deckCanvasCache = new Map();
+const _postCanvasCache = new Map();
+const _stoneCanvasCache = new Map();
+
+export function resetWeatheredAssetsCache() {
+  _deckCanvasCache.clear();
+  _postCanvasCache.clear();
+  _stoneCanvasCache.clear();
+}
+
 /**
  * Rysuje modułową belkę / deskę pomostu w estetyce postarzanego, zniszczonego drewna tekowego.
- * Odpowiada wizualnie niszczonym fragmentom (drawSplinteredWoodRubble), zachowując
- * nienaruszony obrys kolizyjny z subtelnymi wyszczerbieniami krawędzi.
+ * W wersji nienaruszonej (damageRatio === 0) rysowana błyskawicznie z bufora Offscreen Canvas!
  */
 export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
+  const damageRatio = options.damageRatio || 0;
+  if (damageRatio === 0 && typeof document !== 'undefined') {
+    const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(x * 11 + y * 17) % 100);
+    const isWet = options.isWet !== undefined ? options.isWet : (y + h >= 1290);
+    const plankCount = options.plankCount || (w > 32 ? 2 : 1);
+    const hasMetal = options.hasMetal !== false;
+    const hasMoss = options.hasMoss !== false;
+    const hangingVines = !!options.hangingVines;
+
+    const cacheKey = `${Math.round(w)}_${Math.round(h)}_${seed % 16}_${isWet ? 1 : 0}_${plankCount}_${hasMetal ? 1 : 0}_${hasMoss ? 1 : 0}_${hangingVines ? 1 : 0}`;
+    let cached = _deckCanvasCache.get(cacheKey);
+    if (!cached) {
+      cached = document.createElement('canvas');
+      const padY = hangingVines ? 20 : 4;
+      cached.width = Math.ceil(w) + 6;
+      cached.height = Math.ceil(h) + padY;
+      const cCtx = cached.getContext('2d');
+      if (cCtx) {
+        cCtx.save();
+        cCtx.translate(2, 2);
+        renderWeatheredTimberDeckVectors(cCtx, 0, 0, w, h, options);
+        cCtx.restore();
+      }
+      _deckCanvasCache.set(cacheKey, cached);
+    }
+    if (cached) {
+      ctx.drawImage(cached, x - 2, y - 2);
+      return;
+    }
+  }
+
+  renderWeatheredTimberDeckVectors(ctx, x, y, w, h, options);
+}
+
+function renderWeatheredTimberDeckVectors(ctx, x, y, w, h, options = {}) {
   const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(x * 11 + y * 17) % 100);
   const isWet = options.isWet !== undefined ? options.isWet : (y + h >= 1290);
   const plankCount = options.plankCount || (w > 32 ? 2 : 1);
@@ -221,8 +267,40 @@ export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
 
 /**
  * Rysuje masywny pionowy słup z ciosanych pni tekowych lub hebanowych (np. pylon, wieża, podpora).
+ * W wersji nienaruszonej (damageRatio === 0) pobierany błyskawicznie ze zbuforowanego canvasa!
  */
 export function drawWeatheredTimberPost(ctx, x, y, w, h, options = {}) {
+  const damageRatio = options.damageRatio || 0;
+  if (damageRatio === 0 && typeof document !== 'undefined') {
+    const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(x * 7 + y * 13) % 100);
+    const bandInterval = options.bandInterval || 85;
+    const isWet = options.isWet || false;
+
+    const cacheKey = `${Math.round(w)}_${Math.round(h)}_${seed % 8}_${isWet ? 1 : 0}_${bandInterval}`;
+    let cached = _postCanvasCache.get(cacheKey);
+    if (!cached) {
+      cached = document.createElement('canvas');
+      cached.width = Math.ceil(w) + 6;
+      cached.height = Math.ceil(h) + 6;
+      const cCtx = cached.getContext('2d');
+      if (cCtx) {
+        cCtx.save();
+        cCtx.translate(2, 2);
+        renderWeatheredTimberPostVectors(cCtx, 0, 0, w, h, options);
+        cCtx.restore();
+      }
+      _postCanvasCache.set(cacheKey, cached);
+    }
+    if (cached) {
+      ctx.drawImage(cached, x - 2, y - 2);
+      return;
+    }
+  }
+
+  renderWeatheredTimberPostVectors(ctx, x, y, w, h, options);
+}
+
+function renderWeatheredTimberPostVectors(ctx, x, y, w, h, options = {}) {
   const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(x * 7 + y * 13) % 100);
   const bandInterval = options.bandInterval || 85;
   const damageRatio = options.damageRatio || 0;
@@ -329,9 +407,44 @@ export function drawWeatheredTimberPost(ctx, x, y, w, h, options = {}) {
 
 /**
  * Rysuje ciosany blok z kamienia bazaltowego / dolomitowego (fundamenty, kesony, półki snajperskie).
- * Identyczna kolorystyka i relief jak w drawSplinteredRockSlab!
+ * W wersji nienaruszonej (damageRatio === 0) pobierany błyskawicznie ze zbuforowanego canvasa!
  */
 export function drawWeatheredStoneMasonry(ctx, x, y, w, h, options = {}) {
+  const damageRatio = options.damageRatio || 0;
+  if (damageRatio === 0 && typeof document !== 'undefined') {
+    const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(x * 5 + y * 9) % 100);
+    const courseHeight = options.courseHeight || 28;
+    const hasChamfer = options.hasChamfer !== false;
+    const hasCramps = options.hasCramps !== false;
+    const mossTop = options.mossTop !== false;
+    const waterLineY = options.waterLineY || 1300;
+    const isNearWater = (y + h >= waterLineY);
+
+    const cacheKey = `${Math.round(w)}_${Math.round(h)}_${seed % 8}_${courseHeight}_${hasChamfer ? 1 : 0}_${hasCramps ? 1 : 0}_${mossTop ? 1 : 0}_${isNearWater ? 1 : 0}`;
+    let cached = _stoneCanvasCache.get(cacheKey);
+    if (!cached) {
+      cached = document.createElement('canvas');
+      cached.width = Math.ceil(w) + 6;
+      cached.height = Math.ceil(h) + 6;
+      const cCtx = cached.getContext('2d');
+      if (cCtx) {
+        cCtx.save();
+        cCtx.translate(2, 2);
+        renderWeatheredStoneMasonryVectors(cCtx, 0, 0, w, h, options);
+        cCtx.restore();
+      }
+      _stoneCanvasCache.set(cacheKey, cached);
+    }
+    if (cached) {
+      ctx.drawImage(cached, x - 2, y - 2);
+      return;
+    }
+  }
+
+  renderWeatheredStoneMasonryVectors(ctx, x, y, w, h, options);
+}
+
+function renderWeatheredStoneMasonryVectors(ctx, x, y, w, h, options = {}) {
   const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(x * 5 + y * 9) % 100);
   const courseHeight = options.courseHeight || 28;
   const hasChamfer = options.hasChamfer !== false;

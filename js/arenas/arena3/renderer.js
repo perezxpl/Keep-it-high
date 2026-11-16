@@ -24,7 +24,9 @@ import {
   LEFT_OVAL_POINTS,
   RIGHT_OVAL_POINTS,
   GROUND_WATER_TABLE_Y,
-  GROUND_BEDROCK_Y
+  GROUND_BEDROCK_Y,
+  isArena3CliffDirty,
+  setArena3CliffDirty
 } from './state.js';
 
 import { drawArena3Background } from './background.js';
@@ -43,6 +45,20 @@ let _cachedShoreGrad = null;
 let _cachedDeepAbyssGrad = null;
 let _cachedSurfGrad = null;
 let _cachedPoolGrad = null;
+
+let _leftCliffCache = null;
+let _rightCliffCache = null;
+
+let _cachedLeftTowerCanvas = null;
+let _cachedRightTowerCanvas = null;
+
+let _cachedPylonLeftCanvas = null;
+let _cachedPylonRightCanvas = null;
+
+let _cachedLeftStiltsCanvas = null;
+let _cachedRightStiltsCanvas = null;
+let _cachedLeftApproachDeckCanvas = null;
+let _cachedRightApproachDeckCanvas = null;
 
 let _rampLeftBlocks = null;
 let _rampRightBlocks = null;
@@ -721,96 +737,93 @@ export function drawArena3Foreground(ctx, camera) {
   // Przekształcone w litą formację skalną z prastarymi korzeniami figowców,
   // blokami megalitycznymi, wylotami rurociągów i nocnym mchem z rim-lightingiem
   // -----------------------------------------------------------------------
-  function drawBasaltRiverCliff(isLeft, ovalPoints) {
-    const isL = isLeft;
+  function renderBasaltCliffVectors(targetCtx, isL, ovalPoints) {
     const startX = isL ? 0 : 4400;
     const edgeX = isL ? 1750 : 2650;
     const startY = isL ? ovalPoints[0].y : ovalPoints[ovalPoints.length - 1].y;
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(startX, 1400);
-    ctx.lineTo(startX, startY);
+    targetCtx.save();
+    targetCtx.beginPath();
+    targetCtx.moveTo(startX, 1400);
+    targetCtx.lineTo(startX, startY);
     if (isL) {
       for (let i = 1; i < ovalPoints.length; i++) {
-        ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+        targetCtx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
       }
     } else {
       for (let i = ovalPoints.length - 1; i >= 0; i--) {
-        ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+        targetCtx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
       }
     }
-    ctx.lineTo(edgeX, 1400);
-    ctx.closePath();
+    targetCtx.lineTo(edgeX, 1400);
+    targetCtx.closePath();
 
-    // A. BAZOWY GRADIENT BAZALTOWO-ŁUPKOWY (ze zbuforowanego bufora)
-    if (!_cachedCliffGrad) {
-      _cachedCliffGrad = ctx.createLinearGradient(0, 1200, 0, 1400);
-      _cachedCliffGrad.addColorStop(0.00, '#131c26');
-      _cachedCliffGrad.addColorStop(0.20, '#0e161f');
-      _cachedCliffGrad.addColorStop(0.55, '#090e13');
-      _cachedCliffGrad.addColorStop(1.00, '#04070a');
-    }
-    ctx.fillStyle = _cachedCliffGrad;
-    ctx.fill();
+    // A. BAZOWY GRADIENT BAZALTOWO-ŁUPKOWY
+    const cGrad = targetCtx.createLinearGradient(0, 1200, 0, 1400);
+    cGrad.addColorStop(0.00, '#131c26');
+    cGrad.addColorStop(0.20, '#0e161f');
+    cGrad.addColorStop(0.55, '#090e13');
+    cGrad.addColorStop(1.00, '#04070a');
+    targetCtx.fillStyle = cGrad;
+    targetCtx.fill();
 
     // B. POZIOME WARSTWY GEOLOGICZNE (STRATA) I SPĘKANIA SKALNE
-    ctx.strokeStyle = 'rgba(4, 7, 10, 0.70)';
-    ctx.lineWidth = 2.4;
+    targetCtx.strokeStyle = 'rgba(4, 7, 10, 0.70)';
+    targetCtx.lineWidth = 2.4;
     const strataY = [1235, 1275, 1315, 1355];
     for (let sy of strataY) {
-      ctx.beginPath();
+      targetCtx.beginPath();
       const x0 = isL ? 0 : 2700;
       const x1 = isL ? 1700 : 4400;
-      ctx.moveTo(x0, sy);
+      targetCtx.moveTo(x0, sy);
       for (let sx = x0; sx <= x1; sx += 80) {
         const wave = Math.sin(sx * 0.015 + sy) * 5;
-        ctx.lineTo(sx, sy + wave);
+        targetCtx.lineTo(sx, sy + wave);
       }
-      ctx.stroke();
+      targetCtx.stroke();
     }
 
     // C. ŚCIANY WYBITYCH KRATERÓW (Zniszczona, zwęglona skała bazaltowa w lejach)
-    drawCraterWalls(ctx, ovalPoints);
+    drawCraterWalls(targetCtx, ovalPoints);
 
     // E. TAKTYCZNA KRATA DRENAŻOWA / WYLOT RUROCIĄGU
     const drainX = isL ? 1520 : 2880;
     const drainY = 1310;
-    ctx.save();
-    ctx.fillStyle = '#1e293b';
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(drainX, drainY, 15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    targetCtx.save();
+    targetCtx.fillStyle = '#1e293b';
+    targetCtx.strokeStyle = '#0f172a';
+    targetCtx.lineWidth = 2.5;
+    targetCtx.beginPath();
+    targetCtx.arc(drainX, drainY, 15, 0, Math.PI * 2);
+    targetCtx.fill();
+    targetCtx.stroke();
 
-    ctx.fillStyle = '#020408';
-    ctx.beginPath();
-    ctx.arc(drainX, drainY, 11, 0, Math.PI * 2);
-    ctx.fill();
+    targetCtx.fillStyle = '#020408';
+    targetCtx.beginPath();
+    targetCtx.arc(drainX, drainY, 11, 0, Math.PI * 2);
+    targetCtx.fill();
 
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(drainX - 11, drainY);
-    ctx.lineTo(drainX + 11, drainY);
-    ctx.moveTo(drainX, drainY - 11);
-    ctx.lineTo(drainX, drainY + 11);
-    ctx.stroke();
+    targetCtx.strokeStyle = '#475569';
+    targetCtx.lineWidth = 1.8;
+    targetCtx.beginPath();
+    targetCtx.moveTo(drainX - 11, drainY);
+    targetCtx.lineTo(drainX + 11, drainY);
+    targetCtx.moveTo(drainX, drainY - 11);
+    targetCtx.lineTo(drainX, drainY + 11);
+    targetCtx.stroke();
 
-    ctx.fillStyle = '#94a3b8';
+    targetCtx.fillStyle = '#94a3b8';
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
-      ctx.fillRect(drainX + Math.cos(a) * 13 - 1, drainY + Math.sin(a) * 13 - 1, 2, 2);
+      targetCtx.fillRect(drainX + Math.cos(a) * 13 - 1, drainY + Math.sin(a) * 13 - 1, 2, 2);
     }
 
-    ctx.strokeStyle = 'rgba(30, 80, 115, 0.40)';
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(drainX, drainY + 11);
-    ctx.quadraticCurveTo(drainX + (isL ? 8 : -8), drainY + 25, drainX + (isL ? 15 : -15), 1345);
-    ctx.stroke();
-    ctx.restore();
+    targetCtx.strokeStyle = 'rgba(30, 80, 115, 0.40)';
+    targetCtx.lineWidth = 2.2;
+    targetCtx.beginPath();
+    targetCtx.moveTo(drainX, drainY + 11);
+    targetCtx.quadraticCurveTo(drainX + (isL ? 8 : -8), drainY + 25, drainX + (isL ? 15 : -15), 1345);
+    targetCtx.stroke();
+    targetCtx.restore();
 
     // F. OTOCZAKI BAZALTOWE PRZY WODZIE
     const riverStones = isL ? [
@@ -827,39 +840,36 @@ export function drawArena3Foreground(ctx, camera) {
       { x: 2790, y: 1290, rx: 14, ry: 8 }
     ];
 
-    ctx.save();
+    targetCtx.save();
     for (let st of riverStones) {
-      ctx.fillStyle = '#16202b';
-      ctx.strokeStyle = '#090e14';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.ellipse(st.x, st.y, st.rx, st.ry, isL ? 0.1 : -0.1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      targetCtx.fillStyle = '#16202b';
+      targetCtx.strokeStyle = '#090e14';
+      targetCtx.lineWidth = 1.4;
+      targetCtx.beginPath();
+      targetCtx.ellipse(st.x, st.y, st.rx, st.ry, isL ? 0.1 : -0.1, 0, Math.PI * 2);
+      targetCtx.fill();
+      targetCtx.stroke();
 
-      ctx.strokeStyle = 'rgba(186, 230, 253, 0.25)';
-      ctx.lineWidth = 1.0;
-      ctx.beginPath();
-      ctx.arc(st.x, st.y - 1, st.rx * 0.65, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
+      targetCtx.strokeStyle = 'rgba(186, 230, 253, 0.25)';
+      targetCtx.lineWidth = 1.0;
+      targetCtx.beginPath();
+      targetCtx.arc(st.x, st.y - 1, st.rx * 0.65, Math.PI * 1.1, Math.PI * 1.9);
+      targetCtx.stroke();
     }
-    ctx.restore();
+    targetCtx.restore();
 
     // G. KONTUR PODSTAWY
-    ctx.strokeStyle = '#05080c';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
+    targetCtx.strokeStyle = '#05080c';
+    targetCtx.lineWidth = 2.5;
+    targetCtx.beginPath();
+    targetCtx.moveTo(startX, startY);
     if (isL) {
-      for (let i = 1; i < ovalPoints.length; i++) ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+      for (let i = 1; i < ovalPoints.length; i++) targetCtx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
     } else {
-      for (let i = ovalPoints.length - 1; i >= 0; i--) ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+      for (let i = ovalPoints.length - 1; i >= 0; i--) targetCtx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
     }
-    ctx.lineTo(edgeX, 1400);
-    ctx.stroke();
-
-    // H. GĘSTA, ŻYWA TRAWA DŻUNGLI Z KOŁYSANIEM NA WIETRZE (Tylko nienaruszony grunt, omija kratery)
-    drawJungleGrass(ctx, ovalPoints, isL, camL, camR);
+    targetCtx.lineTo(edgeX, 1400);
+    targetCtx.stroke();
 
     // I. ZALEWY WÓD GRUNTOWYCH W GŁĘBOKICH KRATERACH
     const groundPts = isL ? GROUND_LEFT_POINTS : GROUND_RIGHT_POINTS;
@@ -877,15 +887,66 @@ export function drawArena3Foreground(ctx, camera) {
         const prev = poolSeg[poolSeg.length - 1];
         const frac = (GROUND_WATER_TABLE_Y - prev.y) / (pt.y - prev.y);
         poolSeg.push({ x: prev.x + (pt.x - prev.x) * frac, y: GROUND_WATER_TABLE_Y });
-        drawGroundwaterPool(ctx, poolSeg);
+        drawGroundwaterPool(targetCtx, poolSeg);
         poolSeg = [];
       }
     }
     if (poolSeg.length > 0) {
-      drawGroundwaterPool(ctx, poolSeg);
+      drawGroundwaterPool(targetCtx, poolSeg);
     }
 
-    ctx.restore();
+    targetCtx.restore();
+  }
+
+  function ensureCliffCaches(leftOval, rightOval) {
+    if (typeof document === 'undefined') return;
+    if (!_leftCliffCache) {
+      _leftCliffCache = document.createElement('canvas');
+      _leftCliffCache.width = 1760;
+      _leftCliffCache.height = 220;
+    }
+    if (!_rightCliffCache) {
+      _rightCliffCache = document.createElement('canvas');
+      _rightCliffCache.width = 1760;
+      _rightCliffCache.height = 220;
+    }
+
+    if (isArena3CliffDirty()) {
+      const lCtx = _leftCliffCache.getContext('2d');
+      if (lCtx) {
+        lCtx.clearRect(0, 0, 1760, 220);
+        lCtx.save();
+        lCtx.translate(0, -1190);
+        renderBasaltCliffVectors(lCtx, true, leftOval);
+        lCtx.restore();
+      }
+
+      const rCtx = _rightCliffCache.getContext('2d');
+      if (rCtx) {
+        rCtx.clearRect(0, 0, 1760, 220);
+        rCtx.save();
+        rCtx.translate(-2640, -1190);
+        renderBasaltCliffVectors(rCtx, false, rightOval);
+        rCtx.restore();
+      }
+
+      setArena3CliffDirty(false);
+    }
+  }
+
+  function drawBasaltRiverCliff(isLeft, ovalPoints) {
+    ensureCliffCaches(leftOvalPoints, rightOvalPoints);
+
+    if (isLeft && _leftCliffCache) {
+      ctx.drawImage(_leftCliffCache, 0, 1190);
+    } else if (!isLeft && _rightCliffCache) {
+      ctx.drawImage(_rightCliffCache, 2640, 1190);
+    } else {
+      renderBasaltCliffVectors(ctx, isLeft, ovalPoints);
+    }
+
+    // H. GĘSTA, ŻYWA TRAWA DŻUNGLI Z KOŁYSANIEM NA WIETRZE (Tylko nienaruszony grunt, omija kratery)
+    drawJungleGrass(ctx, ovalPoints, isLeft, camL, camR);
   }
 
 
@@ -1260,6 +1321,159 @@ export function drawArena3Foreground(ctx, camera) {
   // 4. WOJSKOWE WIEŻE OBSERWACYJNE I GNIAZDA SNAJPERSKIE (X: 200 oraz X: 4200)
   // Zniszczalne gniazda snajperskie na Y: 400 z modularnymi podestami
   // -----------------------------------------------------------------------
+  function renderIntactTowerToBuffer(targetCtx, isLeft) {
+    const sideKey = isLeft ? 'left' : 'right';
+    const cx = isLeft ? 200 : 4200;
+    const stemX = isLeft ? 185 : 4185;
+    const deckX = isLeft ? 100 : 4100;
+    const deckY = 400;
+    const deckW = 200;
+
+    targetCtx.save();
+    targetCtx.translate(-(deckX - 30), -260);
+
+    const teamCol = isLeft ? '#06b6d4' : '#f97316';
+    const teamName = isLeft ? 'FORTRESS ALPHA' : 'OUTPOST BRAVO';
+
+    // A. Przedłużenie słupów wieży w górę
+    drawWeatheredTimberPost(targetCtx, stemX, 400, 30, 200, {
+      bandInterval: 50,
+      seed: isLeft ? 43 : 89
+    });
+
+    // Drabina drewniana
+    const ladderX = isLeft ? 150 : 4230;
+    targetCtx.strokeStyle = '#2c1808';
+    targetCtx.lineWidth = 4;
+    targetCtx.beginPath();
+    targetCtx.moveTo(ladderX, 420);
+    targetCtx.lineTo(ladderX, 600);
+    targetCtx.moveTo(ladderX + 16, 420);
+    targetCtx.lineTo(ladderX + 16, 600);
+    targetCtx.stroke();
+
+    targetCtx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+    targetCtx.lineWidth = 1.0;
+    targetCtx.beginPath();
+    targetCtx.moveTo(ladderX + 1, 420);
+    targetCtx.lineTo(ladderX + 1, 600);
+    targetCtx.stroke();
+
+    // Szczeble drabiny
+    for (let ly = 435; ly < 595; ly += 18) {
+      targetCtx.strokeStyle = '#4e2f12';
+      targetCtx.lineWidth = 3;
+      targetCtx.beginPath();
+      targetCtx.moveTo(ladderX, ly);
+      targetCtx.lineTo(ladderX + 16, ly);
+      targetCtx.stroke();
+
+      targetCtx.strokeStyle = 'rgba(215, 175, 95, 0.65)';
+      targetCtx.lineWidth = 1.2;
+      targetCtx.beginPath();
+      targetCtx.moveTo(ladderX + 4, ly - 0.5);
+      targetCtx.lineTo(ladderX + 12, ly - 0.5);
+      targetCtx.stroke();
+
+      targetCtx.fillStyle = '#0f172a';
+      targetCtx.fillRect(ladderX + 1, ly - 1, 1.5, 1.5);
+      targetCtx.fillRect(ladderX + 13.5, ly - 1, 1.5, 1.5);
+    }
+
+    // Podłoga i balustrada gniazda snajperskiego
+    const upperBlocks = isLeft
+      ? ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'left' && b.tier === 'upper')
+      : ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'right' && b.tier === 'upper');
+
+    for (let i = 0; i < upperBlocks.length; i++) {
+      const b = upperBlocks[i];
+      drawWeatheredTimberDeck(targetCtx, b.x, b.y, b.w, b.h, {
+        seed: i * 43 + (isLeft ? 7 : 63),
+        damageRatio: 0,
+        plankCount: 2,
+        hasGouges: true,
+        hasMetal: true,
+        hasMoss: true,
+        animTime: 0
+      });
+      drawWeatheredBalustrade(targetCtx, b.x + 2, b.y - 30, b.w - 4, 30, {
+        seed: i * 19,
+        slitW: 18,
+        slitH: 12
+      });
+    }
+
+    // E. Słupy zadaszenia i maskująca płachta taktyczna
+    targetCtx.strokeStyle = '#2d1808';
+    targetCtx.lineWidth = 5;
+    targetCtx.beginPath();
+    targetCtx.moveTo(deckX + 14, deckY - 32);
+    targetCtx.lineTo(deckX + 14, deckY - 75);
+    targetCtx.moveTo(deckX + deckW - 14, deckY - 32);
+    targetCtx.lineTo(deckX + deckW - 14, deckY - 75);
+    targetCtx.stroke();
+
+    targetCtx.fillStyle = '#1e293b';
+    targetCtx.fillRect(deckX + 11, deckY - 50, 6, 7);
+    targetCtx.fillRect(deckX + deckW - 17, deckY - 50, 6, 7);
+
+    targetCtx.fillStyle = '#223815';
+    targetCtx.beginPath();
+    targetCtx.moveTo(deckX - 8, deckY - 70);
+    targetCtx.lineTo(deckX + deckW * 0.5, deckY - 85);
+    targetCtx.lineTo(deckX + deckW + 8, deckY - 70);
+    targetCtx.lineTo(deckX + deckW + 2, deckY - 75);
+    targetCtx.lineTo(deckX + deckW * 0.5, deckY - 78);
+    targetCtx.lineTo(deckX - 2, deckY - 75);
+    targetCtx.closePath();
+    targetCtx.fill();
+
+    targetCtx.fillStyle = '#304d1e';
+    for (let cxX = deckX; cxX < deckX + deckW; cxX += 16) {
+      targetCtx.fillRect(cxX, deckY - 70, 8, 5);
+    }
+    targetCtx.strokeStyle = '#12200a';
+    targetCtx.lineWidth = 1.6;
+    targetCtx.stroke();
+
+    // F. Maszt radiowy łączności wojskowej
+    const antX = isLeft ? (deckX + 18) : (deckX + deckW - 18);
+    targetCtx.strokeStyle = '#64748b';
+    targetCtx.lineWidth = 2.5;
+    targetCtx.beginPath();
+    targetCtx.moveTo(antX, deckY - 75);
+    targetCtx.lineTo(antX, deckY - 120);
+    targetCtx.stroke();
+
+    targetCtx.strokeStyle = '#94a3b8';
+    targetCtx.lineWidth = 1.5;
+    targetCtx.beginPath();
+    targetCtx.moveTo(antX - 8, deckY - 110);
+    targetCtx.lineTo(antX + 8, deckY - 110);
+    targetCtx.moveTo(antX - 5, deckY - 100);
+    targetCtx.lineTo(antX + 5, deckY - 100);
+    targetCtx.stroke();
+
+    // G. Tablica informacyjna bazy
+    const signW = 120;
+    const signH = 18;
+    const signX = cx - signW / 2;
+    const signY = deckY - 26;
+
+    targetCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    targetCtx.fillRect(signX, signY, signW, signH);
+    targetCtx.strokeStyle = teamCol;
+    targetCtx.lineWidth = 1.4;
+    targetCtx.strokeRect(signX, signY, signW, signH);
+
+    targetCtx.font = '900 9.5px monospace';
+    targetCtx.fillStyle = teamCol;
+    targetCtx.textAlign = 'center';
+    targetCtx.fillText(teamName, cx, signY + 12);
+
+    targetCtx.restore();
+  }
+
   function drawWatchtowerSniperNest(isLeft) {
     const sideKey = isLeft ? 'left' : 'right';
     const pillar = ARENA_3_TOWER_PILLARS[sideKey];
@@ -1271,6 +1485,42 @@ export function drawArena3Foreground(ctx, camera) {
     const deckH = 22;
 
     if (cx + 250 < camL || cx - 250 > camR) return;
+
+    const upperBlocks = isLeft
+      ? (_cachedUpperTowerBlocksLeft || (_cachedUpperTowerBlocksLeft = ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'left' && b.tier === 'upper')))
+      : (_cachedUpperTowerBlocksRight || (_cachedUpperTowerBlocksRight = ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'right' && b.tier === 'upper')));
+
+    const isIntact = pillar && pillar.intact && (pillar.hp === pillar.maxHp) && upperBlocks.every(b => b.intact && b.hp === b.maxHp);
+    if (isIntact && typeof document !== 'undefined') {
+      let towerCanvas = isLeft ? _cachedLeftTowerCanvas : _cachedRightTowerCanvas;
+      if (!towerCanvas) {
+        towerCanvas = document.createElement('canvas');
+        towerCanvas.width = 260;
+        towerCanvas.height = 360;
+        const tCtx = towerCanvas.getContext('2d');
+        if (tCtx) renderIntactTowerToBuffer(tCtx, isLeft);
+        if (isLeft) _cachedLeftTowerCanvas = towerCanvas;
+        else _cachedRightTowerCanvas = towerCanvas;
+      }
+      if (towerCanvas) {
+        ctx.drawImage(towerCanvas, deckX - 30, 260);
+
+        // Pulsująca czerwona dioda na antenie łączności
+        const antX = isLeft ? (deckX + 18) : (deckX + deckW - 18);
+        const bBlink = (Math.sin(animTime * 6.0) > 0);
+        ctx.fillStyle = bBlink ? '#ef4444' : '#500707';
+        ctx.beginPath();
+        ctx.arc(antX, deckY - 121, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+        if (bBlink) {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(antX, deckY - 121, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        return;
+      }
+    }
 
     ctx.save();
     const teamCol = isLeft ? '#06b6d4' : '#f97316';
@@ -1324,10 +1574,6 @@ export function drawArena3Foreground(ctx, camera) {
     }
 
     // C. MODUŁOWE PŁYTY PODŁOGOWE GNIAZDA SNAJPERSKIEGO (Y: 400)
-    const upperBlocks = isLeft
-      ? (_cachedUpperTowerBlocksLeft || (_cachedUpperTowerBlocksLeft = ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'left' && b.tier === 'upper')))
-      : (_cachedUpperTowerBlocksRight || (_cachedUpperTowerBlocksRight = ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'right' && b.tier === 'upper')));
-
     for (let i = 0; i < upperBlocks.length; i++) {
       const b = upperBlocks[i];
       if (b.x + b.w + 30 < camL || b.x - 30 > camR) continue;
@@ -1512,11 +1758,145 @@ export function drawArena3Foreground(ctx, camera) {
   const bridgeY = 1000;
 
   // A. PYLONY NOŚNE MOSTU (Drewniano-kamienne wieże bramowe na brzegach rzeki)
+  function renderIntactPylonToBuffer(targetCtx, pylonKey) {
+    const p = ARENA_3_PYLONS[pylonKey];
+    if (!p) return;
+    const px = p.x;
+    const caissonTopY = 1100;
+    const caissonBottomY = 1395;
+    const caissonW = 62;
+    const caissonLeft = px - caissonW / 2;
+
+    targetCtx.save();
+    targetCtx.translate(-(px - 40), -830);
+
+    // 1. Potężny kamienny keson
+    drawWeatheredStoneMasonry(targetCtx, caissonLeft, caissonTopY, caissonW, caissonBottomY - caissonTopY, {
+      courseHeight: 32,
+      waterLineY: 1300,
+      hasChamfer: true,
+      hasCramps: true,
+      seed: (pylonKey === 'left' ? 31 : 67),
+      mossTop: true
+    });
+
+    // Pancerne kute stalowe obejmy
+    targetCtx.fillStyle = '#1e293b';
+    targetCtx.fillRect(caissonLeft - 2, 1130, caissonW + 4, 10);
+    targetCtx.fillRect(caissonLeft - 2, 1210, caissonW + 4, 10);
+    targetCtx.fillRect(caissonLeft - 2, 1290, caissonW + 4, 12);
+    targetCtx.fillRect(caissonLeft - 2, 1345, caissonW + 4, 12);
+
+    targetCtx.strokeStyle = '#0f172a';
+    targetCtx.lineWidth = 1.4;
+    targetCtx.strokeRect(caissonLeft - 2, 1130, caissonW + 4, 10);
+    targetCtx.strokeRect(caissonLeft - 2, 1210, caissonW + 4, 10);
+
+    // Nity
+    targetCtx.fillStyle = '#94a3b8';
+    targetCtx.fillRect(caissonLeft, 1133, 3, 4);
+    targetCtx.fillRect(caissonLeft + caissonW - 3, 1133, 3, 4);
+    targetCtx.fillRect(caissonLeft, 1213, 3, 4);
+    targetCtx.fillRect(caissonLeft + caissonW - 3, 1213, 3, 4);
+
+    // 2. Masywne pionowe słupy pylonu
+    drawWeatheredTimberPost(targetCtx, px - 24, pylonTopY, 18, caissonTopY - pylonTopY, {
+      bandInterval: 75,
+      damageRatio: 0,
+      seed: (pylonKey === 'left' ? 13 : 47)
+    });
+    drawWeatheredTimberPost(targetCtx, px + 6, pylonTopY, 18, caissonTopY - pylonTopY, {
+      bandInterval: 75,
+      damageRatio: 0,
+      seed: (pylonKey === 'left' ? 27 : 59)
+    });
+
+    // Krzyżowe rygle wzmacniające
+    targetCtx.strokeStyle = '#38200c';
+    targetCtx.lineWidth = 6;
+    for (let crossY = pylonTopY + 40; crossY < caissonTopY - 20; crossY += 75) {
+      targetCtx.beginPath();
+      targetCtx.moveTo(px - 20, crossY);
+      targetCtx.lineTo(px + 20, crossY + 60);
+      targetCtx.moveTo(px + 20, crossY);
+      targetCtx.lineTo(px - 20, crossY + 60);
+      targetCtx.stroke();
+
+      targetCtx.strokeStyle = 'rgba(215, 175, 95, 0.40)';
+      targetCtx.lineWidth = 1.0;
+      targetCtx.beginPath();
+      targetCtx.moveTo(px - 19, crossY - 1);
+      targetCtx.lineTo(px + 19, crossY + 59);
+      targetCtx.stroke();
+
+      targetCtx.fillStyle = '#222d3d';
+      targetCtx.fillRect(px - 26, crossY - 4, 52, 9);
+      targetCtx.strokeStyle = '#0f172a';
+      targetCtx.lineWidth = 1.2;
+      targetCtx.strokeRect(px - 26, crossY - 4, 52, 9);
+
+      targetCtx.fillStyle = '#94a3b8';
+      targetCtx.fillRect(px - 24, crossY - 2, 3, 4);
+      targetCtx.fillRect(px + 21, crossY - 2, 3, 4);
+      targetCtx.fillRect(px - 2, crossY - 2, 4, 4);
+    }
+
+    // 3. Szczyt pylonu: siodło linowe
+    targetCtx.fillStyle = '#1c2430';
+    targetCtx.fillRect(px - 30, pylonTopY - 14, 60, 16);
+    targetCtx.strokeStyle = '#0b1017';
+    targetCtx.lineWidth = 2;
+    targetCtx.strokeRect(px - 30, pylonTopY - 14, 60, 16);
+
+    targetCtx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+    targetCtx.lineWidth = 1.2;
+    targetCtx.beginPath();
+    targetCtx.moveTo(px - 29, pylonTopY - 13);
+    targetCtx.lineTo(px + 29, pylonTopY - 13);
+    targetCtx.stroke();
+
+    targetCtx.fillStyle = '#475569';
+    targetCtx.beginPath();
+    targetCtx.arc(px - 10, pylonTopY - 6, 7, 0, Math.PI * 2);
+    targetCtx.arc(px + 10, pylonTopY - 6, 7, 0, Math.PI * 2);
+    targetCtx.fill();
+    targetCtx.strokeStyle = '#0f172a';
+    targetCtx.lineWidth = 1.5;
+    targetCtx.stroke();
+
+    targetCtx.fillStyle = '#0f172a';
+    targetCtx.beginPath();
+    targetCtx.arc(px - 10, pylonTopY - 6, 3, 0, Math.PI * 2);
+    targetCtx.arc(px + 10, pylonTopY - 6, 3, 0, Math.PI * 2);
+    targetCtx.fill();
+
+    targetCtx.restore();
+  }
+
   function drawBridgePylon(pylonKey) {
     const p = ARENA_3_PYLONS[pylonKey];
     if (!p) return;
     const px = p.x;
     if (px + 90 < camL || px - 90 > camR) return;
+
+    if (p.intact && p.hp === p.maxHp && typeof document !== 'undefined') {
+      let pylonCanvas = (pylonKey === 'left') ? _cachedPylonLeftCanvas : _cachedPylonRightCanvas;
+      if (!pylonCanvas) {
+        pylonCanvas = document.createElement('canvas');
+        pylonCanvas.width = 80;
+        pylonCanvas.height = 575;
+        const pCtx = pylonCanvas.getContext('2d');
+        if (pCtx) {
+          renderIntactPylonToBuffer(pCtx, pylonKey);
+        }
+        if (pylonKey === 'left') _cachedPylonLeftCanvas = pylonCanvas;
+        else _cachedPylonRightCanvas = pylonCanvas;
+      }
+      if (pylonCanvas) {
+        ctx.drawImage(pylonCanvas, px - 40, 830);
+        return;
+      }
+    }
 
     ctx.save();
     // 1. Potężny kamienny keson / filar fundamentowy (Y: 1100 aż do litego dna rzeki Y: 1395)
@@ -1779,13 +2159,7 @@ export function drawArena3Foreground(ctx, camera) {
 
 
   // B. ZNISZCZALNE MODUŁOWE RAMPY PODEJŚCIOWE NA MOST (Łączące grunt z kładką)
-  function drawGentleApproachStilts(isLeft) {
-    const rx1 = isLeft ? 1150 : 2650;
-    const rx2 = isLeft ? 1750 : 3250;
-    if (rx2 < camL || rx1 > camR) return;
-
-    ctx.save();
-    const rampBlocks = getRampBlocks(isLeft);
+  function renderGentleApproachStiltsVectors(targetCtx, isLeft, rampBlocks) {
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
       if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
@@ -1797,69 +2171,92 @@ export function drawArena3Foreground(ctx, camera) {
 
       if (b.intact) {
         // Pal nośny (hewn timber stilt) schodzący od kładki w głąb podłoża aż do spągu Y: 1400
-        drawWeatheredTimberPost(ctx, b.stiltX - 5, deckBottomY, 10, 1400 - deckBottomY, {
+        drawWeatheredTimberPost(targetCtx, b.stiltX - 5, deckBottomY, 10, 1400 - deckBottomY, {
           bandInterval: 95,
           isWet: true,
           seed: b.seed
         });
 
         // Kute stalowe strzemię / jarzmo mocujące do podłużnicy rampy
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(b.stiltX - 8, deckBottomY + 2, 16, 8);
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 1.2;
-        ctx.strokeRect(b.stiltX - 8, deckBottomY + 2, 16, 8);
+        targetCtx.fillStyle = '#1e293b';
+        targetCtx.fillRect(b.stiltX - 8, deckBottomY + 2, 16, 8);
+        targetCtx.strokeStyle = '#0f172a';
+        targetCtx.lineWidth = 1.2;
+        targetCtx.strokeRect(b.stiltX - 8, deckBottomY + 2, 16, 8);
 
         // Śruby ryglowe
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(b.stiltX - 6, deckBottomY + 4, 3, 3);
-        ctx.fillRect(b.stiltX + 3, deckBottomY + 4, 3, 3);
+        targetCtx.fillStyle = '#94a3b8';
+        targetCtx.fillRect(b.stiltX - 6, deckBottomY + 4, 3, 3);
+        targetCtx.fillRect(b.stiltX + 3, deckBottomY + 4, 3, 3);
       } else {
         // Złamany kikut pala (splintered broken stilt) wkopany w podłoże aż do spągu Y: 1400
         const breakTopY = deckBottomY + 22 + ((b.seed % 17) - 8);
-        ctx.strokeStyle = '#2d1808';
-        ctx.lineWidth = 9;
-        ctx.beginPath();
-        ctx.moveTo(b.stiltX, breakTopY);
-        ctx.lineTo(b.stiltX, 1400);
-        ctx.stroke();
+        targetCtx.strokeStyle = '#2d1808';
+        targetCtx.lineWidth = 9;
+        targetCtx.beginPath();
+        targetCtx.moveTo(b.stiltX, breakTopY);
+        targetCtx.lineTo(b.stiltX, 1400);
+        targetCtx.stroke();
 
-        ctx.strokeStyle = '#44260f';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(b.stiltX - 3, breakTopY);
-        ctx.lineTo(b.stiltX - 3, 1400);
-        ctx.stroke();
+        targetCtx.strokeStyle = '#44260f';
+        targetCtx.lineWidth = 2.2;
+        targetCtx.beginPath();
+        targetCtx.moveTo(b.stiltX - 3, breakTopY);
+        targetCtx.lineTo(b.stiltX - 3, 1400);
+        targetCtx.stroke();
 
         // Poszarpana korona złamania ze sterczącymi drzazgami i zwęgleniem
-        ctx.fillStyle = '#221104';
-        ctx.beginPath();
-        ctx.moveTo(b.stiltX - 5, breakTopY + 2);
-        ctx.lineTo(b.stiltX - 2, breakTopY - 14);
-        ctx.lineTo(b.stiltX + 1, breakTopY - 4);
-        ctx.lineTo(b.stiltX + 4, breakTopY - 16);
-        ctx.lineTo(b.stiltX + 5, breakTopY + 2);
-        ctx.closePath();
-        ctx.fill();
+        targetCtx.fillStyle = '#221104';
+        targetCtx.beginPath();
+        targetCtx.moveTo(b.stiltX - 5, breakTopY + 2);
+        targetCtx.lineTo(b.stiltX - 2, breakTopY - 14);
+        targetCtx.lineTo(b.stiltX + 1, breakTopY - 4);
+        targetCtx.lineTo(b.stiltX + 4, breakTopY - 16);
+        targetCtx.lineTo(b.stiltX + 5, breakTopY + 2);
+        targetCtx.closePath();
+        targetCtx.fill();
 
-        ctx.fillStyle = 'rgba(8, 4, 1, 0.90)';
-        ctx.fillRect(b.stiltX - 5, breakTopY - 3, 10, 8);
+        targetCtx.fillStyle = 'rgba(8, 4, 1, 0.90)';
+        targetCtx.fillRect(b.stiltX - 5, breakTopY - 3, 10, 8);
       }
     }
+  }
+
+  function drawGentleApproachStilts(isLeft) {
+    const rx1 = isLeft ? 1150 : 2650;
+    const rx2 = isLeft ? 1750 : 3250;
+    if (rx2 < camL || rx1 > camR) return;
+
+    const rampBlocks = getRampBlocks(isLeft);
+    const isIntact = rampBlocks.every(b => b.intact && b.hp === b.maxHp);
+    if (isIntact && typeof document !== 'undefined') {
+      let stiltsCanvas = isLeft ? _cachedLeftStiltsCanvas : _cachedRightStiltsCanvas;
+      if (!stiltsCanvas) {
+        stiltsCanvas = document.createElement('canvas');
+        stiltsCanvas.width = 640;
+        stiltsCanvas.height = 570;
+        const sCtx = stiltsCanvas.getContext('2d');
+        if (sCtx) {
+          sCtx.save();
+          sCtx.translate(-(rx1 - 20), -830);
+          renderGentleApproachStiltsVectors(sCtx, isLeft, rampBlocks);
+          sCtx.restore();
+        }
+        if (isLeft) _cachedLeftStiltsCanvas = stiltsCanvas;
+        else _cachedRightStiltsCanvas = stiltsCanvas;
+      }
+      if (stiltsCanvas) {
+        ctx.drawImage(stiltsCanvas, rx1 - 20, 830);
+        return;
+      }
+    }
+
+    ctx.save();
+    renderGentleApproachStiltsVectors(ctx, isLeft, rampBlocks);
     ctx.restore();
   }
 
-  function drawGentleBridgeApproach(isLeft) {
-    const rx1 = isLeft ? 1150 : 2650;
-    const rx2 = isLeft ? 1750 : 3250;
-
-    if (rx2 < camL || rx1 > camR) return;
-
-    ctx.save();
-
-    // Użycie pre-filtrowanych tablic zamiast filter co klatkę
-    const rampBlocks = getRampBlocks(isLeft);
-
+  function renderGentleBridgeApproachVectors(targetCtx, isLeft, rampBlocks) {
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
       if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
@@ -1872,72 +2269,73 @@ export function drawArena3Foreground(ctx, camera) {
       if (b.intact) {
         const dmgRatio = 1 - (b.hp / b.maxHp);
         // 2. Belka podestu rampy w estetyce postarzanego drewna
-        ctx.beginPath();
-        ctx.moveTo(b.origX, y1);
-        ctx.lineTo(b.origX + b.w, y2);
-        ctx.lineTo(b.origX + b.w, y2 + 20);
-        ctx.lineTo(b.origX, y1 + 20);
-        ctx.closePath();
+        targetCtx.beginPath();
+        targetCtx.moveTo(b.origX, y1);
+        targetCtx.lineTo(b.origX + b.w, y2);
+        targetCtx.lineTo(b.origX + b.w, y2 + 20);
+        targetCtx.lineTo(b.origX, y1 + 20);
+        targetCtx.closePath();
 
-        ctx.fillStyle = '#4a2c10';
-        ctx.fill();
+        targetCtx.fillStyle = '#4a2c10';
+        targetCtx.fill();
 
-        ctx.strokeStyle = '#180a02';
-        ctx.lineWidth = 2.0;
-        ctx.stroke();
+        targetCtx.strokeStyle = '#180a02';
+        targetCtx.lineWidth = 2.0;
+        targetCtx.stroke();
 
         // Wzdłużny słój belki
-        ctx.strokeStyle = 'rgba(14, 6, 2, 0.70)';
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(b.origX + 2, y1 + 10);
-        ctx.lineTo(b.origX + b.w - 2, y2 + 10);
-        ctx.stroke();
+        targetCtx.strokeStyle = 'rgba(14, 6, 2, 0.70)';
+        targetCtx.lineWidth = 1.4;
+        targetCtx.beginPath();
+        targetCtx.moveTo(b.origX + 2, y1 + 10);
+        targetCtx.lineTo(b.origX + b.w - 2, y2 + 10);
+        targetCtx.stroke();
 
-        // 3. Listwy antypoślizgowe z ciosanych bali (stepped transverse battens)
+        // 3. Listwy antypoślizgowe z ciosanych bali (stepped transverse battens) - zgrupowane
+        targetCtx.fillStyle = '#3a200a';
+        targetCtx.strokeStyle = 'rgba(235, 195, 105, 0.85)';
+        targetCtx.lineWidth = 1.8;
+        targetCtx.beginPath();
         for (let ax = b.origX + 14; ax <= b.origX + b.w - 10; ax += 20) {
           const ay = getApproachInclineY(ax, isLeft);
-          ctx.fillStyle = '#3a200a';
-          ctx.fillRect(ax - 2, ay - 1, 4, 6);
+          targetCtx.fillRect(ax - 2, ay - 1, 4, 6);
+          targetCtx.moveTo(ax - 4, ay);
+          targetCtx.lineTo(ax + 4, ay + (isLeft ? -1.5 : 1.5));
+        }
+        targetCtx.stroke();
 
-          ctx.strokeStyle = 'rgba(235, 195, 105, 0.85)';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.moveTo(ax - 4, ay);
-          ctx.lineTo(ax + 4, ay + (isLeft ? -1.5 : 1.5));
-          ctx.stroke();
-
-          // Kuty gwóźdź
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(ax - 1, ay + 2, 2.5, 2.5);
+        targetCtx.fillStyle = '#0f172a';
+        for (let ax = b.origX + 14; ax <= b.origX + b.w - 10; ax += 20) {
+          const ay = getApproachInclineY(ax, isLeft);
+          targetCtx.fillRect(ax - 1, ay + 2, 2.5, 2.5);
         }
 
         // Mech na górnej krawędzi
-        ctx.strokeStyle = '#3d6820';
-        ctx.lineWidth = 3.2;
-        ctx.beginPath();
-        ctx.moveTo(b.origX, y1 + 1);
-        ctx.lineTo(b.origX + b.w, y2 + 1);
-        ctx.stroke();
-        ctx.strokeStyle = '#629e30';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(b.origX + 3, y1 + 0.6);
-        ctx.lineTo(b.origX + b.w - 3, y2 + 0.6);
-        ctx.stroke();
+        targetCtx.strokeStyle = '#3d6820';
+        targetCtx.lineWidth = 3.2;
+        targetCtx.beginPath();
+        targetCtx.moveTo(b.origX, y1 + 1);
+        targetCtx.lineTo(b.origX + b.w, y2 + 1);
+        targetCtx.stroke();
+        targetCtx.strokeStyle = '#629e30';
+        targetCtx.lineWidth = 1.8;
+        targetCtx.beginPath();
+        targetCtx.moveTo(b.origX + 3, y1 + 0.6);
+        targetCtx.lineTo(b.origX + b.w - 3, y2 + 0.6);
+        targetCtx.stroke();
 
         // Pęknięcia jeśli rampa jest uszkodzona
         if (b.hp < b.maxHp) {
-          ctx.strokeStyle = '#0c0401';
-          ctx.lineWidth = 2.0;
-          ctx.beginPath();
-          ctx.moveTo(b.origX + b.w * 0.4, y1 + 4);
-          ctx.lineTo(b.origX + b.w * 0.48, y1 + 12);
+          targetCtx.strokeStyle = '#0c0401';
+          targetCtx.lineWidth = 2.0;
+          targetCtx.beginPath();
+          targetCtx.moveTo(b.origX + b.w * 0.4, y1 + 4);
+          targetCtx.lineTo(b.origX + b.w * 0.48, y1 + 12);
           if (dmgRatio > 0.5) {
-            ctx.moveTo(b.origX + b.w * 0.72, y2 + 3);
-            ctx.lineTo(b.origX + b.w * 0.64, y2 + 15);
+            targetCtx.moveTo(b.origX + b.w * 0.72, y2 + 3);
+            targetCtx.lineTo(b.origX + b.w * 0.64, y2 + 15);
           }
-          ctx.stroke();
+          targetCtx.stroke();
         }
 
         // 4. Słupek poręczy na środku segmentu z ciosanego drewna
@@ -1945,48 +2343,48 @@ export function drawArena3Foreground(ctx, camera) {
         const postY = getApproachInclineY(postX, isLeft);
         const handrailH = 34;
 
-        ctx.strokeStyle = '#321908';
-        ctx.lineWidth = 4.5;
-        ctx.beginPath();
-        ctx.moveTo(postX, postY);
-        ctx.lineTo(postX, postY - handrailH);
-        ctx.stroke();
+        targetCtx.strokeStyle = '#321908';
+        targetCtx.lineWidth = 4.5;
+        targetCtx.beginPath();
+        targetCtx.moveTo(postX, postY);
+        targetCtx.lineTo(postX, postY - handrailH);
+        targetCtx.stroke();
 
-        ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.moveTo(postX - 1, postY);
-        ctx.lineTo(postX - 1, postY - handrailH);
-        ctx.stroke();
+        targetCtx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+        targetCtx.lineWidth = 1.0;
+        targetCtx.beginPath();
+        targetCtx.moveTo(postX - 1, postY);
+        targetCtx.lineTo(postX - 1, postY - handrailH);
+        targetCtx.stroke();
 
         // Okucie słupka
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(postX - 3.5, postY - handrailH, 7, 7);
+        targetCtx.fillStyle = '#1e293b';
+        targetCtx.fillRect(postX - 3.5, postY - handrailH, 7, 7);
 
         // Linka poręczy do kolejnego segmentu
         if (rIdx < rampBlocks.length - 1 && rampBlocks[rIdx + 1].intact) {
           const nextPostX = rampBlocks[rIdx + 1].stiltX;
           const nextPostY = getApproachInclineY(nextPostX, isLeft);
 
-          ctx.strokeStyle = '#533718';
-          ctx.lineWidth = 3.5;
-          ctx.beginPath();
-          ctx.moveTo(postX, postY - handrailH + 3);
-          ctx.lineTo(nextPostX, nextPostY - handrailH + 3);
-          ctx.stroke();
+          targetCtx.strokeStyle = '#533718';
+          targetCtx.lineWidth = 3.5;
+          targetCtx.beginPath();
+          targetCtx.moveTo(postX, postY - handrailH + 3);
+          targetCtx.lineTo(nextPostX, nextPostY - handrailH + 3);
+          targetCtx.stroke();
 
-          ctx.strokeStyle = '#2d1808';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.moveTo(postX, postY - handrailH * 0.5);
-          ctx.lineTo(nextPostX, nextPostY - handrailH * 0.5);
-          ctx.stroke();
+          targetCtx.strokeStyle = '#2d1808';
+          targetCtx.lineWidth = 1.8;
+          targetCtx.beginPath();
+          targetCtx.moveTo(postX, postY - handrailH * 0.5);
+          targetCtx.lineTo(nextPostX, nextPostY - handrailH * 0.5);
+          targetCtx.stroke();
         }
       } else {
         // ZNISZCZONY SEGMENT RAMPY (Poszarpana belka podestu ze zniszczoną listwą antypoślizgową)
         const bcx = b.x + b.w / 2;
         const bcy = b.y + b.h / 2;
-        drawSplinteredWoodRubble(ctx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
+        drawSplinteredWoodRubble(targetCtx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
 
         // Piana jeśli klocek wpadł do rzeki (buforowana do wspólnego batcha)
         if (b.y + b.h >= 1300 && b.y <= 1360) {
@@ -1998,15 +2396,49 @@ export function drawArena3Foreground(ctx, camera) {
     // 5. Oznaczenie wejściowe na gruntowej krawędzi rampy
     const entryX = isLeft ? 1150 : 3250;
     const entryY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(entryX) : 1200;
-    ctx.fillStyle = '#3a200a';
-    ctx.fillRect(entryX - 6, entryY - 45, 12, 45);
-    ctx.strokeStyle = '#1a0e05';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(entryX - 6, entryY - 45, 12, 45);
+    targetCtx.fillStyle = '#3a200a';
+    targetCtx.fillRect(entryX - 6, entryY - 45, 12, 45);
+    targetCtx.strokeStyle = '#1a0e05';
+    targetCtx.lineWidth = 2;
+    targetCtx.strokeRect(entryX - 6, entryY - 45, 12, 45);
 
     // Kute zwieńczenie słupa (bez pomarańczowych poświat)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(entryX - 8, entryY - 50, 16, 6);
+    targetCtx.fillStyle = '#1e293b';
+    targetCtx.fillRect(entryX - 8, entryY - 50, 16, 6);
+  }
+
+  function drawGentleBridgeApproach(isLeft) {
+    const rx1 = isLeft ? 1150 : 2650;
+    const rx2 = isLeft ? 1750 : 3250;
+
+    if (rx2 < camL || rx1 > camR) return;
+
+    const rampBlocks = getRampBlocks(isLeft);
+    const isIntact = rampBlocks.every(b => b.intact && b.hp === b.maxHp);
+    if (isIntact && typeof document !== 'undefined') {
+      let deckCanvas = isLeft ? _cachedLeftApproachDeckCanvas : _cachedRightApproachDeckCanvas;
+      if (!deckCanvas) {
+        deckCanvas = document.createElement('canvas');
+        deckCanvas.width = 640;
+        deckCanvas.height = 420;
+        const dCtx = deckCanvas.getContext('2d');
+        if (dCtx) {
+          dCtx.save();
+          dCtx.translate(-(rx1 - 20), -820);
+          renderGentleBridgeApproachVectors(dCtx, isLeft, rampBlocks);
+          dCtx.restore();
+        }
+        if (isLeft) _cachedLeftApproachDeckCanvas = deckCanvas;
+        else _cachedRightApproachDeckCanvas = deckCanvas;
+      }
+      if (deckCanvas) {
+        ctx.drawImage(deckCanvas, rx1 - 20, 820);
+        return;
+      }
+    }
+
+    ctx.save();
+    renderGentleBridgeApproachVectors(ctx, isLeft, rampBlocks);
     ctx.restore();
   }
 
@@ -2429,53 +2861,35 @@ export function drawArena3Foreground(ctx, camera) {
     _waterFoamEllipses.length = 0;
   }
 
-  // F. CZĄSTECZKI OSTRYCH DRZAZG DREWNIANYCH (Bridge Splinters)
-  for (let i = 0; i < BRIDGE_SPLINTERS.length; i++) {
-    const sp = BRIDGE_SPLINTERS[i];
-    if (sp.x < camL - 20 || sp.x > camR + 20) continue;
-    ctx.save();
-    ctx.translate(sp.x, sp.y);
-    ctx.rotate(sp.rot);
-    ctx.fillStyle = sp.color;
+  // F. CZĄSTECZKI OSTRYCH DRZAZG DREWNIANYCH (Bridge Splinters - zgrupowane w 1 stroke)
+  if (BRIDGE_SPLINTERS.length > 0) {
+    ctx.strokeStyle = '#854d0e';
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(-sp.size * 0.7, 0);
-    ctx.lineTo(sp.size * 0.7, -sp.size * 0.22);
-    ctx.lineTo(sp.size * 0.25, sp.size * 0.25);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#120803';
-    ctx.lineWidth = 0.9;
+    for (let i = 0; i < BRIDGE_SPLINTERS.length; i++) {
+      const sp = BRIDGE_SPLINTERS[i];
+      if (sp.x < camL - 20 || sp.x > camR + 20) continue;
+      const cos = Math.cos(sp.rot);
+      const sin = Math.sin(sp.rot);
+      const halfL = (sp.size || 6) * 0.7;
+      ctx.moveTo(sp.x - cos * halfL, sp.y - sin * halfL);
+      ctx.lineTo(sp.x + cos * halfL, sp.y + sin * halfL);
+    }
     ctx.stroke();
-    ctx.restore();
   }
 
-  // F2. CZĄSTECZKI OSTROKRAWĘDZIOWYCH ODŁAMKÓW SKALNYCH (Stone Debris)
-  for (let i = 0; i < STONE_DEBRIS.length; i++) {
-    const sd = STONE_DEBRIS[i];
-    if (sd.x < camL - 20 || sd.x > camR + 20) continue;
-    ctx.save();
-    ctx.translate(sd.x, sd.y);
-    ctx.rotate(sd.rot);
-    ctx.fillStyle = sd.color;
+  // F2. CZĄSTECZKI OSTROKRAWĘDZIOWYCH ODŁAMKÓW SKALNYCH (Stone Debris - zgrupowane w 1 fill)
+  if (STONE_DEBRIS.length > 0) {
+    ctx.fillStyle = '#475569';
     ctx.beginPath();
-    ctx.moveTo(-sd.size / 2, -sd.size / 2);
-    ctx.lineTo(sd.size * 0.6, -sd.size * 0.2);
-    ctx.lineTo(sd.size * 0.3, sd.size / 2);
-    ctx.lineTo(-sd.size * 0.5, sd.size * 0.3);
-    ctx.closePath();
+    for (let i = 0; i < STONE_DEBRIS.length; i++) {
+      const sd = STONE_DEBRIS[i];
+      if (sd.x < camL - 20 || sd.x > camR + 20) continue;
+      const s = (sd.size || 5) * 0.5;
+      ctx.rect(sd.x - s, sd.y - s, s * 2, s * 2);
+    }
     ctx.fill();
-    ctx.strokeStyle = '#080c08';
-    ctx.lineWidth = 1.0;
-    ctx.stroke();
-
-    // Jasna krawędź odłamu
-    ctx.strokeStyle = 'rgba(180, 210, 180, 0.45)';
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(-sd.size / 2, -sd.size / 2);
-    ctx.lineTo(sd.size * 0.6, -sd.size * 0.2);
-    ctx.stroke();
-    ctx.restore();
   }
 
   // F3. ROZBRYZGI WODY W RZECE (Arena 3 Water Splashes - zgrupowane w 1 fill)
@@ -2492,6 +2906,19 @@ export function drawArena3Foreground(ctx, camera) {
   }
 
   ctx.restore();
+}
+
+export function resetArena3RenderCache() {
+  _leftCliffCache = null;
+  _rightCliffCache = null;
+  _cachedLeftTowerCanvas = null;
+  _cachedRightTowerCanvas = null;
+  _cachedPylonLeftCanvas = null;
+  _cachedPylonRightCanvas = null;
+  _cachedLeftStiltsCanvas = null;
+  _cachedRightStiltsCanvas = null;
+  _cachedLeftApproachDeckCanvas = null;
+  _cachedRightApproachDeckCanvas = null;
 }
 
 // Pomocnicze funkcje przecięcia promienia pocisku (swept segment)

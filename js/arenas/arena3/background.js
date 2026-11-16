@@ -84,11 +84,120 @@ for (let i = 0; i < FIREFLY_COUNT; i++) {
 }
 
 // =========================================================================
-// 3. BUFOROWANIE SYLWETEK GÓR I DŻUNGLI (OFFSCREEN CANVAS CACHING)
+// 3. BUFOROWANIE SYLWETEK GÓR, DŻUNGLI I NOCNEGO NIEBA (OFFSCREEN CANVAS CACHING)
 // Gwarantuje 60/120 FPS bez narzutu na CPU / GC w pętli renderowania
 // =========================================================================
+let _cachedSkyStarsMoonCanvas = null;
 let _cachedMountainsCanvas = null;
 let _cachedJungleCanvas = null;
+
+function ensureSkyStarsMoonCanvas() {
+  if (_cachedSkyStarsMoonCanvas || typeof document === 'undefined') return;
+
+  const w = 2400;
+  const h = 1080;
+  _cachedSkyStarsMoonCanvas = document.createElement('canvas');
+  _cachedSkyStarsMoonCanvas.width = w;
+  _cachedSkyStarsMoonCanvas.height = h;
+  const sc = _cachedSkyStarsMoonCanvas.getContext('2d');
+  if (!sc) return;
+
+  sc.save();
+
+  // 1. Aksamitny gradient nocnego nieba
+  const sGrad = sc.createLinearGradient(0, 0, 0, h);
+  sGrad.addColorStop(0.00, '#02050c'); // Kosmiczny granat
+  sGrad.addColorStop(0.35, '#050e1a'); // Ciemny indygo
+  sGrad.addColorStop(0.65, '#08171c'); // Ciemny petrol
+  sGrad.addColorStop(0.85, '#0b211a'); // Szmaragd nocnej dżungli
+  sGrad.addColorStop(1.00, '#071511'); // Podstawa horyzontu
+  sc.fillStyle = sGrad;
+  sc.fillRect(0, 0, w, h);
+
+  // 2. Dalekie mikro-gwiazdy
+  for (let i = 0; i < STAR_COUNT_FAR; i++) {
+    const st = STARS_FAR[i];
+    const sx = st.xNorm * w;
+    const sy = st.yNorm * h;
+    const alpha = st.baseAlpha * 0.75;
+    sc.fillStyle = `rgba(${STAR_PALETTE[st.colorType]}, ${alpha.toFixed(2)})`;
+    sc.fillRect(sx, sy, st.size, st.size);
+  }
+
+  // 3. Bliższe wyraźniejsze gwiazdy i konstelacje
+  for (let i = 0; i < STAR_COUNT_NEAR; i++) {
+    const st = STARS_NEAR[i];
+    const sx = st.xNorm * w;
+    const sy = st.yNorm * h;
+    const alpha = st.baseAlpha * 0.85;
+
+    sc.fillStyle = `rgba(240, 249, 255, ${alpha.toFixed(2)})`;
+    sc.fillRect(sx - st.size * 0.5, sy - st.size * 0.5, st.size, st.size);
+
+    if (st.hasCrossFlare) {
+      sc.strokeStyle = `rgba(224, 242, 254, ${(alpha * 0.40).toFixed(2)})`;
+      sc.lineWidth = 1;
+      sc.beginPath();
+      sc.moveTo(sx - 4.5, sy);
+      sc.lineTo(sx + 4.5, sy);
+      sc.moveTo(sx, sy - 4.5);
+      sc.lineTo(sx, sy + 4.5);
+      sc.stroke();
+    }
+  }
+
+  // 4. Księżyc (Crescent Moon)
+  const moonX = w * 0.74;
+  const moonY = h * 0.22;
+  const moonRadius = 24;
+
+  // Miękka poświata księżycowa (Halo)
+  const haloGrad = sc.createRadialGradient(moonX, moonY, moonRadius * 0.5, moonX, moonY, moonRadius * 5.5);
+  haloGrad.addColorStop(0.0, 'rgba(186, 230, 253, 0.08)');
+  haloGrad.addColorStop(0.5, 'rgba(186, 230, 253, 0.02)');
+  haloGrad.addColorStop(1.0, 'rgba(186, 230, 253, 0)');
+  sc.fillStyle = haloGrad;
+  sc.beginPath();
+  sc.arc(moonX, moonY, moonRadius * 5.5, 0, Math.PI * 2);
+  sc.fill();
+
+  // Ciemna tarcza księżyca (Earthshine)
+  sc.fillStyle = 'rgba(12, 20, 34, 0.55)';
+  sc.beginPath();
+  sc.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+  sc.fill();
+
+  // Jasny, ostry srebrzysty sierp
+  sc.fillStyle = '#f0f9ff';
+  sc.beginPath();
+  sc.arc(moonX, moonY, moonRadius, -Math.PI * 0.42, Math.PI * 0.42, false);
+  sc.quadraticCurveTo(moonX - moonRadius * 0.15, moonY, moonX + Math.cos(-Math.PI * 0.42) * moonRadius, moonY + Math.sin(-Math.PI * 0.42) * moonRadius);
+  sc.closePath();
+  sc.fill();
+
+  // 5. Srebrzyste promienie księżycowe (Moonbeams)
+  sc.globalCompositeOperation = 'screen';
+  for (let r = 0; r < 5; r++) {
+    const beamAlpha = 0.025;
+    const bx = (moonX - 180) + r * 160;
+
+    const bGrad = sc.createLinearGradient(bx, 0, bx + 220, h);
+    bGrad.addColorStop(0.0, `rgba(186, 230, 253, ${(beamAlpha * 1.5).toFixed(3)})`);
+    bGrad.addColorStop(0.6, `rgba(186, 230, 253, ${beamAlpha.toFixed(3)})`);
+    bGrad.addColorStop(1.0, 'rgba(186, 230, 253, 0)');
+    sc.fillStyle = bGrad;
+
+    sc.beginPath();
+    sc.moveTo(bx, 0);
+    sc.lineTo(bx + 90, 0);
+    sc.lineTo(bx + 380, h);
+    sc.lineTo(bx + 180, h);
+    sc.closePath();
+    sc.fill();
+  }
+
+  sc.restore();
+}
 
 function ensureMountainsCanvas() {
   if (_cachedMountainsCanvas || typeof document === 'undefined') return;
@@ -239,67 +348,20 @@ export function drawArena3Background(ctx, camera) {
   ctx.globalCompositeOperation = 'source-over';
 
   // -----------------------------------------------------------------------
-  // WARSTWA 0: BAZOWY GRADIENT NOCNEGO NIEBA (EKRANOWY)
+  // WARSTWA 0-3: ZBUFOROWANE NOCNE NIEBO, GWIAZDY, KSIĘŻYC I PROMIENIE (OFFSCREEN CACHING)
   // -----------------------------------------------------------------------
-  if (!_cachedSkyGrad || _cachedSkyH !== H_screen) {
-    _cachedSkyGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
-    _cachedSkyGrad.addColorStop(0.00, '#02050c'); // Aksamitny, głęboki kosmiczny granat
-    _cachedSkyGrad.addColorStop(0.35, '#050e1a'); // Ciemny indygo
-    _cachedSkyGrad.addColorStop(0.65, '#08171c'); // Ciemny petrol
-    _cachedSkyGrad.addColorStop(0.85, '#0b211a'); // Szmaragd nocnej dżungli
-    _cachedSkyGrad.addColorStop(1.00, '#071511'); // Podstawa horyzontu
-    _cachedSkyH = H_screen;
-  }
-  ctx.fillStyle = _cachedSkyGrad;
-  ctx.fillRect(0, 0, W_screen, H_screen);
-
-  // -----------------------------------------------------------------------
-  // WARSTWA 1: ROZGWIEŻDŻONE NIEBO (PARALAKSA + DELIKATNY TWINKLE)
-  // -----------------------------------------------------------------------
-  // 1A. Dalekie mikro-gwiazdy
-  const farParallaxX = (camX * 0.015) % W_screen;
-  const farParallaxY = (camY * 0.008);
-  for (let i = 0; i < STAR_COUNT_FAR; i++) {
-    const st = STARS_FAR[i];
-    const sx = ((st.xNorm * W_screen - farParallaxX) % W_screen + W_screen) % W_screen;
-    const sy = st.yNorm * H_screen - farParallaxY;
-    if (sy < 0 || sy > H_screen * 0.85) continue;
-
-    const twinkle = Math.sin(time * st.speed + st.phase) * 0.5 + 0.5;
-    const alpha = (st.baseAlpha * (0.45 + twinkle * 0.55)).toFixed(2);
-    ctx.fillStyle = `rgba(${STAR_PALETTE[st.colorType]}, ${alpha})`;
-    ctx.fillRect(sx, sy, st.size, st.size);
-  }
-
-  // 1B. Bliższe wyraźniejsze gwiazdy i konstelacje
-  const nearParallaxX = (camX * 0.035) % W_screen;
-  const nearParallaxY = (camY * 0.015);
-  for (let i = 0; i < STAR_COUNT_NEAR; i++) {
-    const st = STARS_NEAR[i];
-    const sx = ((st.xNorm * W_screen - nearParallaxX) % W_screen + W_screen) % W_screen;
-    const sy = st.yNorm * H_screen - nearParallaxY;
-    if (sy < 0 || sy > H_screen * 0.82) continue;
-
-    const twinkle = Math.sin(time * st.speed + st.phase) * 0.5 + 0.5;
-    const alpha = st.baseAlpha * (0.60 + twinkle * 0.40);
-
-    ctx.fillStyle = `rgba(240, 249, 255, ${alpha.toFixed(2)})`;
-    ctx.fillRect(sx - st.size * 0.5, sy - st.size * 0.5, st.size, st.size);
-
-    // Delikatny mikro-krzyżyk dyfrakcyjny dla najjaśniejszych gwiazd
-    if (st.hasCrossFlare && alpha > 0.65) {
-      ctx.strokeStyle = `rgba(224, 242, 254, ${(alpha * 0.35).toFixed(2)})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(sx - 4.5, sy);
-      ctx.lineTo(sx + 4.5, sy);
-      ctx.moveTo(sx, sy - 4.5);
-      ctx.lineTo(sx, sy + 4.5);
-      ctx.stroke();
+  ensureSkyStarsMoonCanvas();
+  if (_cachedSkyStarsMoonCanvas) {
+    const skyW = 2400;
+    const skyParallaxX = (camX * 0.02) % skyW;
+    const drawSkyX = -skyParallaxX;
+    ctx.drawImage(_cachedSkyStarsMoonCanvas, drawSkyX, 0, skyW, H_screen);
+    if (drawSkyX + skyW < W_screen) {
+      ctx.drawImage(_cachedSkyStarsMoonCanvas, drawSkyX + skyW, 0, skyW, H_screen);
     }
   }
 
-  // 1C. Sporadyczna spadająca gwiazda (Meteor co ~17 sekund)
+  // 1C. Sporadyczna spadająca gwiazda (Meteor co ~17 sekund - lekki pojedynczy stroke)
   const meteorInterval = 17.0;
   const meteorCycle = time % meteorInterval;
   if (meteorCycle < 0.75) {
@@ -322,65 +384,6 @@ export function drawArena3Background(ctx, camera) {
     ctx.stroke();
     ctx.restore();
   }
-
-  // -----------------------------------------------------------------------
-  // WARSTWA 2: SUBTELNY SIERP KSIĘŻYCA Z CHŁODNĄ AUREOLĄ (CRESCENT MOON)
-  // -----------------------------------------------------------------------
-  const moonX = W_screen * 0.74 - ((camX * 0.022) % W_screen);
-  const moonY = H_screen * 0.22 - (camY * 0.012);
-  const moonRadius = 24;
-
-  ctx.save();
-  // Miękka poświata księżycowa (Halo)
-  const haloGrad = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.5, moonX, moonY, moonRadius * 5.5);
-  haloGrad.addColorStop(0.0, 'rgba(186, 230, 253, 0.08)');
-  haloGrad.addColorStop(0.5, 'rgba(186, 230, 253, 0.02)');
-  haloGrad.addColorStop(1.0, 'rgba(186, 230, 253, 0)');
-  ctx.fillStyle = haloGrad;
-  ctx.beginPath();
-  ctx.arc(moonX, moonY, moonRadius * 5.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Ciemna tarcza księżyca (światło popielate / Earthshine)
-  ctx.fillStyle = 'rgba(12, 20, 34, 0.55)';
-  ctx.beginPath();
-  ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Jasny, ostry srebrzysty sierp
-  ctx.fillStyle = '#f0f9ff';
-  ctx.beginPath();
-  ctx.arc(moonX, moonY, moonRadius, -Math.PI * 0.42, Math.PI * 0.42, false);
-  ctx.quadraticCurveTo(moonX - moonRadius * 0.15, moonY, moonX + Math.cos(-Math.PI * 0.42) * moonRadius, moonY + Math.sin(-Math.PI * 0.42) * moonRadius);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // -----------------------------------------------------------------------
-  // WARSTWA 3: SREBRZYSTE PROMIENIE KSIĘŻYCOWE (MOONBEAMS)
-  // -----------------------------------------------------------------------
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  for (let r = 0; r < 5; r++) {
-    const beamPulse = Math.sin(time * 0.6 + r * 1.3) * 0.012;
-    const beamAlpha = 0.022 + beamPulse;
-    const bx = (moonX - 180) + r * 160;
-
-    const bGrad = ctx.createLinearGradient(bx, 0, bx + 220, H_screen);
-    bGrad.addColorStop(0.0, `rgba(186, 230, 253, ${(beamAlpha * 1.5).toFixed(3)})`);
-    bGrad.addColorStop(0.6, `rgba(186, 230, 253, ${beamAlpha.toFixed(3)})`);
-    bGrad.addColorStop(1.0, 'rgba(186, 230, 253, 0)');
-    ctx.fillStyle = bGrad;
-
-    ctx.beginPath();
-    ctx.moveTo(bx, 0);
-    ctx.lineTo(bx + 90, 0);
-    ctx.lineTo(bx + 380, H_screen);
-    ctx.lineTo(bx + 180, H_screen);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
 
   // -----------------------------------------------------------------------
   // WARSTWA 4: DALEKIE PASMO GÓRSKIE W NOCY (OFFSCREEN CANVAS CACHING)
@@ -423,44 +426,65 @@ export function drawArena3Background(ctx, camera) {
     ctx.translate(-camX, -camY);
   }
 
-  // 6A. Srebrzyste refleksy światła księżyca na powierzchni rzeki (X: 1600 do 2800)
+  // 6A. Srebrzyste refleksy światła księżyca na powierzchni rzeki (X: 1600 do 2800) - zgrupowany 1 stroke
   ctx.save();
   ctx.strokeStyle = 'rgba(186, 230, 253, 0.28)';
   ctx.lineWidth = 1.8;
+  ctx.beginPath();
   for (let wx = 1660; wx < 2740; wx += 60) {
     const wy = 1302 + Math.sin(wx * 0.02 + time * 2.2) * 3.5;
     const glintLen = 14 + Math.sin(wx * 0.05 + time * 3.0) * 8;
-    ctx.beginPath();
     ctx.moveTo(wx, wy);
     ctx.lineTo(wx + glintLen, wy);
-    ctx.stroke();
   }
+  ctx.stroke();
   ctx.restore();
 
-  // 6B. Bioluminescencyjne świetliki (Fireflies - zoptymalizowane bez tworzenia gradientów co klatkę)
-  for (let i = 0; i < FIREFLY_COUNT; i++) {
+  // 6B. Bioluminescencyjne świetliki (Fireflies) - zgrupowane w 2 wywołania fill (poświata + rdzeń)
+  const isTouchDevice = typeof window !== 'undefined' && ((window.innerWidth <= 1024) && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
+  const maxFireflies = isTouchDevice ? 8 : FIREFLY_COUNT;
+
+  const visibleFireflies = [];
+  const minCamX = camX - 80;
+  const maxCamX = camX + (W_screen / camZoom) + 80;
+  const minCamY = camY - 80;
+  const maxCamY = camY + (H_screen / camZoom) + 80;
+
+  for (let i = 0; i < maxFireflies; i++) {
     const ff = FIREFLIES[i];
     const fx = ff.baseX + Math.sin(time * ff.freqX + ff.phaseX) * ff.ampX;
     const fy = ff.baseY + Math.cos(time * ff.freqY + ff.phaseY) * ff.ampY;
 
-    // Viewport culling dla świetlików
-    if (fx < camX - 80 || fx > camX + (W_screen / camZoom) + 80) continue;
-    if (fy < camY - 80 || fy > camY + (H_screen / camZoom) + 80) continue;
+    if (fx < minCamX || fx > maxCamX || fy < minCamY || fy > maxCamY) continue;
 
-    const pulse = Math.sin(time * ff.glowSpeed + ff.glowPhase) * 0.5 + 0.5;
-    const ffAlpha = 0.35 + pulse * 0.65;
     const glowRad = ff.size * 3.5;
+    const coreRad = ff.size * 0.7;
+    visibleFireflies.push(fx, fy, glowRad, coreRad);
+  }
 
-    // Subtelna poświata świetlika
-    ctx.fillStyle = `rgba(163, 230, 53, ${(ffAlpha * 0.30).toFixed(2)})`;
+  if (visibleFireflies.length > 0) {
+    // 1. Wspólna miękka poświata
+    ctx.fillStyle = 'rgba(163, 230, 53, 0.22)';
     ctx.beginPath();
-    ctx.arc(fx, fy, glowRad, 0, Math.PI * 2);
+    for (let i = 0; i < visibleFireflies.length; i += 4) {
+      const fx = visibleFireflies[i];
+      const fy = visibleFireflies[i + 1];
+      const glowRad = visibleFireflies[i + 2];
+      ctx.moveTo(fx + glowRad, fy);
+      ctx.arc(fx, fy, glowRad, 0, Math.PI * 2);
+    }
     ctx.fill();
 
-    // Jasny złocisty rdzeń
-    ctx.fillStyle = `rgba(255, 255, 220, ${(ffAlpha * 0.95).toFixed(2)})`;
+    // 2. Wspólny jasny rdzeń
+    ctx.fillStyle = 'rgba(255, 255, 220, 0.85)';
     ctx.beginPath();
-    ctx.arc(fx, fy, ff.size * 0.7, 0, Math.PI * 2);
+    for (let i = 0; i < visibleFireflies.length; i += 4) {
+      const fx = visibleFireflies[i];
+      const fy = visibleFireflies[i + 1];
+      const coreRad = visibleFireflies[i + 3];
+      ctx.moveTo(fx + coreRad, fy);
+      ctx.arc(fx, fy, coreRad, 0, Math.PI * 2);
+    }
     ctx.fill();
   }
 
