@@ -26,6 +26,7 @@ import { uiManager } from '../uiManager.js';
 import { updateButtonLayout } from '../mobileControls.js';
 import { editorState, renderEditorPalette } from './obstacleEditor.js';
 import { isZombieModeActive, setZombieModeActive } from '../zombie/index.js';
+import { isPerfMonitorEnabled, setPerfMonitorEnabled, togglePerfMonitor } from './mobilePerfMonitor.js';
 
 // =========================================================================
 // PANEL DEWELOPERSKI (PRZECIĄGANIE, PRZEŁĄCZANIE, BOT, ARENA)
@@ -439,6 +440,64 @@ export function initDevCollisionUI() {
     devCollisionBtn.addEventListener('click', handleToggle);
     devCollisionBtn.addEventListener('touchend', handleToggle);
     syncDevCollisionButtonUI();
+  }
+}
+
+export function syncDevPerfButtonUI() {
+  const btn = document.getElementById('dev-perf-btn');
+  if (!btn) return;
+  const active = (typeof isPerfMonitorEnabled === 'function') ? isPerfMonitorEnabled() : false;
+  if (active) {
+    btn.textContent = 'PERF: ON';
+    btn.style.background = 'rgba(56, 189, 248, 0.35)';
+    btn.style.borderColor = '#38bdf8';
+    btn.style.color = '#ffffff';
+    btn.style.boxShadow = '0 0 12px rgba(56, 189, 248, 0.6)';
+  } else {
+    btn.textContent = 'PERF: OFF';
+    btn.style.background = '';
+    btn.style.borderColor = '#0284c7';
+    btn.style.color = '#38bdf8';
+    btn.style.boxShadow = '';
+  }
+}
+if (typeof window !== 'undefined') {
+  window.syncDevPerfButtonUI = syncDevPerfButtonUI;
+}
+
+export function initDevPerfUI() {
+  let devPerfBtn = document.getElementById('dev-perf-btn');
+  const devMenu = document.getElementById('dev-menu');
+
+  if (!devPerfBtn && devMenu) {
+    const sep = document.createElement('span');
+    sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
+    sep.textContent = '|';
+    devMenu.appendChild(sep);
+
+    devPerfBtn = document.createElement('button');
+    devPerfBtn.className = 'dev-btn';
+    devPerfBtn.id = 'dev-perf-btn';
+    devPerfBtn.title = 'Włącz / Wyłącz Rejestrator Wydajności Mobilnej (FPS / Spadki)';
+    devMenu.appendChild(devPerfBtn);
+  }
+
+  if (devPerfBtn) {
+    let lastToggleTime = 0;
+    const handleToggle = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastToggleTime < 250) return;
+      lastToggleTime = now;
+      if (typeof togglePerfMonitor === 'function') {
+        togglePerfMonitor();
+      }
+      syncDevPerfButtonUI();
+    };
+    devPerfBtn.addEventListener('click', handleToggle);
+    devPerfBtn.addEventListener('touchend', handleToggle);
+    syncDevPerfButtonUI();
   }
 }
 

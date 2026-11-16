@@ -97,8 +97,20 @@ import {
   updateDevTouchButtonUI,
   toggleTouchControls,
   initTouchControlsDevUI,
-  initModularGearDevUI
+  initModularGearDevUI,
+  initDevPerfUI,
+  syncDevPerfButtonUI
 } from './dev/devPanel.js';
+import {
+  isPerfMonitorEnabled,
+  beginFrame,
+  endFrame,
+  beginSection,
+  endSection,
+  drawMobilePerfHUD,
+  initMobilePerfMonitor,
+  notifyRoundStart
+} from './dev/mobilePerfMonitor.js';
 import {
   keys,
   mouseState,
@@ -289,6 +301,7 @@ window.WEAPONS = WEAPONS;
 
 export function startRound() {
   resetArena();
+  notifyRoundStart();
   if (player) {
     player.hp = player.maxHp || player.currentClass?.stats?.hp || 100;
     player.isDead = false;
@@ -494,6 +507,8 @@ initObstacleEditorUI();
 initDevZoomUI();
 initTouchControlsDevUI();
 initModularGearDevUI();
+initDevPerfUI();
+initMobilePerfMonitor();
 initWeaponEditorUI();
 initNetwork();
 initKillstreaks();
@@ -1005,7 +1020,9 @@ function draw() {
     return;
   }
 
+  beginSection('bg');
   renderArenaBackground(ctx, camera);
+  endSection('bg');
 
   ctx.save();
   ctx.scale(camera.zoom, camera.zoom);
@@ -1023,6 +1040,7 @@ function draw() {
     ? ((typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200)
     : (isArena2Active ? 1600 : (isArena3Active ? 1200 : (isArena4Active ? 1200 : GROUND_Y)));
 
+  beginSection('fx');
   if (!isArena2Active && !isArena3Active && !isArena4Active && !isArena5Active) {
     drawGround(ctx, worldLeft, worldWidth);
   }
@@ -1112,7 +1130,9 @@ function draw() {
   const activeRemotePlayers = (typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : (remotePlayer?.active ? [remotePlayer] : []);
   drawSeveredHeads(ctx, [player, ...activeBots, ...activeRemotePlayers]);
   drawJetpackParticles(ctx);
+  endSection('fx');
 
+  beginSection('players');
   // Celownik laserowy snajperki Barrett .50 w stylu Soldat
   const isAimingWithStick = rightStick && rightStick.active && (typeof rightStick.power === 'number' ? rightStick.power > 0.05 : true) && rightStick.armedMode !== 'GRENADE';
   const isThrowingGrenade = !!(player.throwAnim && player.throwAnim.active);
@@ -1194,7 +1214,9 @@ function draw() {
       }
     }
   }
+  endSection('players');
 
+  beginSection('fx');
   // Renderowanie efektów gore (krew w locie, odcięte głowy, urwane kończyny, upuszczona broń)
   drawGore(ctx);
   drawPickupsWorld(ctx, camera);
@@ -1246,10 +1268,14 @@ function draw() {
       drawCrosshair(ctx, player.aimX, player.aimY);
     }
   }
+  endSection('fx');
 
   // Renderowanie elementów areny na pierwszym planie (np. łańcuchy, ołtarz, stemple)
+  beginSection('fg');
   renderArenaForeground(ctx, camera);
+  endSection('fg');
 
+  beginSection('fx');
   const isDebugCol = (typeof isDebugCollidersEnabled === 'function') ? isDebugCollidersEnabled() : DEBUG_COLLIDERS;
   if (isDebugCol && typeof drawDebugColliders === 'function') {
     drawDebugColliders(ctx, effectiveDrawGroundY, player, { activeBots, remotePlayer, ball });
@@ -1274,7 +1300,9 @@ function draw() {
     ctx.fillText(dbgTxt, 16, 24);
     ctx.restore();
   }
+  endSection('fx');
 
+  beginSection('hud');
   const isMatchRunning = (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED' || (GAME_STATE.current === 'SETTINGS' && GAME_STATE.previous !== 'MENU'));
   if (isMatchRunning) {
     const inKickRange = (!isDeathmatch && ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
@@ -1316,6 +1344,9 @@ function draw() {
     ctx.fillText(edTxt, W / 2, bannerY + 17);
     ctx.restore();
   }
+  endSection('hud');
+
+  drawMobilePerfHUD(ctx);
 }
 
 const TICK_MS = 1000 / 60; // 16.666667 ms (stały krok fizyki: dokładnie 60 Hz)
@@ -1330,12 +1361,16 @@ let refreshSampleSum = 0;
 
 function loop(now) {
   requestAnimationFrame(loop);
+  beginFrame(now);
   const frameLoopStartTime = (typeof performance !== 'undefined') ? performance.now() : Date.now();
   const currentTime = (typeof now === 'number' && now > 0) ? now : performance.now();
   if (lastTime === 0) {
     lastTime = currentTime;
+    beginSection('update');
     update();
+    endSection('update');
     draw();
+    endFrame();
     return;
   }
 
@@ -1399,7 +1434,9 @@ function loop(now) {
   let steps = 0;
   while (accumulator >= TICK_MS && steps < 2) {
     try {
+      beginSection('update');
       update();
+      endSection('update');
     } catch (err) {
       console.error('[GAME LOOP UPDATE ERROR]', err);
     }
@@ -1431,6 +1468,7 @@ function loop(now) {
   if (typeof updatePhysicsWatchdog === 'function') {
     updatePhysicsWatchdog(delta / 1000, frameExecMs);
   }
+  endFrame();
 }
 
 let bgSimulationInterval = null;

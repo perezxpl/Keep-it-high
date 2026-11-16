@@ -399,6 +399,12 @@ async function runPlaytest() {
         : '{}';
     });
 
+    const perfReport = await page.evaluate(() => {
+      return (window.mobilePerfMonitor && typeof window.mobilePerfMonitor.getReportText === 'function')
+        ? window.mobilePerfMonitor.getReportText()
+        : null;
+    });
+
     // Zapisanie raportów na dysk
     const reportsDir = path.join(ROOT_DIR, 'reports');
     if (!fs.existsSync(reportsDir)) {
@@ -419,6 +425,11 @@ async function runPlaytest() {
 
     fs.writeFileSync(mdPath, finalMarkdown, 'utf-8');
     fs.writeFileSync(jsonPath, reportJSON, 'utf-8');
+    if (perfReport) {
+      const perfPath = path.join(reportsDir, 'latest-mobile-perf.txt');
+      fs.writeFileSync(perfPath, perfReport, 'utf-8');
+      console.log(`[AI-PLAYTEST] RAPORT MOBILNY ZAPISANY DO: reports/latest-mobile-perf.txt`);
+    }
 
     console.log(`\n================================================================================`);
     console.log(`[AI-PLAYTEST] RAPORT ZAPISANY DO: reports/latest-playtest.md`);

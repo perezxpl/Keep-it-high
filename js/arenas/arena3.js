@@ -923,6 +923,7 @@ if (typeof window !== 'undefined') {
   window.ARENA_3_TOWER_PILLARS = ARENA_3_TOWER_PILLARS;
   window.ARENA_3_TOWER_BLOCKS = ARENA_3_TOWER_BLOCKS;
   window.STONE_DEBRIS = STONE_DEBRIS;
+  window.BRIDGE_SPLINTERS = BRIDGE_SPLINTERS;
   window.arena3 = arena3;
 }
 
