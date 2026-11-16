@@ -55,7 +55,10 @@ import {
   ARENA_3_CRATERS,
   carveTerrainCrater,
   GROUND_WATER_TABLE_Y,
-  GROUND_BEDROCK_Y
+  GROUND_BEDROCK_Y,
+  ALL_DESTRUCTIBLE_BLOCKS,
+  activeFallingBlocks,
+  removeDeadPlatform
 } from './arena3/state.js';
 
 import {
@@ -121,14 +124,6 @@ export {
 // =========================================================================
 // 5. GŁÓWNA PĘTLA AKTUALIZACJI ARENY 3 (UPDATE TICK)
 // =========================================================================
-const ALL_DESTRUCTIBLE_BLOCKS = [
-  ...ARENA_3_BRIDGE_BLOCKS,
-  ...ARENA_3_RAMP_BLOCKS,
-  ...ALL_CANOPY_BLOCKS,
-  ...ARENA_3_TOWER_BLOCKS,
-  ...ARENA_3_SNIPER_SLABS
-];
-
 export function updateArena3(dt, players, ball) {
   addArena3AnimTime(dt);
 
@@ -586,9 +581,9 @@ export function updateArena3(dt, players, ball) {
     }
   }
 
-  // 3C. Przetwarzanie kaskadowego zapadania i fizyki zniszczalnych klocków
-  for (let i = 0; i < ALL_DESTRUCTIBLE_BLOCKS.length; i++) {
-    const b = ALL_DESTRUCTIBLE_BLOCKS[i];
+  // 3C. Przetwarzanie kaskadowego zapadania i fizyki aktywnych spadających klocków
+  for (let i = activeFallingBlocks.length - 1; i >= 0; i--) {
+    const b = activeFallingBlocks[i];
 
     // Obsługa kaskadowego zapadania się klocków
     if (b.collapseDelay > 0) {
@@ -609,13 +604,6 @@ export function updateArena3(dt, players, ball) {
     }
 
     if (b.intact) {
-      if (b.isBridgeBlock) {
-        b.x = b.origX;
-        b.y = b.origY;
-        b.solid = true;
-        b.isPlatform = true;
-        b.oneWay = true;
-      }
       continue;
     }
 
@@ -639,7 +627,14 @@ export function updateArena3(dt, players, ball) {
       b.y += 1.2;
     }
 
-    // Jeśli klocek wypadł poza świat gry lub utonął poniżej dna (y > 1415) -> trwale uśpij i wyłącz
+    // Jeśli klocek osiągnął dno i zasnął -> trwale usuń z platform i wyjmij z activeFallingBlocks
+    if (b.y > 1400 && b.isAsleep) {
+      removeDeadPlatform(b);
+      activeFallingBlocks.splice(i, 1);
+      continue;
+    }
+
+    // Jeśli klocek wypadł poza świat gry lub utonął poniżej dna (y > 1415) -> trwale uśpij, usuń i wyłącz
     if (b.y > 1415 || b.x < 300 || b.x > 4100) {
       b.isAsleep = true;
       b.solid = false;
@@ -647,6 +642,8 @@ export function updateArena3(dt, players, ball) {
       b.vx = 0;
       b.vy = 0;
       b.vRot = 0;
+      removeDeadPlatform(b);
+      activeFallingBlocks.splice(i, 1);
       continue;
     }
 
@@ -787,6 +784,11 @@ export function updateArena3(dt, players, ball) {
     if (!b.intact && (b.y >= 1290 || (b.y + b.h >= 1295) || b.isAsleep)) {
       b.solid = false;
       b.isPlatform = false;
+    }
+
+    if (b.y > 1400 && b.isAsleep) {
+      removeDeadPlatform(b);
+      activeFallingBlocks.splice(i, 1);
     }
   }
 

@@ -35,6 +35,8 @@ const PORT = parseInt(getArg('port', '8000'), 10);
 const HEADLESS = getArg('headless', 'true') !== 'false';
 const STRESS = getArg('stress', 'none');
 const STRICT = getArg('strict', '0') === '1' || args.includes('--strict=1') || args.includes('--strict');
+const CAM_X = getArg('camX', (ARENA === 'arena-3' || ARENA === '3') ? '1560' : null);
+const CAM_Y = getArg('camY', (ARENA === 'arena-3' || ARENA === '3') ? '650' : null);
 
 // Typy MIME dla wbudowanego lekkiego serwera HTTP
 const MIME_TYPES = {
@@ -192,7 +194,10 @@ async function runPlaytest() {
       }
     });
 
-    const targetUrl = `http://localhost:${PORT}/?arena=${ARENA}&autostart=STRIKER&aiTest=1&bots=${BOTS}&stress=${STRESS}&strict=${STRICT ? '1' : '0'}`;
+    let targetUrl = `http://localhost:${PORT}/?arena=${ARENA}&autostart=STRIKER&aiTest=1&bots=${BOTS}&stress=${STRESS}&strict=${STRICT ? '1' : '0'}`;
+    if (CAM_X !== null && CAM_Y !== null) {
+      targetUrl += `&camX=${CAM_X}&camY=${CAM_Y}`;
+    }
     console.log(`[AI-PLAYTEST] Ladowanie gry pod adresem: ${targetUrl}`);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
@@ -350,7 +355,8 @@ async function runPlaytest() {
 
         if (quickStats) {
           const sec = (currentElapsedMs / 1000).toFixed(0);
-          console.log(`[AI-PLAYTEST] Postep: ${sec}/${DURATION}s | Sredni FPS: ${quickStats.avgFps} | 1% Low: ${quickStats.onePercentLowFps} | Przetworzonych klatek: ${quickStats.frameCount}`);
+          const drawInfo = (quickStats.avgDrawCalls !== undefined) ? ` | Draw Calls: ${quickStats.avgDrawCalls}` : '';
+          console.log(`[AI-PLAYTEST] Postep: ${sec}/${DURATION}s | Sredni FPS: ${quickStats.avgFps} | 1% Low: ${quickStats.onePercentLowFps}${drawInfo} | Przetworzonych klatek: ${quickStats.frameCount}`);
         }
       }
     }

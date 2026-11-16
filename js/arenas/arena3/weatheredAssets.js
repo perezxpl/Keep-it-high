@@ -25,20 +25,8 @@ export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
 
   ctx.save();
 
-  // 1. Wielowarstwowy, nasycony gradient zestarzałego drewna (teak / palisander)
-  // Identyczna paleta jak w drawSplinteredWoodRubble!
-  const bGrad = ctx.createLinearGradient(x, y, x, y + h);
-  if (isWet) {
-    bGrad.addColorStop(0.0, '#3f2510');
-    bGrad.addColorStop(0.35, '#2b1708');
-    bGrad.addColorStop(0.75, '#1a0d04');
-    bGrad.addColorStop(1.0, '#0f0602');
-  } else {
-    bGrad.addColorStop(0.0, '#664019');
-    bGrad.addColorStop(0.35, '#4a2c10');
-    bGrad.addColorStop(0.75, '#2d1807');
-    bGrad.addColorStop(1.0, '#1c0d03');
-  }
+  // 1. Wielowarstwowe wypełnienie zestarzałego drewna (teak / palisander)
+  ctx.fillStyle = isWet ? '#2b1708' : '#4a2c10';
 
   // 2. Wyszczerbiony, organiczny profil deski (subtelne mikro-skosy i ubytki)
   ctx.beginPath();
@@ -51,41 +39,30 @@ export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
   ctx.lineTo(x, y + h - 1);
   ctx.lineTo(x, y + 2);
   ctx.closePath();
-
-  ctx.fillStyle = bGrad;
   ctx.fill();
+
+  // Cień dolny deski
+  ctx.fillStyle = 'rgba(15, 6, 2, 0.45)';
+  ctx.fillRect(x + 1, y + h * 0.65, w - 2, h * 0.35);
 
   // 3. Wytarcie środka od kroków / ślad stóp (desaturated foot-traffic patina)
   if (w > 20) {
-    const footGrad = ctx.createRadialGradient(x + w * 0.5, y + h * 0.35, 2, x + w * 0.5, y + h * 0.35, w * 0.45);
-    footGrad.addColorStop(0.0, 'rgba(195, 150, 95, 0.16)');
-    footGrad.addColorStop(0.7, 'rgba(120, 85, 45, 0.08)');
-    footGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
-    ctx.fillStyle = footGrad;
-    ctx.fill();
+    ctx.fillStyle = 'rgba(195, 150, 95, 0.12)';
+    ctx.fillRect(x + w * 0.2, y + 2, w * 0.6, h * 0.4);
   }
 
   // 4. Podział na poszczególne deski (szczeliny dylatacyjne z cieniem)
   if (plankCount > 1) {
     const plankW = w / plankCount;
+    ctx.strokeStyle = '#0e0501';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
     for (let p = 1; p < plankCount; p++) {
       const px = x + p * plankW;
-      // Cień szczeliny
-      ctx.strokeStyle = '#0e0501';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
       ctx.moveTo(px, y);
       ctx.lineTo(px, y + h);
-      ctx.stroke();
-
-      // Zaokrąglona faza krawędzi deski
-      ctx.strokeStyle = 'rgba(180, 130, 65, 0.35)';
-      ctx.lineWidth = 0.9;
-      ctx.beginPath();
-      ctx.moveTo(px + 1.2, y + 1);
-      ctx.lineTo(px + 1.2, y + h - 1);
-      ctx.stroke();
     }
+    ctx.stroke();
   }
 
   // 5. Wzdłużne słoje drewna i rozwarstwienia włókien (wood grain fissures)
@@ -95,11 +72,11 @@ export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
   // Słój 1 (górny)
   const gY1 = y + h * 0.28 + ((seed % 3) - 1);
   ctx.moveTo(x + 3, gY1);
-  ctx.quadraticCurveTo(x + w * 0.45, gY1 + ((seed % 5) - 2), x + w - 4, gY1 - 1);
+  ctx.lineTo(x + w - 4, gY1 - 1);
   // Słój 2 (dolny)
   const gY2 = y + h * 0.68 + (((seed + 2) % 3) - 1);
   ctx.moveTo(x + 4, gY2);
-  ctx.quadraticCurveTo(x + w * 0.6, gY2 - ((seed % 4) - 1.5), x + w - 3, gY2 + 1);
+  ctx.lineTo(x + w - 3, gY2 + 1);
   ctx.stroke();
 
   // Sęk w drewnie na niektórych deskach (knot eye)
@@ -191,24 +168,13 @@ export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
     }
   }
 
-  // 9. Organiczny mech dżungli w szczelinach i na wilgotnej krawędzi
+  // 9. Organiczny mech dżungli w szczelinach i na wilgotnej krawędzi (zoptymalizowany)
   if (hasMoss && mossAmount > 0) {
-    // Ciemna wilgotna baza mchu
     ctx.fillStyle = '#223d12';
-    for (let mx = x + 2; mx < x + w - 2; mx += 6) {
-      const mw = 4 + (Math.sin(mx * 0.4 + seed) * 2);
-      ctx.fillRect(mx, y, mw, 3.2);
-    }
-    // Świeży korpus mchu
+    ctx.fillRect(x + 2, y, w - 4, 2.4);
     ctx.fillStyle = '#447822';
-    for (let mx = x + 3; mx < x + w - 3; mx += 8) {
-      const mw = 3.5 + (Math.cos(mx * 0.5 + seed) * 1.8);
-      ctx.fillRect(mx, y, mw, 2.2);
-    }
-    // Jasne punkty porostów (lichen specks)
-    ctx.fillStyle = '#78ba34';
-    for (let mx = x + 4; mx < x + w - 4; mx += 14) {
-      ctx.fillRect(mx + ((seed % 3)), y, 2.2, 1.4);
+    for (let mx = x + 4; mx < x + w - 4; mx += 10) {
+      ctx.fillRect(mx, y, 4, 1.8);
     }
   }
 
@@ -239,7 +205,7 @@ export function drawWeatheredTimberDeck(ctx, x, y, w, h, options = {}) {
       ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.moveTo(vx, y + h);
-      ctx.quadraticCurveTo(vx + sway * 0.5, y + h + vineLen * 0.5, vx + sway, y + h + vineLen);
+      ctx.lineTo(vx + sway, y + h + vineLen);
       ctx.stroke();
 
       // Listek pnącza
@@ -264,22 +230,11 @@ export function drawWeatheredTimberPost(ctx, x, y, w, h, options = {}) {
 
   ctx.save();
 
-  // 1. Pionowy gradient drewna z wyrazistym trójwymiarowym cieniowaniem cylindrycznym
-  const pGrad = ctx.createLinearGradient(x, y, x + w, y);
-  if (isWet) {
-    pGrad.addColorStop(0.0, '#38200c');
-    pGrad.addColorStop(0.35, '#261407');
-    pGrad.addColorStop(0.75, '#160a03');
-    pGrad.addColorStop(1.0, '#0a0401');
-  } else {
-    pGrad.addColorStop(0.0, '#5a3818');
-    pGrad.addColorStop(0.35, '#42270f');
-    pGrad.addColorStop(0.75, '#291607');
-    pGrad.addColorStop(1.0, '#140a03');
-  }
-
-  ctx.fillStyle = pGrad;
+  // 1. Drewno słupa z cieniowaniem cylindrycznym (bez alokacji gradientu)
+  ctx.fillStyle = isWet ? '#261407' : '#42270f';
   ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(10, 4, 1, 0.45)';
+  ctx.fillRect(x + w * 0.6, y, w * 0.4, h);
 
   // 2. Faza krawędzi słupa (chamfer highlights)
   ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
@@ -388,14 +343,11 @@ export function drawWeatheredStoneMasonry(ctx, x, y, w, h, options = {}) {
 
   ctx.save();
 
-  // 1. Główny wielowarstwowy gradient skały dolomitowo-bazaltowej
-  const rGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-  rGrad.addColorStop(0.0, '#4b574b');
-  rGrad.addColorStop(0.35, '#343f34');
-  rGrad.addColorStop(0.70, '#202820');
-  rGrad.addColorStop(1.0, '#101610');
-  ctx.fillStyle = rGrad;
+  // 1. Główna baza skały dolomitowo-bazaltowej (bez alokacji gradientu)
+  ctx.fillStyle = isNearWater ? '#202820' : '#343f34';
   ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(16, 22, 16, 0.55)';
+  ctx.fillRect(x, y + h * 0.65, w, h * 0.35);
 
   // 2. Faza korony bloku (chamfer) z fasetowanym cieniowaniem
   if (hasChamfer) {
@@ -411,58 +363,62 @@ export function drawWeatheredStoneMasonry(ctx, x, y, w, h, options = {}) {
     ctx.fill();
   }
 
-  // 3. Poziome ciosy kamienne i spoiny murarskie (ashlar masonry seams)
+  // 3. Poziome ciosy kamienne i spoiny murarskie (zgrupowane w 1 stroke)
   ctx.strokeStyle = '#0c120c';
   ctx.lineWidth = 2.0;
+  ctx.beginPath();
   let courseIdx = 0;
   for (let by = y + courseHeight; by < y + h - 6; by += courseHeight) {
-    ctx.beginPath();
     ctx.moveTo(x, by);
     ctx.lineTo(x + w, by);
-    ctx.stroke();
 
     // Pionowe spoiny z przesunięciem cegieł (staggered joints)
     const blockW = Math.max(22, w * 0.45);
     const startOffset = (courseIdx % 2 === 0) ? blockW * 0.5 : blockW;
     for (let jx = x + startOffset; jx < x + w - 6; jx += blockW) {
-      ctx.beginPath();
       ctx.moveTo(jx, by - courseHeight);
       ctx.lineTo(jx, by);
-      ctx.stroke();
-
-      // Kute żelazne klamry kotwiące (iron cramp clamps) spinające sąsiednie bloki
-      if (hasCramps && (courseIdx + seed) % 2 === 0 && jx > x + 6 && jx < x + w - 10) {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(jx - 4, by - courseHeight + 6, 8, 3.5);
-        ctx.fillRect(jx - 4, by - courseHeight + 4, 2.5, 6);
-        ctx.fillRect(jx + 2, by - courseHeight + 4, 2.5, 6);
-
-        // Rdza wokół klamry wnikająca w spoinę kamienia
-        ctx.fillStyle = 'rgba(146, 64, 14, 0.45)';
-        ctx.fillRect(jx - 1, by - courseHeight + 9, 2, 5);
-      }
     }
-
-    // Fasetowy refleks na górnej krawędzi każdego ciosu
-    ctx.strokeStyle = 'rgba(135, 175, 135, 0.22)';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(x + 2, by + 1.2);
-    ctx.lineTo(x + w - 2, by + 1.2);
-    ctx.stroke();
-
     courseIdx++;
   }
+  ctx.stroke();
+
+  // Kute żelazne klamry kotwiące (iron cramp clamps) spinające sąsiednie bloki
+  if (hasCramps) {
+    courseIdx = 0;
+    for (let by = y + courseHeight; by < y + h - 6; by += courseHeight) {
+      const blockW = Math.max(22, w * 0.45);
+      const startOffset = (courseIdx % 2 === 0) ? blockW * 0.5 : blockW;
+      for (let jx = x + startOffset; jx < x + w - 6; jx += blockW) {
+        if ((courseIdx + seed) % 2 === 0 && jx > x + 6 && jx < x + w - 10) {
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(jx - 4, by - courseHeight + 6, 8, 3.5);
+          ctx.fillRect(jx - 4, by - courseHeight + 4, 2.5, 6);
+          ctx.fillRect(jx + 2, by - courseHeight + 4, 2.5, 6);
+
+          // Rdza wokół klamry wnikająca w spoinę kamienia
+          ctx.fillStyle = 'rgba(146, 64, 14, 0.45)';
+          ctx.fillRect(jx - 1, by - courseHeight + 9, 2, 5);
+        }
+      }
+      courseIdx++;
+    }
+  }
+
+  // Fasetowy refleks na górnej krawędzi każdego ciosu (zgrupowany w 1 stroke)
+  ctx.strokeStyle = 'rgba(135, 175, 135, 0.22)';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  for (let by = y + courseHeight; by < y + h - 6; by += courseHeight) {
+    ctx.moveTo(x + 2, by + 1.2);
+    ctx.lineTo(x + w - 2, by + 1.2);
+  }
+  ctx.stroke();
 
   // 4. Strefa zanurzenia w rzece: ciemny muł, glony i wilgotny połysk (waterline slime)
   if (isNearWater && waterLineY > y) {
     const slimeTopY = Math.max(y, waterLineY - 18);
-    const slimeGrad = ctx.createLinearGradient(x, slimeTopY, x, y + h);
-    slimeGrad.addColorStop(0.0, 'rgba(25, 48, 20, 0.0)');
-    slimeGrad.addColorStop(0.35, 'rgba(20, 42, 16, 0.70)');
-    slimeGrad.addColorStop(0.70, 'rgba(8, 20, 8, 0.88)');
-    slimeGrad.addColorStop(1.0, 'rgba(4, 10, 4, 0.95)');
-    ctx.fillStyle = slimeGrad;
+    ctx.fillStyle = 'rgba(8, 20, 8, 0.75)';
     ctx.fillRect(x, slimeTopY, w, (y + h) - slimeTopY);
 
     // Linia kożucha glonów

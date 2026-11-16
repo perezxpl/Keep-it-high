@@ -160,23 +160,26 @@ function renderCraterSegment(ctx, seg) {
   }
   ctx.stroke();
 
-  // 4. Bryły wyrwanego bazaltu spoczywające na dnie leja
+  // 4. Bryły wyrwanego bazaltu spoczywające na dnie leja (zgrupowane w 1 fill)
   ctx.fillStyle = '#0a0f15';
+  ctx.beginPath();
   for (let i = 1; i < seg.length - 1; i += 2) {
     const pt = seg[i];
-    ctx.beginPath();
-    ctx.arc(pt.x + ((i * 13) % 7 - 3), pt.y - 1, 2.5 + ((i * 7) % 3), 0, Math.PI * 2);
-    ctx.fill();
+    const bx = pt.x + ((i * 13) % 7 - 3);
+    const by = pt.y - 1;
+    const br = 2.5 + ((i * 7) % 3);
+    ctx.moveTo(bx + br, by);
+    ctx.arc(bx, by, br, 0, Math.PI * 2);
   }
+  ctx.fill();
 
-  // 5. Osmolone wargi wlotowe krateru na rzeczywistym poziomie wlotu leja
+  // 5. Osmolone wargi wlotowe krateru na rzeczywistym poziomie wlotu leja (zgrupowane w 1 fill)
   const lipL = seg[0];
   const lipR = seg[seg.length - 1];
   ctx.fillStyle = 'rgba(15, 10, 5, 0.85)';
   ctx.beginPath();
   ctx.ellipse(lipL.x, lipL.y, 8, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
+  ctx.moveTo(lipR.x + 8, lipR.y);
   ctx.ellipse(lipR.x, lipR.y, 8, 3, 0, 0, Math.PI * 2);
   ctx.fill();
 
@@ -538,7 +541,7 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
   const blades = [];
   const ferns = [];
 
-  for (let x = startX; x <= endX; x += 4.8) {
+  for (let x = startX; x <= endX; x += 8.0) {
     const y = getSurfaceYFromPoints(ovalPoints, x);
 
     // Jeśli punkt jest wewnątrz krateru lub głęboko w rzece: BRAK TRAWY!
@@ -579,10 +582,8 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
 
     const tipX = x + swayX;
     const tipY = y - bladeH;
-    const cpX = x + swayX * 0.45;
-    const cpY = y - bladeH * 0.55;
 
-    blades.push(x, y, cpX, cpY, tipX, tipY);
+    blades.push(x, y, tipX, tipY);
 
     // Kępki dzikich paproci dżungli co 38-55 px
     if (f3 > 0.74 && x > minX + 30 && x < maxX - 30) {
@@ -604,70 +605,66 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
   }
 
   if (blades.length > 0) {
-    // Warstwa 1: Ciemne podszycie leśne
-    ctx.strokeStyle = '#0d2213';
-    ctx.lineWidth = 2.2;
+    // Warstwa 1: Ciemne podszycie leśne i żywa dżunglowa zieleń (szybki przebieg lineTo)
+    ctx.strokeStyle = '#112f18';
+    ctx.lineWidth = 1.8;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    for (let bi = 0; bi < blades.length; bi += 6) {
-      ctx.moveTo(blades[bi] - 0.9, blades[bi + 1]);
-      ctx.quadraticCurveTo(blades[bi + 2] - 0.5, blades[bi + 3], blades[bi + 4] - 0.8, blades[bi + 5] + 2);
-    }
-    ctx.stroke();
-
-    // Warstwa 2: Bogata, żywa dżunglowa zieleń
-    ctx.strokeStyle = '#1b4423';
-    ctx.lineWidth = 1.6;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    for (let bi = 0; bi < blades.length; bi += 6) {
+    for (let bi = 0; bi < blades.length; bi += 4) {
       ctx.moveTo(blades[bi], blades[bi + 1]);
-      ctx.quadraticCurveTo(blades[bi + 2], blades[bi + 3], blades[bi + 4], blades[bi + 5]);
+      ctx.lineTo(blades[bi + 2], blades[bi + 3]);
     }
     ctx.stroke();
 
-    // Warstwa 3: Księżycowe rozświetlenia końcówek traw (delikatny srebrzysty seledyn)
-    ctx.strokeStyle = 'rgba(126, 212, 146, 0.75)';
+    // Warstwa 2: Księżycowe rozświetlenia końcówek traw (delikatny srebrzysty seledyn)
+    ctx.strokeStyle = 'rgba(126, 212, 146, 0.70)';
     ctx.lineWidth = 1.1;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    for (let bi = 0; bi < blades.length; bi += 6) {
-      ctx.moveTo(blades[bi] + 0.9, blades[bi + 1] - 2);
-      ctx.quadraticCurveTo(blades[bi + 2] + 0.6, blades[bi + 3], blades[bi + 4] + 0.9, blades[bi + 5] - 1);
+    for (let bi = 0; bi < blades.length; bi += 4) {
+      ctx.moveTo(blades[bi] + 0.8, blades[bi + 1] - 2);
+      ctx.lineTo(blades[bi + 2] + 0.8, blades[bi + 3] - 1);
     }
     ctx.stroke();
   }
 
-  // C. Dzikie paprocie dżungli (Jungle Fern Fronds)
-  for (const fn of ferns) {
-    const fernH = 15 + fn.f1 * 10;
-    const dir = fn.f2 > 0.5 ? 1 : -1;
-    const fSway = Math.sin(animTime * 2.0 + fn.x * 0.03) * 5;
-
-    ctx.save();
+  // C. Dzikie paprocie dżungli (Jungle Fern Fronds - zgrupowane w 2 wywołania stroke)
+  if (ferns.length > 0) {
     ctx.strokeStyle = '#173c1f';
     ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.moveTo(fn.x, fn.y);
-    const endFx = fn.x + (dir * (fernH * 0.65)) + fSway;
-    const endFy = fn.y - fernH;
-    ctx.quadraticCurveTo(fn.x + (dir * (fernH * 0.3)), fn.y - (fernH * 0.6), endFx, endFy);
+    for (let fi = 0; fi < ferns.length; fi++) {
+      const fn = ferns[fi];
+      const fernH = 15 + fn.f1 * 10;
+      const dir = fn.f2 > 0.5 ? 1 : -1;
+      const fSway = Math.sin(animTime * 2.0 + fn.x * 0.03) * 5;
+      const endFx = fn.x + (dir * (fernH * 0.65)) + fSway;
+      const endFy = fn.y - fernH;
+      fn.endFx = endFx;
+      fn.endFy = endFy;
+      fn.dir = dir;
+      fn.fSway = fSway;
+      ctx.moveTo(fn.x, fn.y);
+      ctx.quadraticCurveTo(fn.x + (dir * (fernH * 0.3)), fn.y - (fernH * 0.6), endFx, endFy);
+    }
     ctx.stroke();
 
     // Listki boczne pióropusza paproci
     ctx.strokeStyle = 'rgba(82, 168, 102, 0.85)';
     ctx.lineWidth = 1.3;
     ctx.beginPath();
-    for (let step = 0.35; step <= 0.9; step += 0.22) {
-      const lx = fn.x + (endFx - fn.x) * step;
-      const ly = fn.y + (endFy - fn.y) * step;
-      ctx.moveTo(lx, ly);
-      ctx.lineTo(lx + dir * 6 + fSway * 0.3, ly - 3);
-      ctx.moveTo(lx, ly);
-      ctx.lineTo(lx - dir * 4 + fSway * 0.3, ly - 2);
+    for (let fi = 0; fi < ferns.length; fi++) {
+      const fn = ferns[fi];
+      for (let step = 0.35; step <= 0.9; step += 0.22) {
+        const lx = fn.x + (fn.endFx - fn.x) * step;
+        const ly = fn.y + (fn.endFy - fn.y) * step;
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx + fn.dir * 6 + fn.fSway * 0.3, ly - 3);
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx - fn.dir * 4 + fn.fSway * 0.3, ly - 2);
+      }
     }
     ctx.stroke();
-    ctx.restore();
   }
 
   ctx.restore();
@@ -938,26 +935,27 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.fillStyle = _cachedSurfGrad;
     ctx.fill();
 
-    // C. Błyszczące refleksy piany na powierzchni rzeki
+    // C. Błyszczące refleksy piany na powierzchni rzeki (zgrupowane w 1 stroke)
     ctx.strokeStyle = 'rgba(200, 245, 255, 0.85)';
     ctx.lineWidth = 2.2;
+    ctx.beginPath();
     for (let wx = 1630; wx < 2770; wx += 95) {
       const wy = 1300 + Math.sin((wx * 0.022) + animTime * 2.8) * 5.5;
-      ctx.beginPath();
       ctx.moveTo(wx, wy);
       ctx.lineTo(wx + 45, wy - 1);
-      ctx.stroke();
     }
+    ctx.stroke();
 
-    // D. Bąbelki / piana w strefie wody
+    // D. Bąbelki / piana w strefie wody (zgrupowane w 1 fill)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.beginPath();
     for (let i = 0; i < WATER_RIPPLES.length; i++) {
       const rip = WATER_RIPPLES[i];
       const ry = rip.y + Math.sin(animTime * 2 + rip.phase) * 6;
-      ctx.beginPath();
+      ctx.moveTo(rip.x + rip.r, ry);
       ctx.arc(rip.x, ry, rip.r, 0, Math.PI * 2);
-      ctx.fill();
     }
+    ctx.fill();
     ctx.restore();
 
     // E. Ostrzeżenie przed głębią rzeki (umieszczone centralnie w kanale)
@@ -1169,6 +1167,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let i = 0; i < lowerBlocks.length; i++) {
       const b = lowerBlocks[i];
       if (b.x + b.w + 30 < camL || b.x - 30 > camR) continue;
+      if (!b.intact && (b.y > 1400 || b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       ctx.save();
       if (b.intact) {
@@ -1332,7 +1331,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let i = 0; i < upperBlocks.length; i++) {
       const b = upperBlocks[i];
       if (b.x + b.w + 30 < camL || b.x - 30 > camR) continue;
-      if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
+      if (!b.intact && (b.y > 1400 || b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       ctx.save();
       if (b.intact) {
@@ -1463,7 +1462,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
       const slab = ARENA_3_SNIPER_SLABS[i];
       if (slab.x + slab.w + 50 < camL || slab.x - 50 > camR) continue;
-      if (!slab.intact && (slab.y + slab.h + 20 < camT || slab.y - 20 > camB)) continue;
+      if (!slab.intact && (slab.y > 1400 || slab.y + slab.h + 20 < camT || slab.y - 20 > camB)) continue;
 
       ctx.save();
       if (slab.intact) {
@@ -1790,7 +1789,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
       if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
-      if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
+      if (!b.intact && (b.y > 1400 || b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       const y1 = getApproachInclineY(b.origX, isLeft);
       const y2 = getApproachInclineY(b.origX + b.w, isLeft);
@@ -1864,7 +1863,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
       if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
-      if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
+      if (!b.intact && (b.y > 1400 || b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       const y1 = getApproachInclineY(b.origX, isLeft);
       const y2 = getApproachInclineY(b.origX + b.w, isLeft);
@@ -2154,7 +2153,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
       const b = plat.blocks[bIdx];
       if (b.x + b.w + 20 < camL || b.x - 20 > camR) continue;
-      if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
+      if (!b.intact && (b.y > 1400 || b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       ctx.save();
       const cx = b.x + b.w / 2;
@@ -2317,34 +2316,53 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.stroke();
     }
 
-    // 3. Pionowe wieszaki linowe łączące główną linę z kładką (Vertical Suspenders)
+    // 3. Pionowe wieszaki linowe łączące główną linę z kładką (Vertical Suspenders - zgrupowane w 1 stroke)
     ctx.strokeStyle = 'rgba(115, 78, 38, 0.85)';
     ctx.lineWidth = 2;
+    ctx.beginPath();
     for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
       const b = ARENA_3_BRIDGE_BLOCKS[i];
-      const hx = b.origX + b.w / 2;
-      const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
-      const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
-      const currentY = b.y + (b.intact ? (b.sag || 0) : 0);
-
       if (b.intact && b.cableAttached) {
-        // Nienaruszona lina nośna
-        ctx.beginPath();
+        const hx = b.origX + b.w / 2;
+        const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
+        const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
+        const currentY = b.y + (b.sag || 0);
         ctx.moveTo(hx, cableY);
         ctx.lineTo(hx, currentY);
-        ctx.stroke();
-
-        // Stalowa obejma na desce
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(hx - 2, currentY - 2, 4, 6);
-      } else {
-        // Zerwana lina powiewająca na wietrze (frayed cable)
-        const vSway = Math.sin(animTime * 3.5 + i * 0.8) * 8;
-        ctx.beginPath();
-        ctx.moveTo(hx, cableY);
-        ctx.quadraticCurveTo(hx + vSway * 0.5, cableY + 18, hx + vSway, cableY + 36);
-        ctx.stroke();
       }
+    }
+    ctx.stroke();
+
+    // Stalowe obejmy na deskach
+    ctx.fillStyle = '#334155';
+    for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+      const b = ARENA_3_BRIDGE_BLOCKS[i];
+      if (b.intact && b.cableAttached) {
+        const hx = b.origX + b.w / 2;
+        const currentY = b.y + (b.sag || 0);
+        ctx.fillRect(hx - 2, currentY - 2, 4, 6);
+      }
+    }
+
+    // Zerwane liny powiewające na wietrze (frayed cables - zgrupowane w 1 stroke)
+    ctx.strokeStyle = 'rgba(115, 78, 38, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let hasBrokenCables = false;
+    for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+      const b = ARENA_3_BRIDGE_BLOCKS[i];
+      if (!b.intact || !b.cableAttached) {
+        hasBrokenCables = true;
+        const hx = b.origX + b.w / 2;
+        const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
+        const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
+        const vSway = Math.sin(animTime * 3.5 + i * 0.8) * 8;
+        ctx.moveTo(hx, cableY);
+        ctx.lineTo(hx + vSway, cableY + 36);
+      }
+    }
+    if (hasBrokenCables) {
+      ctx.stroke();
     }
     ctx.restore();
   }
@@ -2353,7 +2371,7 @@ export function drawArena3Foreground(ctx, camera) {
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
     if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
-    if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
+    if (!b.intact && (b.y > 1400 || b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
     ctx.save();
     if (b.intact) {
@@ -2460,17 +2478,17 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
-  // F3. ROZBRYZGI WODY W RZECE (Arena 3 Water Splashes)
-  for (let i = 0; i < ARENA_3_WATER_SPLASHES.length; i++) {
-    const ws = ARENA_3_WATER_SPLASHES[i];
-    if (ws.x < camL - 20 || ws.x > camR + 20) continue;
-    ctx.save();
-    ctx.globalAlpha = ws.alpha;
-    ctx.fillStyle = ws.color;
+  // F3. ROZBRYZGI WODY W RZECE (Arena 3 Water Splashes - zgrupowane w 1 fill)
+  if (ARENA_3_WATER_SPLASHES.length > 0) {
+    ctx.fillStyle = 'rgba(125, 215, 235, 0.65)';
     ctx.beginPath();
-    ctx.arc(ws.x, ws.y, ws.size, 0, Math.PI * 2);
+    for (let i = 0; i < ARENA_3_WATER_SPLASHES.length; i++) {
+      const ws = ARENA_3_WATER_SPLASHES[i];
+      if (ws.x < camL - 20 || ws.x > camR + 20) continue;
+      ctx.moveTo(ws.x + ws.size, ws.y);
+      ctx.arc(ws.x, ws.y, ws.size, 0, Math.PI * 2);
+    }
     ctx.fill();
-    ctx.restore();
   }
 
   ctx.restore();

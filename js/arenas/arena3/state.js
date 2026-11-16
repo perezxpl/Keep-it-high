@@ -22,6 +22,16 @@ for (let i = 0; i < 14; i++) {
   });
 }
 
+// Aktywne spadające klocki Areny 3 podlegające obliczeniom fizyki
+export const activeFallingBlocks = [];
+
+export function registerActiveFallingBlock(b) {
+  if (!b) return;
+  if (!activeFallingBlocks.includes(b)) {
+    activeFallingBlocks.push(b);
+  }
+}
+
 // 1B. DESTRUKCYJNE PODŁOŻE W STYLU WORMS / LIERO
 export const GROUND_WATER_TABLE_Y = 1345;
 export const GROUND_BEDROCK_Y = 1370;
@@ -269,6 +279,7 @@ for (const isLeft of [true, false]) {
 export function breakRampBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
+  registerActiveFallingBlock(block);
   block.isSlope = false;
   delete block.surfacePoints;
   // Po zniszczeniu pozostaje namacalny jako swobodny blok fizyczny
@@ -336,6 +347,7 @@ export function spawnArena3WaterSplash(x, y, count = 10, isGeyser = false) {
 export function breakBridgeBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
+  registerActiveFallingBlock(block);
   // Zniszczona deska staje się namacalnym spadającym/pływającym obiektem (chyba że znajduje się już w wodzie)
   const isInWater = (block.y >= 1290 || (block.y + block.h >= 1295));
   block.solid = !isInWater;
@@ -729,6 +741,7 @@ export function onCanopyRopeSnapped(plat, side) {
 export function breakCanopyBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
+  registerActiveFallingBlock(block);
   // Pozostaje solidnym i namacalnym obiektem
   block.solid = true;
   block.isPlatform = true;
@@ -774,6 +787,7 @@ export function evaluateBridgeIntegrity() {
         if (b.intact && b.collapseDelay === 0) {
           const distFromEdge = Math.min(i - seg.start, seg.end - i);
           b.collapseDelay = Math.max(1, distFromEdge * 3);
+          registerActiveFallingBlock(b);
         }
       }
     } else {
@@ -784,6 +798,7 @@ export function evaluateBridgeIntegrity() {
             const b = ARENA_3_BRIDGE_BLOCKS[i];
             if (b.intact && b.collapseDelay === 0) {
               b.collapseDelay = (seg.end - i + 1) * 3;
+              registerActiveFallingBlock(b);
             }
           }
         } else if (anchoredRight && !anchoredLeft) {
@@ -791,6 +806,7 @@ export function evaluateBridgeIntegrity() {
             const b = ARENA_3_BRIDGE_BLOCKS[i];
             if (b.intact && b.collapseDelay === 0) {
               b.collapseDelay = (i - seg.start + 1) * 3;
+              registerActiveFallingBlock(b);
             }
           }
         }
@@ -800,6 +816,25 @@ export function evaluateBridgeIntegrity() {
 }
 
 export function resetArena3() {
+  // 0. Przywrócenie usuniętych zniszczonych platform do ARENA_3_PLATFORMS i window.ARENA_PLATFORMS
+  if (typeof ALL_DESTRUCTIBLE_BLOCKS !== 'undefined' && Array.isArray(ALL_DESTRUCTIBLE_BLOCKS)) {
+    for (let i = 0; i < ALL_DESTRUCTIBLE_BLOCKS.length; i++) {
+      const b = ALL_DESTRUCTIBLE_BLOCKS[i];
+      if (b && b._removedFromPlatforms) {
+        if (!ARENA_3_PLATFORMS.includes(b)) {
+          ARENA_3_PLATFORMS.push(b);
+        }
+        if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+          if (!window.ARENA_PLATFORMS.includes(b)) {
+            window.ARENA_PLATFORMS.push(b);
+          }
+        }
+        b._removedFromPlatforms = false;
+      }
+    }
+  }
+  activeFallingBlocks.length = 0;
+
   // 1. Reset pylonów
   for (const k of ['left', 'right']) {
     const p = ARENA_3_PYLONS[k];
@@ -1082,6 +1117,7 @@ for (const cfg of SNIPER_SLABS_CONFIG) {
 export function breakSniperSlab(slab, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!slab || !slab.intact) return;
   slab.intact = false;
+  registerActiveFallingBlock(slab);
   // Pozostaje solidnym i namacalnym obiektem
   slab.solid = true;
   slab.isPlatform = true;
@@ -1191,6 +1227,7 @@ for (const deckCfg of TOWER_DECKS_CONFIG) {
 export function breakTowerBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
+  registerActiveFallingBlock(block);
   // Pozostaje solidnym i namacalnym obiektem
   block.solid = true;
   block.isPlatform = true;
@@ -1445,6 +1482,33 @@ export const ARENA_3_PLATFORMS = [
   // -----------------------------------------------------------------------
   ...ALL_CANOPY_BLOCKS
 ];
+
+export const ALL_DESTRUCTIBLE_BLOCKS = [
+  ...ARENA_3_BRIDGE_BLOCKS,
+  ...ARENA_3_RAMP_BLOCKS,
+  ...ALL_CANOPY_BLOCKS,
+  ...ARENA_3_TOWER_BLOCKS,
+  ...ARENA_3_SNIPER_SLABS
+];
+
+export function removeDeadPlatform(b) {
+  if (!b || b._removedFromPlatforms) return;
+  b._removedFromPlatforms = true;
+  b.solid = false;
+  b.isPlatform = false;
+
+  const idxA3 = ARENA_3_PLATFORMS.indexOf(b);
+  if (idxA3 !== -1) {
+    ARENA_3_PLATFORMS.splice(idxA3, 1);
+  }
+
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    const idxWin = window.ARENA_PLATFORMS.indexOf(b);
+    if (idxWin !== -1) {
+      window.ARENA_PLATFORMS.splice(idxWin, 1);
+    }
+  }
+}
 
 // =========================================================================
 // 4. OBIEKTY SPECJALNE (CUSTOM OBJECTS)

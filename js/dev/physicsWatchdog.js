@@ -37,6 +37,92 @@ export const watchdogState = {
 };
 
 /**
+ * Profiler operacji Canvas 2D (GPU Draw Calls).
+ * Aktywny wyłącznie w trybie testowym AI (?aiTest=1).
+ */
+export const canvasProfiler = {
+  installed: false,
+  active: false,
+  current: {
+    fill: 0,
+    stroke: 0,
+    drawImage: 0,
+    arc: 0,
+    quadraticCurveTo: 0,
+    clip: 0,
+    totalDrawCalls: 0
+  },
+  samples: [],
+  breakdowns: [],
+  maxTotal: 0
+};
+
+/**
+ * Instaluje lekki wrapper na CanvasRenderingContext2D.prototype zliczający operacje rysujące.
+ */
+export function installCanvasProfiler() {
+  if (canvasProfiler.installed) return;
+  if (typeof window === 'undefined' || typeof window.CanvasRenderingContext2D === 'undefined') return;
+
+  canvasProfiler.installed = true;
+  const proto = window.CanvasRenderingContext2D.prototype;
+
+  const origFill = proto.fill;
+  proto.fill = function(...args) {
+    if (canvasProfiler.active) {
+      canvasProfiler.current.fill++;
+      canvasProfiler.current.totalDrawCalls++;
+    }
+    return origFill.apply(this, args);
+  };
+
+  const origStroke = proto.stroke;
+  proto.stroke = function(...args) {
+    if (canvasProfiler.active) {
+      canvasProfiler.current.stroke++;
+      canvasProfiler.current.totalDrawCalls++;
+    }
+    return origStroke.apply(this, args);
+  };
+
+  const origDrawImage = proto.drawImage;
+  proto.drawImage = function(...args) {
+    if (canvasProfiler.active) {
+      canvasProfiler.current.drawImage++;
+      canvasProfiler.current.totalDrawCalls++;
+    }
+    return origDrawImage.apply(this, args);
+  };
+
+  const origArc = proto.arc;
+  proto.arc = function(...args) {
+    if (canvasProfiler.active) {
+      canvasProfiler.current.arc++;
+      canvasProfiler.current.totalDrawCalls++;
+    }
+    return origArc.apply(this, args);
+  };
+
+  const origQuad = proto.quadraticCurveTo;
+  proto.quadraticCurveTo = function(...args) {
+    if (canvasProfiler.active) {
+      canvasProfiler.current.quadraticCurveTo++;
+      canvasProfiler.current.totalDrawCalls++;
+    }
+    return origQuad.apply(this, args);
+  };
+
+  const origClip = proto.clip;
+  proto.clip = function(...args) {
+    if (canvasProfiler.active) {
+      canvasProfiler.current.clip++;
+      canvasProfiler.current.totalDrawCalls++;
+    }
+    return origClip.apply(this, args);
+  };
+}
+
+/**
  * Rejestruje anomalię z automatyczną deduplikacją powtarzających się zdarzeń.
  */
 function registerAnomaly(type, key, title, details, metadata = {}) {
@@ -158,6 +244,26 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
     }
     if (dtMs > watchdogState.maxDtMs) watchdogState.maxDtMs = dtMs;
     if (frameExecutionMs > watchdogState.maxFrameTimeMs) watchdogState.maxFrameTimeMs = frameExecutionMs;
+
+    if (canvasProfiler.active) {
+      const totalCalls = canvasProfiler.current.totalDrawCalls;
+      canvasProfiler.samples.push(totalCalls);
+      canvasProfiler.breakdowns.push({ ...canvasProfiler.current });
+      if (totalCalls > canvasProfiler.maxTotal) {
+        canvasProfiler.maxTotal = totalCalls;
+      }
+    }
+  }
+
+  // Reset licznika klatkowego operacji rysujących na kolejną klatkę
+  if (canvasProfiler.installed) {
+    canvasProfiler.current.fill = 0;
+    canvasProfiler.current.stroke = 0;
+    canvasProfiler.current.drawImage = 0;
+    canvasProfiler.current.arc = 0;
+    canvasProfiler.current.quadraticCurveTo = 0;
+    canvasProfiler.current.clip = 0;
+    canvasProfiler.current.totalDrawCalls = 0;
   }
 
   // =========================================================================
@@ -706,6 +812,39 @@ export function getWatchdogStats() {
     ? ((now - watchdogState.simulationStartTime) / 1000)
     : (count / 60);
 
+  // Statystyki operacji rysujących Canvas 2D (GPU Draw Calls)
+  const drawSampleCount = canvasProfiler.samples.length;
+  let avgDrawCalls = 0;
+  let maxDrawCalls = canvasProfiler.maxTotal;
+  let avgFill = 0;
+  let avgStroke = 0;
+  let avgDrawImage = 0;
+  let avgArc = 0;
+  let avgQuad = 0;
+  let avgClip = 0;
+
+  if (drawSampleCount > 0) {
+    const sumTotal = canvasProfiler.samples.reduce((a, b) => a + b, 0);
+    avgDrawCalls = Math.round(sumTotal / drawSampleCount);
+
+    let sumFill = 0, sumStroke = 0, sumDrawImage = 0, sumArc = 0, sumQuad = 0, sumClip = 0;
+    for (let i = 0; i < canvasProfiler.breakdowns.length; i++) {
+      const b = canvasProfiler.breakdowns[i];
+      sumFill += b.fill;
+      sumStroke += b.stroke;
+      sumDrawImage += b.drawImage;
+      sumArc += b.arc;
+      sumQuad += b.quadraticCurveTo;
+      sumClip += b.clip;
+    }
+    avgFill = Math.round(sumFill / drawSampleCount);
+    avgStroke = Math.round(sumStroke / drawSampleCount);
+    avgDrawImage = Math.round(sumDrawImage / drawSampleCount);
+    avgArc = Math.round(sumArc / drawSampleCount);
+    avgQuad = Math.round(sumQuad / drawSampleCount);
+    avgClip = Math.round(sumClip / drawSampleCount);
+  }
+
   return {
     frameCount: watchdogState.frameCount,
     analyzedFrames: count,
@@ -715,7 +854,17 @@ export function getWatchdogStats() {
     onePercentLowFps: Number(onePercentLowFps.toFixed(1)),
     p99FrameTimeMs: Number(p99FrameTimeMs.toFixed(2)),
     maxFrameTimeMs: Number(watchdogState.maxFrameTimeMs.toFixed(2)),
-    maxDtMs: Number(watchdogState.maxDtMs.toFixed(2))
+    maxDtMs: Number(watchdogState.maxDtMs.toFixed(2)),
+    avgDrawCalls,
+    maxDrawCalls,
+    drawCallsBreakdown: {
+      fill: avgFill,
+      stroke: avgStroke,
+      drawImage: avgDrawImage,
+      arc: avgArc,
+      quadraticCurveTo: avgQuad,
+      clip: avgClip
+    }
   };
 }
 
@@ -755,6 +904,8 @@ export function getWatchdogSummaryMarkdown() {
     `- **Maksymalny czas wykonania klatki (exec):** ${stats.maxFrameTimeMs} ms`,
     `- **Maksymalny odstęp między klatkami (dt):** ${stats.maxDtMs} ms`,
     `- **Liczba przycięć (FRAME_STUTTER > 28 ms):** ${watchdogState.summary.frameStutters}`,
+    `- **Średnie Draw Calls / klatkę (GPU):** **${stats.avgDrawCalls}** (fill: ${stats.drawCallsBreakdown.fill}, stroke: ${stats.drawCallsBreakdown.stroke}, drawImage: ${stats.drawCallsBreakdown.drawImage}, arc: ${stats.drawCallsBreakdown.arc}, quadraticCurveTo: ${stats.drawCallsBreakdown.quadraticCurveTo}, clip: ${stats.drawCallsBreakdown.clip})`,
+    `- **Maksymalne Draw Calls / klatkę (GPU):** **${stats.maxDrawCalls}**`,
     ``,
     `## 2. Podsumowanie Wykrytych Zdarzeń Fizyki`,
     `| Kategoria Anomalii | Liczba Zdarzeń | Status |`,
@@ -808,11 +959,22 @@ export function resetWatchdog() {
     blockStateDesyncs: 0,
     frameStutters: 0
   };
+  canvasProfiler.samples.length = 0;
+  canvasProfiler.breakdowns.length = 0;
+  canvasProfiler.maxTotal = 0;
+  canvasProfiler.current.fill = 0;
+  canvasProfiler.current.stroke = 0;
+  canvasProfiler.current.drawImage = 0;
+  canvasProfiler.current.arc = 0;
+  canvasProfiler.current.quadraticCurveTo = 0;
+  canvasProfiler.current.clip = 0;
+  canvasProfiler.current.totalDrawCalls = 0;
 }
 
 /**
  * Automatyczna inicjalizacja trybu testowego AI z parametru URL (?aiTest=1).
  * Gdy aiTest=1:
+ * - Instaluje lekki profiler operacji Canvas 2D (GPU Draw Calls).
  * - Ustawia liczbę botów na 5 (razem z graczem = 6 walczących postaci).
  * - Włącza sterowanie lokalnego gracza przez autonomiczny algorytm bota.
  */
@@ -829,6 +991,8 @@ export function checkAndInitAutoPlaytest() {
 
   if (isAiTest) {
     watchdogState.autoPlaytestEnabled = true;
+    installCanvasProfiler();
+    canvasProfiler.active = true;
 
     // Ustawienie 5 botów (aby łącznie z graczem było 6 postaci)
     const botsParam = parseInt(params.get('bots'), 10);
@@ -865,6 +1029,7 @@ if (typeof window !== 'undefined') {
     clear: () => resetWatchdog(),
     enable: () => { watchdogState.enabled = true; },
     disable: () => { watchdogState.enabled = false; },
+    canvasProfiler,
     state: watchdogState
   };
 
