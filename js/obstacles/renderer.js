@@ -13,6 +13,13 @@ import {
   getBrushedSteelPattern,
   drawTexturedPlatformBox
 } from './materials.js';
+import {
+  getBarrelSpritesheet,
+  SPRITE_CELL_W,
+  SPRITE_CELL_H,
+  SPRITE_BODY_W,
+  SPRITE_BODY_H
+} from '../hazards/renderer.js';
 
 const altarShockwaves = [];
 export function spawnAltarShockwave(x, y) {
@@ -457,38 +464,16 @@ export function drawCyberPillar(ctx, x, y, w, h) {
 }
 
 export function drawExplosiveBarrel(ctx, x, y, w, h) {
-  ctx.save();
-  const grad = ctx.createLinearGradient(x, y, x + w, y);
-  grad.addColorStop(0, '#7f1d1d');
-  grad.addColorStop(0.3, '#dc2626');
-  grad.addColorStop(0.7, '#ef4444');
-  grad.addColorStop(1, '#991b1b');
-  ctx.fillStyle = grad;
-  if (ctx.roundRect) ctx.roundRect(x, y, w, h, 3);
-  else ctx.rect(x, y, w, h);
-  ctx.fill();
-
-  ctx.strokeStyle = '#1e293b';
-  ctx.lineWidth = 2.0;
-  ctx.beginPath();
-  ctx.moveTo(x, y + 6); ctx.lineTo(x + w, y + 6);
-  ctx.moveTo(x, y + h - 6); ctx.lineTo(x + w, y + h - 6);
-  ctx.stroke();
-
-  drawHazardStripes(ctx, x + 2, y + h * 0.38, w - 4, 8);
-
-  ctx.fillStyle = '#fef08a';
-  ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 0;
-  ctx.font = 'bold 9px monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('EXP', x + w / 2, y + h * 0.72);
-
-  ctx.strokeStyle = '#450a0a';
-  ctx.lineWidth = 1.2;
-  ctx.strokeRect(x, y, w, h);
-  ctx.restore();
+  const spriteSource = getBarrelSpritesheet();
+  if (spriteSource && (spriteSource.naturalWidth > 0 || spriteSource.width > 0)) {
+    const drawW = w * (SPRITE_CELL_W / SPRITE_BODY_W);
+    const drawH = h * (SPRITE_CELL_H / SPRITE_BODY_H);
+    ctx.drawImage(
+      spriteSource,
+      0, 0, SPRITE_CELL_W, SPRITE_CELL_H,
+      x + (w - drawW) * 0.5, y + (h - drawH) * 0.5, drawW, drawH
+    );
+  }
 }
 
 export function drawBarbedWire(ctx, x, y, w, h) {

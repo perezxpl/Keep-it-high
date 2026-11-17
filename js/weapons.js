@@ -547,6 +547,37 @@ function updateMeleeCollision(shooter, ms) {
     }
   }
 
+  // 2B. Kolizja broni białej z beczkami (Melee attack on hazard barrels)
+  const meleeBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels))
+    ? window.hazardsBarrels
+    : [];
+  for (let bi = 0; bi < meleeBarrels.length; bi++) {
+    const bar = meleeBarrels[bi];
+    if (!bar || bar.isDead || ms.hitTargets.has(bar)) continue;
+    const barMidX = bar.x + bar.w * 0.5;
+    const barMidY = bar.y + bar.h * 0.5;
+    const dBar = distPointToSegment(barMidX, barMidY, p1.x, p1.y, p2.x, p2.y);
+    const hitRadius = (cfg.width || 24) * 0.5;
+    if (dBar <= 18 + hitRadius) {
+      ms.hitTargets.add(bar);
+      const meleeDmg = cfg.damage || 45;
+      bar.vx += facing * 4.5;
+      bar.vy -= 2.0;
+      bar.onGround = false;
+      if (typeof window.damageBarrel === 'function') {
+        window.damageBarrel(bar, meleeDmg, shooter, facing * 4.5, -2.0);
+      } else {
+        bar.hp -= meleeDmg;
+        if (bar.hp <= 0 && bar.fuseTimer <= 0) bar.fuseTimer = 0.07;
+      }
+      triggerHitstop(cfg.hitstopFrames || 3);
+      triggerScreenShake(cfg.screenShake || 6);
+      spawnRicochetSparks(barMidX, barMidY, facing * 3, -1.5, 6);
+      playSound('hit_armor', { x: barMidX, y: barMidY });
+      if (!cfg.cleave) break;
+    }
+  }
+
   // 3. Kolizja z otoczeniem (ziemia / ściany)
   if (!ms.hitObstacles) {
     const groundLevel = shooter.currentGroundY || shooter.groundY || GROUND_Y || 560;

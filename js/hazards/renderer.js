@@ -159,40 +159,6 @@ function drawDynamicFuseSparks(ctx, b, w, h) {
 }
 
 /**
- * Proceduralny fallback, gdy arkusz SVG jest jeszcze w fazie asynchronicznego ładowania
- */
-function drawProceduralFallbackBarrel(ctx, b, w, h) {
-  const hw = w * 0.5;
-  const hh = h * 0.5;
-  const typeDef = b.typeDef || {};
-
-  ctx.fillStyle = typeDef.color || '#dc2626';
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(-hw, -hh, w, h, 3);
-  } else {
-    ctx.rect(-hw, -hh, w, h);
-  }
-  ctx.fill();
-
-  // Lekkie cieniowanie 3D bez alokacji gradientu (proste półprzezroczyste pasy)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-  ctx.fillRect(-hw, -hh, hw * 0.6, h);
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
-  ctx.fillRect(hw * 0.2, -hh, hw * 0.8, h);
-
-  // Stalowe pierścienie
-  ctx.fillStyle = typeDef.rimColor || '#18181b';
-  ctx.fillRect(-hw - 1, -hh + 3, w + 2, 4);
-  ctx.fillRect(-hw - 1, -2, w + 2, 4);
-  ctx.fillRect(-hw - 1, hh - 7, w + 2, 4);
-
-  // Centralny żółty pas ostrzegawczy
-  ctx.fillStyle = '#eab308';
-  ctx.fillRect(-hw, -hh * 0.35, w, hh * 0.7);
-}
-
-/**
  * Rysuje pojedynczą beczkę ze sprite sheetu z pełną obsługą kąta i stanów zniszczenia
  */
 function drawSingleBarrel(ctx, b) {
@@ -223,8 +189,6 @@ function drawSingleBarrel(ctx, b) {
       sx, sy, SPRITE_CELL_W, SPRITE_CELL_H,
       -drawW * 0.5, -drawH * 0.5, drawW, drawH
     );
-  } else {
-    drawProceduralFallbackBarrel(ctx, b, w, h);
   }
 
   // Dynamiczne cząsteczki i snopy iskier dla stanu krytycznego (lont)

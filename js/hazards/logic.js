@@ -67,9 +67,6 @@ export function spawnBarrelShrapnel(x, y, barrelType = 'EXPLOSIVE') {
 /**
  * Oblicza wysokość podłoża lub platformy pod beczką
  */
-/**
- * Oblicza wysokość podłoża lub platformy pod beczką
- */
 export function getBarrelSurfaceY(x, y, baseGroundY) {
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
   const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
@@ -88,6 +85,9 @@ export function getBarrelSurfaceY(x, y, baseGroundY) {
       if (typeof riverbankY === 'number' && !isNaN(riverbankY)) {
         floor = riverbankY;
       }
+    } else {
+      // Przestrzeń nad rzeką: dno rzeki to 1380
+      floor = 1380;
     }
   } else if (!isA2 && !isA3 && !isA4 && !isA5) {
     const hasGround = (typeof window !== 'undefined' && typeof window.isGroundAt === 'function')
@@ -104,9 +104,8 @@ export function getBarrelSurfaceY(x, y, baseGroundY) {
 
   if (Array.isArray(platformList)) {
     for (const plat of platformList) {
-      if (!plat || plat.destroyed || plat.isDestroyed || plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
+      if (!plat || plat.destroyed || plat.isDestroyed || plat.intact === false || plat.isWall || plat.solid === false || plat.isPlatform === false || (plat.hp !== undefined && plat.hp <= 0)) continue;
       if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
-      if (isA3 && plat.intact === false && plat.y >= 1310) continue;
 
       if (isA5 && plat.isA5Block) {
         if (plat.topExposed === false) continue;
@@ -156,7 +155,7 @@ export function getBarrelSurfaceY(x, y, baseGroundY) {
 
   if (Array.isArray(customObstacles)) {
     for (const obs of customObstacles) {
-      if (!obs || obs.destroyed || obs.isDestroyed || obs.solid === false || obs.isPlatform === false) continue;
+      if (!obs || obs.destroyed || obs.isDestroyed || obs.intact === false || obs.solid === false || obs.isPlatform === false || (obs.hp !== undefined && obs.hp <= 0)) continue;
       const topY = obs.y !== undefined ? obs.y : (baseGroundY - obs.relY);
       if (x >= obs.x - 2 && x <= obs.x + obs.w + 2) {
         if (y <= topY + 6 && topY < floor) {
@@ -189,7 +188,7 @@ export function resolveBarrelWallCollisions(b, groundY, combatants = []) {
 
   for (let i = 0; i < platformList.length; i++) {
     const plat = platformList[i];
-    if (!plat || plat.destroyed || plat.isDestroyed || plat.solid === false) continue;
+    if (!plat || plat.destroyed || plat.isDestroyed || plat.intact === false || plat.solid === false || (plat.hp !== undefined && plat.hp <= 0)) continue;
     if (plat.isDropThrough || plat.dropThrough || plat.type === 'catwalk' || plat.isSlope) continue;
 
     const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
@@ -233,7 +232,7 @@ export function resolveBarrelWallCollisions(b, groundY, combatants = []) {
   if (Array.isArray(customObstacles)) {
     for (let i = 0; i < customObstacles.length; i++) {
       const obs = customObstacles[i];
-      if (!obs || obs.destroyed || obs.isDestroyed || obs.solid === false) continue;
+      if (!obs || obs.destroyed || obs.isDestroyed || obs.intact === false || obs.solid === false || (obs.hp !== undefined && obs.hp <= 0)) continue;
       if (obs.type === 'hedgehog' || obs.type === 'barbed_wire' || obs.type === 'laser_gate') continue;
 
       const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
@@ -322,7 +321,7 @@ export function resolveBarrelWallCollisions(b, groundY, combatants = []) {
 /**
  * Inicjalizuje beczki dla aktywnej areny
  */
-export function initHazardsForArena(arenaId) {
+export function initHazardsForArena(arenaId, groundY = 800) {
   if (!arenaId) return;
   const normalizedId = String(arenaId).toLowerCase().replace(/_/g, '-');
   if (hazardsState.currentArenaId === normalizedId && hazardsState.barrels.length > 0) return;
@@ -330,12 +329,29 @@ export function initHazardsForArena(arenaId) {
   hazardsState.currentArenaId = normalizedId;
   hazardsState.barrels.length = 0;
   hazardsState.acidPools.length = 0;
-  hazardsState.respawnQueue.length = 0;
+  hazardsState.airdropTimer = 25.0 + Math.random() * 5.0;
 
   const spawns = ARENA_BARREL_SPAWNS[normalizedId] || ARENA_BARREL_SPAWNS[arenaId];
   if (Array.isArray(spawns)) {
     for (const sp of spawns) {
-      hazardsState.barrels.push(createBarrelInstance(sp));
+      const spawnMidX = sp.x + BARREL_CONFIG.WIDTH * 0.5;
+      const surfaceY = getBarrelSurfaceY(spawnMidX, sp.y + BARREL_CONFIG.HEIGHT, groundY);
+      if (surfaceY === Infinity || surfaceY > 1320) continue;
+
+      let tooClose = false;
+      for (const b of hazardsState.barrels) {
+        if (Math.hypot((b.x + b.w * 0.5) - spawnMidX, (b.y + b.h) - surfaceY) < 140) {
+          tooClose = true;
+          break;
+        }
+      }
+      if (tooClose) continue;
+
+      const inst = createBarrelInstance(sp);
+      inst.x = spawnMidX - inst.w * 0.5;
+      inst.y = surfaceY - inst.h;
+      inst.onGround = true;
+      hazardsState.barrels.push(inst);
     }
   }
 }
@@ -356,6 +372,7 @@ export function kickBarrel(barrel, kicker, isSlide = false) {
   barrel.onGround = false;
   barrel.lastAttacker = kicker;
   barrel.kickerGraceTimer = 0.20;
+  barrel.isKicked = true;
 
   triggerScreenShake(isSlide ? 6.0 : 10.0);
   spawnRicochetSparks(barrel.x + barrel.w / 2, barrel.y + barrel.h / 2, kickVx * 0.4, kickVy * 0.4, 8);
@@ -545,11 +562,14 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
   // 5. Dla beczek kwasowych: utworzenie kałuży kwasu na podłożu
   if (isToxic) {
     const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-    const isA3 = (curArena?.id === 'arena-3');
+    const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
+    const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
     const surfaceY = getBarrelSurfaceY(bx, by, groundY);
+    const inRiverA3 = (arenaKey === 'arena-3' && surfaceY >= 1280);
+    const inLavaA4 = (arenaKey === 'arena-4' && surfaceY >= 1390);
+    const inAcidLakeA2 = (arenaKey === 'arena-2' && surfaceY >= 1420);
 
-    // Na Arenie 3 kwas wpadający do rzeki (surfaceY >= 1280) zostaje natychmiast rozmyty przez nurt
-    if (!(isA3 && surfaceY >= 1280)) {
+    if (surfaceY !== Infinity && !inRiverA3 && !inLavaA4 && !inAcidLakeA2) {
       hazardsState.acidPools.push({
         x: bx,
         y: surfaceY,
@@ -560,14 +580,6 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
         bubbleAnim: 0
       });
     }
-  }
-
-  // 6. Kolejka odradzania (respawn po 35s dla stałych punktów na arenach 1-4)
-  if (barrel.spawnId && barrel.originalSpawn) {
-    hazardsState.respawnQueue.push({
-      spawn: barrel.originalSpawn,
-      timer: BARREL_CONFIG.RESPAWN_DELAY
-    });
   }
 
   // Usunięcie beczki z listy aktywnych
@@ -589,7 +601,7 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
 
   // Automatyczna inicjalizacja przy zmianie areny
   if (hazardsState.currentArenaId !== arenaId) {
-    initHazardsForArena(arenaId);
+    initHazardsForArena(arenaId, groundY);
   }
 
   // -------------------------------------------------------------------------
@@ -612,9 +624,28 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       }
     }
 
+    const midX = b.x + b.w * 0.5;
+    const feetY = b.y + b.h;
+    const currentSurfaceY = getBarrelSurfaceY(midX, feetY, groundY);
+
+    // Dynamiczne podłoże: czy grunt pod beczką nie zapadł się w krater lub został zniszczony?
+    if (b.onGround) {
+      if (currentSurfaceY === Infinity || currentSurfaceY > feetY + 4) {
+        // Podłoże zapadło się w krater lub platforma runęła: natychmiastowa utrata oparcia!
+        b.onGround = false;
+        b.vy = Math.max(b.vy, 0.5);
+      } else if (currentSurfaceY < feetY - 4) {
+        // Teren się podniósł
+        b.y = currentSurfaceY - b.h;
+        b.vy = 0;
+      }
+    }
+
     // Grawitacja
-    b.vy += 0.55;
-    if (b.vy > 14) b.vy = 14;
+    if (!b.onGround) {
+      b.vy += 0.55;
+      if (b.vy > 14) b.vy = 14;
+    }
 
     // Prędkość i tłumienie
     b.x += b.vx;
@@ -626,31 +657,36 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     if (Math.abs(b.vx) < 0.05) b.vx = 0;
     if (Math.abs(b.rotVel) < 0.005) b.rotVel = 0;
 
-    // Kolizja ze scianami pionowymi, monolitami i klockami Areny 5
+    // Reset statusu wykopania po wyhamowaniu na podłożu
+    if (b.onGround && Math.abs(b.vx) < 0.4) {
+      b.isKicked = false;
+    }
+
+    // Kolizja ze ścianami pionowymi, monolitami i klockami Areny 5
     if (resolveBarrelWallCollisions(b, groundY, combatants)) {
       continue;
     }
 
-    // Kolizja z podlozem i platformami
-    const midX = b.x + b.w * 0.5;
-    const feetY = b.y + b.h;
-    const surfaceY = getBarrelSurfaceY(midX, feetY, groundY);
+    // Lądowanie na podłożu i platformach
+    const newFeetY = b.y + b.h;
+    const newSurfaceY = getBarrelSurfaceY(midX, newFeetY, groundY);
 
-    if (surfaceY !== Infinity && feetY + b.vy >= surfaceY) {
+    if (newSurfaceY !== Infinity && newFeetY >= newSurfaceY - 1 && b.vy >= 0) {
       if (b.vy > 3.0) {
-        // Sprezyste odbicie z utrata energii
+        // Sprężyste odbicie z utratą energii
         b.vy = -b.vy * BARREL_CONFIG.BOUNCE_RESTITUTION;
         b.vx *= 0.85;
         b.rotVel *= 0.6;
+        spawnRicochetSparks(midX, newSurfaceY, (Math.random() - 0.5) * 3, -1, 3);
       } else {
-        b.y = surfaceY - b.h;
+        b.y = newSurfaceY - b.h;
         b.vy = 0;
         b.onGround = true;
       }
-    } else if (b.onGround && surfaceY !== Infinity && Math.abs(feetY - surfaceY) <= 12 && b.vy >= 0) {
-      b.y = surfaceY - b.h;
+    } else if (newSurfaceY !== Infinity && b.onGround && Math.abs(newFeetY - newSurfaceY) <= 8 && b.vy >= 0) {
+      b.y = newSurfaceY - b.h;
       b.vy = 0;
-    } else {
+    } else if (b.vy > 0) {
       b.onGround = false;
     }
 
@@ -663,6 +699,55 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     } else if (b.x + b.w > maxX - 8) {
       b.x = maxX - b.w - 8;
       b.vx = -Math.abs(b.vx) * 0.5;
+    }
+
+    // Detekcja zmiażdżenia przez spadające ciężkie bloki lub suwnicę (Squash)
+    let squashed = false;
+    const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+    if (a5) {
+      if (a5.crane && a5.crane.y !== undefined) {
+        const crane = a5.crane;
+        if (b.x + b.w > crane.x && b.x < crane.x + (crane.w || 200)) {
+          if (crane.y + (crane.h || 40) >= b.y && crane.y <= b.y + b.h) {
+            squashed = true;
+          }
+        }
+      }
+      if (!squashed && a5.gridRows) {
+        const cLeft = Math.max(0, Math.floor(b.x / 100));
+        const cRight = Math.min(9, Math.floor((b.x + b.w) / 100));
+        for (let col = cLeft; col <= cRight; col++) {
+          for (const [, row] of a5.gridRows.entries()) {
+            const cell = row ? row[col] : null;
+            if (cell && cell.isFalling && cell.hp > 0) {
+              if (b.x + b.w > cell.x && b.x < cell.x + 100) {
+                if (cell.y + 100 >= b.y && cell.y <= b.y + b.h) {
+                  squashed = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (squashed) break;
+        }
+      }
+    }
+    if (!squashed && Array.isArray(ARENA_PLATFORMS)) {
+      for (const plat of ARENA_PLATFORMS) {
+        if (plat && plat.vy && plat.vy > 1.5 && plat.intact !== false) {
+          if (b.x + b.w > plat.x && b.x < plat.x + (plat.w || 100)) {
+            if (plat.y + (plat.h || 20) >= b.y && plat.y <= b.y + b.h) {
+              squashed = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (squashed) {
+      detonateBarrel(b, combatants, groundY);
+      continue;
     }
 
     // Kolizja fizyczna beczki z postaciami (zombie, gracz, boty)
@@ -689,63 +774,41 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       const cBottom = c.y + (c.h || 70);
       const cTop = cBottom - cH;
 
-      const marginX = Math.max(3, Math.abs(b.vx) * 0.7);
-      const marginY = Math.max(3, Math.abs(b.vy) * 0.7);
+      const marginX = Math.max(2, Math.abs(b.vx) * 0.5);
+      const marginY = Math.max(2, Math.abs(b.vy) * 0.5);
       const overlapX = (bRight + marginX >= cLeft && bLeft - marginX <= cRight);
       const overlapY = (bBottom + marginY >= cTop && bTop - marginY <= cBottom);
 
       if (overlapX && overlapY) {
-        if (bSpeed >= 3.0) {
-          // 1. Twardy impakt przy wysokiej/sredniej predkosci -> detonacja beczki!
+        // Tylko jeśli beczka została wykopana Spartan Kickiem i pędzi na cel:
+        if (b.isKicked && bSpeed >= 4.0) {
           detonateBarrel(b, combatants, groundY);
           barrelDetonated = true;
           break;
-        } else if (bSpeed >= 1.0) {
-          // 2. Umiarkowana predkosc: uderzenie kinetyczne, odepchniecie postaci i rykoszet beczki
-          const pushDir = (b.vx !== 0 ? Math.sign(b.vx) : (c.x > midX ? 1 : -1));
-          const pushForce = pushDir * Math.max(Math.abs(b.vx) * 1.15, 2.4);
+        }
 
-          if (c.isZombie) {
-            c.knockbackVx = pushForce;
-            c.hitStunTimer = 0.28;
-            c.onGround = false;
-            c.hp = Math.max(0, (c.hp || 100) - Math.round(bSpeed * 6));
-            if (c.hp <= 0 && !c.isDead) {
-              c.isDead = true;
-              c.reviveTimer = 4.0;
-              c.deathImpulse = { vx: pushForce * 1.4, vy: -3.0 };
-            }
-          } else {
-            c.vx = (c.vx || 0) + pushForce * 0.8;
-            c.hp = Math.max(0, (c.hp || 100) - Math.round(bSpeed * 4));
+        // Zwykły kontakt fizyczny postaci z beczką (bieg, chód, stanie):
+        // NIGDY nie wybucha, NIGDY nie zadaje obrażeń beczce ani graczowi!
+        const cMidX = cLeft + cW * 0.5;
+        const cVx = c.vx || 0;
+        const pushDir = (cMidX < midX) ? 1 : -1;
+
+        if (!isLyingZombie) {
+          // Łagodne przepchnięcie beczki
+          const nudgeSpeed = Math.min(Math.abs(cVx) * 0.45, 1.8);
+          if (nudgeSpeed > 0.08) {
+            b.vx = pushDir * nudgeSpeed;
+            b.rotVel = pushDir * 0.05;
           }
 
-          spawnRicochetSparks(midX, b.y + b.h * 0.5, pushDir * 2, -1.5, 6);
-          playSound('hit_armor', { x: midX, y: b.y });
-
-          b.vx = -b.vx * 0.35;
-          b.rotVel = -b.rotVel * 0.5;
-          b.x += b.vx * 1.5;
-          break;
-        } else {
-          // 3. Stojaca lub powolna beczka: przepychanie i separacja AABB
-          const cVx = c.vx || 0;
-          const isWalkingIntoBarrel = (cVx > 0.05 && cLeft < bLeft) || (cVx < -0.05 && cRight > bRight);
-
-          if (isWalkingIntoBarrel && !isLyingZombie) {
-            const pushDir = Math.sign(cVx);
-            b.vx = pushDir * Math.max(Math.abs(cVx) * 0.9, 1.4);
-            b.rotVel = pushDir * 0.08;
-            b.x += b.vx;
-            if (c.isZombie) {
-              c.vx *= 0.55;
-            }
-          } else if (!isLyingZombie) {
-            const cMidX = cLeft + cW * 0.5;
-            if (cMidX < midX) {
+          // Separacja AABB - zatrzymanie wnikania postaci w beczkę
+          if (pushDir === 1) {
+            if (cRight > bLeft && cLeft < bLeft) {
               c.x = bLeft - cW;
               if (c.vx > 0) c.vx = 0;
-            } else {
+            }
+          } else {
+            if (cLeft < bRight && cRight > bRight) {
               c.x = bRight;
               if (c.vx < 0) c.vx = 0;
             }
@@ -759,20 +822,26 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     let envDestroy = false;
     if (arenaId === 'arena-2') {
       const acidY = (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM) ? window.ACID_SURGE_SYSTEM.currentY : 1440;
-      if (feetY >= acidY - 4) envDestroy = true;
+      if (b.y + b.h >= acidY - 4) envDestroy = true;
     } else if (arenaId === 'arena-3') {
-      if (feetY >= 1290) envDestroy = true;
+      if (b.y + b.h >= 1290) {
+        envDestroy = true;
+        if (typeof window !== 'undefined' && typeof window.spawnArena3WaterSplash === 'function') {
+          window.spawnArena3WaterSplash(midX, 1300, 24, true);
+        }
+      }
     } else if (arenaId === 'arena-4') {
-      if (feetY >= 1390) envDestroy = true;
+      if (b.y + b.h >= 1390) envDestroy = true;
     } else if (arenaId === 'arena-5' || arenaId === 'prefab-tower') {
       const recY = (typeof window !== 'undefined' && window.arena5State?.recyclerY) ? window.arena5State.recyclerY : (groundY + 80);
-      if (feetY >= recY - 4) envDestroy = true;
+      if (b.y + b.h >= recY - 4) envDestroy = true;
     } else if (b.y > 2400) {
       envDestroy = true;
     }
 
     if (envDestroy) {
       detonateBarrel(b, combatants, groundY);
+      continue;
     }
   }
 
@@ -783,6 +852,23 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     const pool = hazardsState.acidPools[i];
     pool.timer -= dt;
     pool.bubbleAnim = (pool.bubbleAnim || 0) + dt * 4;
+
+    // Sprawdzenie realnego podłoża pod kałużą w każdej klatce:
+    const curFloor = getBarrelSurfaceY(pool.x, pool.y, groundY);
+    const inRiverA3 = (arenaId === 'arena-3' && curFloor >= 1280);
+    const inLavaA4 = (arenaId === 'arena-4' && curFloor >= 1390);
+    const inAcidLakeA2 = (arenaId === 'arena-2' && curFloor >= 1420);
+
+    if (curFloor === Infinity || inRiverA3 || inLavaA4 || inAcidLakeA2) {
+      // Podłoże zniknęło lub wpadło do rzeki/lawy/przepaści - kałuża znika natychmiast
+      hazardsState.acidPools.splice(i, 1);
+      continue;
+    }
+
+    if (curFloor > pool.y + 4) {
+      // Grunt zapadł się w krater lub platforma runęła: kałuża natychmiast opada na nowe dno!
+      pool.y = curFloor;
+    }
 
     // Zadawanie ciągłych obrażeń postaciom i rozpuszczanie powalonych zombie
     for (const c of combatants) {
@@ -809,152 +895,103 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     }
   }
 
-  // Czyszczenie kałuż w rzece na Arenie 3 oraz limit maksymalnej liczby kałuż (max 6)
-  if (arenaId === 'arena-3') {
-    for (let i = hazardsState.acidPools.length - 1; i >= 0; i--) {
-      if (hazardsState.acidPools[i].y >= 1280) {
-        hazardsState.acidPools.splice(i, 1);
-      }
-    }
-  }
   while (hazardsState.acidPools.length > 6) {
     hazardsState.acidPools.shift();
   }
 
-  // Twardy limit na maksymalną liczbę beczek (max 6)
   while (hazardsState.barrels.length > 6) {
     hazardsState.barrels.shift();
   }
 
   // -------------------------------------------------------------------------
-  // 3. KOLEJKA ODRADZANIA BECZEK (RESPAWN PO 35S DLA STAŁYCH PUNKTÓW)
-  // -------------------------------------------------------------------------
-  for (let i = hazardsState.respawnQueue.length - 1; i >= 0; i--) {
-    const item = hazardsState.respawnQueue[i];
-    item.timer -= dt;
-
-    if (item.timer <= 0) {
-      // Bezpieczne odrodzenie: weryfikacja czy podłoże w punkcie startowym nadal istnieje
-      const spawnX = item.spawn.x + BARREL_CONFIG.WIDTH * 0.5;
-      const surfaceY = getBarrelSurfaceY(spawnX, item.spawn.y + BARREL_CONFIG.HEIGHT, groundY);
-      if (surfaceY !== Infinity && surfaceY < 1350) {
-        const respawned = createBarrelInstance(item.spawn);
-        respawned.y = surfaceY - respawned.h;
-        respawned.onGround = true;
-        hazardsState.barrels.push(respawned);
-        spawnConcreteDebris(item.spawn.x + 13, surfaceY - 10, 6);
-      } else {
-        // Punkt zniszczony kraterem - odradzamy w innym bezpiecznym miejscu areny
-        spawnRandomValidBarrel(arenaId, groundY);
-      }
-      hazardsState.respawnQueue.splice(i, 1);
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // 4. OKRESOWE ODRADZANIE NOWYCH BECZEK W LOSOWYCH MIEJSCACH ARENY
+  // 3. OKRESOWY ZRZUT NOWEJ BECZKI (AIRDROP CO 25-30S TYLKO GDY < 2 BECZKI NA MAPIE)
   // -------------------------------------------------------------------------
   if (arenaId !== 'arena-5') {
-    hazardsState.randomSpawnTimer = (hazardsState.randomSpawnTimer || 20.0) - dt;
-    if (hazardsState.randomSpawnTimer <= 0) {
-      hazardsState.randomSpawnTimer = 18.0 + Math.random() * 12.0;
-      const maxBarrels = 5;
-      if (hazardsState.barrels.length < maxBarrels) {
-        spawnRandomValidBarrel(arenaId, groundY);
+    hazardsState.airdropTimer = (hazardsState.airdropTimer || 28.0) - dt;
+    if (hazardsState.airdropTimer <= 0) {
+      hazardsState.airdropTimer = 25.0 + Math.random() * 5.0;
+      if (hazardsState.barrels.length < 2) {
+        spawnAirdropBarrel(arenaId, groundY, combatants);
       }
     }
   }
 }
 
 /**
- * Spawnuje nową beczkę w losowym, w pełni bezpiecznym i poprawnym miejscu areny
+ * Spawnuje pojedynczą beczkę zrzucaną z powietrza (Airdrop)
+ * Wywoływane rzadko (co 25-30s), wyłącznie gdy na mapie jest < 2 aktywne beczki.
  */
-export function spawnRandomValidBarrel(arenaId, groundY = 800) {
+export function spawnAirdropBarrel(arenaId, groundY = 800, combatants = []) {
+  if (hazardsState.barrels.length >= 2) return false;
+
   const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const minX = (curArena?.bounds?.minX ?? 0) + 120;
-  const maxX = (curArena?.bounds?.maxX ?? 3800) - 120;
+  const minX = (curArena?.bounds?.minX ?? 0) + 200;
+  const maxX = (curArena?.bounds?.maxX ?? 3800) - 200;
   const isA2 = (arenaId === 'arena-2');
   const isA3 = (arenaId === 'arena-3');
   const isA4 = (arenaId === 'arena-4');
   const isA5 = (arenaId === 'arena-5');
 
-  // W Arenie 5 (Tetris) beczki pojawiają się na klockach wieży (zero stałych platform)
-  if (isA5) {
-    return false;
-  }
-
-  const validPlatforms = [];
-  if (Array.isArray(ARENA_PLATFORMS)) {
-    for (const plat of ARENA_PLATFORMS) {
-      if (!plat || plat.destroyed || plat.isDestroyed || plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
-      if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
-      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + plat.w };
-      const w = bnds.maxX - bnds.minX;
-      if (w >= 36) {
-        validPlatforms.push({ plat, minX: bnds.minX + 16, maxX: bnds.maxX - 16 });
-      }
-    }
-  }
+  if (isA5) return false;
 
   const randTypeRoll = Math.random();
   const barrelType = randTypeRoll < 0.60 ? 'EXPLOSIVE' : (randTypeRoll < 0.85 ? 'TOXIC' : 'ORDNANCE');
 
-  for (let attempt = 0; attempt < 20; attempt++) {
+  for (let attempt = 0; attempt < 25; attempt++) {
     let candX = 0;
-    const usePlatform = (isA2 || (validPlatforms.length > 0 && Math.random() < 0.55));
-
-    if (usePlatform && validPlatforms.length > 0) {
-      const pChoice = validPlatforms[Math.floor(Math.random() * validPlatforms.length)];
-      candX = pChoice.minX + Math.random() * Math.max(10, pChoice.maxX - pChoice.minX);
+    if (isA3) {
+      // Na Arenie 3 unikaj zrzutu prosto do rzeki (1620..2780)
+      const leftBank = Math.random() < 0.5;
+      candX = leftBank
+        ? (minX + Math.random() * (1520 - minX))
+        : (2880 + Math.random() * (maxX - 2880));
     } else {
-      if (isA3) {
-        const leftBank = Math.random() < 0.5;
-        candX = leftBank
-          ? (minX + Math.random() * (1550 - minX))
-          : (2850 + Math.random() * (maxX - 2850));
-      } else {
-        candX = minX + Math.random() * (maxX - minX);
-        const hasGroundL = (typeof window !== 'undefined' && typeof window.isGroundAt === 'function')
-          ? window.isGroundAt(candX - 14, 0)
-          : true;
-        const hasGroundR = (typeof window !== 'undefined' && typeof window.isGroundAt === 'function')
-          ? window.isGroundAt(candX + 14, 0)
-          : true;
-        if (!hasGroundL || !hasGroundR) continue;
-      }
+      candX = minX + Math.random() * (maxX - minX);
     }
 
     const surfaceY = getBarrelSurfaceY(candX, 300, groundY);
-    if (surfaceY === Infinity || surfaceY > 1320) continue;
-
-    if (isA2 && surfaceY >= 1350) continue;
-    if (isA3 && surfaceY >= 1270) continue;
+    if (surfaceY === Infinity || surfaceY > 1300) continue;
+    if (isA2 && surfaceY >= 1420) continue;
+    if (isA3 && surfaceY >= 1260) continue;
     if (isA4 && surfaceY >= 1350) continue;
 
+    // 1. Dystans min 140px do innych aktywnych beczek
     let tooClose = false;
     for (const b of hazardsState.barrels) {
       if (!b || b.isDead) continue;
       const bMidX = b.x + b.w * 0.5;
-      const bFeetY = b.y + b.h;
-      if (Math.hypot(bMidX - candX, bFeetY - surfaceY) < 85) {
+      if (Math.abs(bMidX - candX) < 140) {
         tooClose = true;
         break;
       }
     }
     if (tooClose) continue;
 
+    // 2. Dystans min 90px do gracza i botów
+    for (const c of combatants) {
+      if (!c) continue;
+      const cx = c.x + (c.w || 24) * 0.5;
+      const cy = c.y + (c.h || 70) * 0.5;
+      if (Math.hypot(cx - candX, cy - surfaceY) < 90) {
+        tooClose = true;
+        break;
+      }
+    }
+    if (tooClose) continue;
+
+    // Pomyślny zrzut: nowa beczka spada z powietrza (Airdrop) z grawitacją
     const newBarrel = createBarrelInstance({
       type: barrelType,
       x: candX - BARREL_CONFIG.WIDTH * 0.5,
-      y: surfaceY - BARREL_CONFIG.HEIGHT,
-      id: `barrel_rand_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+      y: -40,
+      id: `barrel_airdrop_${Date.now()}_${Math.floor(Math.random() * 1000)}`
     });
-    newBarrel.onGround = true;
-    newBarrel.vx = 0;
-    newBarrel.vy = 0;
+    newBarrel.onGround = false;
+    newBarrel.vx = (Math.random() - 0.5) * 0.6;
+    newBarrel.vy = 2.0;
     hazardsState.barrels.push(newBarrel);
 
-    spawnDustCloud(candX, surfaceY - 8, 4);
+    playSound('weapon_empty', { x: candX, y: 100 });
     return true;
   }
 

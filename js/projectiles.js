@@ -1430,6 +1430,34 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     }
   }
 
+  // 2B. Obrażenia i impuls kinetyczny dla wybuchowych/toksycznych beczek
+  const activeHazBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels))
+    ? window.hazardsBarrels
+    : [];
+  for (let bi = 0; bi < activeHazBarrels.length; bi++) {
+    const bar = activeHazBarrels[bi];
+    if (!bar || bar.isDead) continue;
+    const barMidX = bar.x + bar.w * 0.5;
+    const barMidY = bar.y + bar.h * 0.5;
+    const barDist = Math.hypot(barMidX - expX, barMidY - expY);
+    if (barDist <= radius) {
+      const factor = Math.max(0.2, 1.0 - (barDist / radius));
+      const expDmg = Math.round(150 * factor);
+      const push = factor * 14.0;
+      const bNormX = barDist > 0.001 ? (barMidX - expX) / barDist : (Math.random() - 0.5);
+      const bNormY = barDist > 0.001 ? (barMidY - expY) / barDist : -0.7;
+      bar.vx += bNormX * push;
+      bar.vy += bNormY * push - 2.5;
+      bar.onGround = false;
+      if (typeof window.damageBarrel === 'function') {
+        window.damageBarrel(bar, expDmg, shooter, bNormX * push, bNormY * push);
+      } else {
+        bar.hp -= expDmg;
+        if (bar.hp <= 0 && bar.fuseTimer <= 0) bar.fuseTimer = 0.07;
+      }
+    }
+  }
+
   // 3. FIZYCZNE NISZCZENIE PLATFORM I WYCINKA PODŁOŻA (Real Geometry Carving)
   const isA4Explosion = (activeArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'OIL_RIG' || activeArenaId === 'PLATFORMA_MORSKA');
   const isA3Explosion = (activeArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');

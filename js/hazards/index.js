@@ -17,7 +17,9 @@ export {
   damageBarrel,
   detonateBarrel,
   updateHazards,
-  checkBarrelKickInteraction
+  checkBarrelKickInteraction,
+  getBarrelSurfaceY,
+  spawnAirdropBarrel
 } from './logic.js';
 
 export {
@@ -33,7 +35,9 @@ import {
   kickBarrel,
   damageBarrel,
   detonateBarrel,
-  checkBarrelKickInteraction
+  checkBarrelKickInteraction,
+  getBarrelSurfaceY,
+  spawnAirdropBarrel
 } from './logic.js';
 
 // Globalna ekspozycja dla modulow balistyki i fizyki Areny 5
@@ -44,4 +48,6 @@ if (typeof window !== 'undefined') {
   window.kickBarrel = kickBarrel;
   window.checkBarrelKickInteraction = checkBarrelKickInteraction;
   window.detonateBarrel = detonateBarrel;
+  window.getBarrelSurfaceY = getBarrelSurfaceY;
+  window.spawnAirdropBarrel = spawnAirdropBarrel;
 }

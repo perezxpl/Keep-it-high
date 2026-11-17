@@ -69,13 +69,15 @@ export const BARREL_TYPES = {
 export const BARREL_CONFIG = {
   WIDTH: 26,
   HEIGHT: 38,
-  RESPAWN_DELAY: 35.0,     // Czas do ponownego odrodzenia po wybuchu (sekundy)
-  KICK_IMPULSE_X: 14.5,    // Prędkość pozioma po Spartan Kicku [E]
-  KICK_IMPULSE_Y: -4.8,    // Lekkie uniesienie w powietrze przy wykopie
-  SLIDE_IMPULSE_X: 12.0,   // Prędkość pozioma po wjechaniu wślizgiem
+  AIRDROP_INTERVAL_MIN: 25.0, // Minimalny odstęp między rzadkimi zrzutami (sekundy)
+  AIRDROP_INTERVAL_MAX: 30.0, // Maksymalny odstęp między rzadkimi zrzutami (sekundy)
+  MIN_BARREL_DISTANCE: 140,   // Minimalny dystans między beczkami (px)
+  KICK_IMPULSE_X: 14.5,       // Prędkość pozioma po Spartan Kicku [E]
+  KICK_IMPULSE_Y: -4.8,       // Lekkie uniesienie w powietrze przy wykopie
+  SLIDE_IMPULSE_X: 12.0,      // Prędkość pozioma po wjechaniu wślizgiem
   SLIDE_IMPULSE_Y: -3.2,
-  BOUNCE_RESTITUTION: 0.38,// Sprężystość odbić od ścian i podłoża
-  FRICTION: 0.94           // Tarcie toczącej się beczki
+  BOUNCE_RESTITUTION: 0.38,   // Sprężystość odbić od ścian i podłoża
+  FRICTION: 0.94              // Tarcie toczącej się beczki
 };
 
 /**
@@ -120,9 +122,8 @@ export const ARENA_BARREL_SPAWNS = {
 export const hazardsState = {
   barrels: [],
   acidPools: [],
-  respawnQueue: [],
-  currentArenaId: null,
-  randomSpawnTimer: 20.0
+  airdropTimer: 28.0,
+  currentArenaId: null
 };
 
 if (typeof window !== 'undefined') {
@@ -157,12 +158,8 @@ export function createBarrelInstance(spawnDef) {
     explodeTimer: 0,
     fuseTimer: 0,        // Krótkie syczenie przy zniszczeniu przed detonacją (0.05-0.12s)
     lastAttacker: null,  // Gracz lub bot, który kopnął lub przestrzelił beczkę
-    originalSpawn: {
-      type: spawnDef.type,
-      x: spawnDef.x,
-      y: spawnDef.y,
-      id: spawnDef.id
-    }
+    isKicked: false,     // Czy beczka została wykopana jako kinetyczny pocisk
+    kickerGraceTimer: 0  // Czas ochronny dla kopiącego gracza
   };
 }
 
@@ -176,6 +173,5 @@ if (typeof window !== 'undefined') {
 export function resetHazardsState() {
   hazardsState.barrels.length = 0;
   hazardsState.acidPools.length = 0;
-  hazardsState.respawnQueue.length = 0;
-  hazardsState.randomSpawnTimer = 20.0;
+  hazardsState.airdropTimer = 28.0;
 }
