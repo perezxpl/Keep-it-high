@@ -292,6 +292,36 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const isLocalOrCreator = !p.isZombie && !!(p._isCreatorPreview || (typeof window !== 'undefined' && p === window.player));
   const localVisualsChanged = isLocalOrCreator && (p._lastLocalVisuals !== localPlayerCustomVisuals);
+
+  if (p.isZombie) {
+    p.w = 24;
+    p.h = 70;
+    p.thighLen = 25;
+    p.shinLen = 24;
+    p.upperArmLen = 14;
+    p.forearmLen = 13;
+    p.isCrouching = false;
+    p.crouching = false;
+    p.crouchTimer = 0;
+    p.crouchBlend = 0;
+    p.crouchFactor = 0;
+    p.crouchToggled = false;
+    p.crouchHoldTimer = 0;
+    p.sliding = false;
+    p.isSliding = false;
+    p.slideTimer = 0;
+    p.rollTimer = 0;
+    p.isProne = false;
+    p.staggerTimer = 0;
+    if (p.keys) p.keys.down = false;
+    if (!p.isDead && (!p.riseTimer || p.riseTimer <= 0)) {
+      p.pelvisY = -11.8;
+      if (p.gaitMode === 'CROUCH' || p.gaitMode === 'CROUCH_WALK' || p.gaitMode === 'PRONE' || p.gaitMode === 'CRAWL') {
+        p.gaitMode = Math.abs(p.vx || 0) > 0.1 ? 'WALK' : 'IDLE';
+      }
+    }
+  }
+
   if (!p._cachedVisuals || p._visualsDirty || localVisualsChanged) {
     p._cachedVisuals = {
       ...DEFAULT_VISUALS,
@@ -326,18 +356,20 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   if (!p.forearmLen) p.forearmLen = p.body?.forearmLen || 13;
   if (!p.pose) p.pose = { initialized: false };
 
-  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 70));
+  const colH = (p.isZombie && !p.isDead) ? 70 : ((p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 70)));
   const centerX = p.x + p.w / 2;
   const isGrounded = (p.onGround !== undefined)
     ? (p.onGround && !p.isJumping)
     : (!p.isJumping && (p.y >= (GROUND_Y - colH - 2) || (typeof p.currentGroundY === 'number' && Math.abs(p.y + colH - p.currentGroundY) < 6)));
-  const standingY = (isGrounded && typeof p.currentGroundY === 'number')
-    ? p.currentGroundY
-    : (p.y + colH);
+  const standingY = p.isZombie
+    ? ((typeof GROUND_Y === 'number' && GROUND_Y < 1500) ? GROUND_Y : (p.y + 70))
+    : ((isGrounded && typeof p.currentGroundY === 'number') ? p.currentGroundY : (p.y + colH));
   const floorY = standingY;
   const plantFloorY = floorY - 3.5;
   let hipX = centerX;
-  let hipY = p.y + colH - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8);
+  let hipY = (p.isZombie && !p.isDead && (!p.riseTimer || p.riseTimer <= 0))
+    ? (plantFloorY - 48.3)
+    : (p.y + colH - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8));
   if (p.isProne) {
     hipY = plantFloorY - 2.5; // Tors i miednica przylegają równolegle do podłoża (y = floorY - 6 px)
   } else if (p.staggerTimer > 0) {

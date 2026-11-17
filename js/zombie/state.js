@@ -246,13 +246,14 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
   const zShinLen = 24;
   const zUpperArmLen = 14;
   const zForearmLen = 13;
-  const zBody = options.charBody || (zClass?.body ? { ...zClass.body } : {
-    w: 24, h: 70, thighLen: zThighLen, shinLen: zShinLen, upperArmLen: zUpperArmLen, forearmLen: zForearmLen
-  });
-  zBody.thighLen = zThighLen;
-  zBody.shinLen = zShinLen;
-  zBody.upperArmLen = zUpperArmLen;
-  zBody.forearmLen = zForearmLen;
+  const zBody = {
+    w: 24,
+    h: 70,
+    thighLen: zThighLen,
+    shinLen: zShinLen,
+    upperArmLen: zUpperArmLen,
+    forearmLen: zForearmLen
+  };
 
   const f = facing || 1;
 
@@ -267,9 +268,25 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     spawnProtectionTimer: 0, // Zombie nigdy nie posiada oslony odrodzenia
 
     x: x - (zBody.w || 24) * 0.5,
-    y: y - (zBody.h || 70),
-    w: zBody.w || 24,
-    h: zBody.h || 70,
+    y: y - 70,
+    w: 24,
+    h: 70,
+    pelvisY: -11.8,
+    isCrouching: false,
+    crouching: false,
+    crouchTimer: 0,
+    crouchBlend: 0,
+    crouchFactor: 0,
+    crouchToggled: false,
+    crouchHoldTimer: 0,
+    sliding: false,
+    isSliding: false,
+    slideTimer: 0,
+    rollTimer: 0,
+    isProne: false,
+    staggerTimer: 0,
+    gaitMode: 'IDLE',
+    keys: { left: false, right: false, up: false, down: false },
     vx: 0,
     vy: 0,
     knockbackVx: 0,
@@ -376,9 +393,14 @@ export function registerCorpseForReanimation(char, surfaceY) {
 
   const undeadVisuals = createUndeadVisuals(rawVisuals);
   const charClass = char.currentClass || CLASSES.STRIKER || null;
-  const charBody = char.body ? { ...char.body } : (charClass?.body ? { ...charClass.body } : {
-    w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13
-  });
+  const charBody = {
+    w: 24,
+    h: 70,
+    thighLen: 25,
+    shinLen: 24,
+    upperArmLen: 14,
+    forearmLen: 13
+  };
 
   const facing = char.facing || 1;
 
@@ -395,14 +417,30 @@ export function registerCorpseForReanimation(char, surfaceY) {
     decapitated: false,
     centerX: corpseX,
     feetY: floorY,
-    x: corpseX - (charBody.w || 24) * 0.5,
-    y: floorY - (charBody.h || 70),
-    w: charBody.w || 24,
-    h: charBody.h || 70,
+    x: corpseX - 12,
+    y: floorY - 70,
+    w: 24,
+    h: 70,
     thighLen: 25,
     shinLen: 24,
     upperArmLen: 14,
     forearmLen: 13,
+    pelvisY: -11.8,
+    isCrouching: false,
+    crouching: false,
+    crouchTimer: 0,
+    crouchBlend: 0,
+    crouchFactor: 0,
+    crouchToggled: false,
+    crouchHoldTimer: 0,
+    sliding: false,
+    isSliding: false,
+    slideTimer: 0,
+    rollTimer: 0,
+    isProne: false,
+    staggerTimer: 0,
+    gaitMode: 'IDLE',
+    keys: { left: false, right: false, up: false, down: false },
     pose: { initialized: false },
     vx: 0,
     vy: 0,
@@ -430,6 +468,7 @@ export function registerCorpseForReanimation(char, surfaceY) {
     charClass: charClass,
     currentClass: charClass,
     body: charBody,
+    charBody: charBody,
     dismembered: {
       armFront: false,
       armBack: false,

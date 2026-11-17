@@ -1201,6 +1201,25 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const v = visuals || DEFAULT_VISUALS;
   const isZombie = Boolean((playerRef && playerRef.isZombie) || (v && v.isZombieVisuals));
 
+  if (isZombie && (!playerRef?.riseTimer || playerRef.riseTimer <= 0) && !playerRef?.isDead) {
+    if (playerRef) {
+      playerRef.isCrouching = false;
+      playerRef.crouching = false;
+      playerRef.crouchBlend = 0;
+      playerRef.crouchFactor = 0;
+      playerRef.crouchTimer = 0;
+      playerRef.crouchToggled = false;
+      playerRef.crouchHoldTimer = 0;
+      playerRef.sliding = false;
+      playerRef.isSliding = false;
+      playerRef.slideTimer = 0;
+      playerRef.rollTimer = 0;
+      playerRef.isProne = false;
+      playerRef.staggerTimer = 0;
+      if (playerRef.keys) playerRef.keys.down = false;
+    }
+  }
+
   // Zabezpieczenie dlugosci kosci i wspolrzednych IK (w tym dla Zombie)
   l1 = (typeof l1 === 'number' && !isNaN(l1) && l1 > 0) ? l1 : (playerRef?.thighLen || playerRef?.body?.thighLen || 25);
   l2 = (typeof l2 === 'number' && !isNaN(l2) && l2 > 0) ? l2 : (playerRef?.shinLen || playerRef?.body?.shinLen || 24);

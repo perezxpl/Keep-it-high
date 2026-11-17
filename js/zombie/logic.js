@@ -626,6 +626,20 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
     }
     corpse.groundY = corpse.feetY;
     corpse.y = corpse.feetY - 70;
+    corpse.h = 70;
+    corpse.isCrouching = false;
+    corpse.crouching = false;
+    corpse.crouchTimer = 0;
+    corpse.crouchBlend = 0;
+    corpse.crouchFactor = 0;
+    corpse.sliding = false;
+    corpse.slideTimer = 0;
+    corpse.rollTimer = 0;
+    if (!corpse.keys) {
+      corpse.keys = { left: false, right: false, up: false, down: false };
+    } else {
+      corpse.keys.down = false;
+    }
 
     corpse.timer -= dt;
 
@@ -650,6 +664,26 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       newZombie.isZombie = true;
       newZombie.active = true;
       newZombie.spawnProtectionTimer = 0;
+      newZombie.w = 24;
+      newZombie.h = 70;
+      newZombie.y = curSurface - 70;
+      newZombie.groundY = curSurface;
+      newZombie.pelvisY = -11.8;
+      newZombie.isCrouching = false;
+      newZombie.crouching = false;
+      newZombie.crouchTimer = 0;
+      newZombie.crouchBlend = 0;
+      newZombie.crouchFactor = 0;
+      newZombie.crouchToggled = false;
+      newZombie.crouchHoldTimer = 0;
+      newZombie.sliding = false;
+      newZombie.isSliding = false;
+      newZombie.slideTimer = 0;
+      newZombie.rollTimer = 0;
+      newZombie.isProne = false;
+      newZombie.staggerTimer = 0;
+      newZombie.gaitMode = 'IDLE';
+      newZombie.keys = { left: false, right: false, up: false, down: false };
       newZombie.thighLen = 25;
       newZombie.shinLen = 24;
       newZombie.upperArmLen = 14;
@@ -768,6 +802,28 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.isZombie = true;
         z.active = true;
         z.spawnProtectionTimer = 0;
+        z.w = 24;
+        z.h = 70;
+        z.pelvisY = -11.8;
+        z.isCrouching = false;
+        z.crouching = false;
+        z.crouchTimer = 0;
+        z.crouchBlend = 0;
+        z.crouchFactor = 0;
+        z.crouchToggled = false;
+        z.crouchHoldTimer = 0;
+        z.sliding = false;
+        z.isSliding = false;
+        z.slideTimer = 0;
+        z.rollTimer = 0;
+        z.isProne = false;
+        z.staggerTimer = 0;
+        z.gaitMode = 'IDLE';
+        if (!z.keys) {
+          z.keys = { left: false, right: false, up: false, down: false };
+        } else {
+          z.keys.down = false;
+        }
         z.thighLen = 25;
         z.shinLen = 24;
         z.upperArmLen = 14;
@@ -783,6 +839,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         const curSurf = getZombieSurfaceY(feetX, z.y + z.h, groundY);
         if (curSurf !== Infinity && curSurf < 1500) {
           z.y = curSurf - z.h;
+          z.groundY = curSurf;
           z.vy = 0;
           z.onGround = true;
         }
@@ -802,6 +859,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       const curSurf = getZombieSurfaceY(feetX, z.y + z.h, groundY);
       if (curSurf !== Infinity && curSurf < 1500) {
         z.y = curSurf - z.h;
+        z.groundY = curSurf;
         z.vy = 0;
         z.onGround = true;
       } else {
@@ -809,7 +867,68 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.y += z.vy;
       }
       resolveZombieWallCollisions(z, groundY);
+
+      // Moment ukończenia sekwencji wstawania: korekta pozycji do podłoża i reset pozy
+      if (z.riseTimer <= 0) {
+        z.riseTimer = 0;
+        z.w = 24;
+        z.h = 70;
+        z.pelvisY = -11.8;
+        z.isCrouching = false;
+        z.crouching = false;
+        z.crouchTimer = 0;
+        z.crouchBlend = 0;
+        z.crouchFactor = 0;
+        z.crouchToggled = false;
+        z.crouchHoldTimer = 0;
+        z.sliding = false;
+        z.isSliding = false;
+        z.slideTimer = 0;
+        z.rollTimer = 0;
+        z.isProne = false;
+        z.staggerTimer = 0;
+        z.gaitMode = 'IDLE';
+        if (!z.keys) {
+          z.keys = { left: false, right: false, up: false, down: false };
+        } else {
+          z.keys.down = false;
+        }
+        const standSurf = getZombieSurfaceY(feetX, z.y + z.h, groundY);
+        if (standSurf !== Infinity && standSurf < 1500) {
+          z.y = standSurf - z.h;
+          z.groundY = standSurf;
+          z.vy = 0;
+          z.onGround = true;
+        }
+        if (z.pose) z.pose.initialized = false;
+      }
       continue;
+    }
+
+    // Twardy reset stanu kucania i ślizgu w każdej klatce dla żywego, stojącego zombie
+    z.w = 24;
+    z.h = 70;
+    z.pelvisY = -11.8;
+    z.isCrouching = false;
+    z.crouching = false;
+    z.crouchTimer = 0;
+    z.crouchBlend = 0;
+    z.crouchFactor = 0;
+    z.crouchToggled = false;
+    z.crouchHoldTimer = 0;
+    z.sliding = false;
+    z.isSliding = false;
+    z.slideTimer = 0;
+    z.rollTimer = 0;
+    z.isProne = false;
+    z.staggerTimer = 0;
+    if (z.gaitMode === 'CROUCH' || z.gaitMode === 'CROUCH_WALK' || z.gaitMode === 'PRONE' || z.gaitMode === 'CRAWL') {
+      z.gaitMode = Math.abs(z.vx || 0) > 0.1 ? 'WALK' : 'IDLE';
+    }
+    if (!z.keys) {
+      z.keys = { left: false, right: false, up: false, down: false };
+    } else {
+      z.keys.down = false;
     }
 
     // Timery animacji, odnowienia ataku i hitstuna
@@ -968,10 +1087,12 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
     if (surfaceY !== Infinity && z.vy >= -1.0 && feetY + z.vy >= surfaceY && feetY <= surfaceY + 22) {
       z.y = surfaceY - z.h;
+      z.groundY = surfaceY;
       z.vy = 0;
       z.onGround = true;
     } else if (z.onGround && surfaceY !== Infinity && Math.abs(feetY - surfaceY) <= 14 && z.vy >= 0) {
       z.y = surfaceY - z.h;
+      z.groundY = surfaceY;
       z.vy = 0;
       z.onGround = true;
     } else {
