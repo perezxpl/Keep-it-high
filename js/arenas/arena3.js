@@ -642,7 +642,7 @@ export function updateArena3(dt, players, ball) {
     }
 
     // Jeśli klocek wypadł poza świat gry lub utonął poniżej dna (y > 1415) -> trwale uśpij, usuń i wyłącz
-    if (b.y > 1415 || b.x < 300 || b.x > 4100) {
+    if (b.y > 1415 || b.x < -150 || b.x > 4550) {
       b.isAsleep = true;
       b.solid = false;
       b.isPlatform = false;
@@ -769,6 +769,15 @@ export function updateArena3(dt, players, ball) {
       b.vx *= (b.isSniperSlab ? 0.40 : 0.55);
       b.vRot *= 0.40;
 
+      if (groundFloorY < 1290 && !b.hasHitGround) {
+        b.hasHitGround = true;
+        if (b.isSniperSlab) {
+          spawnStoneDebris(b.x + b.w / 2, groundFloorY, b.vx * 0.4, -2.0, 10);
+        } else {
+          spawnBridgeSplinters(b.x + b.w / 2, groundFloorY, b.vx * 0.4, -2.0, 8);
+        }
+      }
+
       if (Math.abs(b.vx) < 0.12 && Math.abs(b.vy) < 0.18 && Math.abs(b.vRot) < 0.025) {
         b.sleepTimer += 2;
         if (b.sleepTimer > 20) {
@@ -779,6 +788,26 @@ export function updateArena3(dt, players, ball) {
         }
       } else {
         b.sleepTimer = 0;
+      }
+    }
+
+    // Elementy spadające na ląd (poza rzeką) po uderzeniu o ziemię rozbijają się na drzazgi/gruz i znikają (decay)
+    if (b.hasHitGround && groundFloorY < 1290) {
+      b.landDecay = (b.landDecay || 0) + 1;
+      if (b.landDecay >= 45 || b.isAsleep) {
+        if (b.isSniperSlab) {
+          spawnStoneDebris(b.x + b.w / 2, groundFloorY, 0, -1.2, 6);
+        } else {
+          spawnBridgeSplinters(b.x + b.w / 2, groundFloorY, 0, -1.2, 6);
+        }
+        b.vanished = true;
+        b.isDead = true;
+        b.isAsleep = true;
+        b.solid = false;
+        b.isPlatform = false;
+        removeDeadPlatform(b);
+        activeFallingBlocks.splice(i, 1);
+        continue;
       }
     }
 

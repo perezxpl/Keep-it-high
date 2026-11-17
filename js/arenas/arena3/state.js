@@ -47,6 +47,16 @@ export function setArena3CliffDirty(val) {
   _arena3CliffDirty = !!val;
 }
 
+let _towerCanvasInvalidator = null;
+export function setTowerCanvasInvalidator(fn) {
+  _towerCanvasInvalidator = fn;
+}
+export function invalidateTowerCanvas(side) {
+  if (typeof _towerCanvasInvalidator === 'function') {
+    _towerCanvasInvalidator(side);
+  }
+}
+
 function createGroundPoints(startX, endX, step = 10, defaultY = 1200) {
   const pts = [];
   for (let x = startX; x <= endX; x += step) {
@@ -986,6 +996,11 @@ export function resetArena3() {
     slab.isAsleep = false;
     slab.sleepTimer = 0;
     slab.sinkTimer = 0;
+    slab.landDecay = 0;
+    slab.vanished = false;
+    slab.isDead = false;
+    slab.hasHitGround = false;
+    slab._removedFromPlatforms = false;
   }
 
   // 5. Reset wież bojowych i podestów
@@ -1015,7 +1030,36 @@ export function resetArena3() {
     b.isAsleep = false;
     b.sleepTimer = 0;
     b.sinkTimer = 0;
+    b.landDecay = 0;
+    b.vanished = false;
+    b.isDead = false;
+    b.hasHitGround = false;
+    b._removedFromPlatforms = false;
   }
+  if (typeof ARENA_3_TOWER_ROOFS !== 'undefined') {
+    for (const side of ['left', 'right']) {
+      const roof = ARENA_3_TOWER_ROOFS[side];
+      if (roof) {
+        roof.x = roof.origX;
+        roof.y = roof.origY;
+        roof.vx = 0;
+        roof.vy = 0;
+        roof.angle = 0;
+        roof.vRot = 0;
+        roof.intact = true;
+        roof.solid = false;
+        roof.isPlatform = false;
+        roof.isAsleep = false;
+        roof.sleepTimer = 0;
+        roof.landDecay = 0;
+        roof.vanished = false;
+        roof.isDead = false;
+        roof.hasHitGround = false;
+        roof._removedFromPlatforms = false;
+      }
+    }
+  }
+  invalidateTowerCanvas();
   const stemL = ARENA_3_PLATFORMS.find(p => p.id === 'tower_cyan_stem');
   if (stemL) {
     stemL.solid = true;
@@ -1148,15 +1192,30 @@ export function breakSniperSlab(slab, impulseX = 0, impulseY = 0, angularImpulse
   if (!slab || !slab.intact) return;
   slab.intact = false;
   registerActiveFallingBlock(slab);
-  // Pozostaje solidnym i namacalnym obiektem
-  slab.solid = true;
-  slab.isPlatform = true;
-  slab.oneWay = true;
+  slab.solid = false;
+  slab.isPlatform = false;
+  slab.oneWay = false;
   slab.vx += impulseX;
   slab.vy += impulseY;
   slab.vRot += angularImpulse;
   slab.isAsleep = false;
   slab.sleepTimer = 0;
+
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    const actSlab = window.ARENA_PLATFORMS.find(p => p && (p === slab || p.id === slab.id));
+    if (actSlab) {
+      actSlab.intact = false;
+      actSlab.solid = false;
+      actSlab.isPlatform = false;
+      actSlab.oneWay = false;
+      actSlab.x = slab.x;
+      actSlab.y = slab.y;
+      actSlab.vx = slab.vx;
+      actSlab.vy = slab.vy;
+      actSlab.isAsleep = false;
+      actSlab.sleepTimer = 0;
+    }
+  }
 
   spawnStoneDebris(slab.x + slab.w / 2, slab.y + slab.h / 2, impulseX, impulseY, 15);
   if (typeof triggerScreenShake === 'function') {
@@ -1206,6 +1265,70 @@ export const ARENA_3_TOWER_PILLARS = {
     fallDropVy: 0
   }
 };
+
+export const ARENA_3_TOWER_ROOFS = {
+  left: {
+    id: 'tower_cyan_roof',
+    side: 'left',
+    name: 'Wieża Alfa - Zadaszenie i Maszt',
+    isTowerRoof: true,
+    origX: 100,
+    origY: 325,
+    x: 100,
+    y: 325,
+    w: 200,
+    h: 75,
+    vx: 0,
+    vy: 0,
+    angle: 0,
+    vRot: 0,
+    intact: true,
+    solid: false,
+    isPlatform: false,
+    isAsleep: false,
+    sleepTimer: 0,
+    landDecay: 0,
+    vanished: false
+  },
+  right: {
+    id: 'tower_orange_roof',
+    side: 'right',
+    name: 'Wieża Bravo - Zadaszenie i Maszt',
+    isTowerRoof: true,
+    origX: 4100,
+    origY: 325,
+    x: 4100,
+    y: 325,
+    w: 200,
+    h: 75,
+    vx: 0,
+    vy: 0,
+    angle: 0,
+    vRot: 0,
+    intact: true,
+    solid: false,
+    isPlatform: false,
+    isAsleep: false,
+    sleepTimer: 0,
+    landDecay: 0,
+    vanished: false
+  }
+};
+
+export function breakTowerRoof(side, impulseX = 0, impulseY = 0, angularImpulse = 0) {
+  const roof = ARENA_3_TOWER_ROOFS[side];
+  if (!roof || !roof.intact) return;
+  roof.intact = false;
+  roof.solid = false;
+  roof.isPlatform = false;
+  registerActiveFallingBlock(roof);
+  roof.vx += impulseX;
+  roof.vy += impulseY;
+  roof.vRot += angularImpulse;
+  roof.isAsleep = false;
+  roof.sleepTimer = 0;
+  spawnBridgeSplinters(roof.x + roof.w / 2, roof.y + roof.h / 2, impulseX, impulseY, 14);
+}
 
 export const ARENA_3_TOWER_BLOCKS = [];
 
@@ -1258,10 +1381,9 @@ export function breakTowerBlock(block, impulseX = 0, impulseY = 0, angularImpuls
   if (!block || !block.intact) return;
   block.intact = false;
   registerActiveFallingBlock(block);
-  // Pozostaje solidnym i namacalnym obiektem
-  block.solid = true;
-  block.isPlatform = true;
-  block.oneWay = true;
+  block.solid = false;
+  block.isPlatform = false;
+  block.oneWay = false;
   block.vx += impulseX;
   block.vy += impulseY;
   block.vRot += angularImpulse;
@@ -1269,18 +1391,41 @@ export function breakTowerBlock(block, impulseX = 0, impulseY = 0, angularImpuls
   block.sleepTimer = 0;
 
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
-    const actBlock = window.ARENA_PLATFORMS.find(p => p && p.id === block.id);
-    if (actBlock && actBlock !== block) {
+    const actBlock = window.ARENA_PLATFORMS.find(p => p && (p === block || p.id === block.id));
+    if (actBlock) {
       actBlock.intact = false;
-      actBlock.solid = true;
-      actBlock.isPlatform = true;
-      actBlock.oneWay = true;
+      actBlock.solid = false;
+      actBlock.isPlatform = false;
+      actBlock.oneWay = false;
       actBlock.x = block.x;
       actBlock.y = block.y;
       actBlock.vx = block.vx;
       actBlock.vy = block.vy;
       actBlock.isAsleep = false;
       actBlock.sleepTimer = 0;
+    }
+  }
+
+  // Unieważnienie bufora canvas wieży
+  invalidateTowerCanvas(block.side);
+
+  // Kaskada: zniszczenie dolnej podpory (tier === 'lower') natychmiast zawala gniazdo snajperskie i daszek
+  if (block.tier === 'lower') {
+    for (let j = 0; j < ARENA_3_TOWER_BLOCKS.length; j++) {
+      const other = ARENA_3_TOWER_BLOCKS[j];
+      if (other.side === block.side && other.tier === 'upper' && other.intact) {
+        const cascadeDirX = (block.side === 'left' ? -2.2 : 2.2) + (Math.random() - 0.5) * 2;
+        const cascadeVy = Math.random() * 2.0 + 1.2;
+        const cascadeVrot = (block.side === 'left' ? -0.12 : 0.12) + (Math.random() - 0.5) * 0.08;
+        breakTowerBlock(other, cascadeDirX, cascadeVy, cascadeVrot);
+      }
+    }
+    breakTowerRoof(block.side, (block.side === 'left' ? -2.5 : 2.5), 1.6, (block.side === 'left' ? -0.09 : 0.09));
+  } else if (block.tier === 'upper') {
+    // Sprawdzenie czy wszystkie górne elementy zostały zniszczone -> zawalenie daszka
+    const upperRemaining = ARENA_3_TOWER_BLOCKS.filter(b => b.side === block.side && b.tier === 'upper' && b.intact && b !== block);
+    if (upperRemaining.length === 0) {
+      breakTowerRoof(block.side, (block.side === 'left' ? -1.8 : 1.8), 1.5, (block.side === 'left' ? -0.07 : 0.07));
     }
   }
 
@@ -1294,35 +1439,41 @@ export function destroyTowerPillar(side) {
   const pillar = ARENA_3_TOWER_PILLARS[side];
   if (!pillar || !pillar.intact) return;
   pillar.intact = false;
+  pillar.collapsed = true;
   pillar.vRot = (side === 'left' ? 0.024 : -0.024);
   pillar.fallDropY = 0;
   pillar.fallDropVy = 0;
+
+  invalidateTowerCanvas(side);
 
   spawnBridgeSplinters(pillar.stemX, 600, (side === 'left' ? 7 : -7), -4, 28);
   if (typeof triggerScreenShake === 'function') {
     triggerScreenShake(14);
   }
 
-  // Odłamanie wszystkich podestów na tej wieży
+  // Odłamanie wszystkich podestów i daszka na tej wieży
   for (let i = 0; i < ARENA_3_TOWER_BLOCKS.length; i++) {
     const b = ARENA_3_TOWER_BLOCKS[i];
     if (b.side === side && b.intact) {
       breakTowerBlock(b, (side === 'left' ? -4.5 : 4.5) + (Math.random() - 0.5) * 2, Math.random() * 2 + 1.2, (side === 'left' ? -0.16 : 0.16));
     }
   }
+  breakTowerRoof(side, (side === 'left' ? -4.0 : 4.0), 2.0, (side === 'left' ? -0.14 : 0.14));
 
-  // Dezaktywacja ściany filaru
+  // Dezaktywacja i trwałe usunięcie ściany filaru z platform kolizyjnych
   const stemId = (side === 'left' ? 'tower_cyan_stem' : 'tower_orange_stem');
   const stemObj = ARENA_3_PLATFORMS.find(p => p.id === stemId);
   if (stemObj) {
     stemObj.solid = false;
     stemObj.isWall = false;
+    removeDeadPlatform(stemObj);
   }
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
     const actStem = window.ARENA_PLATFORMS.find(p => p && p.id === stemId);
     if (actStem) {
       actStem.solid = false;
       actStem.isWall = false;
+      removeDeadPlatform(actStem);
     }
   }
 }
@@ -1527,13 +1678,13 @@ export function removeDeadPlatform(b) {
   b.solid = false;
   b.isPlatform = false;
 
-  const idxA3 = ARENA_3_PLATFORMS.indexOf(b);
+  const idxA3 = ARENA_3_PLATFORMS.findIndex(p => p && (p === b || p.id === b.id));
   if (idxA3 !== -1) {
     ARENA_3_PLATFORMS.splice(idxA3, 1);
   }
 
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
-    const idxWin = window.ARENA_PLATFORMS.indexOf(b);
+    const idxWin = window.ARENA_PLATFORMS.findIndex(p => p && (p === b || p.id === b.id));
     if (idxWin !== -1) {
       window.ARENA_PLATFORMS.splice(idxWin, 1);
     }

@@ -18,6 +18,8 @@ import {
   ARENA_3_SNIPER_SLABS,
   ARENA_3_TOWER_PILLARS,
   ARENA_3_TOWER_BLOCKS,
+  ARENA_3_TOWER_ROOFS,
+  setTowerCanvasInvalidator,
   ARENA_3_PLATFORMS,
   GROUND_LEFT_POINTS,
   GROUND_RIGHT_POINTS,
@@ -51,6 +53,18 @@ let _rightCliffCache = null;
 
 let _cachedLeftTowerCanvas = null;
 let _cachedRightTowerCanvas = null;
+
+export function invalidateTowerCanvas(side) {
+  if (!side || side === 'left') {
+    _cachedLeftTowerCanvas = null;
+  }
+  if (!side || side === 'right') {
+    _cachedRightTowerCanvas = null;
+  }
+}
+if (typeof setTowerCanvasInvalidator === 'function') {
+  setTowerCanvasInvalidator(invalidateTowerCanvas);
+}
 
 let _cachedPylonLeftCanvas = null;
 let _cachedPylonRightCanvas = null;
@@ -1227,10 +1241,14 @@ export function drawArena3Foreground(ctx, camera) {
     const lowerBlocks = ARENA_3_TOWER_BLOCKS.filter(b => b.side === sideKey && b.tier === 'lower');
     for (let i = 0; i < lowerBlocks.length; i++) {
       const b = lowerBlocks[i];
+      if (b.vanished || b.isDead || b._removedFromPlatforms) continue;
       if (b.x + b.w + 30 < camL || b.x - 30 > camR) continue;
       if (!b.intact && (b.y > 1400 || b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       ctx.save();
+      if (!b.intact && b.landDecay > 0) {
+        ctx.globalAlpha = Math.max(0, 1 - (b.landDecay / 45));
+      }
       if (b.intact) {
         const dmgRatio = 1 - (b.hp / b.maxHp);
         drawWeatheredTimberDeck(ctx, b.x, b.y, b.w, b.h, {
@@ -1474,6 +1492,92 @@ export function drawArena3Foreground(ctx, camera) {
     targetCtx.restore();
   }
 
+  function drawTowerRoofDecorations(targetCtx, deckX, deckY, deckW, teamCol, teamName, cx, isLeft, animTime = 0) {
+    // E. Słupy zadaszenia i maskująca płachta taktyczna (Camo Netting)
+    targetCtx.strokeStyle = '#2d1808';
+    targetCtx.lineWidth = 5;
+    targetCtx.beginPath();
+    targetCtx.moveTo(deckX + 14, deckY - 32);
+    targetCtx.lineTo(deckX + 14, deckY - 75);
+    targetCtx.moveTo(deckX + deckW - 14, deckY - 32);
+    targetCtx.lineTo(deckX + deckW - 14, deckY - 75);
+    targetCtx.stroke();
+
+    // Kute żelazne obejmy krokwi
+    targetCtx.fillStyle = '#1e293b';
+    targetCtx.fillRect(deckX + 11, deckY - 50, 6, 7);
+    targetCtx.fillRect(deckX + deckW - 17, deckY - 50, 6, 7);
+
+    // Daszek cieniujący z poszarpaną krawędzią siatki maskującej
+    targetCtx.fillStyle = '#223815';
+    targetCtx.beginPath();
+    targetCtx.moveTo(deckX - 8, deckY - 70);
+    targetCtx.lineTo(deckX + deckW * 0.5, deckY - 85);
+    targetCtx.lineTo(deckX + deckW + 8, deckY - 70);
+    targetCtx.lineTo(deckX + deckW + 2, deckY - 75);
+    targetCtx.lineTo(deckX + deckW * 0.5, deckY - 78);
+    targetCtx.lineTo(deckX - 2, deckY - 75);
+    targetCtx.closePath();
+    targetCtx.fill();
+
+    // Poszarpane zwisające strzępy tkaniny kamuflażowej
+    targetCtx.fillStyle = '#304d1e';
+    for (let cxX = deckX; cxX < deckX + deckW; cxX += 16) {
+      const tLen = 4 + (Math.sin(cxX * 0.3 + animTime * 2.0) * 3);
+      targetCtx.fillRect(cxX, deckY - 70, 8, tLen);
+    }
+    targetCtx.strokeStyle = '#12200a';
+    targetCtx.lineWidth = 1.6;
+    targetCtx.stroke();
+
+    // F. Maszt radiowy łączności wojskowej z pulsującą czerwoną diodą
+    const antX = isLeft ? (deckX + 18) : (deckX + deckW - 18);
+    targetCtx.strokeStyle = '#64748b';
+    targetCtx.lineWidth = 2.5;
+    targetCtx.beginPath();
+    targetCtx.moveTo(antX, deckY - 75);
+    targetCtx.lineTo(antX, deckY - 120);
+    targetCtx.stroke();
+
+    targetCtx.strokeStyle = '#94a3b8';
+    targetCtx.lineWidth = 1.5;
+    targetCtx.beginPath();
+    targetCtx.moveTo(antX - 8, deckY - 110);
+    targetCtx.lineTo(antX + 8, deckY - 110);
+    targetCtx.moveTo(antX - 5, deckY - 100);
+    targetCtx.lineTo(antX + 5, deckY - 100);
+    targetCtx.stroke();
+
+    const bBlink = (Math.sin(animTime * 6.0) > 0);
+    targetCtx.fillStyle = bBlink ? '#ef4444' : '#500707';
+    targetCtx.beginPath();
+    targetCtx.arc(antX, deckY - 121, 3.2, 0, Math.PI * 2);
+    targetCtx.fill();
+    if (bBlink) {
+      targetCtx.fillStyle = '#ffffff';
+      targetCtx.beginPath();
+      targetCtx.arc(antX, deckY - 121, 1.2, 0, Math.PI * 2);
+      targetCtx.fill();
+    }
+
+    // G. Tablica informacyjna bazy
+    const signW = 120;
+    const signH = 18;
+    const signX = cx - signW / 2;
+    const signY = deckY - 26;
+
+    targetCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    targetCtx.fillRect(signX, signY, signW, signH);
+    targetCtx.strokeStyle = teamCol;
+    targetCtx.lineWidth = 1.4;
+    targetCtx.strokeRect(signX, signY, signW, signH);
+
+    targetCtx.font = '900 9.5px monospace';
+    targetCtx.fillStyle = teamCol;
+    targetCtx.textAlign = 'center';
+    targetCtx.fillText(teamName, cx, signY + 12);
+  }
+
   function drawWatchtowerSniperNest(isLeft) {
     const sideKey = isLeft ? 'left' : 'right';
     const pillar = ARENA_3_TOWER_PILLARS[sideKey];
@@ -1490,7 +1594,14 @@ export function drawArena3Foreground(ctx, camera) {
       ? (_cachedUpperTowerBlocksLeft || (_cachedUpperTowerBlocksLeft = ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'left' && b.tier === 'upper')))
       : (_cachedUpperTowerBlocksRight || (_cachedUpperTowerBlocksRight = ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'right' && b.tier === 'upper')));
 
-    const isIntact = pillar && pillar.intact && (pillar.hp === pillar.maxHp) && upperBlocks.every(b => b.intact && b.hp === b.maxHp);
+    const allBlocks = isLeft
+      ? ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'left')
+      : ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'right');
+    const isIntact = pillar && pillar.intact && (pillar.hp >= pillar.maxHp) && allBlocks.every(b => b.intact && b.hp >= b.maxHp);
+    if (!isIntact) {
+      if (isLeft) _cachedLeftTowerCanvas = null;
+      else _cachedRightTowerCanvas = null;
+    }
     if (isIntact && typeof document !== 'undefined') {
       let towerCanvas = isLeft ? _cachedLeftTowerCanvas : _cachedRightTowerCanvas;
       if (!towerCanvas) {
@@ -1576,10 +1687,14 @@ export function drawArena3Foreground(ctx, camera) {
     // C. MODUŁOWE PŁYTY PODŁOGOWE GNIAZDA SNAJPERSKIEGO (Y: 400)
     for (let i = 0; i < upperBlocks.length; i++) {
       const b = upperBlocks[i];
+      if (b.vanished || b.isDead || b._removedFromPlatforms) continue;
       if (b.x + b.w + 30 < camL || b.x - 30 > camR) continue;
       if (!b.intact && (b.y > 1400 || b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       ctx.save();
+      if (!b.intact && b.landDecay > 0) {
+        ctx.globalAlpha = Math.max(0, 1 - (b.landDecay / 45));
+      }
       if (b.intact) {
         const dmgRatio = 1 - (b.hp / b.maxHp);
         // Podłoga gniazda snajperskiego
@@ -1601,97 +1716,29 @@ export function drawArena3Foreground(ctx, camera) {
         });
       } else {
         // Odłamany segment podestu gniazda snajperskiego ze szczątkami balustrady
-        const cx = b.x + b.w / 2;
-        const cy = b.y + b.h / 2;
-        drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 43 });
+        const cxBlock = b.x + b.w / 2;
+        const cyBlock = b.y + b.h / 2;
+        drawSplinteredWoodRubble(ctx, cxBlock, cyBlock, b.w, b.h, b.angle, { seed: i * 43 });
       }
       ctx.restore();
     }
 
-    if (pillar && pillar.intact) {
-      // E. Słupy zadaszenia i maskująca płachta taktyczna (Camo Netting)
-      ctx.strokeStyle = '#2d1808';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(deckX + 14, deckY - 32);
-      ctx.lineTo(deckX + 14, deckY - 75);
-      ctx.moveTo(deckX + deckW - 14, deckY - 32);
-      ctx.lineTo(deckX + deckW - 14, deckY - 75);
-      ctx.stroke();
+    const hasIntactUpper = upperBlocks.some(b => b.intact);
+    const roof = ARENA_3_TOWER_ROOFS ? ARENA_3_TOWER_ROOFS[sideKey] : null;
 
-      // Kute żelazne obejmy krokwi
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(deckX + 11, deckY - 50, 6, 7);
-      ctx.fillRect(deckX + deckW - 17, deckY - 50, 6, 7);
-
-      // Daszek cieniujący z poszarpaną krawędzią siatki maskującej
-      ctx.fillStyle = '#223815';
-      ctx.beginPath();
-      ctx.moveTo(deckX - 8, deckY - 70);
-      ctx.lineTo(deckX + deckW * 0.5, deckY - 85);
-      ctx.lineTo(deckX + deckW + 8, deckY - 70);
-      ctx.lineTo(deckX + deckW + 2, deckY - 75);
-      ctx.lineTo(deckX + deckW * 0.5, deckY - 78);
-      ctx.lineTo(deckX - 2, deckY - 75);
-      ctx.closePath();
-      ctx.fill();
-
-      // Poszarpane zwisające strzępy tkaniny kamuflażowej
-      ctx.fillStyle = '#304d1e';
-      for (let cxX = deckX; cxX < deckX + deckW; cxX += 16) {
-        const tLen = 4 + (Math.sin(cxX * 0.3 + animTime * 2.0) * 3);
-        ctx.fillRect(cxX, deckY - 70, 8, tLen);
+    if (pillar && pillar.intact && hasIntactUpper && (!roof || roof.intact)) {
+      drawTowerRoofDecorations(ctx, deckX, deckY, deckW, teamCol, teamName, cx, isLeft, animTime);
+    } else if (roof && !roof.intact && !roof.vanished) {
+      ctx.save();
+      if (roof.landDecay > 0) {
+        ctx.globalAlpha = Math.max(0, 1 - (roof.landDecay / 45));
       }
-      ctx.strokeStyle = '#12200a';
-      ctx.lineWidth = 1.6;
-      ctx.stroke();
-
-      // F. Maszt radiowy łączności wojskowej z pulsującą czerwoną diodą
-      const antX = isLeft ? (deckX + 18) : (deckX + deckW - 18);
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(antX, deckY - 75);
-      ctx.lineTo(antX, deckY - 120);
-      ctx.stroke();
-
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(antX - 8, deckY - 110);
-      ctx.lineTo(antX + 8, deckY - 110);
-      ctx.moveTo(antX - 5, deckY - 100);
-      ctx.lineTo(antX + 5, deckY - 100);
-      ctx.stroke();
-
-      const bBlink = (Math.sin(animTime * 6.0) > 0);
-      ctx.fillStyle = bBlink ? '#ef4444' : '#500707';
-      ctx.beginPath();
-      ctx.arc(antX, deckY - 121, 3.2, 0, Math.PI * 2);
-      ctx.fill();
-      if (bBlink) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(antX, deckY - 121, 1.2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // G. Tablica informacyjna bazy
-      const signW = 120;
-      const signH = 18;
-      const signX = cx - signW / 2;
-      const signY = deckY - 26;
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-      ctx.fillRect(signX, signY, signW, signH);
-      ctx.strokeStyle = teamCol;
-      ctx.lineWidth = 1.4;
-      ctx.strokeRect(signX, signY, signW, signH);
-
-      ctx.font = '900 9.5px monospace';
-      ctx.fillStyle = teamCol;
-      ctx.textAlign = 'center';
-      ctx.fillText(teamName, cx, signY + 12);
+      const rcx = roof.x + roof.w * 0.5;
+      const rcy = roof.y + roof.h * 0.5;
+      ctx.translate(rcx, rcy);
+      ctx.rotate(roof.angle);
+      drawTowerRoofDecorations(ctx, -roof.w * 0.5, 30, roof.w, teamCol, teamName, 0, isLeft, animTime);
+      ctx.restore();
     }
 
     ctx.restore();
@@ -1707,10 +1754,14 @@ export function drawArena3Foreground(ctx, camera) {
   function drawSniperSlabs() {
     for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
       const slab = ARENA_3_SNIPER_SLABS[i];
+      if (slab.vanished || slab.isDead || slab._removedFromPlatforms) continue;
       if (slab.x + slab.w + 50 < camL || slab.x - 50 > camR) continue;
       if (!slab.intact && (slab.y > 1400 || slab.y + slab.h + 20 < camT || slab.y - 20 > camB)) continue;
 
       ctx.save();
+      if (!slab.intact && slab.landDecay > 0) {
+        ctx.globalAlpha = Math.max(0, 1 - (slab.landDecay / 45));
+      }
       if (slab.intact) {
         const px = slab.x;
         const py = slab.y;

@@ -25,6 +25,7 @@ import {
   ARENA_3_TOWER_BLOCKS,
   breakTowerBlock,
   destroyTowerPillar,
+  invalidateTowerCanvas,
   carveTerrainCrater
 } from './state.js';
 
@@ -82,8 +83,8 @@ export function onArena3BulletHit(bullet) {
   const minObjY = Math.min(by, by0) - 6;
   const maxObjY = Math.max(by, by0) + 6;
 
-  // Szybkie odrzucenie pocisków całkowicie poza zakresem struktur mostu i dżungli (Y: 0 do 1420, X: 500 do 3900)
-  if (maxObjX < 500 || minObjX > 3900 || maxObjY < 0 || minObjY > 1420) {
+  // Szybkie odrzucenie pocisków całkowicie poza zakresem struktur mostu, wież i dżungli (Y: 0 do 1420, X: 50 do 4350)
+  if (maxObjX < 50 || minObjX > 4350 || maxObjY < 0 || minObjY > 1420) {
     return false;
   }
 
@@ -286,6 +287,7 @@ export function onArena3BulletHit(bullet) {
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;
+        invalidateTowerCanvas(b.side);
         spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
         if (b.hp <= 0) {
           breakTowerBlock(b, (bullet.vx || 0) * 0.1, Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5)), (Math.random() - 0.5) * 0.2);
@@ -308,6 +310,7 @@ export function onArena3BulletHit(bullet) {
     if (!pillar || !pillar.intact) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, pillar.stemX - 6, pillar.topY + 22, pillar.stemX + pillar.w + 6, pillar.baseY)) {
       pillar.hp -= bDamage * 0.40;
+      invalidateTowerCanvas(side);
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
       if (pillar.hp <= 0) {
         destroyTowerPillar(side);
@@ -504,6 +507,7 @@ export function onArena3KickHit(player, kickBox) {
       hitAny = true;
       if (b.intact) {
         b.hp -= kickDamage;
+        invalidateTowerCanvas(b.side);
         spawnBridgeSplinters(kx, ky, dirX * 5, -2, 10);
         if (b.hp <= 0) {
           breakTowerBlock(b, dirX * 3.5, 3.5, dirX * 0.25);
@@ -528,6 +532,7 @@ export function onArena3KickHit(player, kickBox) {
     if (Math.abs(kx - (pillar.stemX + pillar.w / 2)) <= 35 && ky >= pillar.topY && ky <= pillar.baseY) {
       hitAny = true;
       pillar.hp -= kickDamage * 0.8;
+      invalidateTowerCanvas(side);
       spawnBridgeSplinters(kx, ky, dirX * 4, -2, 8);
       if (pillar.hp <= 0) {
         destroyTowerPillar(side);
@@ -798,6 +803,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
 
       if (b.intact) {
         b.hp -= intensity * 160;
+        invalidateTowerCanvas(b.side);
         if (b.hp <= 0 || d <= blastRad) {
           breakTowerBlock(b, impulseX, impulseY, angularImpulse);
         }
@@ -814,7 +820,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
   // 7. Wybuch w filary wież strażniczych
   for (const side of ['left', 'right']) {
     const pillar = ARENA_3_TOWER_PILLARS[side];
-    if (!pillar.intact) continue;
+    if (!pillar || !pillar.intact) continue;
 
     const clampPillarY = Math.max(pillar.topY, Math.min(pillar.baseY, expY));
     const distP = Math.hypot(pillar.stemX - expX, clampPillarY - expY);
@@ -822,6 +828,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
       hitAny = true;
       const intensity = 1 - distP / (blastRad + 50);
       pillar.hp -= intensity * 260;
+      invalidateTowerCanvas(side);
       spawnBridgeSplinters(pillar.stemX, clampPillarY, (pillar.stemX - expX) * 0.2, -3, 14);
       if (pillar.hp <= 0) {
         destroyTowerPillar(side);
