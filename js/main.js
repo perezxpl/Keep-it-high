@@ -421,6 +421,9 @@ export function setGameState(newState) {
   } else if (newState === 'MENU') {
     initMenuFight();
   }
+  if (newState === 'PLAYING' && camera) {
+    camera._initialized = false;
+  }
   if (typeof window !== 'undefined' && window.uiManager) {
     window.uiManager.syncUI(newState);
   }

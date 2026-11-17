@@ -1662,7 +1662,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       ctx.lineTo(2.0, -3.5);
       ctx.quadraticCurveTo(-1.0, -3.0, -5.5, -1.8);
       ctx.closePath();
-      ctx.fillStyle = helmGrad;
       ctx.fill();
       ctx.strokeStyle = '#09090b';
       ctx.lineWidth = 1.0;

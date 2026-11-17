@@ -9,12 +9,12 @@
 import { menuFightState, menuBots, resetMenuBot, MENU_SPAWN_POINTS } from './state.js';
 import { updatePlayer } from '../player/index.js';
 import { shootWeapon, updateBullets, bullets } from '../weapons.js';
-import { updateProjectiles } from '../projectiles.js';
+import { updateProjectiles, activeProjectiles } from '../projectiles.js';
 import { updateParticles, updateJetpackParticles } from '../world/state.js';
 import { spawnRicochetSparks } from '../particles.js';
 import { updateGore, spawnBloodSpurt } from '../world/gore.js';
 import { updateLighting, addDynamicLight } from '../lighting/index.js';
-import { updateMenuCamera } from '../camera.js';
+import { updateMenuCamera, camera } from '../camera.js';
 import { checkPlayerPlatformLanding } from '../obstacles/playerPhysics.js';
 import { obstacles, customObstacles, ARENA_PLATFORMS, switchArena, activeArenaId } from '../obstacles.js';
 import { WEAPONS } from '../weapons/transform.js';
@@ -53,6 +53,11 @@ export function initMenuFight() {
 export function stopMenuFight() {
   menuFightState.active = false;
   menuFightState.initialized = false;
+  if (Array.isArray(bullets)) bullets.length = 0;
+  if (Array.isArray(activeProjectiles)) activeProjectiles.length = 0;
+  if (camera) {
+    camera._initialized = false;
+  }
   // Wyzeruj klawisze botów
   for (const b of menuBots) {
     if (b && b.botKeys) {
