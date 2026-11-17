@@ -183,4 +183,152 @@ for (const ub of leftUpperAfterExplosion) {
 }
 assert.strictEqual(state.ARENA_3_TOWER_ROOFS.left.intact, false, 'Left roof should collapse from explosion');
 
-console.log('[TEST] Wszystkie testy wiez strazniczych i polek snajperskich zakonczone sukcesem!');
+// Test 11: Crush damage rules on Arena 3
+state.resetArena3();
+
+// Create mock player standing on ground at X: 500, Y: 1130 (head at 1130, feet at 1200)
+const mockPlayer = {
+  id: 'player_test',
+  x: 500,
+  y: 1130,
+  w: 24,
+  h: 70,
+  hp: 100,
+  isDead: false,
+  vx: 0,
+  vy: 0,
+  onGround: true,
+  currentPlatform: { solid: true }
+};
+
+// Scenario A: Low vertical velocity (b.vy = 4.0 < 5.5) -> 0 damage
+const mockBlockA = {
+  x: 495,
+  y: 1120,
+  w: 30,
+  h: 20,
+  vy: 4.0,
+  vx: 0,
+  startY: 1000,
+  solid: false,
+  isPlatform: false,
+  intact: false
+};
+state.activeFallingBlocks.push(mockBlockA);
+arena3Module.updateArena3(0.016, [mockPlayer]);
+assert.strictEqual(mockPlayer.hp, 100, 'Low speed block (vy < 5.5) must deal 0 damage');
+
+// Scenario B: Insufficient fall distance (fallDist = 20 < 40) -> 0 damage
+const mockBlockB = {
+  x: 495,
+  y: 1120,
+  w: 30,
+  h: 20,
+  vy: 7.0,
+  vx: 0,
+  startY: 1110, // fallDist = 10 < 40
+  solid: false,
+  isPlatform: false,
+  intact: false
+};
+state.activeFallingBlocks.push(mockBlockB);
+arena3Module.updateArena3(0.016, [mockPlayer]);
+assert.strictEqual(mockPlayer.hp, 100, 'Block with short fall distance (< 40) must deal 0 damage');
+
+// Scenario C: Block in water / touching water -> 0 damage
+const mockBlockC = {
+  x: 495,
+  y: 1290,
+  w: 30,
+  h: 20, // y + h = 1310 >= 1300
+  vy: 8.0,
+  vx: 0,
+  startY: 1000,
+  solid: false,
+  isPlatform: false,
+  intact: false
+};
+state.activeFallingBlocks.push(mockBlockC);
+arena3Module.updateArena3(0.016, [mockPlayer]);
+assert.strictEqual(mockPlayer.hp, 100, 'Block in water must deal 0 damage');
+
+// Scenario D: Glancing side contact (overlapX = 6 < 12) -> 0 damage
+const mockBlockD = {
+  x: 518, // player right is 524, overlapX = 524 - 518 = 6 < 12
+  y: 1120,
+  w: 30,
+  h: 20,
+  vy: 7.0,
+  vx: 0,
+  startY: 1000,
+  solid: false,
+  isPlatform: false,
+  intact: false
+};
+state.activeFallingBlocks.push(mockBlockD);
+arena3Module.updateArena3(0.016, [mockPlayer]);
+assert.strictEqual(mockPlayer.hp, 100, 'Side contact (overlapX < 12) must deal 0 damage');
+
+// Scenario E: Character jumping onto block from above (bBottom > pTop + ph * 0.65) -> 0 damage
+const mockBlockE = {
+  x: 495,
+  y: 1165, // bottom at 1185 > pTop + ph * 0.65 = 1130 + 45.5 = 1175.5
+  w: 30,
+  h: 20,
+  vy: 7.0,
+  vx: 0,
+  startY: 1000,
+  solid: false,
+  isPlatform: false,
+  intact: false
+};
+state.activeFallingBlocks.push(mockBlockE);
+arena3Module.updateArena3(0.016, [mockPlayer]);
+assert.strictEqual(mockPlayer.hp, 100, 'Block below chest level must deal 0 damage');
+
+// Scenario F: Real direct moderate fall on head (vy = 7.0, fallDist = 120, overlapX = 24)
+// Expected damage: partial 25..55 HP + sideways nudge
+const mockBlockF = {
+  x: 495,
+  y: 1120, // bottom at 1140 (penetrates 10px below pTop 1130, well within top 65%)
+  w: 30,
+  h: 20,
+  vy: 7.0,
+  vx: 0,
+  startY: 1000,
+  solid: false,
+  isPlatform: false,
+  intact: false
+};
+state.activeFallingBlocks.push(mockBlockF);
+arena3Module.updateArena3(0.016, [mockPlayer]);
+const hpAfterHit = mockPlayer.hp;
+assert(hpAfterHit <= 75 && hpAfterHit >= 45, `Moderate hit should deal 25-55 HP damage (got hp=${hpAfterHit})`);
+assert.notStrictEqual(mockPlayer.vx, 0, 'Player should be nudged sideways');
+
+// Scenario G: Multi-frame re-hit within 400ms cooldown -> 0 additional damage
+arena3Module.updateArena3(0.016, [mockPlayer]);
+assert.strictEqual(mockPlayer.hp, hpAfterHit, 'Cooldown must block damage in consecutive frames');
+
+// Scenario H: High-speed lethal crush on grounded character (vy > 9.5) -> lethal
+mockPlayer.hp = 100;
+mockPlayer._lastCrushHitTime = 0; // reset cooldown for test
+const mockBlockH = {
+  x: 495,
+  y: 1120,
+  w: 30,
+  h: 20,
+  vy: 10.5,
+  vx: 0,
+  startY: 900,
+  solid: false,
+  isPlatform: false,
+  intact: false
+};
+state.activeFallingBlocks.push(mockBlockH);
+arena3Module.updateArena3(0.016, [mockPlayer]);
+assert.strictEqual(mockPlayer.isDead, true, 'High-speed fall (> 9.5) on grounded character must be fatal crush');
+assert.strictEqual(mockPlayer.hp, 0, 'HP must be reduced to 0 on fatal crush');
+assert.strictEqual(mockPlayer.killer.cause, 'CRUSH', 'Killer cause should be CRUSH');
+
+console.log('[TEST] Wszystkie testy wiez strazniczych, polek snajperskich oraz fizyki crush zakonczone sukcesem!');

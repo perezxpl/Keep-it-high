@@ -617,16 +617,12 @@ export function updateArena3(dt, players, ball) {
     // Inicjalizacja licznika zatopienia dla zniszczonego klocka
     b.sinkTimer = b.sinkTimer || 0;
 
-    // Gdy zniszczony klocek dotknie wody lub przejdzie w stan uśpienia, natychmiast wyłącz właściwości platformy
+    // Gdy zniszczony klocek dotknie wody, przejdzie w stan uśpienia lub nie jest nienaruszony, wyłącz właściwości platformy
     const touchesWater = (b.y >= 1290 || (b.y + b.h >= 1295));
-    if (touchesWater || b.isAsleep) {
+    if (touchesWater || b.isAsleep || !b.intact) {
       b.solid = false;
       b.isPlatform = false;
-      b.sinkTimer++;
-    } else {
-      b.solid = true;
-      b.isPlatform = true;
-      b.oneWay = true;
+      if (touchesWater || b.isAsleep) b.sinkTimer++;
     }
 
     // Po 180 klatkach (3s) w wodzie lub uśpieniu klocek powoli tonie poniżej dna
@@ -654,59 +650,102 @@ export function updateArena3(dt, players, ball) {
       continue;
     }
 
-    // OBRAŻENIA OD SPADAJĄCYCH ELEMENTÓW NA GRACZY (CRUSH DAMAGE) - tylko spadające z góry
-    if (b.vy > 2.0 && b.y < 1280 && Array.isArray(players)) {
+    // OBRAŻENIA OD SPADAJĄCYCH ELEMENTÓW NA POSTACIE (CRUSH DAMAGE)
+    // Obrażenia WYŁĄCZNIE przy realnym spadku z dużej wysokości na głowę/barki postaci
+    const startY = (b.startY !== undefined) ? b.startY : ((b.origY !== undefined) ? b.origY : b.y);
+    const fallDist = b.y - startY;
+
+    if (b.vy >= 5.5 && fallDist >= 40 && !touchesWater && Array.isArray(players)) {
+      const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+      b._hitEntities = b._hitEntities || {};
+
       for (let pIdx = 0; pIdx < players.length; pIdx++) {
         const p = players[pIdx];
         if (!p || p.isDead) continue;
+
+        const entityId = p.id || (p.isBot ? ('bot_' + (p.name || pIdx)) : ('player_' + (p.name || pIdx)));
+        // Cooldown min. 400 ms na uderzenie danej postaci przez dany klocek (blokada wielokrotnych obrażeń w kolejnych klatkach)
+        if (b._hitEntities[entityId] && (now - b._hitEntities[entityId] < 400)) {
+          continue;
+        }
+        if (p._lastCrushHitTime && (now - p._lastCrushHitTime < 400)) {
+          continue;
+        }
+
         const pw = p.w || 24;
         const ph = p.h || 70;
         const pLeft = p.x;
         const pRight = p.x + pw;
         const pTop = p.y;
-        const pBottom = p.y + ph;
 
         const bLeft = b.x;
         const bRight = b.x + b.w;
         const bTop = b.y;
         const bBottom = b.y + b.h;
 
-        if (bRight > pLeft + 4 && bLeft < pRight - 4 && bBottom >= pTop && bTop <= pBottom - 8) {
-          if (!b.playerHitCooldown || b.playerHitCooldown <= 0) {
-            b.playerHitCooldown = 18;
-            let crushDmg = 0;
-            if (b.isSniperSlab) {
-              crushDmg = Math.round(40 + b.vy * 8);
-              spawnStoneDebris(p.x + pw * 0.5, bBottom, b.vx, -2, 10);
-            } else if (b.isTowerBlock || b.isRampBlock) {
-              crushDmg = Math.round(26 + b.vy * 6);
-              spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2, 8);
-            } else {
-              crushDmg = Math.round(18 + b.vy * 5);
-              spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2, 6);
-            }
+        // 1. Poziome pokrycie (overlap X) co najmniej 12 px (wyklucza muśnięcie krawędzią o 1-2 px oraz dotknięcie z boku)
+        const overlapX = Math.min(bRight, pRight) - Math.max(bLeft, pLeft);
+        if (overlapX < 12) continue;
 
-            p.hp = Math.max(0, (p.hp || 100) - crushDmg);
-            p.vy = Math.max(p.vy, b.vy * 0.6 + 2.0);
-            p.vx += (b.vx || 0) * 0.5 + (p.x < b.x ? -2.5 : 2.5);
+        // 2. Uderzenie od góry w głowę/barki:
+        // - dolna krawędź klocka penetruje co najmniej 2 px poniżej czubka głowy
+        // - dolna krawędź klocka znajduje się w górnej połowie hitboxa (bBottom <= pTop + ph * 0.65)
+        // - górna krawędź klocka musi znajdować się powyżej czubka głowy/barków (bTop < pTop + 15), wykluczając wskoczenie postaci na klocek od góry
+        if (bBottom < pTop + 2 || bBottom > pTop + ph * 0.65 || bTop >= pTop + 15) {
+          continue;
+        }
 
-            if (typeof triggerScreenShake === 'function') {
-              triggerScreenShake(b.isSniperSlab ? 10 : 6);
-            }
+        // Zarejestruj cooldown
+        b._hitEntities[entityId] = now;
+        p._lastCrushHitTime = now;
 
-            b.vy *= 0.35;
-            b.vx *= 0.5;
+        // 3. Obliczenie obrażeń i impulsów od prędkości spadania
+        let crushDmg = 0;
+        const isOnGround = p.onGround || (p.currentPlatform && p.currentPlatform.solid) || (p.y + ph >= 1190);
 
-            if (p.hp <= 0 && !p.isDead) {
-              p.isDead = true;
-              p.killer = { name: 'ZAWALENIE STRUKTURY', isSelf: true, cause: 'CRUSH' };
-              p.respawnTimer = 180;
-            }
-          }
+        if (b.vy > 9.5 && isOnGround) {
+          // Pełne przygniecenie z dużej wysokości bezpośrednio na głowę postaci stojącej na twardym podłożu -> zmiażdżenie (śmiertelne)
+          crushDmg = Math.max(100, p.hp || 100);
+        } else if (b.vy > 9.5) {
+          // Duża prędkość, ale postać w powietrzu / w locie -> potężne obrażenia i wbicie w dół
+          crushDmg = Math.round(60 + Math.min(25, (b.vy - 9.5) * 5));
+          p.vy = Math.max(p.vy, b.vy * 0.7);
+        } else {
+          // Umiarkowane uderzenie (b.vy w przedziale 5.5 .. 9.5): obrażenia częściowe 25-55 HP
+          const speedRatio = Math.max(0, Math.min(1, (b.vy - 5.5) / (9.5 - 5.5)));
+          crushDmg = Math.round(25 + speedRatio * 30);
+          if (b.isSniperSlab) crushDmg += 5; // ciężka dolomitowa płyta skalna
+        }
+
+        // Lekkie odepchnięcie na bok poza obrys klocka
+        const pushDir = (p.x + pw * 0.5 < b.x + b.w * 0.5) ? -1 : 1;
+        p.vx += pushDir * (3.5 + Math.min(b.vy * 0.4, 4.0));
+        p.vy = Math.max(p.vy, 2.0);
+
+        // Wyhamowanie pionowe klocka po uderzeniu w postać
+        b.vy *= 0.45;
+        b.vx += -pushDir * 1.5;
+
+        // Efekty cząsteczkowe i wstrząs kamery
+        if (b.isSniperSlab) {
+          spawnStoneDebris(p.x + pw * 0.5, bBottom, b.vx, -2.5, b.vy > 9.5 ? 14 : 8);
+        } else {
+          spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2.5, b.vy > 9.5 ? 12 : 6);
+        }
+
+        if (typeof triggerScreenShake === 'function') {
+          triggerScreenShake(b.vy > 9.5 ? 12 : 6);
+        }
+
+        p.hp = Math.max(0, (p.hp || 100) - crushDmg);
+
+        if (p.hp <= 0 && !p.isDead) {
+          p.isDead = true;
+          p.killer = { name: 'ZAWALENIE STRUKTURY', isSelf: true, cause: 'CRUSH' };
+          p.respawnTimer = 180;
         }
       }
     }
-    if (b.playerHitCooldown > 0) b.playerHitCooldown--;
 
     if (b.isAsleep) continue;
 

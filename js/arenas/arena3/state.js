@@ -28,6 +28,9 @@ export const activeFallingBlocks = [];
 
 export function registerActiveFallingBlock(b) {
   if (!b) return;
+  if (b.startY === undefined) {
+    b.startY = b.y;
+  }
   if (!activeFallingBlocks.includes(b)) {
     activeFallingBlocks.push(b);
   }
@@ -851,16 +854,20 @@ export function resetArena3() {
   if (typeof ALL_DESTRUCTIBLE_BLOCKS !== 'undefined' && Array.isArray(ALL_DESTRUCTIBLE_BLOCKS)) {
     for (let i = 0; i < ALL_DESTRUCTIBLE_BLOCKS.length; i++) {
       const b = ALL_DESTRUCTIBLE_BLOCKS[i];
-      if (b && b._removedFromPlatforms) {
-        if (!ARENA_3_PLATFORMS.includes(b)) {
-          ARENA_3_PLATFORMS.push(b);
-        }
-        if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
-          if (!window.ARENA_PLATFORMS.includes(b)) {
-            window.ARENA_PLATFORMS.push(b);
+      if (b) {
+        b.startY = undefined;
+        b._hitEntities = null;
+        if (b._removedFromPlatforms) {
+          if (!ARENA_3_PLATFORMS.includes(b)) {
+            ARENA_3_PLATFORMS.push(b);
           }
+          if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+            if (!window.ARENA_PLATFORMS.includes(b)) {
+              window.ARENA_PLATFORMS.push(b);
+            }
+          }
+          b._removedFromPlatforms = false;
         }
-        b._removedFromPlatforms = false;
       }
     }
   }
