@@ -9,7 +9,7 @@ import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBound
 import { getArmAnglesForTarget } from './ik.js';
 import { WEAPONS } from '../weapons.js';
 import { ACID_SURGE_SYSTEM } from '../arenas/arena2/state.js';
-import { getRiverbankGroundY } from '../arenas/arena3/state.js';
+import { getRiverbankGroundY, getSafeArena3Spawn, getSafeSurfaceBelow } from '../arenas/arena3/state.js';
 import { deathmatchState } from '../deathmatch/state.js';
 import { clearPlayerThrownTomahawks } from '../projectiles.js';
 import { spawnDroppedWeapon } from '../pickup/index.js';
@@ -318,6 +318,31 @@ export function getFarthestSpawnPoint(activeArena, respawningChar, combatantsLis
     }
   }
 
+  // W Arenie 3 (Tajemnicza Dżungla) filtruj punkty zniszczonego mostu / rozbitych płyt i dopasuj Y do kraterów
+  const isA3 = (activeArena?.id === 'arena-3' || activeArena?.alias === 'JUNGLE_ARENA' || activeArena?.alias === 'ARENA_3' || activeArena?.alias === 'ARENA_FOUNDRY');
+  if (isA3) {
+    const charH = respawningChar?.h || 72;
+    const safeCandidates = [];
+    for (let i = 0; i < candidates.length; i++) {
+      const s = candidates[i];
+      const safe = getSafeArena3Spawn(s, charH);
+      if (safe) {
+        safeCandidates.push(safe);
+      }
+    }
+    if (safeCandidates.length > 0) {
+      candidates = safeCandidates;
+    } else {
+      // Gwarantowany awaryjny fallback na litym podłożu brzegowym (bedrock poza zasięgiem wody)
+      const leftGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(450) : 1200;
+      const rightGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(3950) : 1200;
+      candidates = [
+        { x: 450, y: leftGroundY - charH, facing: 1 },
+        { x: 3950, y: rightGroundY - charH, facing: -1 }
+      ];
+    }
+  }
+
   const isCyan = (respawningChar.team === 'CYAN' || (!respawningChar.team && !respawningChar.isBot));
   const isFFA = (typeof deathmatchState !== 'undefined' && deathmatchState.active && deathmatchState.mode === 'FFA');
 
@@ -555,13 +580,31 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     const scatterX = (Math.random() - 0.5) * 24;
 
     const chosenSpawn = getFarthestSpawnPoint(activeArena, player, combatants);
+    const isA3Respawn = (activeArena?.id === 'arena-3' || activeArena?.alias === 'JUNGLE_ARENA' || activeArena?.alias === 'ARENA_3' || activeArena?.alias === 'ARENA_FOUNDRY');
     if (chosenSpawn) {
       player.x = (chosenSpawn.x || (isCyan ? 530 : 3470)) + scatterX;
       player.y = chosenSpawn.y || 350;
       player.facing = chosenSpawn.facing || (chosenSpawn.x < 2000 ? 1 : -1);
+
+      if (isA3Respawn) {
+        // Dodatkowe zabezpieczenie po przesunięciu o scatterX: weryfikacja podłoża i dopasowanie do krateru
+        const safeCandidate = getSafeArena3Spawn({ x: player.x, y: player.y, facing: player.facing }, player.h || 72, player.team || (isCyan ? 'CYAN' : 'ORANGE'));
+        if (safeCandidate) {
+          player.x = safeCandidate.x;
+          player.y = safeCandidate.y;
+        } else {
+          const fallbackGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(player.x) : 1200;
+          player.y = Math.min(1200, fallbackGroundY) - (player.h || 72);
+        }
+      }
     } else {
       player.x = player.isBot ? (START_X + 600 + scatterX) : (START_X - 60);
-      player.y = groundY - player.h;
+      if (isA3Respawn) {
+        const fallbackGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(player.x) : 1200;
+        player.y = fallbackGroundY - (player.h || 72);
+      } else {
+        player.y = groundY - player.h;
+      }
       player.facing = player.isBot ? -1 : 1;
     }
     player.onGround = true;

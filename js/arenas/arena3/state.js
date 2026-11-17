@@ -1560,6 +1560,159 @@ export const ARENA_3_SPAWNS = {
   ]
 };
 
+// =========================================================================
+// WALIDACJA BEZPIECZEŃSTWA SPAWNU I ZNISZCZEŃ NA ARENIE 3
+// =========================================================================
+
+/**
+ * Sprawdza, czy pod danym punktem (x, y) znajduje się stabilne, nienaruszone podłoże.
+ * Zwraca Y powierzchni (number) lub null, gdy punkt wisi nad wodą, przepaścią lub zniszczonym mostem/płytą.
+ */
+export function getSafeSurfaceBelow(x, y, arenaId = 'ARENA_3') {
+  const isA3 = (arenaId === 'ARENA_3' || arenaId === 'arena-3' || arenaId === 'JUNGLE_ARENA' || arenaId === 'ARENA_FOUNDRY');
+  if (!isA3) {
+    if (typeof ARENA_PLATFORMS !== 'undefined' && Array.isArray(ARENA_PLATFORMS)) {
+      for (const plat of ARENA_PLATFORMS) {
+        if (plat.isWall || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
+        const pw = plat.w !== undefined ? plat.w : 100;
+        if (x >= plat.x - 6 && x <= plat.x + pw + 6 && y <= plat.y + 20) {
+          return plat.y;
+        }
+      }
+    }
+    return 580;
+  }
+
+  // ARENA 3:
+  // 1. Sprawdzenie kanału rzeki (X: 1560 .. 2840)
+  // Nigdy nie wybieraj punktu spawnu nad kanałem rzeki, jeśli pod nim nie ma co najmniej 3 sąsiadujących, nienaruszonych bloków mostu
+  if (x >= 1560 && x <= 2840) {
+    if (x >= BRIDGE_START_X && x <= BRIDGE_START_X + BRIDGE_TOTAL_W && Array.isArray(ARENA_3_BRIDGE_BLOCKS)) {
+      const bIdx = Math.floor((x - BRIDGE_START_X) / BRIDGE_BLOCK_W);
+      let has3AdjacentIntact = false;
+      let bridgeSurfaceY = null;
+
+      if (bIdx >= 0 && bIdx < ARENA_3_BRIDGE_BLOCKS.length) {
+        const minStart = Math.max(0, bIdx - 2);
+        const maxStart = Math.min(ARENA_3_BRIDGE_BLOCKS.length - 3, bIdx);
+        for (let s = minStart; s <= maxStart; s++) {
+          const b0 = ARENA_3_BRIDGE_BLOCKS[s];
+          const b1 = ARENA_3_BRIDGE_BLOCKS[s + 1];
+          const b2 = ARENA_3_BRIDGE_BLOCKS[s + 2];
+          if (b0 && b1 && b2 &&
+              b0.intact === true && b1.intact === true && b2.intact === true &&
+              b0.solid !== false && b1.solid !== false && b2.solid !== false &&
+              !b0.collapseDelay && !b1.collapseDelay && !b2.collapseDelay) {
+            has3AdjacentIntact = true;
+            bridgeSurfaceY = ARENA_3_BRIDGE_BLOCKS[bIdx].y;
+            break;
+          }
+        }
+      }
+
+      // Bezpieczny most musi być nienaruszony i znajdować się powyżej toni wodnej (Y < 1250)
+      if (has3AdjacentIntact && bridgeSurfaceY !== null && bridgeSurfaceY < 1250) {
+        return bridgeSurfaceY;
+      }
+    }
+
+    // Brak co najmniej 3 sąsiadujących, nienaruszonych bloków mostu nad kanałem rzeki = ŚMIERTELNA PRZEPAŚĆ / WODA
+    return null;
+  }
+
+  // 2. Sprawdzenie płyt skalnych snajperów (ARENA_3_SNIPER_SLABS)
+  // Lewa półka: X: 600..1000, Y: 800; Prawa półka: X: 3400..3800, Y: 800
+  if (y <= 850 && ((x >= 550 && x <= 1050) || (x >= 3350 && x <= 3850))) {
+    const overlappingSlabs = ARENA_3_SNIPER_SLABS.filter(s =>
+      Math.abs(s.origY - 800) < 60 &&
+      s.origX < x + 12 && s.origX + s.w > x - 12
+    );
+    if (overlappingSlabs.length > 0) {
+      // Wszystkie płyty pod stopami postaci muszą być w 100% nienaruszone i stabilne
+      for (const slab of overlappingSlabs) {
+        if (!slab.intact || slab.solid === false || (slab.isAsleep === false && Math.abs(slab.vy) > 1.5)) {
+          return null;
+        }
+      }
+      return overlappingSlabs[0].y;
+    }
+  }
+
+  // 3. Sprawdzenie pomostów wież strażniczych (ARENA_3_TOWER_BLOCKS)
+  if (y <= 650 && ((x >= 80 && x <= 320) || (x >= 4080 && x <= 4320))) {
+    const tb = ARENA_3_TOWER_BLOCKS.find(b =>
+      x >= b.origX - 6 && x <= b.origX + b.w + 6 &&
+      y <= b.origY + 20 && y >= b.origY - 80
+    );
+    if (tb) {
+      if (!tb.intact || tb.solid === false) return null;
+      return tb.y;
+    }
+  }
+
+  // 4. Sprawdzenie ramp podejściowych (ARENA_3_RAMP_BLOCKS)
+  if ((x >= 1140 && x < 1560) || (x > 2840 && x <= 3260)) {
+    const ramp = ARENA_3_RAMP_BLOCKS.find(r => x >= r.origX - 4 && x <= r.origX + r.w + 4);
+    if (ramp) {
+      if (ramp.intact && ramp.solid !== false) {
+        const t = ramp.w > 0 ? Math.max(0, Math.min(1, (x - ramp.origX) / ramp.w)) : 0;
+        const rampY = (ramp.startY !== undefined && ramp.endY !== undefined)
+          ? ramp.startY + t * (ramp.endY - ramp.startY)
+          : ramp.y;
+        return rampY;
+      }
+    }
+  }
+
+  // 5. Podłoże lądowe (dynamiczne kratery w ziemi z carveTerrainCrater)
+  const groundY = getRiverbankGroundY(x);
+  if (groundY >= 1300) {
+    // Krater zalany wodą gruntową lub zbyt głęboki rów
+    return null;
+  }
+  return groundY;
+}
+
+/**
+ * Sprawdza, czy punkt spawnu jest bezpieczny do odrodzenia na Arenie 3
+ */
+export function isArena3SpawnSafe(spawn) {
+  if (!spawn) return false;
+  return getSafeSurfaceBelow(spawn.x, spawn.y, 'ARENA_3') !== null;
+}
+
+/**
+ * Waliduje i dopasowuje punkt odrodzenia na Arenie 3:
+ * - Odrzuca punkty nad zniszczonym mostem, rozbitą półką snajperską lub zalanym kraterem
+ * - Dopasowuje współrzędną Y do aktualnego gruntu (kraterów) / desek mostu (player.y = groundY - charH)
+ * - Jeśli punkt jest niebezpieczny, opcjonalnie zwraca pewny spawn awaryjny dla danej drużyny
+ */
+export function getSafeArena3Spawn(spawn, charH = 72, fallbackTeam = null) {
+  if (!spawn) return null;
+  const surfaceY = getSafeSurfaceBelow(spawn.x, spawn.y, 'ARENA_3');
+  if (surfaceY !== null) {
+    return {
+      x: spawn.x,
+      y: surfaceY - charH,
+      facing: spawn.facing !== undefined ? spawn.facing : (spawn.x < 2200 ? 1 : -1)
+    };
+  }
+
+  // W przypadku zniszczonego podłoża (zniszczony most, rozbita półka, zalany krater)
+  if (fallbackTeam) {
+    const isCyan = (fallbackTeam === 'CYAN' || fallbackTeam === 'alpha' || fallbackTeam === 'Team A');
+    const safeX = isCyan ? 450 : 3950;
+    const safeGroundY = getRiverbankGroundY(safeX);
+    return {
+      x: safeX,
+      y: safeGroundY - charH,
+      facing: isCyan ? 1 : -1
+    };
+  }
+
+  return null;
+}
+
 export const ARENA_3_MINECARTS = [];
 
 export function resetArena3Minecarts() {}
@@ -1597,4 +1750,7 @@ if (typeof window !== 'undefined') {
   window.destroyPylon = destroyPylon;
   window.serializeArena3State = serializeArena3State;
   window.applyArena3StateSnapshot = applyArena3StateSnapshot;
+  window.getSafeSurfaceBelow = getSafeSurfaceBelow;
+  window.isArena3SpawnSafe = isArena3SpawnSafe;
+  window.getSafeArena3Spawn = getSafeArena3Spawn;
 }

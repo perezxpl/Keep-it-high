@@ -34,7 +34,7 @@ import {
   customObstacles, OBSTACLE_PALETTE, getObstacleDef, clearCustomObstacles, undoCustomObstacle,
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
-  updateMovableObstacles, resetArena, spawnAltarShockwave
+  updateMovableObstacles, resetArena, spawnAltarShockwave, getSafeArena3Spawn
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses, isBotEnabled, setBotEnabled, getBotDifficulty, setBotDifficulty, getBotCount, setBotCount } from './bot.js';
@@ -218,7 +218,11 @@ export const BIOME_TELEPORT_TARGETS = {
 export function teleportToDistance(meters) {
   const targetX = START_X + (meters * 14);
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
-  const floorY = isA3 ? 1200 : GROUND_Y;
+  let floorY = GROUND_Y;
+  if (isA3) {
+    const safeP = getSafeArena3Spawn({ x: targetX, y: 1130, facing: 1 }, player.h || 72, 'CYAN');
+    floorY = safeP ? (safeP.y + (player.h || 72)) : 1200;
+  }
 
   player.x = targetX;
   player.y = floorY - player.h;
@@ -457,9 +461,18 @@ export function selectPlayerClass(targetClass) {
   player.maxHp = player.hp;
 
   const currentArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
   if (currentArena && Array.isArray(currentArena.spawns) && currentArena.spawns[0]) {
-    player.x = currentArena.spawns[0].x;
-    player.y = currentArena.spawns[0].y;
+    const rawX = currentArena.spawns[0].x;
+    const rawY = currentArena.spawns[0].y;
+    if (isA3) {
+      const safeP = getSafeArena3Spawn({ x: rawX, y: rawY, facing: 1 }, player.h || 72, 'CYAN');
+      player.x = safeP ? safeP.x : rawX;
+      player.y = safeP ? safeP.y : rawY;
+    } else {
+      player.x = rawX;
+      player.y = rawY;
+    }
   } else {
     player.x = START_X;
     player.y = GROUND_Y - player.h;

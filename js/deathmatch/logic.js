@@ -21,6 +21,7 @@ import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHa
 import { mpMatchConfig, getMpBotTeamsList } from '../networkMatch.js';
 import { getActiveRemotePlayers } from '../networkPlayers.js';
 import { playSound } from '../audio/index.js';
+import { getSafeArena3Spawn, isArena3SpawnSafe } from '../arenas/arena3/state.js';
 
 let _dmSyncTimer = 0;
 
@@ -539,6 +540,25 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
       c.killer = null;
       c.killerBulletId = null;
       if (c === player) c._calloutDeathRecorded = false;
+
+      // Zabezpieczenie przed odrodzeniem nad zniszczonym mostem / rzeką na Arenie 3
+      const isA3Match = (typeof window !== 'undefined' && (window.activeArenaId === 'ARENA_3' || window.activeArenaId === 'arena-3' || window.activeArenaId === 'ARENA_FOUNDRY'));
+      if (isA3Match && typeof c.spawnProtectionTimer === 'number' && c.spawnProtectionTimer > 110) {
+        if (!isArena3SpawnSafe(c)) {
+          const safe = getSafeArena3Spawn(c, c.h || 72, c.team);
+          if (safe) {
+            c.x = safe.x;
+            c.y = safe.y;
+            c.vx = 0;
+            c.vy = 0;
+            c.airVx = 0;
+            c.onGround = true;
+            c.currentGroundY = c.y + (c.h || 72);
+            c.isJumping = false;
+            c.currentPlatform = null;
+          }
+        }
+      }
     }
   }
 
@@ -610,5 +630,27 @@ export function finishDeathmatch(reason = 'TIME_LIMIT') {
     recordMatchResult('WIN');
   } else {
     recordMatchResult('LOSS');
+  }
+}
+
+/**
+ * Zapewnia, że bot po odrodzeniu na Arenie 3 znajduje się na bezpiecznym podłożu
+ */
+export function validateBotRespawnSafety(b) {
+  if (!b) return;
+  const isA3Match = (typeof window !== 'undefined' && (window.activeArenaId === 'ARENA_3' || window.activeArenaId === 'arena-3' || window.activeArenaId === 'ARENA_FOUNDRY'));
+  if (isA3Match && !isArena3SpawnSafe(b)) {
+    const safe = getSafeArena3Spawn(b, b.h || 72, b.team);
+    if (safe) {
+      b.x = safe.x;
+      b.y = safe.y;
+      b.vx = 0;
+      b.vy = 0;
+      b.airVx = 0;
+      b.onGround = true;
+      b.currentGroundY = b.y + (b.h || 72);
+      b.isJumping = false;
+      b.currentPlatform = null;
+    }
   }
 }

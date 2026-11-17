@@ -32,7 +32,8 @@ import arena2, {
 } from '../arenas/arena2.js';
 import arena3, {
   ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS, GROUND_LEFT_POINTS,
-  GROUND_RIGHT_POINTS, LEFT_OVAL_POINTS, RIGHT_OVAL_POINTS
+  GROUND_RIGHT_POINTS, LEFT_OVAL_POINTS, RIGHT_OVAL_POINTS,
+  getSafeArena3Spawn, isArena3SpawnSafe, getSafeSurfaceBelow
 } from '../arenas/arena3.js';
 import { initDeathmatch, resetDeathmatchState, deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { balanceBotClasses } from '../bot.js';
@@ -45,7 +46,8 @@ export {
   ARENA_2_PLATFORMS, ARENA_2_CONFIG, ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS, ARENA_2_BRIDGES, resetArena2Bridges,
   ARENA_2_COVERS, ARENA_2_BARRELS, ARENA_2_SUPPLY, ACID_SURGE_SYSTEM, ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
-  getActiveArena, setActiveArena, ARENAS, onArenaChange
+  getActiveArena, setActiveArena, ARENAS, onArenaChange,
+  getSafeArena3Spawn, isArena3SpawnSafe, getSafeSurfaceBelow
 };
 
 export const obstacles = [];
@@ -523,6 +525,43 @@ export function resetArena() {
       b.facing = isCyan ? 1 : -1;
       b.gaitMode = 'IDLE';
     });
+  } else if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3') {
+    if (_activePlayer) {
+      const isClient = isLocalClientPlayer(_activePlayer);
+      const spawnIdx = isClient ? 1 : 0;
+      const rawX = (arena3.spawns && arena3.spawns[spawnIdx]) ? arena3.spawns[spawnIdx].x : (isClient ? 3800 : 600);
+      const rawY = (arena3.spawns && arena3.spawns[spawnIdx]) ? arena3.spawns[spawnIdx].y : (isClient ? 880 : 1130);
+      const safeP = getSafeArena3Spawn({ x: rawX, y: rawY, facing: isClient ? -1 : 1 }, _activePlayer.h || 72, isClient ? 'ORANGE' : 'CYAN');
+      _activePlayer.x = safeP ? safeP.x : rawX;
+      _activePlayer.y = safeP ? safeP.y : rawY;
+      _activePlayer.vx = 0;
+      _activePlayer.vy = 0;
+      _activePlayer.facing = isClient ? -1 : 1;
+      _activePlayer.onGround = true;
+      _activePlayer.currentGroundY = _activePlayer.y + (_activePlayer.h || 72);
+      _activePlayer.isIntro = false;
+      _activePlayer.gaitMode = 'IDLE';
+    }
+    const botsList = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
+      ? window.getActiveBots()
+      : (_activeBot ? [_activeBot] : []);
+
+    botsList.forEach((b, idx) => {
+      const isCyan = (b.team === 'CYAN');
+      const baseSpawnX = isCyan
+        ? ((arena3.spawns && arena3.spawns[0]) ? arena3.spawns[0].x : 600) + ((Math.floor(idx / 2) + 1) * 60)
+        : ((arena3.spawns && arena3.spawns[1]) ? arena3.spawns[1].x : 3350) - ((Math.floor(idx / 2) + 1) * 60);
+      const baseSpawnY = (arena3.spawns && arena3.spawns[isCyan ? 0 : 1]) ? arena3.spawns[isCyan ? 0 : 1].y : 1130;
+      const safeB = getSafeArena3Spawn({ x: baseSpawnX, y: baseSpawnY, facing: isCyan ? 1 : -1 }, b.h || 72, isCyan ? 'CYAN' : 'ORANGE');
+      b.x = safeB ? safeB.x : baseSpawnX;
+      b.y = safeB ? safeB.y : baseSpawnY;
+      b.vx = 0;
+      b.vy = 0;
+      b.facing = isCyan ? 1 : -1;
+      b.onGround = true;
+      b.currentGroundY = b.y + (b.h || 72);
+      b.gaitMode = 'IDLE';
+    });
   }
 }
 
@@ -824,8 +863,11 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (playerObj) {
       const isClient = isLocalClientPlayer(playerObj);
       const spawnIdx = isClient ? 1 : 0;
-      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 3800 : 600);
-      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (isClient ? 880 : 1130);
+      const rawX = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 3800 : 600);
+      const rawY = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (isClient ? 880 : 1130);
+      const safeP = getSafeArena3Spawn({ x: rawX, y: rawY, facing: isClient ? -1 : 1 }, playerObj.h || 72, isClient ? 'ORANGE' : 'CYAN');
+      playerObj.x = safeP ? safeP.x : rawX;
+      playerObj.y = safeP ? safeP.y : rawY;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = isClient ? -1 : 1;
@@ -833,6 +875,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isJumping = false;
       playerObj.isSliding = false;
       playerObj.isDead = false;
+      playerObj.onGround = true;
+      playerObj.currentGroundY = playerObj.y + (playerObj.h || 72);
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
       restorePlayerArmoryLoadout(playerObj);
@@ -853,14 +897,17 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
         ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 600) + ((Math.floor(idx / 2) + 1) * 60)
         : ((currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3350) - ((Math.floor(idx / 2) + 1) * 60);
       const baseSpawnY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 1]) ? currentArena.spawns[isCyan ? 0 : 1].y : 1130;
-      b.x = baseSpawnX;
-      b.y = baseSpawnY;
+      const safeB = getSafeArena3Spawn({ x: baseSpawnX, y: baseSpawnY, facing: isCyan ? 1 : -1 }, b.h || 72, isCyan ? 'CYAN' : 'ORANGE');
+      b.x = safeB ? safeB.x : baseSpawnX;
+      b.y = safeB ? safeB.y : baseSpawnY;
       b.vx = 0;
       b.vy = 0;
       b.facing = isCyan ? 1 : -1;
       b.isJumping = false;
       b.isSliding = false;
       b.isDead = false;
+      b.onGround = true;
+      b.currentGroundY = b.y + (b.h || 72);
       b.hp = b.maxHp || 100;
       b.respawnTimer = 0;
       b.ragdoll = null;

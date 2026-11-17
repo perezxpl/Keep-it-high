@@ -58,7 +58,10 @@ import {
   GROUND_BEDROCK_Y,
   ALL_DESTRUCTIBLE_BLOCKS,
   activeFallingBlocks,
-  removeDeadPlatform
+  removeDeadPlatform,
+  getSafeSurfaceBelow,
+  isArena3SpawnSafe,
+  getSafeArena3Spawn
 } from './arena3/state.js';
 
 import {
@@ -77,6 +80,9 @@ export {
   LEFT_OVAL_POINTS,
   RIGHT_OVAL_POINTS,
   getRiverbankGroundY,
+  getSafeSurfaceBelow,
+  isArena3SpawnSafe,
+  getSafeArena3Spawn,
   ARENA_3_BRIDGE_BLOCKS,
   getApproachInclineY,
   ARENA_3_RAMP_BLOCKS,
@@ -921,6 +927,15 @@ const arena3 = {
   },
   onExplosion(expX, expY, radius, context) {
     return onArena3Explosion(expX, expY, radius, context);
+  },
+  getSafeSurfaceBelow(x, y) {
+    return getSafeSurfaceBelow(x, y, 'ARENA_3');
+  },
+  isSpawnSafe(spawn) {
+    return isArena3SpawnSafe(spawn);
+  },
+  getSafeSpawn(spawn, charH = 72, fallbackTeam = null) {
+    return getSafeArena3Spawn(spawn, charH, fallbackTeam);
   }
 };
 
@@ -938,6 +953,9 @@ if (typeof window !== 'undefined') {
   window.ARENA_3_TOWER_BLOCKS = ARENA_3_TOWER_BLOCKS;
   window.STONE_DEBRIS = STONE_DEBRIS;
   window.BRIDGE_SPLINTERS = BRIDGE_SPLINTERS;
+  window.getSafeSurfaceBelow = getSafeSurfaceBelow;
+  window.isArena3SpawnSafe = isArena3SpawnSafe;
+  window.getSafeArena3Spawn = getSafeArena3Spawn;
   window.arena3 = arena3;
 }
 
