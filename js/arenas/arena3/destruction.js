@@ -26,6 +26,7 @@ import {
   breakTowerBlock,
   destroyTowerPillar,
   invalidateTowerCanvas,
+  invalidateRampCanvas,
   carveTerrainCrater
 } from './state.js';
 
@@ -167,6 +168,7 @@ export function onArena3BulletHit(bullet) {
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 10, b.x + b.w + 2, b.y + b.h + 16)) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;
+        invalidateRampCanvas(b.side);
         spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
         if (b.hp <= 0) {
           const impX = (bullet.vx || 0) * 0.1;
@@ -194,6 +196,7 @@ export function onArena3BulletHit(bullet) {
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;
+        invalidateRampCanvas(b.side);
         spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
         if (b.hp <= 0) {
           const impX = (bullet.vx || 0) * 0.1;
@@ -221,6 +224,7 @@ export function onArena3BulletHit(bullet) {
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;
+        invalidateRampCanvas(b.side);
         spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
         const parentPlat = ARENA_3_CANOPY_PLATFORMS.find(p => p.id === b.parentPlatId);
         if (parentPlat) {
@@ -350,6 +354,7 @@ export function onArena3KickHit(player, kickBox) {
       hitAny = true;
       if (b.intact) {
         b.hp -= kickDamage;
+        invalidateRampCanvas(b.side);
         spawnBridgeSplinters(kx, ky, dirX * 5, -2, 10);
         if (b.hp <= 0) {
           breakRampBlock(b, dirX * 3.5, 4.0, dirX * 0.25);
@@ -377,6 +382,7 @@ export function onArena3KickHit(player, kickBox) {
       hitAny = true;
       if (b.intact) {
         b.hp -= kickDamage;
+        invalidateRampCanvas(b.side);
         spawnBridgeSplinters(kx, ky, dirX * 5, -2, 10);
         if (b.hp <= 0) {
           breakBridgeBlock(b, dirX * 3.5, 4.0, dirX * 0.25);
@@ -405,6 +411,7 @@ export function onArena3KickHit(player, kickBox) {
       hitAny = true;
       if (b.intact) {
         b.hp -= kickDamage;
+        invalidateRampCanvas(b.side);
         spawnBridgeSplinters(kx, ky, dirX * 5, -2, 10);
         const parentPlat = ARENA_3_CANOPY_PLATFORMS.find(p => p.id === b.parentPlatId);
         if (parentPlat) {
@@ -595,6 +602,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
 
       if (b.intact) {
         b.hp -= intensity * 170;
+        invalidateRampCanvas(b.side);
         if (b.hp <= 0 || d <= blastRad) {
           breakRampBlock(b, impulseX, impulseY, angularImpulse);
         }
@@ -629,6 +637,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
 
       if (b.intact) {
         b.hp -= intensity * 170;
+        invalidateRampCanvas(b.side);
         if (b.hp <= 0 || d <= blastRad) {
           breakBridgeBlock(b, impulseX, impulseY, angularImpulse);
         }

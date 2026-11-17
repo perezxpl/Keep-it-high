@@ -60,6 +60,16 @@ export function invalidateTowerCanvas(side) {
   }
 }
 
+let _rampCanvasInvalidator = null;
+export function setRampCanvasInvalidator(fn) {
+  _rampCanvasInvalidator = fn;
+}
+export function invalidateRampCanvas(side) {
+  if (typeof _rampCanvasInvalidator === 'function') {
+    _rampCanvasInvalidator(side);
+  }
+}
+
 function createGroundPoints(startX, endX, step = 10, defaultY = 1200) {
   const pts = [];
   for (let x = startX; x <= endX; x += step) {
@@ -306,15 +316,34 @@ export function breakRampBlock(block, impulseX = 0, impulseY = 0, angularImpulse
   registerActiveFallingBlock(block);
   block.isSlope = false;
   delete block.surfacePoints;
-  // Po zniszczeniu pozostaje namacalny jako swobodny blok fizyczny
-  block.solid = true;
-  block.isPlatform = true;
-  block.oneWay = true;
+  // Po zniszczeniu traci właściwości platformy kolizyjnej i nie podpiera gracza
+  block.solid = false;
+  block.isPlatform = false;
+  block.oneWay = false;
   block.vx += impulseX;
   block.vy += impulseY;
   block.vRot += angularImpulse;
   block.isAsleep = false;
   block.sleepTimer = 0;
+
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    const actBlock = window.ARENA_PLATFORMS.find(p => p && (p === block || p.id === block.id));
+    if (actBlock) {
+      actBlock.intact = false;
+      actBlock.solid = false;
+      actBlock.isPlatform = false;
+      actBlock.oneWay = false;
+      actBlock.x = block.x;
+      actBlock.y = block.y;
+      actBlock.vx = block.vx;
+      actBlock.vy = block.vy;
+      actBlock.isAsleep = false;
+      actBlock.sleepTimer = 0;
+    }
+  }
+
+  // Unieważnienie bufora canvas ramp podejściowych
+  invalidateRampCanvas(block.side);
 
   spawnBridgeSplinters(block.x + block.w / 2, block.y + block.h / 2, impulseX, impulseY, 14);
   if (typeof triggerScreenShake === 'function') {
@@ -850,6 +879,8 @@ export function evaluateBridgeIntegrity() {
 export function resetArena3() {
   setArena3CliffDirty(true);
   resetWeatheredAssetsCache();
+  invalidateRampCanvas('all');
+  invalidateTowerCanvas('all');
   // 0. Przywrócenie usuniętych zniszczonych platform do ARENA_3_PLATFORMS i window.ARENA_PLATFORMS
   if (typeof ALL_DESTRUCTIBLE_BLOCKS !== 'undefined' && Array.isArray(ALL_DESTRUCTIBLE_BLOCKS)) {
     for (let i = 0; i < ALL_DESTRUCTIBLE_BLOCKS.length; i++) {
@@ -1903,9 +1934,12 @@ export function applyArena3StateSnapshot(snapshot) {
 
 if (typeof window !== 'undefined') {
   window.ARENA_3_BRIDGE_BLOCKS = ARENA_3_BRIDGE_BLOCKS;
+  window.ARENA_3_RAMP_BLOCKS = ARENA_3_RAMP_BLOCKS;
   window.ARENA_3_PYLONS = ARENA_3_PYLONS;
   window.breakBridgeBlock = breakBridgeBlock;
+  window.breakRampBlock = breakRampBlock;
   window.destroyPylon = destroyPylon;
+  window.invalidateRampCanvas = invalidateRampCanvas;
   window.serializeArena3State = serializeArena3State;
   window.applyArena3StateSnapshot = applyArena3StateSnapshot;
   window.getSafeSurfaceBelow = getSafeSurfaceBelow;

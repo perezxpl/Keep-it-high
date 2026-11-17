@@ -20,6 +20,7 @@ import {
   ARENA_3_TOWER_BLOCKS,
   ARENA_3_TOWER_ROOFS,
   setTowerCanvasInvalidator,
+  setRampCanvasInvalidator,
   ARENA_3_PLATFORMS,
   GROUND_LEFT_POINTS,
   GROUND_RIGHT_POINTS,
@@ -73,6 +74,20 @@ let _cachedLeftStiltsCanvas = null;
 let _cachedRightStiltsCanvas = null;
 let _cachedLeftApproachDeckCanvas = null;
 let _cachedRightApproachDeckCanvas = null;
+
+export function invalidateRampCanvas(side) {
+  if (!side || side === 'left' || side === 'all') {
+    _cachedLeftStiltsCanvas = null;
+    _cachedLeftApproachDeckCanvas = null;
+  }
+  if (!side || side === 'right' || side === 'all') {
+    _cachedRightStiltsCanvas = null;
+    _cachedRightApproachDeckCanvas = null;
+  }
+}
+if (typeof setRampCanvasInvalidator === 'function') {
+  setRampCanvasInvalidator(invalidateRampCanvas);
+}
 
 let _rampLeftBlocks = null;
 let _rampRightBlocks = null;
@@ -2240,8 +2255,13 @@ export function drawArena3Foreground(ctx, camera) {
         targetCtx.fillRect(b.stiltX - 6, deckBottomY + 4, 3, 3);
         targetCtx.fillRect(b.stiltX + 3, deckBottomY + 4, 3, 3);
       } else {
-        // Złamany kikut pala (splintered broken stilt) wkopany w podłoże aż do spągu Y: 1400
-        const breakTopY = deckBottomY + 22 + ((b.seed % 17) - 8);
+        // Złamany kikut pala tuż przy gruncie / linii wody (brak lewitującego 300px słupa)
+        const groundY = (typeof getRiverbankGroundY === 'function')
+          ? getRiverbankGroundY(b.stiltX)
+          : 1200;
+        const stumpH = 12 + (b.seed % 10);
+        const breakTopY = Math.min(1315, groundY - stumpH);
+
         targetCtx.strokeStyle = '#2d1808';
         targetCtx.lineWidth = 9;
         targetCtx.beginPath();
@@ -2260,9 +2280,9 @@ export function drawArena3Foreground(ctx, camera) {
         targetCtx.fillStyle = '#221104';
         targetCtx.beginPath();
         targetCtx.moveTo(b.stiltX - 5, breakTopY + 2);
-        targetCtx.lineTo(b.stiltX - 2, breakTopY - 14);
-        targetCtx.lineTo(b.stiltX + 1, breakTopY - 4);
-        targetCtx.lineTo(b.stiltX + 4, breakTopY - 16);
+        targetCtx.lineTo(b.stiltX - 2, breakTopY - 10);
+        targetCtx.lineTo(b.stiltX + 1, breakTopY - 3);
+        targetCtx.lineTo(b.stiltX + 4, breakTopY - 12);
         targetCtx.lineTo(b.stiltX + 5, breakTopY + 2);
         targetCtx.closePath();
         targetCtx.fill();
@@ -2280,6 +2300,10 @@ export function drawArena3Foreground(ctx, camera) {
 
     const rampBlocks = getRampBlocks(isLeft);
     const isIntact = rampBlocks.every(b => b.intact && b.hp === b.maxHp);
+    if (!isIntact) {
+      if (isLeft) _cachedLeftStiltsCanvas = null;
+      else _cachedRightStiltsCanvas = null;
+    }
     if (isIntact && typeof document !== 'undefined') {
       let stiltsCanvas = isLeft ? _cachedLeftStiltsCanvas : _cachedRightStiltsCanvas;
       if (!stiltsCanvas) {
@@ -2430,15 +2454,33 @@ export function drawArena3Foreground(ctx, camera) {
           targetCtx.moveTo(postX, postY - handrailH * 0.5);
           targetCtx.lineTo(nextPostX, nextPostY - handrailH * 0.5);
           targetCtx.stroke();
+        } else if (rIdx < rampBlocks.length - 1 && !rampBlocks[rIdx + 1].intact) {
+          // Poszarpany koniec zerwanej poręczy zwisający w dół
+          targetCtx.strokeStyle = '#533718';
+          targetCtx.lineWidth = 3.0;
+          targetCtx.beginPath();
+          targetCtx.moveTo(postX, postY - handrailH + 3);
+          targetCtx.quadraticCurveTo(postX + (isLeft ? 8 : -8), postY - handrailH + 10, postX + (isLeft ? 12 : -12), postY - handrailH + 18);
+          targetCtx.stroke();
         }
       } else {
         // ZNISZCZONY SEGMENT RAMPY (Poszarpana belka podestu ze zniszczoną listwą antypoślizgową)
-        const bcx = b.x + b.w / 2;
-        const bcy = b.y + b.h / 2;
-        drawSplinteredWoodRubble(targetCtx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
+        if (!b.vanished && !b.isDead) {
+          const bcx = b.x + b.w / 2;
+          const bcy = b.y + b.h / 2;
+          if (b.landDecay && b.landDecay > 0) {
+            targetCtx.save();
+            targetCtx.globalAlpha = Math.max(0, 1 - b.landDecay / 45);
+            drawSplinteredWoodRubble(targetCtx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
+            targetCtx.restore();
+          } else {
+            drawSplinteredWoodRubble(targetCtx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
+          }
+        }
 
         // Piana jeśli klocek wpadł do rzeki (buforowana do wspólnego batcha)
-        if (b.y + b.h >= 1300 && b.y <= 1360) {
+        if (!b.vanished && b.y + b.h >= 1300 && b.y <= 1360) {
+          const bcx = b.x + b.w / 2;
           _waterFoamEllipses.push(bcx, b.w * 0.7);
         }
       }
@@ -2466,6 +2508,10 @@ export function drawArena3Foreground(ctx, camera) {
 
     const rampBlocks = getRampBlocks(isLeft);
     const isIntact = rampBlocks.every(b => b.intact && b.hp === b.maxHp);
+    if (!isIntact) {
+      if (isLeft) _cachedLeftApproachDeckCanvas = null;
+      else _cachedRightApproachDeckCanvas = null;
+    }
     if (isIntact && typeof document !== 'undefined') {
       let deckCanvas = isLeft ? _cachedLeftApproachDeckCanvas : _cachedRightApproachDeckCanvas;
       if (!deckCanvas) {
@@ -2749,105 +2795,200 @@ export function drawArena3Foreground(ctx, camera) {
 
   drawAnchorCables();
 
-  // D. GŁÓWNE LINY NOŚNE PRZĘSŁA (Łuk paraboliczny od pylonu do pylonu)
+  // D. GŁÓWNE LINY NOŚNE PRZĘSŁA (Łuk paraboliczny lub zerwane liny)
   if (bridgeX2 + 80 >= camL && bridgeX1 - 80 <= camR) {
     ctx.save();
-    const leftAnchorX = ARENA_3_PYLONS.left.intact ? pylonLeftX : (pylonLeftX + 40);
-    const leftAnchorY = ARENA_3_PYLONS.left.intact ? (pylonTopY - 6) : Math.min(1305, 1100 + (ARENA_3_PYLONS.left.fallDropY || 0));
-    const rightAnchorX = ARENA_3_PYLONS.right.intact ? pylonRightX : (pylonRightX - 40);
-    const rightAnchorY = ARENA_3_PYLONS.right.intact ? (pylonTopY - 6) : Math.min(1305, 1100 + (ARENA_3_PYLONS.right.fallDropY || 0));
-    const midSagY = (ARENA_3_PYLONS.left.intact && ARENA_3_PYLONS.right.intact) ? 970 : 1260;
 
-    // 1. Górna główna lina nośna (Main Cable)
-    ctx.strokeStyle = '#5a3b19';
-    ctx.lineWidth = 5.5;
-    ctx.beginPath();
-    ctx.moveTo(leftAnchorX, leftAnchorY);
-    ctx.quadraticCurveTo(2200, midSagY, rightAnchorX, rightAnchorY);
-    ctx.stroke();
+    const totalBlocks = ARENA_3_BRIDGE_BLOCKS.length;
+    let intactBlockCount = 0;
+    for (let i = 0; i < totalBlocks; i++) {
+      if (ARENA_3_BRIDGE_BLOCKS[i].intact) intactBlockCount++;
+    }
+    const destroyedRatio = 1 - (intactBlockCount / (totalBlocks || 1));
+    const leftPylonIntact = !!ARENA_3_PYLONS.left.intact;
+    const rightPylonIntact = !!ARENA_3_PYLONS.right.intact;
 
-    // Ciemna krawędź liny (cień)
-    ctx.strokeStyle = '#2c1a0a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(leftAnchorX, leftAnchorY + 3);
-    ctx.quadraticCurveTo(2200, midSagY + 3, rightAnchorX, rightAnchorY + 3);
-    ctx.stroke();
+    // SCENARIUSZ 1: OBA PYLONY ZNISZCZONE -> Całkowity brak olinowania głównego
+    if (!leftPylonIntact && !rightPylonIntact) {
+      ctx.restore();
+    } else if (leftPylonIntact && !rightPylonIntact) {
+      // SCENARIUSZ 2: TYLKO LEWY PYLON STOI -> Lina zerwana z prawej, zwisa z lewego pylonu w toń rzeki
+      ctx.strokeStyle = '#5a3b19';
+      ctx.lineWidth = 5.0;
+      ctx.beginPath();
+      ctx.moveTo(pylonLeftX, pylonTopY - 6);
+      ctx.quadraticCurveTo(pylonLeftX + 25, 1150, pylonLeftX + 50, 1310);
+      ctx.stroke();
 
-    // Jasny refleks splotu drutów nośnych
-    ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(leftAnchorX, leftAnchorY - 1);
-    ctx.quadraticCurveTo(2200, midSagY - 1, rightAnchorX, rightAnchorY - 1);
-    ctx.stroke();
+      ctx.strokeStyle = '#2c1a0a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pylonLeftX, pylonTopY - 3);
+      ctx.quadraticCurveTo(pylonLeftX + 25, 1153, pylonLeftX + 50, 1310);
+      ctx.stroke();
+      ctx.restore();
+    } else if (!leftPylonIntact && rightPylonIntact) {
+      // SCENARIUSZ 3: TYLKO PRAWY PYLON STOI -> Lina zerwana z lewej, zwisa z prawego pylonu w toń rzeki
+      ctx.strokeStyle = '#5a3b19';
+      ctx.lineWidth = 5.0;
+      ctx.beginPath();
+      ctx.moveTo(pylonRightX, pylonTopY - 6);
+      ctx.quadraticCurveTo(pylonRightX - 25, 1150, pylonRightX - 50, 1310);
+      ctx.stroke();
 
-    // 2. Dolna lina poręczy (Handrail cable)
-    if (ARENA_3_PYLONS.left.intact && ARENA_3_PYLONS.right.intact) {
+      ctx.strokeStyle = '#2c1a0a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pylonRightX, pylonTopY - 3);
+      ctx.quadraticCurveTo(pylonRightX - 25, 1153, pylonRightX - 50, 1310);
+      ctx.stroke();
+      ctx.restore();
+    } else if (destroyedRatio >= 0.60) {
+      // SCENARIUSZ 4: OBA PYLONY STOJĄ, ALE >60% MOSTU ZNISZCZONE -> Lina pękła w środku, końce zwisają do wody
+      ctx.strokeStyle = '#5a3b19';
+      ctx.lineWidth = 5.0;
+      ctx.beginPath();
+      // Zwieszenie z lewego pylonu
+      ctx.moveTo(pylonLeftX, pylonTopY - 6);
+      ctx.quadraticCurveTo(pylonLeftX + 45, 1120, pylonLeftX + 85, 1310);
+      // Zwieszenie z prawego pylonu
+      ctx.moveTo(pylonRightX, pylonTopY - 6);
+      ctx.quadraticCurveTo(pylonRightX - 45, 1120, pylonRightX - 85, 1310);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#2c1a0a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pylonLeftX, pylonTopY - 3);
+      ctx.quadraticCurveTo(pylonLeftX + 45, 1123, pylonLeftX + 85, 1310);
+      ctx.moveTo(pylonRightX, pylonTopY - 3);
+      ctx.quadraticCurveTo(pylonRightX - 45, 1123, pylonRightX - 85, 1310);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      // SCENARIUSZ 5: OBA PYLONY STOJĄ, MOST UTRZYMUJE LINĘ NOŚNĄ (destroyedRatio < 0.60)
+      const leftAnchorX = pylonLeftX;
+      const leftAnchorY = pylonTopY - 6;
+      const rightAnchorX = pylonRightX;
+      const rightAnchorY = pylonTopY - 6;
+      const midSagY = 970;
+
+      // 1. Górna główna lina nośna (Main Cable)
+      ctx.strokeStyle = '#5a3b19';
+      ctx.lineWidth = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(leftAnchorX, leftAnchorY);
+      ctx.quadraticCurveTo(2200, midSagY, rightAnchorX, rightAnchorY);
+      ctx.stroke();
+
+      // Ciemna krawędź liny (cień)
+      ctx.strokeStyle = '#2c1a0a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(leftAnchorX, leftAnchorY + 3);
+      ctx.quadraticCurveTo(2200, midSagY + 3, rightAnchorX, rightAnchorY + 3);
+      ctx.stroke();
+
+      // Jasny refleks splotu drutów nośnych
+      ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(leftAnchorX, leftAnchorY - 1);
+      ctx.quadraticCurveTo(2200, midSagY - 1, rightAnchorX, rightAnchorY - 1);
+      ctx.stroke();
+
+      // 2. Dolna lina poręczy (Handrail cable) - TYLKO między nienaruszonymi, sąsiadującymi przęsłami!
+      // Nigdy nie rysuj ciągłej linii przez pustkę i zniszczone segmenty!
       ctx.strokeStyle = '#432910';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(bridgeX1 - 10, bridgeY - 35);
-      ctx.lineTo(bridgeX2 + 10, bridgeY - 35);
+      for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+        const b = ARENA_3_BRIDGE_BLOCKS[i];
+        if (b.intact) {
+          const nextB = ARENA_3_BRIDGE_BLOCKS[i + 1];
+          const bY = b.y + (b.sag || 0) - 35;
+          if (nextB && nextB.intact) {
+            const nextBY = nextB.y + (nextB.sag || 0) - 35;
+            ctx.moveTo(b.x, bY);
+            ctx.lineTo(nextB.x + nextB.w, nextBY);
+          } else {
+            // Poszarpany koniec na krawędzi wyrwy opadający w dół
+            ctx.moveTo(b.x, bY);
+            ctx.lineTo(b.x + b.w + 4, bY + 5);
+          }
+        }
+      }
       ctx.stroke();
 
       ctx.strokeStyle = 'rgba(215, 175, 95, 0.35)';
       ctx.lineWidth = 1.0;
       ctx.beginPath();
-      ctx.moveTo(bridgeX1 - 10, bridgeY - 36);
-      ctx.lineTo(bridgeX2 + 10, bridgeY - 36);
+      for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+        const b = ARENA_3_BRIDGE_BLOCKS[i];
+        if (b.intact) {
+          const nextB = ARENA_3_BRIDGE_BLOCKS[i + 1];
+          const bY = b.y + (b.sag || 0) - 36;
+          if (nextB && nextB.intact) {
+            const nextBY = nextB.y + (nextB.sag || 0) - 36;
+            ctx.moveTo(b.x, bY);
+            ctx.lineTo(nextB.x + nextB.w, nextBY);
+          }
+        }
+      }
       ctx.stroke();
-    }
 
-    // 3. Pionowe wieszaki linowe łączące główną linę z kładką (Vertical Suspenders - zgrupowane w 1 stroke)
-    ctx.strokeStyle = 'rgba(115, 78, 38, 0.85)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
-      const b = ARENA_3_BRIDGE_BLOCKS[i];
-      if (b.intact && b.cableAttached) {
-        const hx = b.origX + b.w / 2;
-        const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
-        const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
-        const currentY = b.y + (b.sag || 0);
-        ctx.moveTo(hx, cableY);
-        ctx.lineTo(hx, currentY);
+      // 3. Pionowe wieszaki linowe łączące główną linę z kładką (Vertical Suspenders - zgrupowane w 1 stroke)
+      ctx.strokeStyle = 'rgba(115, 78, 38, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+        const b = ARENA_3_BRIDGE_BLOCKS[i];
+        if (b.intact && b.cableAttached) {
+          const hx = b.origX + b.w / 2;
+          const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
+          const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
+          const currentY = b.y + (b.sag || 0);
+          ctx.moveTo(hx, cableY);
+          ctx.lineTo(hx, currentY);
+        }
       }
-    }
-    ctx.stroke();
-
-    // Stalowe obejmy na deskach
-    ctx.fillStyle = '#334155';
-    for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
-      const b = ARENA_3_BRIDGE_BLOCKS[i];
-      if (b.intact && b.cableAttached) {
-        const hx = b.origX + b.w / 2;
-        const currentY = b.y + (b.sag || 0);
-        ctx.fillRect(hx - 2, currentY - 2, 4, 6);
-      }
-    }
-
-    // Zerwane liny powiewające na wietrze (frayed cables - zgrupowane w 1 stroke)
-    ctx.strokeStyle = 'rgba(115, 78, 38, 0.85)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    let hasBrokenCables = false;
-    for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
-      const b = ARENA_3_BRIDGE_BLOCKS[i];
-      if (!b.intact || !b.cableAttached) {
-        hasBrokenCables = true;
-        const hx = b.origX + b.w / 2;
-        const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
-        const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
-        const vSway = Math.sin(animTime * 3.5 + i * 0.8) * 8;
-        ctx.moveTo(hx, cableY);
-        ctx.lineTo(hx + vSway, cableY + 36);
-      }
-    }
-    if (hasBrokenCables) {
       ctx.stroke();
+
+      // Stalowe obejmy na stojących deskach
+      ctx.fillStyle = '#334155';
+      for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+        const b = ARENA_3_BRIDGE_BLOCKS[i];
+        if (b.intact && b.cableAttached) {
+          const hx = b.origX + b.w / 2;
+          const currentY = b.y + (b.sag || 0);
+          ctx.fillRect(hx - 2, currentY - 2, 4, 6);
+        }
+      }
+
+      // 4. Krótkie poszarpane kikuty zerwanych wieszaków (12-16px, brak sztywnych linii do pustki)
+      ctx.strokeStyle = 'rgba(115, 78, 38, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let hasBrokenCables = false;
+      for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+        const b = ARENA_3_BRIDGE_BLOCKS[i];
+        if (!b.intact || !b.cableAttached) {
+          hasBrokenCables = true;
+          const hx = b.origX + b.w / 2;
+          const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
+          const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
+          const stubLen = 14 + (b.seed ? (b.seed % 5) : (i % 5));
+          const vSway = Math.sin(animTime * 3.5 + i * 0.8) * 3;
+          ctx.moveTo(hx, cableY);
+          ctx.lineTo(hx + vSway, cableY + stubLen);
+        }
+      }
+      if (hasBrokenCables) {
+        ctx.stroke();
+      }
+
+      ctx.restore();
     }
-    ctx.restore();
   }
 
   // E. DREWNIANE MODUŁOWE BELKI MOSTU (24 klocki, Angry Birds Dynamic Destruction)
@@ -2873,7 +3014,7 @@ export function drawArena3Foreground(ctx, camera) {
       });
 
       // Stalowe jarzmo i obejma wieszaka linowego
-      if (b.cableAttached) {
+      if (b.cableAttached && ARENA_3_PYLONS.left.intact && ARENA_3_PYLONS.right.intact) {
         const hx = b.origX + b.w / 2;
         ctx.fillStyle = '#222d3d';
         ctx.fillRect(hx - 3, currentY - 2, 6, 6);
@@ -2888,10 +3029,21 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.restore();
     } else {
       // 2. ODERWANY / ZAWALONY KLOCEK FIZYCZNY (Wyszczerbiona poszarpana belka ze zwęgleniem)
+      if (b.vanished || b.isDead) {
+        ctx.restore();
+        continue;
+      }
       const cx = b.x + b.w / 2;
       const cy = b.y + b.h / 2;
       ctx.restore();
-      drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 23 });
+      if (b.landDecay && b.landDecay > 0) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - b.landDecay / 45);
+        drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 23 });
+        ctx.restore();
+      } else {
+        drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 23 });
+      }
 
       // Piana wodna i fale wokół unoszącego się klocka w rzece (buforowana do wspólnego batcha)
       if (b.y + b.h >= 1300 && b.y <= 1360) {
