@@ -10,6 +10,7 @@ import {
   ARENA_3_BRIDGE_BLOCKS,
   getApproachInclineY,
   ARENA_3_RAMP_BLOCKS,
+  ARENA_3_BRIDGE_ROPES,
   BRIDGE_SPLINTERS,
   ARENA_3_WATER_SPLASHES,
   ARENA_3_PYLONS,
@@ -2740,52 +2741,61 @@ export function drawArena3Foreground(ctx, camera) {
 
   // Kable odciągowe od pylonów do bloków kotwiących (w powietrzu)
   function drawAnchorCables() {
+    const leftRope = (typeof ARENA_3_BRIDGE_ROPES !== 'undefined' && Array.isArray(ARENA_3_BRIDGE_ROPES))
+      ? ARENA_3_BRIDGE_ROPES.find(r => r.side === 'left')
+      : null;
+    const rightRope = (typeof ARENA_3_BRIDGE_ROPES !== 'undefined' && Array.isArray(ARENA_3_BRIDGE_ROPES))
+      ? ARENA_3_BRIDGE_ROPES.find(r => r.side === 'right')
+      : null;
+
+    const isLeftIntact = ARENA_3_PYLONS.left.intact && (!leftRope || (leftRope.intact && !leftRope.broken));
+    const isRightIntact = ARENA_3_PYLONS.right.intact && (!rightRope || (rightRope.intact && !rightRope.broken));
+
+    // Jeśli oba odciągi są zerwane lub ich pylony zniszczone, nie rysuj żadnej wiszącej liny
+    if (!isLeftIntact && !isRightIntact) {
+      return;
+    }
+
     ctx.save();
+    const anchorCableY = 1154; // Otwór w uchu ściągacza na szczycie bloku kotwiącego
+
+    // 1. Główny splot liny odciągowej (gruba lina stalowa)
     ctx.strokeStyle = '#4e3316';
     ctx.lineWidth = 5;
     ctx.beginPath();
-    const anchorCableY = 1154; // Otwór w uchu ściągacza na szczycie bloku kotwiącego
-    if (ARENA_3_PYLONS.left.intact) {
+    if (isLeftIntact) {
       ctx.moveTo(pylonLeftX, pylonTopY - 6);
       ctx.lineTo(anchorLeftX, anchorCableY);
-    } else {
-      const vSway = Math.sin(animTime * 2.5) * 12;
-      ctx.moveTo(anchorLeftX, anchorCableY);
-      ctx.quadraticCurveTo(anchorLeftX + 150, anchorCableY + 20 + vSway, anchorLeftX + 280, anchorCableY + 15);
     }
-    if (ARENA_3_PYLONS.right.intact) {
+    if (isRightIntact) {
       ctx.moveTo(pylonRightX, pylonTopY - 6);
       ctx.lineTo(anchorRightX, anchorCableY);
-    } else {
-      const vSway = Math.sin(animTime * 2.5 + 1.2) * 12;
-      ctx.moveTo(anchorRightX, anchorCableY);
-      ctx.quadraticCurveTo(anchorRightX - 150, anchorCableY + 20 + vSway, anchorRightX - 280, anchorCableY + 15);
     }
     ctx.stroke();
 
-    // Druga lina odciągowa (podwójna lina stalowa z połyskiem splotu)
+    // 2. Druga lina odciągowa (podwójna lina stalowa z połyskiem splotu)
     ctx.strokeStyle = '#2d1c0a';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    if (ARENA_3_PYLONS.left.intact) {
+    if (isLeftIntact) {
       ctx.moveTo(pylonLeftX + 4, pylonTopY - 6);
       ctx.lineTo(anchorLeftX + 3, anchorCableY);
     }
-    if (ARENA_3_PYLONS.right.intact) {
+    if (isRightIntact) {
       ctx.moveTo(pylonRightX - 4, pylonTopY - 6);
       ctx.lineTo(anchorRightX - 3, anchorCableY);
     }
     ctx.stroke();
 
-    // Jasny refleks splotu drutów liny stalowej
+    // 3. Jasny refleks splotu drutów liny stalowej
     ctx.strokeStyle = 'rgba(215, 175, 95, 0.35)';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    if (ARENA_3_PYLONS.left.intact) {
+    if (isLeftIntact) {
       ctx.moveTo(pylonLeftX - 1, pylonTopY - 7);
       ctx.lineTo(anchorLeftX - 1, anchorCableY);
     }
-    if (ARENA_3_PYLONS.right.intact) {
+    if (isRightIntact) {
       ctx.moveTo(pylonRightX + 1, pylonTopY - 7);
       ctx.lineTo(anchorRightX + 1, anchorCableY);
     }

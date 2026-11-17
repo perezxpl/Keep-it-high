@@ -12,6 +12,7 @@ import {
   spawnArena3WaterSplash,
   breakBridgeBlock,
   ARENA_3_PYLONS,
+  ARENA_3_BRIDGE_ROPES,
   destroyPylon,
   ARENA_3_CANOPY_PLATFORMS,
   ALL_CANOPY_BLOCKS,
@@ -120,6 +121,29 @@ export function onArena3BulletHit(bullet) {
     if (rayIntersectsAABB(bx0, by0, bx, by, ax - 28, 1154, ax + 28, 1400)) {
       spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
       return true;
+    }
+  }
+
+  // 2B. Liny odciągowe mostu (ARENA_3_BRIDGE_ROPES - zerwanie odciągu powoduje zawalenie pylonu)
+  if (Array.isArray(ARENA_3_BRIDGE_ROPES)) {
+    for (let r = 0; r < ARENA_3_BRIDGE_ROPES.length; r++) {
+      const rope = ARENA_3_BRIDGE_ROPES[r];
+      if (rope.type === 'backstay' && rope.intact && !rope.broken) {
+        const pylon = ARENA_3_PYLONS[rope.side];
+        if (pylon && pylon.intact) {
+          const minX = Math.min(rope.anchorX, rope.pylonX);
+          const maxX = Math.max(rope.anchorX, rope.pylonX);
+          const minY = Math.min(rope.anchorY, rope.pylonY);
+          const maxY = Math.max(rope.anchorY, rope.pylonY);
+          if (rayIntersectsAABB(bx0, by0, bx, by, minX - 8, minY - 8, maxX + 8, maxY + 8)) {
+            rope.intact = false;
+            rope.broken = true;
+            spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 8);
+            destroyPylon(rope.side);
+            return true;
+          }
+        }
+      }
     }
   }
 
@@ -753,6 +777,26 @@ export function onArena3Explosion(expX, expY, radius, context) {
       spawnBridgeSplinters(p.x, clampPylonY, (p.x - expX) * 0.2, -3, 14);
       if (p.hp <= 0) {
         destroyPylon(k);
+      }
+    }
+  }
+
+  // 4B. Wybuch przy linach odciągowych mostu (ARENA_3_BRIDGE_ROPES)
+  if (Array.isArray(ARENA_3_BRIDGE_ROPES)) {
+    for (let r = 0; r < ARENA_3_BRIDGE_ROPES.length; r++) {
+      const rope = ARENA_3_BRIDGE_ROPES[r];
+      if (rope.type === 'backstay' && rope.intact && !rope.broken) {
+        const pylon = ARENA_3_PYLONS[rope.side];
+        if (pylon && pylon.intact) {
+          const midX = (rope.anchorX + rope.pylonX) * 0.5;
+          const midY = (rope.anchorY + rope.pylonY) * 0.5;
+          const d = Math.hypot(midX - expX, midY - expY);
+          if (d <= blastRad + 40) {
+            rope.intact = false;
+            rope.broken = true;
+            destroyPylon(rope.side);
+          }
+        }
       }
     }
   }

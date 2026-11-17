@@ -479,6 +479,47 @@ export const ARENA_3_PYLONS = {
   }
 };
 
+// =========================================================================
+// 2C-2. LINY NOŚNE I ODCIĄGOWE MOSTU WISZĄCEGO (ARENA_3_BRIDGE_ROPES)
+// Liny odciągowe od bloków kotwiących do pylonów oraz główna lina nośna
+// =========================================================================
+export const ARENA_3_BRIDGE_ROPES = [
+  {
+    id: 'backstay_left',
+    name: 'Lewa Lina Odciągowa',
+    side: 'left',
+    type: 'backstay',
+    anchorX: 1140,
+    anchorY: 1154,
+    pylonX: 1755,
+    pylonY: 844,
+    intact: true,
+    broken: false
+  },
+  {
+    id: 'backstay_right',
+    name: 'Prawa Lina Odciągowa',
+    side: 'right',
+    type: 'backstay',
+    anchorX: 3260,
+    anchorY: 1154,
+    pylonX: 2645,
+    pylonY: 844,
+    intact: true,
+    broken: false
+  },
+  {
+    id: 'catenary_center',
+    name: 'Główna Lina Nośna Mostu',
+    side: 'center',
+    type: 'catenary',
+    pylonLeftX: 1755,
+    pylonRightX: 2645,
+    intact: true,
+    broken: false
+  }
+];
+
 export function destroyPylon(k) {
   const p = ARENA_3_PYLONS[k];
   if (!p || !p.intact) return;
@@ -486,6 +527,23 @@ export function destroyPylon(k) {
   p.vRot = (k === 'left' ? 0.022 : -0.022);
   p.fallDropY = 0;
   p.fallDropVy = 0;
+
+  // Zerwanie lin bocznych odciągowych i olinowania pylonu w ARENA_3_BRIDGE_ROPES
+  for (let i = 0; i < ARENA_3_BRIDGE_ROPES.length; i++) {
+    const rope = ARENA_3_BRIDGE_ROPES[i];
+    if (rope.side === k) {
+      rope.intact = false;
+      rope.broken = true;
+    }
+  }
+
+  // Centralna lina traci stabilność po zburzeniu pylonu
+  const centerRope = ARENA_3_BRIDGE_ROPES.find(r => r.side === 'center');
+  if (centerRope && (!ARENA_3_PYLONS.left.intact || !ARENA_3_PYLONS.right.intact)) {
+    centerRope.intact = false;
+    centerRope.broken = true;
+  }
+
   spawnBridgeSplinters(p.x, 1025, (k === 'left' ? 6 : -6), -4, 25);
   if (typeof triggerScreenShake === 'function') {
     triggerScreenShake(14);
@@ -904,7 +962,11 @@ export function resetArena3() {
   }
   activeFallingBlocks.length = 0;
 
-  // 1. Reset pylonów
+  // 1. Reset pylonów i lin mostu ARENA_3_BRIDGE_ROPES
+  for (let r = 0; r < ARENA_3_BRIDGE_ROPES.length; r++) {
+    ARENA_3_BRIDGE_ROPES[r].intact = true;
+    ARENA_3_BRIDGE_ROPES[r].broken = false;
+  }
   for (const k of ['left', 'right']) {
     const p = ARENA_3_PYLONS[k];
     p.hp = p.maxHp;
@@ -1936,6 +1998,7 @@ if (typeof window !== 'undefined') {
   window.ARENA_3_BRIDGE_BLOCKS = ARENA_3_BRIDGE_BLOCKS;
   window.ARENA_3_RAMP_BLOCKS = ARENA_3_RAMP_BLOCKS;
   window.ARENA_3_PYLONS = ARENA_3_PYLONS;
+  window.ARENA_3_BRIDGE_ROPES = ARENA_3_BRIDGE_ROPES;
   window.breakBridgeBlock = breakBridgeBlock;
   window.breakRampBlock = breakRampBlock;
   window.destroyPylon = destroyPylon;
