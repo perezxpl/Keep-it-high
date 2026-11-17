@@ -242,9 +242,17 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
   }
 
   const undeadVisuals = options.customVisuals || createUndeadVisuals(baseVisuals);
+  const zThighLen = 25;
+  const zShinLen = 24;
+  const zUpperArmLen = 14;
+  const zForearmLen = 13;
   const zBody = options.charBody || (zClass?.body ? { ...zClass.body } : {
-    w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13
+    w: 24, h: 70, thighLen: zThighLen, shinLen: zShinLen, upperArmLen: zUpperArmLen, forearmLen: zForearmLen
   });
+  zBody.thighLen = zThighLen;
+  zBody.shinLen = zShinLen;
+  zBody.upperArmLen = zUpperArmLen;
+  zBody.forearmLen = zForearmLen;
 
   const f = facing || 1;
 
@@ -254,8 +262,9 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     originalName: origName || 'POLEGŁY OPERATOR',
     isZombie: true,
     isBot: true,
-    active: true,          // Flaga aktywności dla silnika kolizji i balistyki
-    team: 'INFECTED',      // Neutralna wroga frakcja atakująca wszystkich
+    active: true,          // Flaga aktywnosci dla silnika kolizji i balistyki
+    team: 'ZOMBIE',        // Frakcja Zombie wroga dla wszystkich innych druzyn
+    spawnProtectionTimer: 0, // Zombie nigdy nie posiada oslony odrodzenia
 
     x: x - (zBody.w || 24) * 0.5,
     y: y - (zBody.h || 70),
@@ -283,30 +292,31 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     isAcidDying: false,
     acidDeath: { active: false, timer: 0, dissolved: false },
 
-    // Pancerz i wyposażenie
+    // Pancerz i wyposazenie
     hasVest: !!baseVisuals.hasVest,
     vestHp: 0,
     hasHelmet: !!baseVisuals.hasHelmet,
     currentWeapon: null,
     isWeaponHolstered: true,
 
-    // Klasa i anatomia
+    // Klasa i anatomia konczyn (zawsze kompletne nogi o pelnych wymiarach)
     currentClass: zClass || CLASSES.STRIKER,
     charClass: zClass || CLASSES.STRIKER,
     body: zBody,
     charBody: zBody,
-    thighLen: zBody.thighLen || 25,
-    shinLen: zBody.shinLen || 24,
-    upperArmLen: zBody.upperArmLen || 14,
-    forearmLen: zBody.forearmLen || 13,
+    thighLen: zThighLen,
+    shinLen: zShinLen,
+    upperArmLen: zUpperArmLen,
+    forearmLen: zForearmLen,
+    pose: { initialized: false },
 
-    // Cykl życia i animacja
+    // Cykl zycia i animacja
     riseTimer: options.skipRise ? 0 : 1.4, // Czas wstawania z ziemi
     reviveTimer: 0,                        // Czas do powstania po powaleniu
-    downedHp: 60,                          // Wytrzymałość powalonego ciała przed rozszarpaniem
+    downedHp: 60,                          // Wytrzymalosc powalonego ciala przed rozszarpaniem
     maxDownedHp: 60,
-    jumpCooldown: 0,                       // Ochrona przed spamem skoków
-    decayTimer: 0,                         // Czas rozkładu po permanentnej dekapitacji
+    jumpCooldown: 0,                       // Ochrona przed spamem skokow
+    decayTimer: 0,                         // Czas rozkladu po permanentnej dekapitacji
     attackCooldown: 0.6,
     attackAnim: 0,
     walkAnim: Math.random() * 10,
@@ -319,7 +329,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     _cachedVisuals: undeadVisuals,
     _visualsDirty: false,
 
-    // Kończyny (zgodność z silnikiem uszkodzeń)
+    // Konczyny (zawsze kompletne nogi, brak chodzenia w powietrzu na kikutach)
     dismembered: {
       armFront: false,
       armBack: false,
@@ -378,7 +388,8 @@ export function registerCorpseForReanimation(char, surfaceY) {
     isZombie: true,
     isBot: true,
     active: true,
-    team: 'INFECTED',
+    team: 'ZOMBIE',
+    spawnProtectionTimer: 0,
     isDead: true,
     hasHead: true,
     decapitated: false,
@@ -388,10 +399,11 @@ export function registerCorpseForReanimation(char, surfaceY) {
     y: floorY - (charBody.h || 70),
     w: charBody.w || 24,
     h: charBody.h || 70,
-    thighLen: charBody.thighLen || 25,
-    shinLen: charBody.shinLen || 24,
-    upperArmLen: charBody.upperArmLen || 14,
-    forearmLen: charBody.forearmLen || 13,
+    thighLen: 25,
+    shinLen: 24,
+    upperArmLen: 14,
+    forearmLen: 13,
+    pose: { initialized: false },
     vx: 0,
     vy: 0,
     hp: 0,

@@ -666,8 +666,8 @@ export class ThrownTomahawk {
           const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
           if (!ch || ch === this.shooter || (ch.isDead && !isLyingZombie) || this.hitCombatants.has(ch)) continue;
           if (ch.isBot && !ch.active && !isLyingZombie) continue;
-          if (!isDeathmatchFFA() && this.team && ch.team && this.team === ch.team) continue;
-          if (isNetConnected) {
+          if (!isDeathmatchFFA() && !ch.isZombie && this.team && ch.team && this.team === ch.team) continue;
+          if (isNetConnected && !ch.isZombie) {
             if (this.shooter && this.shooter.isRemote && !ch.isRemote) continue;
             if (!isNetHost && this.shooter && this.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
           }
@@ -689,7 +689,10 @@ export class ThrownTomahawk {
             this.hitCombatants.add(ch);
 
             // Ochrona odrodzenia (Spawn Protection)
-            if ((ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) || (this.shooter && this.shooter.spawnProtectionTimer && this.shooter.spawnProtectionTimer > 0)) {
+            if (ch.isZombie) {
+              ch.spawnProtectionTimer = 0;
+            }
+            if ((!ch.isZombie && ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) || (this.shooter && this.shooter.spawnProtectionTimer && this.shooter.spawnProtectionTimer > 0)) {
               spawnRicochetSparks(this.x, this.y, Math.sign(this.vx || 1), -0.5, 6);
               this.vx = Math.sign(this.vx || 1) * 1.5;
               this.vy = -1.8;
@@ -926,6 +929,17 @@ export class ThrownTomahawk {
                   hitY: this.y,
                   weaponId: 'TOMAHAWK'
                 });
+              } else if (ch.isZombie && !isNetHost) {
+                window.sendDamageEvent({
+                  target: 'zombie',
+                  zombieId: ch.id,
+                  damage: totalDamage,
+                  isHeadshot,
+                  isTorsoShot,
+                  hitX: this.x,
+                  hitY: this.y,
+                  weaponId: 'TOMAHAWK'
+                });
               } else if (ch.isBot && !isNetHost) {
                 const bIdx = (typeof window.getBotIndex === 'function')
                   ? window.getBotIndex(ch)
@@ -934,17 +948,6 @@ export class ThrownTomahawk {
                   target: 'bot',
                   botId: ch.botId || ch.id,
                   botIdx: bIdx,
-                  damage: totalDamage,
-                  isHeadshot,
-                  isTorsoShot,
-                  hitX: this.x,
-                  hitY: this.y,
-                  weaponId: 'TOMAHAWK'
-                });
-              } else if (ch.isZombie && !isNetHost) {
-                window.sendDamageEvent({
-                  target: 'zombie',
-                  zombieId: ch.id,
                   damage: totalDamage,
                   isHeadshot,
                   isTorsoShot,
@@ -1198,7 +1201,10 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     const dist = Math.hypot(chCenterX - expX, chCenterY - expY);
 
     if (dist <= radius) {
-      if ((ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) || (shooter && shooter.spawnProtectionTimer && shooter.spawnProtectionTimer > 0)) {
+      if (ch.isZombie) {
+        ch.spawnProtectionTimer = 0;
+      }
+      if ((!ch.isZombie && ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) || (shooter && shooter.spawnProtectionTimer && shooter.spawnProtectionTimer > 0)) {
         continue;
       }
 
@@ -1207,13 +1213,13 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         (deathmatchState && deathmatchState.mode === 'FFA') ||
         (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
         (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
-      if (!isFFA && shooter && shooter !== ch && shooter.team && ch.team && shooter.team === ch.team) {
+      if (!isFFA && !ch.isZombie && shooter && shooter !== ch && shooter.team && ch.team && shooter.team === ch.team) {
         continue;
       }
 
       // W trybie sieciowym wybuchy granatów zdalnego gracza oraz granatów botów na maszynie klienta
       // nie zadają bezpośrednich obrażeń lokalnemu graczowi (ponieważ autorytatywny rzucający / Host wysyła deal_dmg)
-      if (isNetConnected) {
+      if (isNetConnected && !ch.isZombie) {
         if (shooter && shooter.isRemote && !ch.isRemote) continue;
         if (!isNetHost && shooter && shooter.isBot && !ch.isRemote && !ch.isBot) continue;
       }
@@ -1298,6 +1304,17 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
             relHitY: (typeof groundY === 'number') ? (groundY - chCenterY) : 0,
             weaponId: 'GRENADE'
           });
+        } else if (ch.isZombie && !isNetHost) {
+          sendDmg({
+            target: 'zombie',
+            zombieId: ch.id,
+            damage: damage,
+            isHeadshot: false,
+            isTorsoShot: true,
+            hitX: chCenterX,
+            hitY: chCenterY,
+            weaponId: 'GRENADE'
+          });
         } else if (ch.isBot && !isNetHost) {
           const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
           const bIdx = activeBots.indexOf(ch);
@@ -1314,17 +1331,6 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
               weaponId: 'GRENADE'
             });
           }
-        } else if (ch.isZombie && !isNetHost) {
-          sendDmg({
-            target: 'zombie',
-            zombieId: ch.id,
-            damage: damage,
-            isHeadshot: false,
-            isTorsoShot: true,
-            hitX: chCenterX,
-            hitY: chCenterY,
-            weaponId: 'GRENADE'
-          });
         }
       }
 
@@ -1368,18 +1374,25 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
               spawnHeadGib(chCenterX, chCenterY - 10, normX * 4.5, -6.5, ch.facing, targetVisuals);
               spawnBloodFountain(chCenterX, chCenterY + 14, ch.facing, 6);
             } else {
-              ch.dismembered.legFront = true;
+              if (!ch.isZombie) {
+                ch.dismembered.legFront = true;
+              }
               spawnLimbGib('leg', chCenterX, chCenterY + 20, normX * 4.0, -5.5, ch.facing, targetVisuals);
               spawnBloodFountain(chCenterX, chCenterY + 45, ch.facing, 5);
             }
           } else {
-            ch.dismembered.armFront = true;
+            if (!ch.isZombie) {
+              ch.dismembered.armFront = true;
+            }
             spawnLimbGib('arm', chCenterX, chCenterY - 10, normX * 4.0, -5.5, ch.facing, targetVisuals);
             spawnBloodFountain(chCenterX, chCenterY + 16, ch.facing, 5);
           }
         }
 
         if (ch.isZombie) {
+          ch.dismembered.legFront = false;
+          ch.dismembered.legBack = false;
+          ch.dismembered.armFront = false;
           if (ch.isGibbed || ch.decapitated) {
             ch.hasHead = false;
             ch.decapitated = true;

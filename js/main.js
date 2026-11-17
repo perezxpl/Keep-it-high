@@ -709,7 +709,7 @@ function update() {
   const mainMeleeTargets = [...activeBots, ...activeRemotePlayers, ...activeZombies].filter(Boolean);
 
   if (player.isAiTestControlled) {
-    const aiCombatants = [player, ...activeBots, ...activeRemotePlayers];
+    const aiCombatants = [player, ...activeBots, ...activeRemotePlayers, ...activeZombies];
     updateBotBrain(isDeathmatch ? null : ball, activeBots[0] || null, effectiveGroundY, spawnGrass, player, aiCombatants);
   } else {
     updateMobileControlStates(player, leftStick, btnCluster, { ball: isDeathmatch ? null : ball });
@@ -922,6 +922,9 @@ function update() {
   // Aktualizacja logiki serii zabójstw (Killstreaks) oraz podnoszenia broni (Pickups)
   const curActiveBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot?.active ? [bot] : []);
   const curCombatants = [player, ...curActiveBots, ...activeRemotePlayers];
+  if (typeof getActiveZombies === 'function') {
+    curCombatants.push(...getActiveZombies());
+  }
   updateKillstreaks((FRAME_DURATION / 1000) || (1 / 60), player, curCombatants);
   updatePickups((FRAME_DURATION / 1000) || (1 / 60), player, curCombatants, camera);
 
@@ -1356,6 +1359,9 @@ function draw() {
     const currentActiveBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
     const activeRemotes = (typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : (remotePlayer.active ? [remotePlayer] : []);
     const combatants = [player, ...currentActiveBots, ...activeRemotes];
+    if (typeof getActiveZombies === 'function') {
+      combatants.push(...getActiveZombies());
+    }
     drawKillstreakWorld(ctx, camera, combatants, player);
     drawKillstreakHUD(ctx, canvas, player);
     drawCallouts(ctx, camera, canvas);

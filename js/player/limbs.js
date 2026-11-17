@@ -1200,6 +1200,15 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, ankleRot, facing, colorThigh, colorShin, colorBoot, isFront, visuals, playerRef = null, legSide = 'right') {
   const v = visuals || DEFAULT_VISUALS;
   const isZombie = Boolean((playerRef && playerRef.isZombie) || (v && v.isZombieVisuals));
+
+  // Zabezpieczenie dlugosci kosci i wspolrzednych IK (w tym dla Zombie)
+  l1 = (typeof l1 === 'number' && !isNaN(l1) && l1 > 0) ? l1 : (playerRef?.thighLen || playerRef?.body?.thighLen || 25);
+  l2 = (typeof l2 === 'number' && !isNaN(l2) && l2 > 0) ? l2 : (playerRef?.shinLen || playerRef?.body?.shinLen || 24);
+  if (isNaN(targetFootX) || isNaN(targetFootY)) {
+    targetFootX = hipX;
+    targetFootY = hipY + l1 + l2 - 4;
+  }
+
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;

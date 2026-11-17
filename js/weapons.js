@@ -247,9 +247,15 @@ function updateMeleeCollision(shooter, ms) {
 
   for (const t of candidateTargets) {
     const isLyingZombie = !!(t.isZombie && t.isDead && t.hasHead && !t.decapitated);
-    if (!t || t === shooter || (t.isDead && !isLyingZombie)) continue;
-    if (t.isBot && !t.active && !isLyingZombie) continue;
-    if (!isFFA && shooter.team && t.team && shooter.team === t.team) continue;
+    if (!t || t === shooter) continue;
+    if (t.isZombie) {
+      if (t.isDead && !isLyingZombie) continue;
+      t.spawnProtectionTimer = 0;
+    } else {
+      if (t.isDead) continue;
+      if (t.isBot && !t.active) continue;
+    }
+    if (!isFFA && !t.isZombie && shooter.team && t.team && shooter.team === t.team) continue;
     if (ms.hitTargets.has(t)) continue;
 
     const tx = t.x + (t.w || 24) * 0.5;
@@ -407,8 +413,13 @@ function updateMeleeCollision(shooter, ms) {
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 7);
             triggerScreenShake(20);
           } else if (cfg.name === 'UNDERHAND_CLEAVE' || cfg.name === 'RISING_SLASH' || isLegshot || hitY >= t.y + 44) {
-            t.dismembered.legFront = true;
-            spawnLimbGib('leg', hitX, hitY, facing * 5.5, -6.0, t.facing, targetVisuals);
+            if (!t.isZombie) {
+              t.dismembered.legFront = true;
+              spawnLimbGib('leg', hitX, hitY, facing * 5.5, -6.0, t.facing, targetVisuals);
+            } else {
+              t.dismembered.legFront = false;
+              t.dismembered.legBack = false;
+            }
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 45, t.facing, 6);
             triggerScreenShake(16);
           } else if (isHeadshot || isBackstab || hitY <= t.y + 22) {
@@ -419,8 +430,10 @@ function updateMeleeCollision(shooter, ms) {
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 6);
             triggerScreenShake(18);
           } else {
-            t.dismembered.armFront = true;
-            spawnLimbGib('arm', hitX, hitY, facing * 5.2, -5.2, t.facing, targetVisuals);
+            if (!t.isZombie) {
+              t.dismembered.armFront = true;
+              spawnLimbGib('arm', hitX, hitY, facing * 5.2, -5.2, t.facing, targetVisuals);
+            }
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 16, t.facing, 6);
             triggerScreenShake(16);
           }
@@ -489,6 +502,17 @@ function updateMeleeCollision(shooter, ms) {
             hitY,
             weaponId: ms.weaponId
           });
+        } else if (t.isZombie && !isNetHost) {
+          window.sendDamageEvent({
+            target: 'zombie',
+            zombieId: t.id,
+            damage: dmg,
+            isHeadshot,
+            isTorsoShot: !isHeadshot && !isLegshot,
+            hitX,
+            hitY,
+            weaponId: ms.weaponId
+          });
         } else if (t.isBot && !isNetHost) {
           const activeBots = (typeof window.getActiveBots === 'function') ? window.getActiveBots() : [];
           const bIdx = activeBots.indexOf(t);
@@ -505,17 +529,6 @@ function updateMeleeCollision(shooter, ms) {
               weaponId: ms.weaponId
             });
           }
-        } else if (t.isZombie && !isNetHost) {
-          window.sendDamageEvent({
-            target: 'zombie',
-            zombieId: t.id,
-            damage: dmg,
-            isHeadshot,
-            isTorsoShot: !isHeadshot && !isLegshot,
-            hitX,
-            hitY,
-            weaponId: ms.weaponId
-          });
         }
       }
 
@@ -1277,16 +1290,23 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
     for (const ch of charList) {
       const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
-      if (!ch || ch === b.shooter || (ch.isDead && !isLyingZombie)) continue;
-      if (ch.isBot && !ch.active && !isLyingZombie) continue;
+      if (!ch || ch === b.shooter) continue;
+      if (ch.isZombie) {
+        // Każdy zombie żywy, wstający (riseTimer) lub leżący powalony z głową jest poprawnym celem
+        if (ch.isDead && !isLyingZombie) continue;
+      } else {
+        if (ch.isDead) continue;
+        if (ch.isBot && !ch.active) continue;
+      }
       const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
         (deathmatchState && deathmatchState.mode === 'FFA') ||
         (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
         (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
-      if (!isFFA && b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
+      // Ogień sojuszniczy: kule nie ranią sojuszników z tej samej drużyny, ALE zombie (ch.isZombie) NIGDY nie jest traktowany jako sojusznik
+      if (!isFFA && !ch.isZombie && b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
       // W trybie sieciowym kule zdalnego gracza oraz kule botów na maszynie klienta nie zadają bezpośrednich obrażeń lokalnemu graczowi
       // (ponieważ strzelający zdalny gracz lub autorytatywny Host wysyła pakiet deal_dmg)
-      if (isNetConnected) {
+      if (isNetConnected && !ch.isZombie) {
         if (b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
         if (!isNetHost && b.shooter && b.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
       }
@@ -1387,8 +1407,13 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         isTorsoShot = !isHeadshot && !isLegshot;
       }
 
+      // Zombie nigdy nie posiada osłony odrodzenia (spawnProtectionTimer = 0)
+      if (closestChar.isZombie) {
+        closestChar.spawnProtectionTimer = 0;
+      }
+
       // Ochrona odrodzenia: nietykalność celu oraz brak możliwości ranienia innych przez gracza pod osłoną
-      if ((closestChar.spawnProtectionTimer && closestChar.spawnProtectionTimer > 0) || (b.shooter && b.shooter.spawnProtectionTimer && b.shooter.spawnProtectionTimer > 0)) {
+      if ((!closestChar.isZombie && closestChar.spawnProtectionTimer && closestChar.spawnProtectionTimer > 0) || (b.shooter && b.shooter.spawnProtectionTimer && b.shooter.spawnProtectionTimer > 0)) {
         spawnBulletSparks(hitPtX, hitPtY, '#00e5ff', 8);
         playSound('hit_shield', { x: hitPtX, y: hitPtY });
         b.life = 0;
@@ -1505,6 +1530,19 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             weaponId: b.weaponId,
             bulletId: b.bulletId || null
           });
+        } else if (closestChar.isZombie && !isNetHost) {
+          sendDmg({
+            target: 'zombie',
+            zombieId: closestChar.id,
+            damage: b.damage,
+            isHeadshot,
+            isTorsoShot,
+            hitX: hitPtX,
+            hitY: hitPtY,
+            relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
+            weaponId: b.weaponId,
+            bulletId: b.bulletId || null
+          });
         } else if (closestChar.isBot && !isNetHost) {
           const activeBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
             ? window.getActiveBots()
@@ -1524,19 +1562,6 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
               bulletId: b.bulletId || null
             });
           }
-        } else if (closestChar.isZombie && !isNetHost) {
-          sendDmg({
-            target: 'zombie',
-            zombieId: closestChar.id,
-            damage: b.damage,
-            isHeadshot,
-            isTorsoShot,
-            hitX: hitPtX,
-            hitY: hitPtY,
-            relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
-            weaponId: b.weaponId,
-            bulletId: b.bulletId || null
-          });
         }
       }
 
@@ -1771,12 +1796,17 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           closestChar.decapitated = false;
           closestChar.severedHead = null;
           closestChar.neckFountainTimer = 0;
-          closestChar.dismembered.legFront = true;
+          if (!closestChar.isZombie) {
+            closestChar.dismembered.legFront = true;
+            spawnLimbGib('leg', hitPtX, hitPtY, b.vx, b.vy, closestChar.facing, charVisuals);
+          } else {
+            closestChar.dismembered.legFront = false;
+            closestChar.dismembered.legBack = false;
+          }
 
           triggerHitstop(2);
           triggerScreenShake(isSniper ? 20 : (isShotgun ? 16 : 9));
 
-          spawnLimbGib('leg', hitPtX, hitPtY, b.vx, b.vy, closestChar.facing, charVisuals);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 45, closestChar.facing, 5);
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.7, -2.0, 24, 1.4);
 
@@ -1796,7 +1826,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           // Broń o potężnej sile kinetycznej (Snajperka Barrett .50, Strzelba, Magnum .44)
           // lub trafienie w strefę ramienia odrywa kończynę górną:
           const shouldSeverArm = isHeavyCaliber || (Math.random() < 0.55);
-          if (shouldSeverArm) {
+          if (shouldSeverArm && !closestChar.isZombie) {
             closestChar.dismembered.armFront = true;
             spawnLimbGib('arm', hitPtX, hitPtY, b.vx, b.vy, closestChar.facing, charVisuals);
             spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 16, closestChar.facing, 5);

@@ -373,7 +373,7 @@ export function updateAttackDrones(dt = (1 / 60), combatants = []) {
     for (const c of targets) {
       if (!c || c === owner || c.isDead || c.active === false) continue;
       // Nie strzelaj do sojuszników z tej samej drużyny
-      if (!isFFA && owner.team && c.team && owner.team === c.team) continue;
+      if (!isFFA && !c.isZombie && owner.team && c.team && owner.team === c.team) continue;
 
       const d = Math.hypot((c.x + c.w / 2) - drone.x, (c.y + c.h / 2) - drone.y);
       if (d < nearestDist) {

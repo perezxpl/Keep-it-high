@@ -158,7 +158,7 @@ export function drawKillstreakWorld(ctx, camera, combatants, player) {
       if (!c || c === player || c.isDead || c.active === false) continue;
 
       // Sprawdzenie relacji drużynowej (oznaczamy wyłącznie wrogów)
-      const isAlly = (c.team && player.team && c.team === player.team);
+      const isAlly = (!c.isZombie && c.team && player.team && c.team === player.team);
       if (isAlly) continue;
 
       const ew = (c.w || 32) * zoom;

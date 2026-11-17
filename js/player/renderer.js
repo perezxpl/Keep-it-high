@@ -319,6 +319,13 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
 
+  // Zabezpieczenie parametrow anatomicznych konczyn i pozy (w tym dla Zombie)
+  if (!p.thighLen) p.thighLen = p.body?.thighLen || 25;
+  if (!p.shinLen) p.shinLen = p.body?.shinLen || 24;
+  if (!p.upperArmLen) p.upperArmLen = p.body?.upperArmLen || 14;
+  if (!p.forearmLen) p.forearmLen = p.body?.forearmLen || 13;
+  if (!p.pose) p.pose = { initialized: false };
+
   const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 70));
   const centerX = p.x + p.w / 2;
   const isGrounded = (p.onGround !== undefined)
@@ -1287,10 +1294,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   v.pistonCompression = (isGrounded && p.isJumpCharging) ? (p.jumpChargePower || (p.blastBelt ? p.blastBelt.chargeRatio : 0)) : 0;
   p.currentClass?.onDrawUnder?.(ctx, p);
 
-  const isArmFrontDismembered = !!p.dismembered?.armFront;
-  const isArmBackDismembered = !!p.dismembered?.armBack;
-  const isLegFrontDismembered = !!p.dismembered?.legFront;
-  const isLegBackDismembered = !!p.dismembered?.legBack;
+  const isArmFrontDismembered = !p.isZombie && !!p.dismembered?.armFront;
+  const isArmBackDismembered = !p.isZombie && !!p.dismembered?.armBack;
+  const isLegFrontDismembered = !p.isZombie && !!p.dismembered?.legFront;
+  const isLegBackDismembered = !p.isZombie && !!p.dismembered?.legBack;
 
   const maxHp = p.maxHp || 100;
   const curHp = Math.max(0, p.hp ?? 100);

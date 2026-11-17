@@ -764,7 +764,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
 
   // Walidacja obecnego celu (leżący powalony zombie nadal jest ważnym celem do dobicia w głowę!)
   const isLockedLyingZombie = !!(targetEnemy && targetEnemy.isZombie && targetEnemy.isDead && targetEnemy.hasHead && !targetEnemy.decapitated);
-  if (!targetEnemy || (targetEnemy.isDead && !isLockedLyingZombie) || (targetEnemy.isBot && !targetEnemy.active && !isLockedLyingZombie) || (!isFFA && botTarget.team && targetEnemy.team && botTarget.team === targetEnemy.team)) {
+  if (!targetEnemy || (targetEnemy.isDead && !isLockedLyingZombie) || (targetEnemy.isBot && !targetEnemy.active && !isLockedLyingZombie) || (!isFFA && !targetEnemy.isZombie && botTarget.team && targetEnemy.team && botTarget.team === targetEnemy.team)) {
     targetEnemy = null;
     botTarget._lockedTarget = null;
     botTarget._targetScanTimer = 0;
@@ -786,7 +786,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         const c = allCombatants[i];
         const cIsLyingZombie = !!(c && c.isZombie && c.isDead && c.hasHead && !c.decapitated);
         if (!c || c === botTarget || (c.isDead && !cIsLyingZombie) || (c.isBot && !c.active && !cIsLyingZombie)) continue;
-        if (!isFFA && botTarget.team && c.team && botTarget.team === c.team) continue;
+        if (!isFFA && !c.isZombie && botTarget.team && c.team && botTarget.team === c.team) continue;
         const d = Math.hypot((c.x + c.w / 2) - botMidX, (c.y + c.h / 2) - botMidY);
         if (d < closestDist) {
           closestDist = d;

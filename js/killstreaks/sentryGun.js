@@ -260,7 +260,7 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
 
     for (const c of targets) {
       if (!c || c === sentry.owner || c.isDead || c.active === false) continue;
-      if (!isFFA && sentry.team && c.team && sentry.team === c.team) continue;
+      if (!isFFA && !c.isZombie && sentry.team && c.team && sentry.team === c.team) continue;
 
       const tx = c.x + c.w / 2;
       const ty = c.y + c.h * 0.45;

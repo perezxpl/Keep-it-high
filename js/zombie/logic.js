@@ -506,12 +506,40 @@ export function refreshActiveZombiesCache() {
   for (let i = 0; i < zombieState.zombies.length; i++) {
     const z = zombieState.zombies[i];
     if (z && (!z.isDead || (z.hasHead && !z.decapitated))) {
+      z.team = 'ZOMBIE';
+      z.isZombie = true;
+      z.active = true;
+      z.spawnProtectionTimer = 0;
+      if (!z.thighLen) z.thighLen = 25;
+      if (!z.shinLen) z.shinLen = 24;
+      if (!z.upperArmLen) z.upperArmLen = 14;
+      if (!z.forearmLen) z.forearmLen = 13;
+      if (!z.dismembered) {
+        z.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+      } else {
+        z.dismembered.legFront = false;
+        z.dismembered.legBack = false;
+      }
       _activeZombiesCache.push(z);
     }
   }
   for (let i = 0; i < zombieState.corpses.length; i++) {
     const c = zombieState.corpses[i];
     if (c && c.hasHead && !c.decapitated) {
+      c.team = 'ZOMBIE';
+      c.isZombie = true;
+      c.active = true;
+      c.spawnProtectionTimer = 0;
+      if (!c.thighLen) c.thighLen = 25;
+      if (!c.shinLen) c.shinLen = 24;
+      if (!c.upperArmLen) c.upperArmLen = 14;
+      if (!c.forearmLen) c.forearmLen = 13;
+      if (!c.dismembered) {
+        c.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+      } else {
+        c.dismembered.legFront = false;
+        c.dismembered.legBack = false;
+      }
       _activeZombiesCache.push(c);
     }
   }
@@ -618,6 +646,21 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         charClass: corpse.charClass,
         charBody: corpse.charBody
       });
+      newZombie.team = 'ZOMBIE';
+      newZombie.isZombie = true;
+      newZombie.active = true;
+      newZombie.spawnProtectionTimer = 0;
+      newZombie.thighLen = 25;
+      newZombie.shinLen = 24;
+      newZombie.upperArmLen = 14;
+      newZombie.forearmLen = 13;
+      newZombie.dismembered = {
+        armFront: false,
+        armBack: false,
+        legFront: false,
+        legBack: false
+      };
+      if (newZombie.pose) newZombie.pose.initialized = false;
 
       zombieState.zombies.push(newZombie);
       zombieState.stats.totalSpawned++;
@@ -721,6 +764,21 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.riseTimer = 1.3;
         z.attackCooldown = 0.8;
         z.jumpCooldown = 1.2;
+        z.team = 'ZOMBIE';
+        z.isZombie = true;
+        z.active = true;
+        z.spawnProtectionTimer = 0;
+        z.thighLen = 25;
+        z.shinLen = 24;
+        z.upperArmLen = 14;
+        z.forearmLen = 13;
+        if (!z.dismembered) {
+          z.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+        } else {
+          z.dismembered.legFront = false;
+          z.dismembered.legBack = false;
+        }
+        if (z.pose) z.pose.initialized = false;
         const feetX = z.x + z.w * 0.5;
         const curSurf = getZombieSurfaceY(feetX, z.y + z.h, groundY);
         if (curSurf !== Infinity && curSurf < 1500) {

@@ -285,9 +285,9 @@ export class RpgRocket {
         (deathmatchState && deathmatchState.mode === 'FFA') ||
         (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
         (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
-      if (!isFFA && this.shooter && this.shooter.team && ch.team && this.shooter.team === ch.team) continue;
+      if (!isFFA && !ch.isZombie && this.shooter && this.shooter.team && ch.team && this.shooter.team === ch.team) continue;
 
-      if (isNetConnected) {
+      if (isNetConnected && !ch.isZombie) {
         if (this.shooter && this.shooter.isRemote && !ch.isRemote) continue;
         if (!isNetHost && this.shooter && this.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
       }
@@ -399,7 +399,10 @@ export class RpgRocket {
       }
 
       // Osłona odrodzenia
-      if ((closestChar.spawnProtectionTimer && closestChar.spawnProtectionTimer > 0) || (this.shooter && this.shooter.spawnProtectionTimer && this.shooter.spawnProtectionTimer > 0)) {
+      if (closestChar.isZombie) {
+        closestChar.spawnProtectionTimer = 0;
+      }
+      if ((!closestChar.isZombie && closestChar.spawnProtectionTimer && closestChar.spawnProtectionTimer > 0) || (this.shooter && this.shooter.spawnProtectionTimer && this.shooter.spawnProtectionTimer > 0)) {
         spawnBulletSparks(hitPtX, hitPtY, '#00e5ff', 8);
         this.detonate(groundY, platforms, customObs, combatants, ball);
         return false;
@@ -488,6 +491,17 @@ export class RpgRocket {
             relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : 0,
             weaponId: 'RPG7'
           });
+        } else if (closestChar.isZombie && !isNetHost) {
+          sendDmg({
+            target: 'zombie',
+            zombieId: closestChar.id,
+            damage: this.damage,
+            isHeadshot,
+            isTorsoShot,
+            hitX: hitPtX,
+            hitY: hitPtY,
+            weaponId: 'RPG7'
+          });
         } else if (closestChar.isBot && !isNetHost) {
           const activeBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
             ? window.getActiveBots()
@@ -506,17 +520,6 @@ export class RpgRocket {
               weaponId: 'RPG7'
             });
           }
-        } else if (closestChar.isZombie && !isNetHost) {
-          sendDmg({
-            target: 'zombie',
-            zombieId: closestChar.id,
-            damage: this.damage,
-            isHeadshot,
-            isTorsoShot,
-            hitX: hitPtX,
-            hitY: hitPtY,
-            weaponId: 'RPG7'
-          });
         }
       }
 
@@ -612,26 +615,35 @@ export class RpgRocket {
             }
           }
         } else if (isLegshot) {
-          closestChar.dismembered.legFront = true;
+          if (!closestChar.isZombie) {
+            closestChar.dismembered.legFront = true;
+          }
           triggerHitstop(2);
           triggerScreenShake(20);
           spawnLimbGib('leg', hitPtX, hitPtY, this.vx, this.vy, closestChar.facing, charVisuals);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 45, closestChar.facing, 5);
 
           if (closestChar.isZombie) {
+            closestChar.dismembered.legFront = false;
+            closestChar.dismembered.legBack = false;
             closestChar.reviveTimer = 4.0;
             closestChar.downedHp = 60;
             closestChar.riseTimer = 0;
             triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
           }
         } else {
-          closestChar.dismembered.armFront = true;
+          if (!closestChar.isZombie) {
+            closestChar.dismembered.armFront = true;
+          }
           triggerHitstop(2);
           triggerScreenShake(20);
           spawnLimbGib('arm', hitPtX, hitPtY, this.vx, this.vy, closestChar.facing, charVisuals);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 16, closestChar.facing, 5);
 
           if (closestChar.isZombie) {
+            closestChar.dismembered.armFront = false;
+            closestChar.dismembered.legFront = false;
+            closestChar.dismembered.legBack = false;
             closestChar.reviveTimer = 4.0;
             closestChar.downedHp = 60;
             closestChar.riseTimer = 0;
