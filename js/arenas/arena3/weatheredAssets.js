@@ -247,7 +247,7 @@ function renderWeatheredTimberDeckVectors(ctx, x, y, w, h, options = {}) {
     for (let v = 0; v < vineCount; v++) {
       const vx = x + ((v + 1) * w) / (vineCount + 1);
       const vineLen = 6 + ((seed * (v + 1)) % 8);
-      const sway = Math.sin(animTime * 2.5 + vx * 0.05) * 2.5;
+      const sway = Math.sin(vx * 0.17 + v * 1.3) * 2.2;
 
       ctx.strokeStyle = '#2b4416';
       ctx.lineWidth = 1.4;

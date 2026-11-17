@@ -621,10 +621,10 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
     // Wysokość kępki trawy: 9px do 22px
     const bladeH = 9.0 + f1 * 13.0;
 
-    // Falowanie na wietrze zależne od czasu animacji
-    const wind = Math.sin(animTime * 2.3 + x * 0.034) * (bladeH * 0.32);
+    // Naturalne deterministyczne wygięcie źdźbła trawy zależne wyłącznie od współrzędnej X i stałych cech losowych
+    const naturalBend = Math.sin(x * 0.17) * (bladeH * 0.28);
     const lean = (f2 - 0.5) * 5.0;
-    const swayX = lean + wind;
+    const swayX = lean + naturalBend;
 
     const tipX = x + swayX;
     const tipY = y - bladeH;
@@ -683,7 +683,7 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
       const fn = ferns[fi];
       const fernH = 15 + fn.f1 * 10;
       const dir = fn.f2 > 0.5 ? 1 : -1;
-      const fSway = Math.sin(animTime * 2.0 + fn.x * 0.03) * 5;
+      const fSway = Math.sin(fn.x * 0.17) * 3.5;
       const endFx = fn.x + (dir * (fernH * 0.65)) + fSway;
       const endFy = fn.y - fernH;
       fn.endFx = endFx;
@@ -901,6 +901,9 @@ export function drawArena3Foreground(ctx, camera) {
     targetCtx.lineTo(edgeX, 1400);
     targetCtx.stroke();
 
+    // H. GĘSTA, ŻYWA TRAWA DŻUNGLI I PAPROCIE (Zbuforowane deterministycznie w OffscreenCanvas)
+    drawJungleGrass(targetCtx, ovalPoints, isL, isL ? 0 : 2650, isL ? 1750 : 4400);
+
     // I. ZALEWY WÓD GRUNTOWYCH W GŁĘBOKICH KRATERACH
     const groundPts = isL ? GROUND_LEFT_POINTS : GROUND_RIGHT_POINTS;
     let poolSeg = [];
@@ -933,29 +936,29 @@ export function drawArena3Foreground(ctx, camera) {
     if (!_leftCliffCache) {
       _leftCliffCache = document.createElement('canvas');
       _leftCliffCache.width = 1760;
-      _leftCliffCache.height = 220;
+      _leftCliffCache.height = 250;
     }
     if (!_rightCliffCache) {
       _rightCliffCache = document.createElement('canvas');
       _rightCliffCache.width = 1760;
-      _rightCliffCache.height = 220;
+      _rightCliffCache.height = 250;
     }
 
     if (isArena3CliffDirty()) {
       const lCtx = _leftCliffCache.getContext('2d');
       if (lCtx) {
-        lCtx.clearRect(0, 0, 1760, 220);
+        lCtx.clearRect(0, 0, 1760, 250);
         lCtx.save();
-        lCtx.translate(0, -1190);
+        lCtx.translate(0, -1165);
         renderBasaltCliffVectors(lCtx, true, leftOval);
         lCtx.restore();
       }
 
       const rCtx = _rightCliffCache.getContext('2d');
       if (rCtx) {
-        rCtx.clearRect(0, 0, 1760, 220);
+        rCtx.clearRect(0, 0, 1760, 250);
         rCtx.save();
-        rCtx.translate(-2640, -1190);
+        rCtx.translate(-2640, -1165);
         renderBasaltCliffVectors(rCtx, false, rightOval);
         rCtx.restore();
       }
@@ -968,15 +971,12 @@ export function drawArena3Foreground(ctx, camera) {
     ensureCliffCaches(leftOvalPoints, rightOvalPoints);
 
     if (isLeft && _leftCliffCache) {
-      ctx.drawImage(_leftCliffCache, 0, 1190);
+      ctx.drawImage(_leftCliffCache, 0, 1165);
     } else if (!isLeft && _rightCliffCache) {
-      ctx.drawImage(_rightCliffCache, 2640, 1190);
+      ctx.drawImage(_rightCliffCache, 2640, 1165);
     } else {
       renderBasaltCliffVectors(ctx, isLeft, ovalPoints);
     }
-
-    // H. GĘSTA, ŻYWA TRAWA DŻUNGLI Z KOŁYSANIEM NA WIETRZE (Tylko nienaruszony grunt, omija kratery)
-    drawJungleGrass(ctx, ovalPoints, isLeft, camL, camR);
   }
 
 
@@ -2622,7 +2622,8 @@ export function drawArena3Foreground(ctx, camera) {
       }
     } else {
       // Zerwana lina powiewająca na wietrze z baldachimu z rozplecionymi włóknami konopnymi
-      const vSway = Math.sin(animTime * 3.0 + px * 0.05) * 8;
+      const smoothRopeTime = (typeof performance !== 'undefined' ? performance.now() : 0) * 0.0018;
+      const vSway = Math.sin(smoothRopeTime * 3.0 + px * 0.05) * 8;
       ctx.strokeStyle = '#3a200a';
       ctx.lineWidth = 3.2;
       ctx.beginPath();
@@ -2658,7 +2659,8 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.strokeRect(attachRX - 3, attachRY - 25, 6, 12);
       }
     } else {
-      const vSway = Math.sin(animTime * 3.0 + px * 0.05 + 1.2) * 8;
+      const smoothRopeTime = (typeof performance !== 'undefined' ? performance.now() : 0) * 0.0018;
+      const vSway = Math.sin(smoothRopeTime * 3.0 + px * 0.05 + 1.2) * 8;
       ctx.strokeStyle = '#3a200a';
       ctx.lineWidth = 3.2;
       ctx.beginPath();
@@ -2988,7 +2990,8 @@ export function drawArena3Foreground(ctx, camera) {
           const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
           const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
           const stubLen = 14 + (b.seed ? (b.seed % 5) : (i % 5));
-          const vSway = Math.sin(animTime * 3.5 + i * 0.8) * 3;
+          const smoothBridgeTime = (typeof performance !== 'undefined' ? performance.now() : 0) * 0.0018;
+          const vSway = Math.sin(smoothBridgeTime * 3.5 + i * 0.8) * 3;
           ctx.moveTo(hx, cableY);
           ctx.lineTo(hx + vSway, cableY + stubLen);
         }
@@ -3128,6 +3131,10 @@ export function resetArena3RenderCache() {
   _cachedRightStiltsCanvas = null;
   _cachedLeftApproachDeckCanvas = null;
   _cachedRightApproachDeckCanvas = null;
+  _cachedLeftOvalPoints = null;
+  _cachedRightOvalPoints = null;
+  _cachedUpperTowerBlocksLeft = null;
+  _cachedUpperTowerBlocksRight = null;
 }
 
 // Pomocnicze funkcje przecięcia promienia pocisku (swept segment)
