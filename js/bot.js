@@ -454,6 +454,15 @@ export function createBotInstance(index = 0, isActive = undefined) {
     _overheadEscapeLockTimer: 0,
     botKeys: instanceKeys
   });
+  instance.prevX = instance.x;
+  instance.prevY = instance.y;
+  instance.oldX = instance.x;
+  instance.oldY = instance.y;
+  instance.vx = 0;
+  instance.vy = 0;
+  instance.airVx = 0;
+  instance.knockbackVx = 0;
+  instance.knockbackVy = 0;
   return instance;
 }
 

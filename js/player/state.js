@@ -124,12 +124,21 @@ export function mergeClassWithSchema(classDef) {
 export function createPlayerInstance(overrides = {}) {
   const baseClass = overrides.currentClass || DEFAULT_CLASS || {};
   const mergedClass = mergeClassWithSchema(baseClass);
+  const startX = overrides.x !== undefined ? overrides.x : (START_X - 60);
+  const startY = overrides.y !== undefined ? overrides.y : 0;
 
-  return {
-    x: START_X - 60,
-    y: 0,
+  const instance = {
+    x: startX,
+    y: startY,
+    prevX: startX,
+    prevY: startY,
+    oldX: startX,
+    oldY: startY,
     vx: 0,
     vy: 0,
+    airVx: 0,
+    knockbackVx: 0,
+    knockbackVy: 0,
     w: mergedClass.body.w,
     h: mergedClass.body.h,
     facing: 1,
@@ -453,6 +462,15 @@ export function createPlayerInstance(overrides = {}) {
     kickCooldownTime: mergedClass.stats.kickCooldown || 0.50,
     ...overrides
   };
+
+  if (instance.prevX === undefined) instance.prevX = instance.x;
+  if (instance.prevY === undefined) instance.prevY = instance.y;
+  if (instance.oldX === undefined) instance.oldX = instance.x;
+  if (instance.oldY === undefined) instance.oldY = instance.y;
+  if (instance.knockbackVx === undefined) instance.knockbackVx = 0;
+  if (instance.knockbackVy === undefined) instance.knockbackVy = 0;
+
+  return instance;
 }
 
 export const player = createPlayerInstance({ isIntro: true });

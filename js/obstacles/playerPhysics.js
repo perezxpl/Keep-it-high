@@ -323,7 +323,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
       // Twarde zabezpieczenie przed zapadaniem się w lity grunt / kratery na Arenie 3
       if (!isLanding && isA3Ground && (!p.isJumping || p.vy >= 0)) {
-        if (feetY >= topY - 14 && feetY <= topY + Math.min(24, platThickness)) {
+        if (feetY >= topY - 14 && feetY <= topY + platThickness) {
           isLanding = true;
         }
       }
@@ -458,10 +458,46 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
+  // Zabezpieczenie przed ugrzęźnięciem w bryle terenu (Zakaz bocznego wypychania dla terenu / skarpy)
+  if (!isA5) {
+    const pCenterX = p.x + p.w * 0.5;
+    for (const plat of ARENA_PLATFORMS) {
+      if (!plat || plat.solid === false) continue;
+      const isTerrainBlock = (plat.id === 'ground_left' || plat.id === 'ground_right' ||
+        plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' ||
+        plat.isTerrain || (plat.w > 600 && !plat.isWall));
+      if (!isTerrainBlock) continue;
+
+      if (pCenterX >= plat.x - 4 && pCenterX <= plat.x + plat.w + 4) {
+        const surf = getPlatformSurfaceInfo(plat, pCenterX, groundY);
+        const topY = surf ? surf.surfaceY : ((plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0)));
+        const platThick = plat.thickness || plat.h || 200;
+        const bottomY = topY + platThick;
+
+        if (feetY > topY && p.y < bottomY - 4) {
+          p.y = topY - colH;
+          feetY = topY;
+          if (p.vy > 0) p.vy = 0;
+          p.onGround = true;
+          p.isJumping = false;
+          p.currentGroundY = topY;
+          p.currentPlatform = plat;
+          landedSurface = topY;
+          landedPlatform = plat;
+        }
+      }
+    }
+  }
+
   // Twarda blokada przechodzenia przez pionowe monolity i formacje skalne
   if (!isA5) {
     for (const plat of ARENA_PLATFORMS) {
       if (plat && plat.solid && plat.isMonolith) {
+        if (plat.id === 'ground_left' || plat.id === 'ground_right' ||
+            plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' ||
+            plat.isTerrain || (plat.w > 600 && !plat.isWall)) {
+          continue;
+        }
         const topY = groundY - plat.relY;
         const bottomY = topY + (plat.thickness || 470);
         if (feetY > topY + 8 && p.y < bottomY - 4) {
@@ -676,6 +712,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
     for (const plat of ARENA_PLATFORMS) {
       if (!plat || plat.solid === false || plat.oneWay) continue;
 
+      // Zakaz bocznego wypychania dla terenu, skarp i wielkich bloków podłoża
+      if (plat.id === 'ground_left' || plat.id === 'ground_right' ||
+          plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' ||
+          plat.isTerrain || (plat.w > 600 && !plat.isWall)) {
+        continue;
+      }
+
       // A. Ściany dedykowane (plat.isWall)
       if (plat.isWall) {
         const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
@@ -756,6 +799,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (!Number.isFinite(p.vy)) p.vy = 0;
   if (!Number.isFinite(p.x)) p.x = 200;
   if (!Number.isFinite(p.y)) p.y = 200;
+
+  p.vx = Math.max(-28, Math.min(28, p.vx));
+  p.vy = Math.max(-28, Math.min(28, p.vy));
 
   const totalVx = p.vx || 0;
   if (Math.abs(totalVx) > 12) {
@@ -871,5 +917,8 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
     }
   }
+
+  p.vx = Math.max(-28, Math.min(28, p.vx || 0));
+  p.vy = Math.max(-28, Math.min(28, p.vy || 0));
 }
 

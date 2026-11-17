@@ -317,6 +317,15 @@ export function startRound() {
     player.killerBulletId = null;
     player.ragdoll = null;
     player.staggerTimer = 0;
+    player.prevX = player.x;
+    player.prevY = player.y;
+    player.oldX = player.x;
+    player.oldY = player.y;
+    player.vx = 0;
+    player.vy = 0;
+    player.airVx = 0;
+    player.knockbackVx = 0;
+    player.knockbackVy = 0;
     if (player.ammo) {
       const wepDefaults = {
         AK47: { currentAmmo: 30, reserveAmmo: 90 },
@@ -348,6 +357,15 @@ export function startRound() {
       b.ragdoll = null;
       b.staggerTimer = 0;
       b.respawnTimer = 0;
+      b.prevX = b.x;
+      b.prevY = b.y;
+      b.oldX = b.x;
+      b.oldY = b.y;
+      b.vx = 0;
+      b.vy = 0;
+      b.airVx = 0;
+      b.knockbackVx = 0;
+      b.knockbackVy = 0;
     }
   }
   resetBallToPlayer(player, GROUND_Y);

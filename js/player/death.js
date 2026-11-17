@@ -115,9 +115,13 @@ export function initPlayerRagdoll(p, groundY) {
   const hBY = chestY + Math.cos(p.pose?.armBackSwing || 0) * shArmLen;
 
   // Zachowanie pędu postaci + punktowy impuls od kuli/wybuchu
-  const baseVx = p.vx || 0;
-  const baseVy = p.vy || 0;
-  const imp = p.deathImpulse || { vx: -facing * 3.5, vy: -1.2 };
+  const baseVx = Math.max(-28, Math.min(28, p.vx || 0));
+  const baseVy = Math.max(-28, Math.min(28, p.vy || 0));
+  const rawImp = p.deathImpulse || { vx: -facing * 3.5, vy: -1.2 };
+  const imp = {
+    vx: Math.max(-24, Math.min(24, rawImp.vx || 0)),
+    vy: Math.max(-24, Math.min(24, rawImp.vy || 0))
+  };
   const hitY = p.deathHitPoint?.y ?? (hipY - 10);
 
   // Podział energii kinetycznej w zależności od miejsca trafienia
@@ -162,8 +166,10 @@ export function updatePlayerRagdoll(p, groundY) {
     let vx = (n.x - n.oldX) * 0.985;
     let vy = (n.y - n.oldY) * 0.985 + 0.38;
 
+    vx = Math.max(-28, Math.min(28, vx));
     // Zabezpieczenie przed wystrzałami w górę (Verlet velocity blowout cap)
     if (vy < -5.5) vy = -5.5;
+    if (vy > 28) vy = 28;
 
     n.oldX = n.x;
     n.oldY = n.y;
@@ -235,8 +241,8 @@ export function updatePlayerRagdoll(p, groundY) {
   // Synchronizacja współrzędnych gracza z miednicą
   p.x = rag.pelvis.x - p.w / 2;
   p.y = rag.pelvis.y - p.h + 20;
-  p.vx = rag.pelvis.x - rag.pelvis.oldX;
-  p.vy = rag.pelvis.y - rag.pelvis.oldY;
+  p.vx = Math.max(-28, Math.min(28, rag.pelvis.x - rag.pelvis.oldX));
+  p.vy = Math.max(-28, Math.min(28, rag.pelvis.y - rag.pelvis.oldY));
 }
 
 /**
@@ -469,6 +475,8 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
   } else {
     updatePlayerRagdoll(player, groundY);
   }
+  player.vx = Math.max(-28, Math.min(28, player.vx || 0));
+  player.vy = Math.max(-28, Math.min(28, player.vy || 0));
 
   // Respawn: odnowienie stanu i przywrócenie kompletnych kończyn
   if (player.respawnTimer <= 0) {
@@ -609,9 +617,15 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     }
     player.onGround = true;
     player.currentGroundY = player.y + player.h;
+    player.prevX = player.x;
+    player.prevY = player.y;
+    player.oldX = player.x;
+    player.oldY = player.y;
     player.vx = 0;
     player.vy = 0;
     player.airVx = 0;
+    player.knockbackVx = 0;
+    player.knockbackVy = 0;
     player.isJumping = false;
     player.isSliding = false;
     player.isCharging = false;

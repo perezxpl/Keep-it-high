@@ -1944,7 +1944,7 @@ export function getSafeArena3Spawn(spawn, charH = 72, fallbackTeam = null) {
   if (surfaceY !== null) {
     return {
       x: spawn.x,
-      y: surfaceY - charH,
+      y: surfaceY - charH - 2,
       facing: spawn.facing !== undefined ? spawn.facing : (spawn.x < 2200 ? 1 : -1)
     };
   }
@@ -1956,7 +1956,7 @@ export function getSafeArena3Spawn(spawn, charH = 72, fallbackTeam = null) {
     const safeGroundY = getRiverbankGroundY(safeX);
     return {
       x: safeX,
-      y: safeGroundY - charH,
+      y: safeGroundY - charH - 2,
       facing: isCyan ? 1 : -1
     };
   }

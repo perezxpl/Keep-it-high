@@ -59,6 +59,9 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, p = pl
 }
 
 function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, targets = null) {
+  if (!Number.isFinite(player.vx)) player.vx = 0;
+  player.vx = Math.max(-28, Math.min(28, player.vx));
+
   if (keys) player.keys = keys;
   if (leftStick) player.leftStick = leftStick;
 
@@ -745,6 +748,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
 
     if (Math.abs(player.vx) < 0.02) player.vx = 0;
+    player.vx = Math.max(-28, Math.min(28, player.vx || 0));
     player.x += player.vx;
 
     const speed = Math.abs(player.vx);

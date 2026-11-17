@@ -549,9 +549,15 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
           if (safe) {
             c.x = safe.x;
             c.y = safe.y;
+            c.prevX = c.x;
+            c.prevY = c.y;
+            c.oldX = c.x;
+            c.oldY = c.y;
             c.vx = 0;
             c.vy = 0;
             c.airVx = 0;
+            c.knockbackVx = 0;
+            c.knockbackVy = 0;
             c.onGround = true;
             c.currentGroundY = c.y + (c.h || 72);
             c.isJumping = false;
@@ -644,9 +650,15 @@ export function validateBotRespawnSafety(b) {
     if (safe) {
       b.x = safe.x;
       b.y = safe.y;
+      b.prevX = b.x;
+      b.prevY = b.y;
+      b.oldX = b.x;
+      b.oldY = b.y;
       b.vx = 0;
       b.vy = 0;
       b.airVx = 0;
+      b.knockbackVx = 0;
+      b.knockbackVy = 0;
       b.onGround = true;
       b.currentGroundY = b.y + (b.h || 72);
       b.isJumping = false;
