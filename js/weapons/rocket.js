@@ -327,6 +327,36 @@ export class RpgRocket {
       }
     }
 
+    // Sprawdzenie bezpośredniego trafienia w beczkę wybuchową
+    let closestBarrel = null;
+    let closestBarrelT = Infinity;
+    if (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels)) {
+      for (const bar of window.hazardsBarrels) {
+        if (!bar || bar.isDead) continue;
+        const bLeft = bar.x;
+        const bRight = bar.x + bar.w;
+        const bTop = bar.y;
+        const bBottom = bar.y + bar.h;
+        if (maxBx < bLeft || minBx > bRight || maxBy < bTop || minBy > bBottom) continue;
+        const barT = getSegmentAABBHitT(this.prevX, this.prevY, this.x, this.y, bLeft, bTop, bRight, bBottom);
+        if (barT !== null && barT <= maxT && barT < closestBarrelT) {
+          closestBarrelT = barT;
+          closestBarrel = bar;
+        }
+      }
+    }
+
+    // A0. Bezpośrednie trafienie w wybuchową beczkę
+    if (closestBarrel && closestBarrelT < closestCharT && closestBarrelT < closestSentryT) {
+      this.x = this.prevX + (this.x - this.prevX) * closestBarrelT;
+      this.y = this.prevY + (this.y - this.prevY) * closestBarrelT;
+      if (typeof window.damageBarrel === 'function') {
+        window.damageBarrel(closestBarrel, 999, this.shooter, this.vx, this.vy);
+      }
+      this.detonate(groundY, platforms, customObs, combatants, ball);
+      return false;
+    }
+
     // A. Bezpośrednie trafienie w Sentry Gun (jeśli bliżej niż postać)
     if (closestSentry && closestSentryT < closestCharT) {
       this.x = this.prevX + (this.x - this.prevX) * closestSentryT;

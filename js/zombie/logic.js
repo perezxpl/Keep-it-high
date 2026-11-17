@@ -12,6 +12,8 @@ import { triggerScreenShake, spawnBloodSpurt, spawnBloodDrip, spawnBloodFountain
 import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
+import { hazardsState } from '../hazards/state.js';
+import { damageBarrel } from '../hazards/logic.js';
 
 let _activeZombiesCache = [];
 
@@ -88,6 +90,21 @@ export function getZombieSurfaceY(x, y, baseGroundY) {
 
   if (Array.isArray(customObstacles)) {
     floor = checkPlatformList(customObstacles, x, y, baseGroundY, isA3, floor);
+  }
+
+  // Sprawdzanie powierzchni stojących fizycznych beczek
+  const barrels = (hazardsState && Array.isArray(hazardsState.barrels)) ? hazardsState.barrels : (typeof window !== 'undefined' ? window.hazardsBarrels : null);
+  if (Array.isArray(barrels)) {
+    for (let i = 0; i < barrels.length; i++) {
+      const b = barrels[i];
+      if (!b || b.isDead) continue;
+      if (x >= b.x - 4 && x <= b.x + b.w + 4) {
+        const topY = b.y;
+        if (y <= topY + 16 && topY < floor) {
+          floor = topY;
+        }
+      }
+    }
   }
 
   return floor;
@@ -295,6 +312,36 @@ export function resolveZombieWallCollisions(z, groundY) {
       }
     }
   }
+
+  // 4. Fizyczne beczki: przepychanie i blokada przenikania
+  const wallBarrels = (hazardsState && Array.isArray(hazardsState.barrels)) ? hazardsState.barrels : (typeof window !== 'undefined' ? window.hazardsBarrels : null);
+  if (Array.isArray(wallBarrels)) {
+    for (let i = 0; i < wallBarrels.length; i++) {
+      const b = wallBarrels[i];
+      if (!b || b.isDead) continue;
+      if (feetY > b.y + 12 && headY < b.y + b.h - 4) {
+        if (z.x + (z.w || 24) > b.x && z.x < b.x + b.w) {
+          const midX = b.x + b.w * 0.5;
+          if (z.vx !== 0) {
+            const pushDir = Math.sign(z.vx);
+            b.vx = pushDir * Math.max(Math.abs(z.vx), 1.6);
+            b.rotVel = pushDir * 0.08;
+            b.x += b.vx * 0.5;
+            z.vx *= 0.6;
+          }
+          if (z.x + halfW < midX) {
+            z.x = b.x - (z.w || 24);
+            if (z.vx > 0) z.vx = 0;
+            if (z.knockbackVx > 0) z.knockbackVx = 0;
+          } else {
+            z.x = b.x + b.w;
+            if (z.vx < 0) z.vx = 0;
+            if (z.knockbackVx < 0) z.knockbackVx = 0;
+          }
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -355,6 +402,23 @@ export function handleZombieStepAndClimb(z, groundY) {
             if (bestStepTop === null || topY < bestStepTop) {
               bestStepTop = topY;
             }
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Beczki z przodu jako stopień wspinaczkowy
+  const stepBarrels = (hazardsState && Array.isArray(hazardsState.barrels)) ? hazardsState.barrels : (typeof window !== 'undefined' ? window.hazardsBarrels : null);
+  if (Array.isArray(stepBarrels)) {
+    for (let i = 0; i < stepBarrels.length; i++) {
+      const b = stepBarrels[i];
+      if (!b || b.isDead) continue;
+      if (checkX >= b.x - 4 && checkX <= b.x + b.w + 4) {
+        const topY = b.y;
+        if (topY < feetY && topY >= feetY - 110) {
+          if (bestStepTop === null || topY < bestStepTop) {
+            bestStepTop = topY;
           }
         }
       }
@@ -761,6 +825,31 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
               vy: -1.4
             };
             triggerCombatFeedBanner('DEATH', `[PLAGA] ${nearestTarget.name || 'OPERATOR'} POLEGŁ W SZPONACH ZOMBIE!`);
+          }
+        }
+      }
+
+      // --- ATAK WRĘCZ NA BLOKUJĄCĄ BECZKĘ ---
+      const atkBarrels = (hazardsState && Array.isArray(hazardsState.barrels)) ? hazardsState.barrels : (typeof window !== 'undefined' ? window.hazardsBarrels : null);
+      if (Array.isArray(atkBarrels) && z.attackCooldown <= 0) {
+        for (let bIdx = 0; bIdx < atkBarrels.length; bIdx++) {
+          const bar = atkBarrels[bIdx];
+          if (!bar || bar.isDead) continue;
+          const barMidX = bar.x + bar.w * 0.5;
+          const barMidY = bar.y + bar.h * 0.5;
+          const bDx = barMidX - zx;
+          const bDy = barMidY - zy;
+          const isAhead = (bDx * z.facing) >= -4 && (bDx * z.facing) <= (ZOMBIE_CONFIG.BITE_RANGE + 8);
+          if (isAhead && Math.abs(bDy) <= 42) {
+            z.attackCooldown = ZOMBIE_CONFIG.BITE_COOLDOWN;
+            z.attackAnim = 0.35;
+            const dmgFn = (typeof damageBarrel === 'function') ? damageBarrel : (typeof window !== 'undefined' ? window.damageBarrel : null);
+            if (typeof dmgFn === 'function') {
+              dmgFn(bar, ZOMBIE_CONFIG.BITE_DAMAGE, z);
+            }
+            spawnBloodSpurt(barMidX, barMidY, z.facing * 2.0, -1.5, 6, 0.8);
+            triggerScreenShake(2.0);
+            break;
           }
         }
       }

@@ -156,6 +156,7 @@ export function kickBarrel(barrel, kicker, isSlide = false) {
   barrel.rotVel = facing * 0.24;
   barrel.onGround = false;
   barrel.lastAttacker = kicker;
+  barrel.kickerGraceTimer = 0.20;
 
   triggerScreenShake(isSlide ? 6.0 : 10.0);
   spawnRicochetSparks(barrel.x + barrel.w / 2, barrel.y + barrel.h / 2, kickVx * 0.4, kickVy * 0.4, 8);
@@ -277,13 +278,27 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
           c.decapitated = true;
           c.severedHead = null;
           c.reviveTimer = 0;
-          c.decayTimer = 15; // Natychmiastowe zniknięcie
+          c.decayTimer = 0; // Naturalny rozkład przez 14s (ciało leci z falą wybuchu)
+          c.deathImpulse = {
+            vx: normX * 12.0 * factor,
+            vy: -6.5 * factor
+          };
+          c.vx = normX * 12.0 * factor;
+          c.vy = -6.5 * factor;
+          c.onGround = false;
           spawnHeadGib(cx, cy - 10, normX * 8, -6, c.facing || 1, c.visuals);
           spawnBloodFountain(cx, cy, c.facing || 1, 6);
         } else {
           c.hp = 0;
           c.isDead = true;
           c.reviveTimer = 4.0; // Powalenie
+          c.deathImpulse = {
+            vx: normX * 9.0 * factor,
+            vy: -4.5 * factor
+          };
+          c.vx = normX * 9.0 * factor;
+          c.vy = -4.5 * factor;
+          c.onGround = false;
         }
       } else if (c.hp <= 0 && !c.isDead) {
         // Zgon gracza lub bota od wybuchu
@@ -298,6 +313,13 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
           vy: -6.5 * factor
         };
         spawnBloodSpurt(cx, cy, normX * 3, -2, 22, 1.5);
+      }
+
+      // Impuls kinetyczny i hitstun dla żywego zombie który przetrwał wybuch
+      if (c.isZombie && !c.isDead) {
+        c.knockbackVx = normX * push;
+        c.hitStunTimer = 0.40;
+        c.onGround = false;
       }
     }
   }
@@ -377,6 +399,11 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
   for (let i = hazardsState.barrels.length - 1; i >= 0; i--) {
     const b = hazardsState.barrels[i];
 
+    // Czas ochronny dla kopiącego gracza
+    if (b.kickerGraceTimer > 0) {
+      b.kickerGraceTimer -= dt;
+    }
+
     // Detonacja po upływie fuseTimer
     if (b.fuseTimer > 0) {
       b.fuseTimer -= dt;
@@ -431,19 +458,95 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       b.vx = -Math.abs(b.vx) * 0.5;
     }
 
-    // Twarde uderzenie toczącej się beczki o przeszkodę / postać przy dużej prędkości
-    if (Math.abs(b.vx) > 10.0) {
-      for (const c of combatants) {
-        if (!c || c === b.lastAttacker) continue;
-        const cx = c.x + (c.w || 24) * 0.5;
-        const cy = c.y + (c.h || 70) * 0.5;
-        if (Math.abs(cx - midX) < 22 && Math.abs(cy - (b.y + b.h * 0.5)) < 35) {
-          // Twardy impakt detonuje beczkę!
+    // Kolizja fizyczna beczki z postaciami (zombie, gracz, boty)
+    let barrelDetonated = false;
+    const bSpeed = Math.hypot(b.vx, b.vy);
+    const bLeft = b.x;
+    const bRight = b.x + b.w;
+    const bTop = b.y;
+    const bBottom = b.y + b.h;
+
+    for (const c of combatants) {
+      if (!c) continue;
+      // Kopiacy gracz jest chroniony przez krotka chwile po wykopie
+      if (c === b.lastAttacker && b.kickerGraceTimer > 0) continue;
+
+      const cW = c.w || 24;
+      const isLyingZombie = !!(c.isZombie && c.isDead && c.hasHead && !c.decapitated);
+      const isDeadHuman = !!(!c.isZombie && c.isDead);
+      if (isDeadHuman) continue;
+
+      const cH = isLyingZombie ? 24 : (c.h || 70);
+      const cLeft = c.x;
+      const cRight = c.x + cW;
+      const cBottom = c.y + (c.h || 70);
+      const cTop = cBottom - cH;
+
+      const marginX = Math.max(3, Math.abs(b.vx) * 0.7);
+      const marginY = Math.max(3, Math.abs(b.vy) * 0.7);
+      const overlapX = (bRight + marginX >= cLeft && bLeft - marginX <= cRight);
+      const overlapY = (bBottom + marginY >= cTop && bTop - marginY <= cBottom);
+
+      if (overlapX && overlapY) {
+        if (bSpeed >= 3.0) {
+          // 1. Twardy impakt przy wysokiej/sredniej predkosci -> detonacja beczki!
           detonateBarrel(b, combatants, groundY);
+          barrelDetonated = true;
           break;
+        } else if (bSpeed >= 1.0) {
+          // 2. Umiarkowana predkosc: uderzenie kinetyczne, odepchniecie postaci i rykoszet beczki
+          const pushDir = (b.vx !== 0 ? Math.sign(b.vx) : (c.x > midX ? 1 : -1));
+          const pushForce = pushDir * Math.max(Math.abs(b.vx) * 1.15, 2.4);
+
+          if (c.isZombie) {
+            c.knockbackVx = pushForce;
+            c.hitStunTimer = 0.28;
+            c.onGround = false;
+            c.hp = Math.max(0, (c.hp || 100) - Math.round(bSpeed * 6));
+            if (c.hp <= 0 && !c.isDead) {
+              c.isDead = true;
+              c.reviveTimer = 4.0;
+              c.deathImpulse = { vx: pushForce * 1.4, vy: -3.0 };
+            }
+          } else {
+            c.vx = (c.vx || 0) + pushForce * 0.8;
+            c.hp = Math.max(0, (c.hp || 100) - Math.round(bSpeed * 4));
+          }
+
+          spawnRicochetSparks(midX, b.y + b.h * 0.5, pushDir * 2, -1.5, 6);
+          playSound('hit_armor', { x: midX, y: b.y });
+
+          b.vx = -b.vx * 0.35;
+          b.rotVel = -b.rotVel * 0.5;
+          b.x += b.vx * 1.5;
+          break;
+        } else {
+          // 3. Stojaca lub powolna beczka: przepychanie i separacja AABB
+          const cVx = c.vx || 0;
+          const isWalkingIntoBarrel = (cVx > 0.05 && cLeft < bLeft) || (cVx < -0.05 && cRight > bRight);
+
+          if (isWalkingIntoBarrel && !isLyingZombie) {
+            const pushDir = Math.sign(cVx);
+            b.vx = pushDir * Math.max(Math.abs(cVx) * 0.9, 1.4);
+            b.rotVel = pushDir * 0.08;
+            b.x += b.vx;
+            if (c.isZombie) {
+              c.vx *= 0.55;
+            }
+          } else if (!isLyingZombie) {
+            const cMidX = cLeft + cW * 0.5;
+            if (cMidX < midX) {
+              c.x = bLeft - cW;
+              if (c.vx > 0) c.vx = 0;
+            } else {
+              c.x = bRight;
+              if (c.vx < 0) c.vx = 0;
+            }
+          }
         }
       }
     }
+    if (barrelDetonated) continue;
 
     // Zagrożenia środowiskowe niszczące beczkę (kwas na A2, rzeka na A3, lawa na A4, utylizator na A5)
     let envDestroy = false;
