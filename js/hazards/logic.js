@@ -71,21 +71,34 @@ export function spawnBarrelShrapnel(x, y, barrelType = 'EXPLOSIVE') {
  * Oblicza wysokość podłoża lub platformy pod beczką
  */
 export function getBarrelSurfaceY(x, y, baseGroundY) {
-  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const isA3 = (curArena?.id === 'arena-3');
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
+  const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
+  const isA5 = (arenaKey === 'arena-5' || arenaKey === 'prefab-tower');
+  const isA4 = (arenaKey === 'arena-4' || arenaKey === 'armored-train');
+  const isA3 = (arenaKey === 'arena-3' || arenaKey === 'arena-foundry');
+  const isA2 = (arenaKey === 'arena-2' || arenaKey === 'arena-2-pandora' || arenaKey === 'arena-2-sector-x');
+
   let floor = Infinity;
 
+  // 1. Podłoże naturalne
   if (isA3 && typeof getRiverbankGroundY === 'function') {
-    floor = getRiverbankGroundY(x);
-  } else if (baseGroundY < 1500) {
+    if (x <= 1750 || x >= 2650) {
+      const riverbankY = getRiverbankGroundY(x);
+      if (typeof riverbankY === 'number' && !isNaN(riverbankY)) {
+        floor = riverbankY;
+      }
+    }
+  } else if (!isA2 && !isA3 && !isA4 && !isA5) {
     const hasGround = (typeof window !== 'undefined' && typeof window.isGroundAt === 'function')
-      ? window.isGroundAt(x, 2)
+      ? (window.isGroundAt(x - 6, 2) || window.isGroundAt(x + 6, 2))
       : true;
-    if (hasGround) {
+    if (hasGround && baseGroundY < 1500) {
       floor = baseGroundY;
     }
   }
 
+  // 2. Platformy areny i klocki
   const a5Plats = (typeof window !== 'undefined' && window.arena5State?.platforms) ? window.arena5State.platforms : null;
   const platformList = a5Plats ? [...ARENA_PLATFORMS, ...a5Plats] : ARENA_PLATFORMS;
 
@@ -93,12 +106,48 @@ export function getBarrelSurfaceY(x, y, baseGroundY) {
     for (const plat of platformList) {
       if (!plat || plat.destroyed || plat.isDestroyed || plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
       if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
-      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + plat.w };
-      if (x >= bnds.minX - 6 && x <= bnds.maxX + 6) {
-        const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
-          ? getPlatformSurfaceY(plat, x, baseGroundY)
-          : ((plat.y !== undefined) ? (typeof getPlatformSurfaceY === 'function' ? getPlatformSurfaceY(plat, x, baseGroundY) : plat.y) : (baseGroundY - (plat.relY || 0)));
-        if (y <= topY + 18 && topY < floor) {
+      if (isA3 && plat.intact === false && plat.y >= 1310) continue;
+
+      if (isA5 && plat.isA5Block) {
+        if (plat.topExposed === false) continue;
+        if (typeof plat.gridRow === 'number' && typeof plat.gridCol === 'number') {
+          const a5St = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+          const rowAbove = a5St?.gridRows?.get(plat.gridRow + 1);
+          if (rowAbove && rowAbove[plat.gridCol] && rowAbove[plat.gridCol].hp > 0 && !rowAbove[plat.gridCol].isFalling) {
+            continue;
+          }
+        }
+      }
+
+      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w !== undefined ? plat.w : 100) };
+      if (x >= bnds.minX - 2 && x <= bnds.maxX + 2) {
+        let topY;
+        if (plat.type === 'metal_ramp_left') {
+          const t = Math.max(0, Math.min(1, (x - plat.x) / (plat.w || 1)));
+          topY = (plat.y !== undefined ? plat.y : (baseGroundY - (plat.relY || 0))) + t * plat.h;
+        } else if (plat.type === 'metal_ramp_right') {
+          const t = Math.max(0, Math.min(1, (x - plat.x) / (plat.w || 1)));
+          topY = (plat.y !== undefined ? plat.y : (baseGroundY - (plat.relY || 0))) + (1 - t) * plat.h;
+        } else if (plat.surfacePoints && typeof getPlatformSurfaceY === 'function') {
+          topY = getPlatformSurfaceY(plat, x, baseGroundY);
+        } else if (plat.y !== undefined) {
+          topY = (typeof getPlatformSurfaceY === 'function') ? getPlatformSurfaceY(plat, x, baseGroundY) : plat.y;
+        } else {
+          topY = baseGroundY - (plat.relY || 0);
+        }
+
+        if (plat.props && plat.props.length > 0) {
+          const tier = plat.props.find(pr => (pr.type === 'altar_pedestal' || pr.type === 'sandbag_trench'));
+          if (tier) {
+            const tierLeft = plat.x + tier.rx;
+            const tierRight = tierLeft + tier.w;
+            if (x >= tierLeft - 2 && x <= tierRight + 2) {
+              topY -= tier.h;
+            }
+          }
+        }
+
+        if (y <= topY + 6 && topY < floor) {
           floor = topY;
         }
       }
@@ -109,8 +158,8 @@ export function getBarrelSurfaceY(x, y, baseGroundY) {
     for (const obs of customObstacles) {
       if (!obs || obs.destroyed || obs.isDestroyed || obs.solid === false || obs.isPlatform === false) continue;
       const topY = obs.y !== undefined ? obs.y : (baseGroundY - obs.relY);
-      if (x >= obs.x - 6 && x <= obs.x + obs.w + 6) {
-        if (y <= topY + 18 && topY < floor) {
+      if (x >= obs.x - 2 && x <= obs.x + obs.w + 2) {
+        if (y <= topY + 6 && topY < floor) {
           floor = topY;
         }
       }
@@ -118,6 +167,156 @@ export function getBarrelSurfaceY(x, y, baseGroundY) {
   }
 
   return floor;
+}
+
+/**
+ * Sprawdza i rozwiazuje kolizje beczki ze scianami pionowymi, monolitami, filarami i klockami Areny 5
+ * Przy uderzeniu z duza predkoscia (>= 7.5) detonuje beczke.
+ * Przy nizszej predkosci odbija beczke z utrata energii.
+ */
+export function resolveBarrelWallCollisions(b, groundY, combatants = []) {
+  if (!b || b.isDead) return false;
+
+  const bLeft = b.x;
+  const bRight = b.x + b.w;
+  const bTop = b.y;
+  const bBottom = b.y + b.h;
+  const bMidX = b.x + b.w * 0.5;
+
+  // 1. Sprawdzanie platform ARENA_PLATFORMS i a5Plats
+  const a5Plats = (typeof window !== 'undefined' && window.arena5State?.platforms) ? window.arena5State.platforms : null;
+  const platformList = a5Plats ? [...ARENA_PLATFORMS, ...a5Plats] : ARENA_PLATFORMS;
+
+  for (let i = 0; i < platformList.length; i++) {
+    const plat = platformList[i];
+    if (!plat || plat.destroyed || plat.isDestroyed || plat.solid === false) continue;
+    if (plat.isDropThrough || plat.dropThrough || plat.type === 'catwalk' || plat.isSlope) continue;
+
+    const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+    const platThick = plat.thickness || plat.h || (plat.isMonolith ? 470 : 30);
+    if (platThick < 16 && !plat.isWall && !plat.isMonolith) continue;
+
+    const bottomY = topY + platThick;
+
+    // Czy beczka nachodzi pionowo na sciane boczna platformy?
+    if (bBottom > topY + 6 && bTop < bottomY - 4) {
+      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
+      if (bRight > bnds.minX && bLeft < bnds.maxX) {
+        const midX = (bnds.minX + bnds.maxX) * 0.5;
+        const impactSpeed = Math.abs(b.vx);
+
+        if (impactSpeed >= 7.5) {
+          detonateBarrel(b, combatants, groundY);
+          return true;
+        }
+
+        if (bMidX < midX) {
+          b.x = bnds.minX - b.w;
+          b.vx = -Math.abs(b.vx) * BARREL_CONFIG.BOUNCE_RESTITUTION;
+          b.rotVel = -b.rotVel * 0.5;
+          if (impactSpeed > 1.2) {
+            spawnRicochetSparks(b.x + b.w, b.y + b.h * 0.5, -2, -1, 4);
+          }
+        } else {
+          b.x = bnds.maxX;
+          b.vx = Math.abs(b.vx) * BARREL_CONFIG.BOUNCE_RESTITUTION;
+          b.rotVel = -b.rotVel * 0.5;
+          if (impactSpeed > 1.2) {
+            spawnRicochetSparks(b.x, b.y + b.h * 0.5, 2, -1, 4);
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Przeszkody customObstacles (bunkry, filary, sciany)
+  if (Array.isArray(customObstacles)) {
+    for (let i = 0; i < customObstacles.length; i++) {
+      const obs = customObstacles[i];
+      if (!obs || obs.destroyed || obs.isDestroyed || obs.solid === false) continue;
+      if (obs.type === 'hedgehog' || obs.type === 'barbed_wire' || obs.type === 'laser_gate') continue;
+
+      const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      const bottomY = topY + (obs.h || 40);
+
+      if (bBottom > topY + 6 && bTop < bottomY - 4) {
+        if (bRight > obs.x && bLeft < obs.x + obs.w) {
+          const midX = obs.x + obs.w * 0.5;
+          const impactSpeed = Math.abs(b.vx);
+
+          if (impactSpeed >= 7.5) {
+            detonateBarrel(b, combatants, groundY);
+            return true;
+          }
+
+          if (bMidX < midX) {
+            b.x = obs.x - b.w;
+            b.vx = -Math.abs(b.vx) * BARREL_CONFIG.BOUNCE_RESTITUTION;
+            b.rotVel = -b.rotVel * 0.5;
+            if (impactSpeed > 1.2) {
+              spawnRicochetSparks(b.x + b.w, b.y + b.h * 0.5, -2, -1, 4);
+            }
+          } else {
+            b.x = obs.x + obs.w;
+            b.vx = Math.abs(b.vx) * BARREL_CONFIG.BOUNCE_RESTITUTION;
+            b.rotVel = -b.rotVel * 0.5;
+            if (impactSpeed > 1.2) {
+              spawnRicochetSparks(b.x, b.y + b.h * 0.5, 2, -1, 4);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Klocki wiezy Areny 5 (100x100)
+  const a5 = (typeof window !== 'undefined' && window.arena5State?.gridRows) ? window.arena5State : null;
+  if (a5) {
+    const colLeft = Math.max(0, Math.floor((b.x - 20) / 100));
+    const colRight = Math.min(9, Math.floor((b.x + b.w + 20) / 100));
+    const minR = a5.minFloorRow || 0;
+
+    for (let c = colLeft; c <= colRight; c++) {
+      for (let r = minR; r < minR + 15; r++) {
+        const row = a5.gridRows.get(r);
+        const cell = row ? row[c] : null;
+        if (cell && cell.hp > 0 && !cell.isFalling) {
+          const cellTop = cell.y;
+          const cellBottom = cell.y + 100;
+          const cellLeft = cell.x;
+          const cellRight = cell.x + 100;
+
+          if (bRight > cellLeft && bLeft < cellRight && bBottom > cellTop + 8 && bTop < cellBottom - 8) {
+            const midX = cellLeft + 50;
+            const impactSpeed = Math.abs(b.vx);
+
+            if (impactSpeed >= 7.5) {
+              detonateBarrel(b, combatants, groundY);
+              return true;
+            }
+
+            if (bMidX < midX) {
+              b.x = cellLeft - b.w;
+              b.vx = -Math.abs(b.vx) * BARREL_CONFIG.BOUNCE_RESTITUTION;
+              b.rotVel = -b.rotVel * 0.5;
+              if (impactSpeed > 1.2) {
+                spawnRicochetSparks(b.x + b.w, b.y + b.h * 0.5, -2, -1, 4);
+              }
+            } else {
+              b.x = cellRight;
+              b.vx = Math.abs(b.vx) * BARREL_CONFIG.BOUNCE_RESTITUTION;
+              b.rotVel = -b.rotVel * 0.5;
+              if (impactSpeed > 1.2) {
+                spawnRicochetSparks(b.x, b.y + b.h * 0.5, 2, -1, 4);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -427,14 +626,19 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     if (Math.abs(b.vx) < 0.05) b.vx = 0;
     if (Math.abs(b.rotVel) < 0.005) b.rotVel = 0;
 
-    // Kolizja z podłożem i platformami
+    // Kolizja ze scianami pionowymi, monolitami i klockami Areny 5
+    if (resolveBarrelWallCollisions(b, groundY, combatants)) {
+      continue;
+    }
+
+    // Kolizja z podlozem i platformami
     const midX = b.x + b.w * 0.5;
     const feetY = b.y + b.h;
     const surfaceY = getBarrelSurfaceY(midX, feetY, groundY);
 
     if (surfaceY !== Infinity && feetY + b.vy >= surfaceY) {
       if (b.vy > 3.0) {
-        // Sprężyste odbicie z utratą energii
+        // Sprezyste odbicie z utrata energii
         b.vy = -b.vy * BARREL_CONFIG.BOUNCE_RESTITUTION;
         b.vx *= 0.85;
         b.rotVel *= 0.6;
@@ -443,6 +647,9 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
         b.vy = 0;
         b.onGround = true;
       }
+    } else if (b.onGround && surfaceY !== Infinity && Math.abs(feetY - surfaceY) <= 12 && b.vy >= 0) {
+      b.y = surfaceY - b.h;
+      b.vy = 0;
     } else {
       b.onGround = false;
     }

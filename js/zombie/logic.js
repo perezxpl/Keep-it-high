@@ -20,25 +20,30 @@ let _activeZombiesCache = [];
 /**
  * Pomocnicze sprawdzanie powierzchni na liście platform bez alokacji tablic
  */
-function checkPlatformList(list, x, y, baseGroundY, isA3, currentFloor) {
+function checkPlatformList(list, x, y, baseGroundY, isA3, currentFloor, isA5 = false) {
   if (!Array.isArray(list)) return currentFloor;
   let floor = currentFloor;
   for (let i = 0; i < list.length; i++) {
     const plat = list[i];
     if (!plat || plat.destroyed || plat.isDestroyed || plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
     if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
+    if (isA3 && plat.intact === false && plat.y >= 1310) continue;
 
-    let minX, maxX;
-    if (plat.angle) {
-      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + plat.w };
-      minX = bnds.minX;
-      maxX = bnds.maxX;
-    } else {
-      minX = plat.x;
-      maxX = plat.x + (plat.w !== undefined ? plat.w : 100);
+    if (isA5 && plat.isA5Block) {
+      if (plat.topExposed === false) continue;
+      if (typeof plat.gridRow === 'number' && typeof plat.gridCol === 'number') {
+        const a5St = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+        const rowAbove = a5St?.gridRows?.get(plat.gridRow + 1);
+        if (rowAbove && rowAbove[plat.gridCol] && rowAbove[plat.gridCol].hp > 0 && !rowAbove[plat.gridCol].isFalling) {
+          continue;
+        }
+      }
     }
 
-    if (x >= minX - 8 && x <= maxX + 8) {
+    const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w !== undefined ? plat.w : 100) };
+
+    // Ścisły margines poziomy: środek postaci 'x' musi leżeć w obrębie platformy (brak lewitacji w powietrzu)
+    if (x >= bnds.minX - 2 && x <= bnds.maxX + 2) {
       let topY;
       if (plat.type === 'metal_ramp_left') {
         const t = Math.max(0, Math.min(1, (x - plat.x) / (plat.w || 1)));
@@ -54,7 +59,18 @@ function checkPlatformList(list, x, y, baseGroundY, isA3, currentFloor) {
         topY = baseGroundY - (plat.relY || 0);
       }
 
-      if (y <= topY + 16 && topY < floor) {
+      if (plat.props && plat.props.length > 0) {
+        const tier = plat.props.find(pr => (pr.type === 'altar_pedestal' || pr.type === 'sandbag_trench'));
+        if (tier) {
+          const tierLeft = plat.x + tier.rx;
+          const tierRight = tierLeft + tier.w;
+          if (x >= tierLeft - 2 && x <= tierRight + 2) {
+            topY -= tier.h;
+          }
+        }
+      }
+
+      if (y <= topY + 6 && topY < floor) {
         floor = topY;
       }
     }
@@ -66,41 +82,56 @@ function checkPlatformList(list, x, y, baseGroundY, isA3, currentFloor) {
  * Oblicza wysokość podłoża lub platformy pod zombie (zoptymalizowane bez tworzenia tymczasowych tablic)
  */
 export function getZombieSurfaceY(x, y, baseGroundY) {
-  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const isA3 = (curArena?.id === 'arena-3');
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
+  const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
+  const isA5 = (arenaKey === 'arena-5' || arenaKey === 'prefab-tower');
+  const isA4 = (arenaKey === 'arena-4' || arenaKey === 'armored-train');
+  const isA3 = (arenaKey === 'arena-3' || arenaKey === 'arena-foundry');
+  const isA2 = (arenaKey === 'arena-2' || arenaKey === 'arena-2-pandora' || arenaKey === 'arena-2-sector-x');
+
   let floor = Infinity;
 
+  // 1. Podłoże naturalne dla poszczególnych aren
   if (isA3 && typeof getRiverbankGroundY === 'function') {
-    floor = getRiverbankGroundY(x);
-  } else if (baseGroundY < 1500) {
+    if (x <= 1750 || x >= 2650) {
+      const riverbankY = getRiverbankGroundY(x);
+      if (typeof riverbankY === 'number' && !isNaN(riverbankY)) {
+        floor = riverbankY;
+      }
+    }
+  } else if (!isA2 && !isA3 && !isA4 && !isA5) {
     const hasGround = (typeof window !== 'undefined' && typeof window.isGroundAt === 'function')
-      ? window.isGroundAt(x, 2)
+      ? (window.isGroundAt(x - 6, 2) || window.isGroundAt(x + 6, 2))
       : true;
-    if (hasGround) {
+    if (hasGround && baseGroundY < 1500) {
       floor = baseGroundY;
     }
   }
 
-  floor = checkPlatformList(ARENA_PLATFORMS, x, y, baseGroundY, isA3, floor);
+  // 2. Platformy areny (ARENA_PLATFORMS)
+  floor = checkPlatformList(ARENA_PLATFORMS, x, y, baseGroundY, isA3, floor, isA5);
 
+  // 3. Platformy i klocki wieży Tetrisa w Arenie 5
   const a5Plats = (typeof window !== 'undefined' && window.arena5State?.platforms) ? window.arena5State.platforms : null;
   if (a5Plats) {
-    floor = checkPlatformList(a5Plats, x, y, baseGroundY, isA3, floor);
+    floor = checkPlatformList(a5Plats, x, y, baseGroundY, isA3, floor, true);
   }
 
+  // 4. Obiekty customObstacles
   if (Array.isArray(customObstacles)) {
-    floor = checkPlatformList(customObstacles, x, y, baseGroundY, isA3, floor);
+    floor = checkPlatformList(customObstacles, x, y, baseGroundY, isA3, floor, false);
   }
 
-  // Sprawdzanie powierzchni stojących fizycznych beczek
+  // 5. Sprawdzanie powierzchni stojących fizycznych beczek
   const barrels = (hazardsState && Array.isArray(hazardsState.barrels)) ? hazardsState.barrels : (typeof window !== 'undefined' ? window.hazardsBarrels : null);
   if (Array.isArray(barrels)) {
     for (let i = 0; i < barrels.length; i++) {
       const b = barrels[i];
       if (!b || b.isDead) continue;
-      if (x >= b.x - 4 && x <= b.x + b.w + 4) {
+      if (x >= b.x - 2 && x <= b.x + b.w + 2) {
         const topY = b.y;
-        if (y <= topY + 16 && topY < floor) {
+        if (y <= topY + 6 && topY < floor) {
           floor = topY;
         }
       }
@@ -227,16 +258,19 @@ export function resolveZombieWallCollisions(z, groundY) {
   const headY = z.y;
   const halfW = (z.w || 24) * 0.5;
 
-  // 1. Monolity i ściany ARENA_PLATFORMS
+  // 1. Lite platformy, filary, monolity i ściany ARENA_PLATFORMS
   for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
     const plat = ARENA_PLATFORMS[i];
-    if (!plat || plat.destroyed || plat.solid === false) continue;
-    if (!plat.isWall && !plat.isMonolith) continue;
+    if (!plat || plat.destroyed || plat.isDestroyed || plat.solid === false) continue;
+    if (plat.isDropThrough || plat.dropThrough || plat.type === 'catwalk' || plat.isSlope) continue;
 
     const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
-    const bottomY = topY + (plat.thickness || plat.h || 470);
+    const platThick = plat.thickness || plat.h || (plat.isMonolith ? 470 : 30);
+    if (platThick < 16 && !plat.isWall && !plat.isMonolith) continue;
 
-    if (feetY > topY + 8 && headY < bottomY - 4) {
+    const bottomY = topY + platThick;
+
+    if (feetY > topY + 12 && headY < bottomY - 4) {
       const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
       if (z.x + (z.w || 24) > bnds.minX && z.x < bnds.maxX) {
         const midX = (bnds.minX + bnds.maxX) * 0.5;
@@ -257,22 +291,22 @@ export function resolveZombieWallCollisions(z, groundY) {
   if (Array.isArray(customObstacles)) {
     for (let i = 0; i < customObstacles.length; i++) {
       const obs = customObstacles[i];
-      if (!obs || obs.destroyed) continue;
-      if (obs.type === 'bunker_block' || obs.type === 'cyber_pillar' || obs.type === 'tall_concrete_wall') {
-        const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
-        const bottomY = topY + obs.h;
-        if (feetY > topY + 8 && headY < bottomY - 4) {
-          if (z.x + (z.w || 24) > obs.x && z.x < obs.x + obs.w) {
-            const midX = obs.x + obs.w * 0.5;
-            if (z.x + halfW < midX) {
-              z.x = obs.x - (z.w || 24);
-              if (z.vx > 0) z.vx = 0;
-              if (z.knockbackVx > 0) z.knockbackVx = 0;
-            } else {
-              z.x = obs.x + obs.w;
-              if (z.vx < 0) z.vx = 0;
-              if (z.knockbackVx < 0) z.knockbackVx = 0;
-            }
+      if (!obs || obs.destroyed || obs.isDestroyed || obs.solid === false) continue;
+      if (obs.type === 'hedgehog' || obs.type === 'barbed_wire' || obs.type === 'laser_gate') continue;
+
+      const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      const bottomY = topY + (obs.h || 40);
+      if (feetY > topY + 12 && headY < bottomY - 4) {
+        if (z.x + (z.w || 24) > obs.x && z.x < obs.x + obs.w) {
+          const midX = obs.x + obs.w * 0.5;
+          if (z.x + halfW < midX) {
+            z.x = obs.x - (z.w || 24);
+            if (z.vx > 0) z.vx = 0;
+            if (z.knockbackVx > 0) z.knockbackVx = 0;
+          } else {
+            z.x = obs.x + obs.w;
+            if (z.vx < 0) z.vx = 0;
+            if (z.knockbackVx < 0) z.knockbackVx = 0;
           }
         }
       }
@@ -345,13 +379,13 @@ export function resolveZombieWallCollisions(z, groundY) {
 }
 
 /**
- * Pokonywanie stopni i przeszkód w ruchu poziomym (schodek do 18px = płynne wejście, 18-110px = skok wspinaczkowy)
+ * Pokonywanie stopni i przeszkod w ruchu poziomym (schodek do 16px = plynne wejscie, 16-110px = skok wspinaczkowy celowany)
  */
-export function handleZombieStepAndClimb(z, groundY) {
+export function handleZombieStepAndClimb(z, groundY, nearestTarget = null) {
   if (!z.onGround) return false;
 
   const facing = z.facing || 1;
-  const checkX = z.x + (facing > 0 ? (z.w || 24) + 6 : -6);
+  const footX = facing > 0 ? (z.x + (z.w || 24)) : z.x;
   const feetY = z.y + (z.h || 70);
 
   let bestStepTop = null;
@@ -359,9 +393,9 @@ export function handleZombieStepAndClimb(z, groundY) {
   // Platformy z przodu
   for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
     const plat = ARENA_PLATFORMS[i];
-    if (!plat || plat.destroyed || plat.isWall) continue;
+    if (!plat || plat.destroyed || plat.isWall || plat.solid === false) continue;
     const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
-    if (checkX >= bnds.minX - 4 && checkX <= bnds.maxX + 4) {
+    if (footX >= bnds.minX - 2 && footX <= bnds.maxX + 2) {
       const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
       if (topY < feetY && topY >= feetY - 110) {
         if (bestStepTop === null || topY < bestStepTop) {
@@ -375,8 +409,8 @@ export function handleZombieStepAndClimb(z, groundY) {
   if (Array.isArray(customObstacles)) {
     for (let i = 0; i < customObstacles.length; i++) {
       const obs = customObstacles[i];
-      if (!obs || obs.destroyed) continue;
-      if (checkX >= obs.x - 4 && checkX <= obs.x + obs.w + 4) {
+      if (!obs || obs.destroyed || obs.solid === false) continue;
+      if (footX >= obs.x - 2 && footX <= obs.x + obs.w + 2) {
         const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
         if (topY < feetY && topY >= feetY - 110) {
           if (bestStepTop === null || topY < bestStepTop) {
@@ -390,7 +424,7 @@ export function handleZombieStepAndClimb(z, groundY) {
   // Klocki Areny 5 z przodu
   const a5 = (typeof window !== 'undefined' && window.arena5State?.gridRows) ? window.arena5State : null;
   if (a5) {
-    const col = Math.floor(checkX / 100);
+    const col = Math.floor(footX / 100);
     if (col >= 0 && col < 10) {
       const minR = a5.minFloorRow || 0;
       for (let r = minR; r < minR + 15; r++) {
@@ -408,13 +442,13 @@ export function handleZombieStepAndClimb(z, groundY) {
     }
   }
 
-  // 4. Beczki z przodu jako stopień wspinaczkowy
+  // 4. Beczki z przodu jako stopien wspinaczkowy
   const stepBarrels = (hazardsState && Array.isArray(hazardsState.barrels)) ? hazardsState.barrels : (typeof window !== 'undefined' ? window.hazardsBarrels : null);
   if (Array.isArray(stepBarrels)) {
     for (let i = 0; i < stepBarrels.length; i++) {
       const b = stepBarrels[i];
       if (!b || b.isDead) continue;
-      if (checkX >= b.x - 4 && checkX <= b.x + b.w + 4) {
+      if (footX >= b.x - 2 && footX <= b.x + b.w + 2) {
         const topY = b.y;
         if (topY < feetY && topY >= feetY - 110) {
           if (bestStepTop === null || topY < bestStepTop) {
@@ -427,21 +461,24 @@ export function handleZombieStepAndClimb(z, groundY) {
 
   if (bestStepTop !== null) {
     const stepDiff = feetY - bestStepTop;
-    if (stepDiff > 0 && stepDiff <= 18) {
-      // Niski stopień: płynne wejście bez podskakiwania
+    if (stepDiff > 0 && stepDiff <= 16 && (facing * (z.vx || 0) > 0.02)) {
+      // Niski stopien: plynne wejscie stopa bez podskakiwania
       z.y = bestStepTop - (z.h || 70);
       z.vy = 0;
       z.onGround = true;
       return true;
-    } else if (stepDiff > 18 && stepDiff <= 110 && z.jumpCooldown <= 0) {
-      // Półka do przeskoczenia: pojedynczy, celowy skok wspinaczkowy
-      const hasCeil = checkZombieCeilingAbove(z, groundY);
-      if (!hasCeil) {
-        z.vy = -8.2;
-        z.vx = facing * (ZOMBIE_CONFIG.SPEED * 1.15);
-        z.jumpCooldown = 1.4;
-        z.onGround = false;
-        return true;
+    } else if (stepDiff > 16 && stepDiff <= 110 && z.jumpCooldown <= 0) {
+      // Skok wspinaczkowy: TYLKO gdy cel jest wyzej niz zombie!
+      const targetIsHigher = nearestTarget && ((nearestTarget.y + (nearestTarget.h || 70)) < feetY - 16);
+      if (targetIsHigher) {
+        const hasCeil = checkZombieCeilingAbove(z, groundY);
+        if (!hasCeil) {
+          z.vy = -8.2;
+          z.vx = facing * (ZOMBIE_CONFIG.SPEED * 1.15);
+          z.jumpCooldown = 2.0;
+          z.onGround = false;
+          return true;
+        }
       }
     }
   }
@@ -654,7 +691,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       const feetX = z.x + z.w * 0.5;
       const feetY = z.y + z.h;
       const surfaceY = getZombieSurfaceY(feetX, feetY, groundY);
-      if (feetY + z.vy >= surfaceY) {
+      if (surfaceY !== Infinity && feetY + z.vy >= surfaceY) {
         z.y = surfaceY - z.h;
         z.vy = 0;
         z.onGround = true;
@@ -871,31 +908,28 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
     const feetY = z.y + z.h;
     const surfaceY = getZombieSurfaceY(feetX, feetY, groundY);
 
-    if (feetY + z.vy >= surfaceY) {
+    if (surfaceY !== Infinity && z.vy >= -1.0 && feetY + z.vy >= surfaceY && feetY <= surfaceY + 22) {
+      z.y = surfaceY - z.h;
+      z.vy = 0;
+      z.onGround = true;
+    } else if (z.onGround && surfaceY !== Infinity && Math.abs(feetY - surfaceY) <= 14 && z.vy >= 0) {
       z.y = surfaceY - z.h;
       z.vy = 0;
       z.onGround = true;
     } else {
-      // Przyklejenie do pochyłości terenu (rampy, brzegi rzeki, skosy wulkaniczne)
-      if (z.onGround && surfaceY < 1500 && Math.abs(feetY - surfaceY) <= 16 && z.vy >= 0) {
-        z.y = surfaceY - z.h;
-        z.vy = 0;
-        z.onGround = true;
-      } else {
-        z.y += z.vy;
-        z.onGround = false;
-        // Kolizja głowy z sufitem w trakcie lotu w górę
-        if (z.vy < 0) {
-          checkZombieCeiling(z, groundY);
-        }
+      z.y += z.vy;
+      z.onGround = false;
+      // Kolizja głowy z sufitem w trakcie lotu w górę
+      if (z.vy < 0) {
+        checkZombieCeiling(z, groundY);
       }
     }
 
     // --- RUCH POZIOMY I REAKCJE NA OTOCZENIE ---
     z.x += z.vx;
 
-    // Pokonywanie schodków (do 18px bez skoku) oraz wspinaczka na półki
-    const climbed = handleZombieStepAndClimb(z, groundY);
+    // Pokonywanie schodkow (do 16px bez skoku) oraz wspinaczka na polki
+    const climbed = handleZombieStepAndClimb(z, groundY, nearestTarget);
 
     // Celowany skok na platformę gdy cel znajduje się bezpośrednio nad głową w zasięgu skoku
     if (!climbed && nearestTarget && z.onGround && z.jumpCooldown <= 0) {
