@@ -18,7 +18,7 @@
 
 import { getWeaponPartSprite, getWeaponSpritePivot, drawWeaponBloodOverlay } from '../weapons/renderer.js';
 
-export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER'];
+export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER', 'FLAMETHROWER'];
 export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7'];
 export const MELEE_WEAPON_IDS = ['KNIFE', 'MACHETE', 'AXE'];
 
@@ -372,6 +372,23 @@ function drawPrimaryWeaponSprite(ctx, weaponId, scaleMult = 1.0) {
       ctx.fillRect(14.0, -2.0, 20.0, 2.6);
       ctx.fillStyle = '#090d16';
       ctx.fillRect(-2.0, -6.5, 14.0, 2.4);
+    }
+  } else if (weaponId === 'FLAMETHROWER') {
+    const imgFlame = getWeaponPartSprite('FLAMETHROWER');
+    if (imgFlame && imgFlame.complete && imgFlame.naturalWidth > 0) {
+      const s = (46.0 / 1290) * scaleMult;
+      const pivotSpriteX = 520.0;
+      const pivotSpriteY = 160.0;
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+      ctx.drawImage(imgFlame, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#27272a';
+      ctx.fillRect(-12.0, -2.5, 24.0, 5.0);
+      ctx.fillStyle = '#ea580c';
+      ctx.fillRect(-6.0, 2.5, 12.0, 6.0);
     }
   }
 }

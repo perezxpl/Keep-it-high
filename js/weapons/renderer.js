@@ -9,8 +9,20 @@ import {
   getMuzzlePosition
 } from './transform.js';
 import { drawBullets } from './bulletRenderer.js';
+import {
+  drawPilotFlame,
+  drawFlamethrowerStreams,
+  drawSurfaceFires,
+  drawBurningEffects
+} from './flamethrower.js';
 
-export { drawBullets };
+export {
+  drawBullets,
+  drawPilotFlame,
+  drawFlamethrowerStreams,
+  drawSurfaceFires,
+  drawBurningEffects
+};
 
 /**
  * Rysuje przerywany czerwony promień lasera z lufy do punktu celowania (aimX, aimY)
@@ -104,6 +116,7 @@ const WEAPON_PARTS_PATHS = {
   RPG7: './assets/weapons/rpg7.png?v=v336_rpg7_modular_rocket_reload',
   RPG7_BODY: './assets/weapons/rpg7_body.png?v=v336_rpg7_modular_rocket_reload',
   RPG7_ROCKET: './assets/weapons/rpg7_rocket.png?v=v336_rpg7_modular_rocket_reload',
+  FLAMETHROWER: './assets/weapons/flamethrower.png?v=v444_flamethrower',
   KNIFE: './assets/weapons/knife.png?v=v256_modular_melee_weapons',
   MACHETE: './assets/weapons/machete.png?v=v256_modular_melee_weapons',
   AXE: './assets/weapons/axe.png?v=v256_modular_melee_weapons'
@@ -201,6 +214,11 @@ export const WEAPON_SPRITE_PIVOTS = {
     x: 720.0,
     walkX: 376.0,
     y: 177.5
+  },
+  FLAMETHROWER: {
+    x: 480.0,
+    walkX: 240.0,
+    y: 160.0
   },
   KNIFE: { x: 243.5, y: 67.0 },
   MACHETE: { x: 296.5, walkX: 47.5, y: 38.0 },
@@ -1434,6 +1452,43 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
       if (p.muzzleFlashTimer > 0) {
         drawMuzzleFlash(ctx, hold.barrelLen || 32.00, (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -1.00, 22, true);
       }
+    }
+  } else if (weapon.id === 'FLAMETHROWER') {
+    // -------------------------------------------------------------
+    // TACTICAL M2 VULCAN FLAMETHROWER RENDERER
+    // -------------------------------------------------------------
+    const imgFlame = getWeaponPartSprite('FLAMETHROWER');
+    if (imgFlame && imgFlame.complete && imgFlame.naturalWidth > 0) {
+      const s = 48.0 / 1290;
+      const pvt = getWeaponSpritePivot('FLAMETHROWER', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
+
+      const wepAmmo = (p.ammo && p.ammo.FLAMETHROWER) ? p.ammo.FLAMETHROWER : null;
+      const isReloading = !!(p.isReloading && (p.currentWeapon?.id === 'FLAMETHROWER' || wepAmmo?.isReloading));
+
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+      drawWeaponSprite(ctx, imgFlame, 0, 0);
+      ctx.restore();
+
+      const bLen = (typeof hold.barrelLen === 'number') ? hold.barrelLen : 31.00;
+      const bOffY = (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -1.00;
+
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, bLen, bOffY, 18, true);
+      } else if (!isReloading) {
+        drawPilotFlame(ctx, bLen + 2.0, bOffY, 0, 1);
+      }
+    } else {
+      // Rezerwowy podglad proceduralny
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-6, -4, 34, 8);
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(6, 2, 12, 6);
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(28, -2, 4, 4);
     }
   } else if (weapon.id === 'KNIFE') {
     // -------------------------------------------------------------

@@ -12,7 +12,7 @@ import { drawGround } from '../world/terrain.js';
 import { drawObstacles } from '../obstacles.js';
 import { drawParticles, drawJetpackParticles } from '../world/state.js';
 import { drawBloodDecals, drawGore } from '../world/gore.js';
-import { drawBullets } from '../weapons.js';
+import { drawBullets, drawBurningEffects } from '../weapons.js';
 import { drawProjectiles } from '../projectiles.js';
 import { drawPlayer } from '../player/renderer.js';
 import { drawShockwaves, drawLighting, drawCinematicVignette } from '../lighting/index.js';
@@ -64,6 +64,9 @@ export function drawMenuFight(ctx, camera) {
       drawPlayer(ctx, effectiveGroundY, b);
     }
   }
+
+  // Efekty płonących postaci w tle menu
+  drawBurningEffects(ctx, menuBots, null);
 
   // 7. Cząsteczki krwi w locie, łuski i ogień jetpacka
   drawGore(ctx);

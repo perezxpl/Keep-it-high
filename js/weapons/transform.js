@@ -95,6 +95,38 @@ export const WEAPONS = {
     reloadTime: WEAPON_CONFIG.SNIPER.reloadTime,
     reloadDuration: Math.round(WEAPON_CONFIG.SNIPER.reloadTime * 60)
   },
+  FLAMETHROWER: {
+    id: 'FLAMETHROWER',
+    name: 'MIOTACZ OGNIA',
+    fullName: 'Miotacz Ognia M2 Vulcan',
+    category: 'PRIMARY',
+    auto: true,             // Ciągły strumień ognia przy trzymaniu spustu
+    fireRate: 2,            // Strumień wypływający co 2 klatki (~30 klatek ognia / s)
+    damage: 4,              // Ciągłe obrażenia bezpośrednie + DoT podpalenia
+    bulletSpeed: 17,        // Prędkość wylotowa ciekłego napalmu
+    spread: 0.055,          // Stożek rozproszenia płomieni
+    crouchSpreadMult: 0.70,
+    recoil: 0.25,           // Równomierny, pulsujący odrzut ciśnieniowy
+    crouchRecoilMult: 0.50,
+    recoilImpulse: 0.15,
+    screenShake: 1.2,
+    muzzleRise: 0.04,
+    kickbackDistance: 1.2,
+    ballPush: 0.35,
+    bodyPush: 0.04,
+    ragdollPushMult: 1.2,
+    pellets: 1,
+    bulletColor: '#f97316',
+    isFlamethrower: true,
+    gravity: 0.145,         // Wyraźny łuk grawitacyjny opadania strumienia cieczy
+    drag: 0.985,
+    maxPierces: 0,
+    magSize: WEAPON_CONFIG?.FLAMETHROWER?.magSize ?? 100,
+    currentAmmo: WEAPON_CONFIG?.FLAMETHROWER?.currentAmmo ?? 100,
+    reserveAmmo: WEAPON_CONFIG?.FLAMETHROWER?.reserveAmmo ?? 200,
+    reloadTime: WEAPON_CONFIG?.FLAMETHROWER?.reloadTime ?? 2.6,
+    reloadDuration: Math.round((WEAPON_CONFIG?.FLAMETHROWER?.reloadTime ?? 2.6) * 60)
+  },
   GLOCK: {
     id: 'GLOCK',
     name: 'Glock 17',
@@ -470,6 +502,17 @@ export const WEAPON_GRIP_CONFIGS = {
     barrelOffsetY: -1.00,
     stockLen: 19.00
   },
+  FLAMETHROWER: {
+    rearGripX: 2.20,
+    walkRearGripX: 0.60,
+    rearGripY: 1.80,
+    foreGripX: 13.50,
+    foreGripY: 1.20,
+    angleOffset: 0.000,
+    barrelLen: 31.00,
+    barrelOffsetY: -1.00,
+    stockLen: 12.50
+  },
   KNIFE: { rearGripX: 0.00, rearGripY: 0.00, foreGripX: 6.50, foreGripY: 7.40, angleOffset: 0.785, barrelLen: 19.50, stockLen: 0.00 },
   MACHETE: { rearGripX: 0.00, walkRearGripX: 2.90, rearGripY: 0.00, foreGripX: 10.40, foreGripY: -0.90, angleOffset: -0.454, walkAngleOffset: -0.689, barrelLen: 33.60, stockLen: 0.00 },
   AXE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 18.0, stockLen: 0.0 },
@@ -582,6 +625,7 @@ export function getWeaponHoldTransform(p) {
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
   const isRpg = (weapon.id === 'RPG7');
+  const isFlamethrower = (weapon.id === 'FLAMETHROWER');
   const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
   const isTwoHandedHandgun = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || (!weapon.isMelee && Math.abs((gripCfg.foreGripX || 0) - (gripCfg.rearGripX || 0)) < 4.0));
   const isKnife = (weapon.id === 'KNIFE');
@@ -1223,6 +1267,46 @@ export function getWeaponHoldTransform(p) {
         const t = (u - 0.92) / 0.08;
         leftHandLocalX = lerp(1.5, foreGripDistX, ease(t));
         leftHandLocalY = lerp(-3.2, foreGripDistY, ease(t));
+      }
+    } else if (isFlamethrower) {
+      // -------------------------------------------------------------
+      // FLAMETHROWER RELOAD ANIMATION (WYMIANA BUTLI NAPALMU POD LUFA)
+      // -------------------------------------------------------------
+      if (u < 0.22) {
+        // Faza 1: Ruch ręki ku podwieszonej butli paliwowej
+        const t = u / 0.22;
+        leftHandLocalX = lerp(foreGripDistX, 9.5, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 6.5, ease(t));
+        isMagInGun = true;
+      } else if (u < 0.42) {
+        // Faza 2: Odkręcenie i wyjęcie pustego kartusza w dół
+        const t = (u - 0.22) / 0.20;
+        leftHandLocalX = lerp(9.5, 7.0, t);
+        leftHandLocalY = lerp(6.5, 14.5, t);
+        isMagInGun = (u < 0.28);
+      } else if (u < 0.65) {
+        // Faza 3: Sięgnięcie po nową butlę napalmu z zasobnika
+        const t = (u - 0.42) / 0.23;
+        leftHandLocalX = lerp(7.0, -2.5, ease(t));
+        leftHandLocalY = lerp(14.5, 17.0, ease(t));
+        isMagInGun = false;
+      } else if (u < 0.85) {
+        // Faza 4: Wprowadzenie nowej butli i dokręcenie zaworu ciśnieniowego
+        const t = (u - 0.65) / 0.20;
+        leftHandLocalX = lerp(-2.5, 9.5, ease(t));
+        leftHandLocalY = lerp(17.0, 6.5, ease(t));
+        isMagInGun = (t > 0.60);
+        if (t > 0.75) {
+          const snapT = (t - 0.75) / 0.25;
+          reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.08;
+          reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 1.0;
+        }
+      } else {
+        // Faza 5: Powrót dłoni na przedni chwyt stabilizujący
+        const t = (u - 0.85) / 0.15;
+        const s = ease(t);
+        leftHandLocalX = lerp(9.5, foreGripDistX, s);
+        leftHandLocalY = lerp(6.5, foreGripDistY, s);
       }
     } else if (isRpg) {
       // -------------------------------------------------------------

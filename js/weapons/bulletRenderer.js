@@ -9,6 +9,7 @@ import { drawBulletCasings } from '../particles.js';
 import { camera, getCanvasLogicalWidth, getCanvasLogicalHeight, triggerScreenShake } from '../camera.js';
 import { bullets, bulletParticles } from './transform.js';
 import { playSound } from '../audio/index.js';
+import { drawSurfaceFires, drawFlamethrowerStreams } from './flamethrower.js';
 
 /**
  * Profile balistyczne i wizualne dla poszczególnych rodzajów broni
@@ -579,12 +580,18 @@ export function drawBullets(ctx) {
   // 2. Fizyczne przestrzeliny na ścianach (Bullet Holes / Decals)
   drawBulletHoles(ctx, minX, maxX, minY, maxY);
 
+  // 2b. Rozlany ogień na powierzchniach areny (Surface Fires / Napalm Puddles)
+  drawSurfaceFires(ctx, camera);
+
   // 3. Pierścienie fali Macha i mikro-dym
   drawMachRings(ctx, minX, maxX, minY, maxY);
   drawTracerSmoke(ctx, minX, maxX, minY, maxY);
 
   // 4. Ostre iskry rykoszetowe (Motion-stretched Sparks)
   drawBulletSparks(ctx, minX, maxX, minY, maxY);
+
+  // 4b. Strumień płomieni miotacza ognia w locie (Flame Streams)
+  drawFlamethrowerStreams(ctx, camera);
 
   // 5. Rysowanie wąskich, naddźwiękowych smug igłowych (bez alokacji gradientów w klatce)
   const activeBullets = bullets;

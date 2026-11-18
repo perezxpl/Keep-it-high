@@ -41,6 +41,7 @@
       "volume": 0.80,
       "pitchJitter": 0.03
     },
+    "weapon_flamethrower": null,
     "weapon_melee_swing": {
       "src": ["melee_swing_1.wav", "melee_swing_2.wav", "melee_swing_3.wav"],
       "volume": 0.70,

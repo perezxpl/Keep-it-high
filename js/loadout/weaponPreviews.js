@@ -91,6 +91,7 @@ const WEAPON_SPRITE_PATHS = {
   REVOLVER: './assets/weapons/revolver.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   SAWED_OFF: './assets/weapons/sawed_off.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   RPG7: './assets/weapons/rpg7.png?v=v330_rpg7_rocket_launcher_secondary',
+  FLAMETHROWER: './assets/weapons/flamethrower.png?v=v444_flamethrower',
   KNIFE: './assets/weapons/knife.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   MACHETE: './assets/weapons/machete.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   AXE: './assets/weapons/axe.png?v=v252_fix_picker_weapons_narrowing_and_card_height',

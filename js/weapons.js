@@ -10,7 +10,7 @@ import {
   bodyGibs
 } from './world.js';
 import { DEFAULT_VISUALS } from './player/hair.js';
-import { checkRayObstacleCollision, obstacles, registerHitSparkCallback, arena1State, spawnAltarShockwave } from './obstacles.js';
+import { checkRayObstacleCollision, obstacles, registerHitSparkCallback, arena1State, spawnAltarShockwave, ARENA_PLATFORMS } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
@@ -28,6 +28,7 @@ import {
   spawnRicochetSparks
 } from './particles.js';
 import { spawnRpgRocket } from './weapons/rocket.js';
+import { spawnFlamethrowerStream, updateFlamethrower } from './weapons/flamethrower.js';
 import { playSound, playWeaponFireSound } from './audio/index.js';
 import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
 import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRenderer.js';
@@ -65,7 +66,8 @@ import {
   drawBullets,
   drawSniperLaserSight,
   drawHeldWeapon,
-  drawMeleeSlashTrail
+  drawMeleeSlashTrail,
+  drawBurningEffects
 } from './weapons/renderer.js';
 
 registerHitSparkCallback(spawnHitSparks);
@@ -88,7 +90,8 @@ export {
   drawBullets,
   drawSniperLaserSight,
   drawHeldWeapon,
-  drawMeleeSlashTrail
+  drawMeleeSlashTrail,
+  drawBurningEffects
 };
 
 function getCharVisuals(ch) {
@@ -711,6 +714,12 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
         if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
         return true;
       }
+      if (weapon.id === 'FLAMETHROWER' || weapon.isFlamethrower) {
+        const hitAng = theta || Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
+        spawnFlamethrowerStream(shooter, wallHit.x, wallHit.y, hitAng, weapon);
+        if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
+        return true;
+      }
       spawnImpactVisuals(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, weapon.id);
       if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
       shooter.muzzleFlashTimer = weapon.id === 'SNIPER' ? 3 : 2;
@@ -782,6 +791,30 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     spawnHeavySmokePuff(ventX, ventY, 4);
     spawnShrapnelStreak(ventX, ventY, 4);
     spawnRicochetSparks(ventX, ventY, -Math.cos(hold.angle) * charFacing, -Math.sin(hold.angle), 4);
+
+    return true;
+  }
+
+  if (weapon.id === 'FLAMETHROWER' || weapon.isFlamethrower) {
+    spawnFlamethrowerStream(shooter, muzzleX, muzzleY, theta, weapon);
+
+    shooter.muzzleFlashTimer = 2;
+
+    addDynamicLight({
+      x: muzzleX,
+      y: muzzleY,
+      radius: 95,
+      color: '#f97316',
+      intensity: 0.65,
+      duration: 5
+    });
+
+    if (!shooter.isRemote) {
+      shooter.shootCooldown = weapon.fireRate;
+      if (Math.random() < 0.25) {
+        triggerScreenShake(0.8);
+      }
+    }
 
     return true;
   }
@@ -1189,6 +1222,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     ? window.isMatchHost()
     : Boolean(netState && netState.isHost);
   updateBulletCasings(1 / 60, groundY, obs);
+
+  // Aktualizacja strumienia płomieni, rozlanego ognia na powierzchni i efektów podpalenia
+  updateFlamethrower(groundY, ARENA_PLATFORMS, obs, charList, ball);
 
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];

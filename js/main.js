@@ -39,7 +39,7 @@ import {
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses, isBotEnabled, setBotEnabled, getBotDifficulty, setBotDifficulty, getBotCount, setBotCount } from './bot.js';
 import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHazardName } from './ui/combatFeed.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState } from './weapons.js';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState, drawBurningEffects } from './weapons.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
   remotePlayer, networkState, initNetwork, sendPlayerState, sendBallState, sendShootEvent,
@@ -1300,6 +1300,8 @@ function draw() {
   if (!isDeathmatch) {
     drawBall(ctx);
   }
+
+  drawBurningEffects(ctx, [player, ...activeBots, ...activeRemotePlayers], isDeathmatch ? null : ball);
 
   const devMenuEl = document.getElementById('dev-menu');
   const modalEl = document.getElementById('mp-modal') || mpModal;

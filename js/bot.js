@@ -1490,6 +1490,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
                 botTarget.shootCooldown = Math.max(botTarget.shootCooldown || 0, 45);
               }
             }
+          } else if (botTarget.currentWeapon?.id === 'FLAMETHROWER' || botTarget.currentWeapon?.isFlamethrower) {
+            if (distToEnemy < 260 && botTarget.shootCooldown <= 0) {
+              shootWeapon(botTarget, botTarget.currentWeapon);
+            }
           }
         }
       } else {

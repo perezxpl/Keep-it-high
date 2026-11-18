@@ -59,6 +59,21 @@ export const ARMORY_CATALOG = {
         reload: '2.8s',
         stats: { dmgBar: 100, rpmBar: 18, magBar: 25, relBar: 40 },
         desc: 'Ciężki karabin przeciwsprzętowy dalekiego zasięgu z celownikiem laserowym i dekapitacją jednym strzałem.'
+      },
+      {
+        id: 'FLAMETHROWER',
+        name: 'MIOTACZ OGNIA',
+        fullName: 'Miotacz Ognia M2 Vulcan',
+        category: 'GŁÓWNA',
+        caliber: 'NAPALM-B / ZAGĘSZCZONY GAZ',
+        typeLabel: 'STRUMIEŃ CIĄGŁY',
+        dmg: 85,
+        rpm: 900,
+        mag: 100,
+        reserve: 200,
+        reload: '2.6s',
+        stats: { dmgBar: 88, rpmBar: 95, magBar: 90, relBar: 60 },
+        desc: 'Miotacz ciekłego napalmu. Wyrzuca opadający łuk ognia z grawitacją i tworzy płonące plamy rozlane na powierzchniach.'
       }
     ],
     slot1: [

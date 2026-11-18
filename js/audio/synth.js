@@ -219,6 +219,43 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
       return true;
     }
 
+    case 'weapon_flamethrower': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.18);
+      // Gęsty szum palącego się pod ciśnieniem napalmu (Bandpass + Lowpass noise)
+      scheduleNoise(ctx, out, {
+        startTime: now,
+        duration: 0.16,
+        gain: gain * 1.1,
+        attack: 0.015,
+        filterType: 'bandpass',
+        freqStart: 1200 * p,
+        freqEnd: 480 * p,
+        Q: 1.4
+      });
+      // Głęboki pomruk spalania komorowego
+      scheduleTone(ctx, out, {
+        startTime: now,
+        type: 'sawtooth',
+        freqStart: 110 * p,
+        freqEnd: 65 * p,
+        duration: 0.14,
+        gain: gain * 0.45,
+        filterType: 'lowpass',
+        filterFreq: 320
+      });
+      // Skwierczące wysokie częstotliwości płomienia
+      scheduleNoise(ctx, out, {
+        startTime: now,
+        duration: 0.10,
+        gain: gain * 0.55,
+        filterType: 'highpass',
+        freqStart: 2400 * p,
+        freqEnd: 1600 * p,
+        Q: 0.8
+      });
+      return true;
+    }
+
     case 'weapon_pump': {
       const { now, out } = createVoiceStage(ctx, destNode, pan, 0.18);
       // Dwa szybkie klikniecia czolenka "chk-chk"

@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 384" width="1024" height="384">
+  <defs>
+    <!-- Filtry optyczne i poświaty ognia -->
+    <radialGradient id="flame-core" cx="45%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1.0"/>
+      <stop offset="35%" stop-color="#fef08a" stop-opacity="0.95"/>
+      <stop offset="70%" stop-color="#f97316" stop-opacity="0.90"/>
+      <stop offset="100%" stop-color="#dc2626" stop-opacity="0.0"/>
+    </radialGradient>
+
+    <radialGradient id="napalm-ground-glow" cx="50%" cy="80%" r="50%">
+      <stop offset="0%" stop-color="#fef08a" stop-opacity="1.0"/>
+      <stop offset="40%" stop-color="#ea580c" stop-opacity="0.85"/>
+      <stop offset="80%" stop-color="#991b1b" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#450a0a" stop-opacity="0.0"/>
+    </radialGradient>
+
+    <linearGradient id="pilot-flame-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#0284c7" stop-opacity="0.8"/>
+      <stop offset="75%" stop-color="#fef08a" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#f97316" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <!-- Gradienty dla 8 klatek tańczącego ognia naziemnego -->
+    <linearGradient id="fire-tongue-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#fef08a" stop-opacity="1.0"/>
+      <stop offset="30%" stop-color="#f97316" stop-opacity="0.95"/>
+      <stop offset="70%" stop-color="#dc2626" stop-opacity="0.85"/>
+      <stop offset="90%" stop-color="#7f1d1d" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#18181b" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ========================================================================= -->
+  <!-- WIERSZ 0 (Y: 0..128) - STRUMIEŃ OGNIA W LOCIE (FLYING FLAME STREAM 0..7) -->
+  <!-- ========================================================================= -->
+
+  <!-- Klatka 0 (X: 0..128): Wylotowy zalążek płomienia z dyszy -->
+  <g id="stream-frame-0" transform="translate(0, 0)">
+    <ellipse cx="64" cy="64" rx="20" ry="12" fill="url(#flame-core)"/>
+    <ellipse cx="58" cy="64" rx="12" ry="7" fill="#ffffff" opacity="0.9"/>
+    <circle cx="86" cy="63" r="3" fill="#facc15"/>
+    <circle cx="92" cy="67" r="2" fill="#ea580c"/>
+  </g>
+
+  <!-- Klatka 1 (X: 128..256): Rozszerzający się strumień gazu i napalmu -->
+  <g id="stream-frame-1" transform="translate(128, 0)">
+    <path d="M 38 64 Q 52 48 88 44 Q 104 56 100 64 Q 104 72 88 84 Q 52 80 38 64 Z" fill="#dc2626" opacity="0.6"/>
+    <path d="M 44 64 Q 56 52 82 50 Q 94 58 92 64 Q 94 70 82 78 Q 56 76 44 64 Z" fill="#f97316" opacity="0.85"/>
+    <ellipse cx="66" cy="64" rx="22" ry="13" fill="#fef08a" opacity="0.95"/>
+    <ellipse cx="58" cy="64" rx="14" ry="7" fill="#ffffff" opacity="1.0"/>
+    <circle cx="106" cy="58" r="3.5" fill="#f97316"/>
+    <circle cx="112" cy="70" r="2.5" fill="#fef08a"/>
+  </g>
+
+  <!-- Klatka 2 (X: 256..384): Wzburzony stożek płomieni -->
+  <g id="stream-frame-2" transform="translate(256, 0)">
+    <path d="M 32 64 Q 48 38 88 36 Q 112 52 108 64 Q 114 76 86 92 Q 48 90 32 64 Z" fill="#ea580c" opacity="0.75"/>
+    <path d="M 40 64 Q 54 44 82 42 Q 102 54 98 64 Q 102 74 82 86 Q 54 84 40 64 Z" fill="#f97316" opacity="0.9"/>
+    <ellipse cx="68" cy="64" rx="28" ry="17" fill="#fef08a" opacity="0.95"/>
+    <ellipse cx="58" cy="63" rx="17" ry="9" fill="#ffffff" opacity="1.0"/>
+    <circle cx="102" cy="46" r="4.5" fill="#fef08a"/>
+    <circle cx="114" cy="62" r="3.5" fill="#f97316"/>
+    <circle cx="108" cy="80" r="3.0" fill="#ea580c"/>
+  </g>
+
+  <!-- Klatka 3 (X: 384..512): Pełny turbulentny kłąb ognia napalmowego -->
+  <g id="stream-frame-3" transform="translate(384, 0)">
+    <circle cx="64" cy="64" r="44" fill="#7f1d1d" opacity="0.35"/>
+    <path d="M 28 64 Q 46 32 82 28 Q 118 44 114 64 Q 118 84 82 100 Q 46 96 28 64 Z" fill="#dc2626" opacity="0.8"/>
+    <path d="M 36 64 Q 52 38 82 36 Q 106 50 102 64 Q 106 78 82 92 Q 52 90 36 64 Z" fill="#f97316" opacity="0.95"/>
+    <ellipse cx="68" cy="64" rx="34" ry="22" fill="#fef08a" opacity="0.95"/>
+    <ellipse cx="60" cy="64" rx="20" ry="12" fill="#ffffff" opacity="1.0"/>
+    <circle cx="116" cy="50" r="5" fill="#fef08a"/>
+    <circle cx="120" cy="68" r="4" fill="#f97316"/>
+    <circle cx="108" cy="88" r="3.5" fill="#dc2626"/>
+  </g>
+
+  <!-- Klatka 4 (X: 512..640): Wirujący obłok ognia (Heavy turbulent fireball) -->
+  <g id="stream-frame-4" transform="translate(512, 0)">
+    <circle cx="64" cy="64" r="48" fill="#450a0a" opacity="0.4"/>
+    <circle cx="66" cy="62" r="40" fill="#dc2626" opacity="0.8"/>
+    <path d="M 26 64 Q 42 26 78 24 Q 116 38 112 64 Q 116 90 78 104 Q 42 102 26 64 Z" fill="#f97316" opacity="0.95"/>
+    <ellipse cx="68" cy="64" rx="36" ry="24" fill="#fef08a" opacity="0.95"/>
+    <ellipse cx="62" cy="64" rx="22" ry="13" fill="#ffffff" opacity="1.0"/>
+    <circle cx="112" cy="42" r="6" fill="#fef08a"/>
+    <circle cx="122" cy="62" r="5" fill="#f97316"/>
+    <circle cx="114" cy="84" r="4.5" fill="#ea580c"/>
+  </g>
+
+  <!-- Klatka 5 (X: 640..768): Rozszerzona plazma z dymnymi falami -->
+  <g id="stream-frame-5" transform="translate(640, 0)">
+    <circle cx="64" cy="64" r="52" fill="#18181b" opacity="0.4"/>
+    <circle cx="64" cy="64" r="44" fill="#991b1b" opacity="0.75"/>
+    <circle cx="66" cy="64" r="36" fill="#ea580c" opacity="0.9"/>
+    <ellipse cx="66" cy="64" rx="28" ry="18" fill="#fef08a" opacity="0.95"/>
+    <ellipse cx="62" cy="64" rx="16" ry="9" fill="#ffffff" opacity="1.0"/>
+    <circle cx="114" cy="46" r="6.5" fill="#ea580c"/>
+    <circle cx="120" cy="72" r="5.5" fill="#dc2626"/>
+    <circle cx="98" cy="98" r="4" fill="#7f1d1d"/>
+  </g>
+
+  <!-- Klatka 6 (X: 768..896): Dymiący, rozproszony kłąb ognia -->
+  <g id="stream-frame-6" transform="translate(768, 0)">
+    <circle cx="64" cy="60" r="54" fill="#1e293b" opacity="0.5"/>
+    <circle cx="66" cy="62" r="42" fill="#7f1d1d" opacity="0.7"/>
+    <circle cx="66" cy="63" r="30" fill="#ea580c" opacity="0.85"/>
+    <ellipse cx="66" cy="64" rx="18" ry="12" fill="#fde047" opacity="0.9"/>
+    <ellipse cx="64" cy="64" rx="9" ry="5" fill="#ffffff" opacity="0.95"/>
+    <circle cx="112" cy="50" r="5" fill="#7f1d1d"/>
+    <circle cx="116" cy="74" r="4" fill="#450a0a"/>
+  </g>
+
+  <!-- Klatka 7 (X: 896..1024): Dogasające pasmo dymu i żarzących się iskier -->
+  <g id="stream-frame-7" transform="translate(896, 0)">
+    <circle cx="64" cy="58" r="52" fill="#0f172a" opacity="0.45"/>
+    <circle cx="64" cy="60" r="36" fill="#334155" opacity="0.65"/>
+    <circle cx="64" cy="64" r="22" fill="#7f1d1d" opacity="0.6"/>
+    <circle cx="64" cy="64" r="11" fill="#ea580c" opacity="0.75"/>
+    <circle cx="64" cy="64" r="4" fill="#fef08a" opacity="0.9"/>
+    <circle cx="50" cy="42" r="2.5" fill="#fb923c"/>
+    <circle cx="82" cy="46" r="2.0" fill="#facc15"/>
+    <circle cx="94" cy="68" r="2.0" fill="#ea580c"/>
+    <circle cx="44" cy="78" r="1.5" fill="#f87171"/>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- WIERSZ 1 (Y: 128..256) - ROZLANY OGIEŃ NA POWIERZCHNI (SURFACE FIRE 0..7) -->
+  <!-- ========================================================================= -->
+
+  <!-- Klatka 0 (X: 0..128): Rozlany ogień - stan 0 (Początek płonięcia kałuży) -->
+  <g id="surface-frame-0" transform="translate(0, 128)">
+    <ellipse cx="64" cy="112" rx="52" ry="12" fill="url(#napalm-ground-glow)"/>
+    <ellipse cx="64" cy="112" rx="38" ry="7" fill="#fef08a" opacity="0.95"/>
+    <path d="M 28 112 Q 38 68 46 54 Q 52 78 64 62 Q 74 46 82 72 Q 92 84 100 112 Z" fill="url(#fire-tongue-grad)"/>
+    <path d="M 40 112 Q 48 80 54 68 Q 62 84 72 74 Q 80 92 88 112 Z" fill="#fef08a" opacity="0.9"/>
+    <circle cx="50" cy="42" r="2.5" fill="#f97316"/>
+    <circle cx="78" cy="38" r="2.0" fill="#fef08a"/>
+  </g>
+
+  <!-- Klatka 1 (X: 128..256): Rozlany ogień - stan 1 (Płomienie falujące w prawo) -->
+  <g id="surface-frame-1" transform="translate(128, 128)">
+    <ellipse cx="64" cy="112" rx="54" ry="13" fill="url(#napalm-ground-glow)"/>
+    <ellipse cx="64" cy="112" rx="40" ry="8" fill="#fef08a" opacity="0.95"/>
+    <path d="M 26 112 Q 36 64 48 50 Q 56 74 68 44 Q 78 68 88 56 Q 96 82 102 112 Z" fill="url(#fire-tongue-grad)"/>
+    <path d="M 38 112 Q 46 76 56 62 Q 64 80 76 58 Q 84 84 90 112 Z" fill="#fef08a" opacity="0.9"/>
+    <circle cx="68" cy="32" r="3.0" fill="#fef08a"/>
+    <circle cx="84" cy="44" r="2.5" fill="#f97316"/>
+  </g>
+
+  <!-- Klatka 2 (X: 256..384): Rozlany ogień - stan 2 (Wysoki centralny słup ognia) -->
+  <g id="surface-frame-2" transform="translate(256, 128)">
+    <ellipse cx="64" cy="112" rx="56" ry="14" fill="url(#napalm-ground-glow)"/>
+    <ellipse cx="64" cy="112" rx="42" ry="8" fill="#fef08a" opacity="0.95"/>
+    <path d="M 24 112 Q 38 72 50 62 Q 58 40 64 28 Q 72 46 80 60 Q 92 78 104 112 Z" fill="url(#fire-tongue-grad)"/>
+    <path d="M 36 112 Q 48 82 56 70 Q 62 48 68 42 Q 74 66 82 80 Q 90 94 92 112 Z" fill="#fef08a" opacity="0.92"/>
+    <circle cx="64" cy="20" r="3.2" fill="#ffffff"/>
+    <circle cx="52" cy="46" r="2.2" fill="#f97316"/>
+    <circle cx="82" cy="48" r="2.0" fill="#fef08a"/>
+  </g>
+
+  <!-- Klatka 3 (X: 384..512): Rozlany ogień - stan 3 (Rozwidlony płomień lewo-prawo) -->
+  <g id="surface-frame-3" transform="translate(384, 128)">
+    <ellipse cx="64" cy="112" rx="54" ry="13" fill="url(#napalm-ground-glow)"/>
+    <ellipse cx="64" cy="112" rx="40" ry="8" fill="#fef08a" opacity="0.95"/>
+    <path d="M 26 112 Q 32 60 42 42 Q 52 66 60 76 Q 70 56 84 38 Q 94 66 102 112 Z" fill="url(#fire-tongue-grad)"/>
+    <path d="M 36 112 Q 40 74 48 56 Q 56 78 64 84 Q 74 68 82 52 Q 90 78 92 112 Z" fill="#fef08a" opacity="0.9"/>
+    <circle cx="40" cy="30" r="2.8" fill="#fef08a"/>
+    <circle cx="86" cy="26" r="3.0" fill="#ffffff"/>
+  </g>
+
+  <!-- Klatka 4 (X: 512..640): Rozlany ogień - stan 4 (Płomienie falujące w lewo) -->
+  <g id="surface-frame-4" transform="translate(512, 128)">
+    <ellipse cx="64" cy="112" rx="52" ry="12" fill="url(#napalm-ground-glow)"/>
+    <ellipse cx="64" cy="112" rx="38" ry="7" fill="#fef08a" opacity="0.95"/>
+    <path d="M 28 112 Q 34 76 44 60 Q 54 48 62 70 Q 72 44 80 62 Q 92 84 100 112 Z" fill="url(#fire-tongue-grad)"/>
+    <path d="M 38 112 Q 44 84 52 70 Q 60 62 66 82 Q 74 58 80 74 Q 88 92 90 112 Z" fill="#fef08a" opacity="0.9"/>
+    <circle cx="46" cy="46" r="2.5" fill="#f97316"/>
+    <circle cx="70" cy="34" r="3.0" fill="#fef08a"/>
+  </g>
+
+  <!-- Klatka 5 (X: 640..768): Rozlany ogień - stan 5 (Mocne zawirowanie i dym) -->
+  <g id="surface-frame-5" transform="translate(640, 128)">
+    <ellipse cx="64" cy="112" rx="50" ry="12" fill="url(#napalm-ground-glow)"/>
+    <ellipse cx="64" cy="112" rx="36" ry="7" fill="#fef08a" opacity="0.95"/>
+    <path d="M 30 112 Q 40 70 52 48 Q 62 68 70 54 Q 80 42 86 66 Q 94 88 98 112 Z" fill="url(#fire-tongue-grad)"/>
+    <path d="M 40 112 Q 48 80 56 60 Q 64 78 72 68 Q 78 56 82 78 Q 88 94 88 112 Z" fill="#fef08a" opacity="0.88"/>
+    <circle cx="54" cy="36" r="2.8" fill="#ffffff"/>
+    <circle cx="80" cy="32" r="2.6" fill="#f97316"/>
+  </g>
+
+  <!-- Klatka 6 (X: 768..896): Rozlany ogień - stan 6 (Cichnące płomienie z żarem) -->
+  <g id="surface-frame-6" transform="translate(768, 128)">
+    <ellipse cx="64" cy="112" rx="46" ry="11" fill="url(#napalm-ground-glow)"/>
+    <ellipse cx="64" cy="112" rx="32" ry="6" fill="#fef08a" opacity="0.9"/>
+    <path d="M 32 112 Q 42 78 54 62 Q 64 78 74 60 Q 84 80 96 112 Z" fill="url(#fire-tongue-grad)"/>
+    <path d="M 42 112 Q 50 88 58 74 Q 66 86 74 72 Q 82 92 86 112 Z" fill="#fef08a" opacity="0.85"/>
+    <circle cx="56" cy="50" r="2.4" fill="#fef08a"/>
+    <circle cx="72" cy="48" r="2.0" fill="#f97316"/>
+  </g>
+
+  <!-- Klatka 7 (X: 896..1024): Rozlany ogień - stan 7 (Dymiąca plama z iskrami) -->
+  <g id="surface-frame-7" transform="translate(896, 128)">
+    <ellipse cx="64" cy="112" rx="42" ry="10" fill="url(#napalm-ground-glow)"/>
+    <ellipse cx="64" cy="112" rx="28" ry="5" fill="#fef08a" opacity="0.85"/>
+    <path d="M 36 112 Q 46 86 56 74 Q 66 84 76 70 Q 86 92 92 112 Z" fill="url(#fire-tongue-grad)"/>
+    <circle cx="58" cy="62" r="2.2" fill="#fef08a"/>
+    <circle cx="74" cy="58" r="2.0" fill="#f97316"/>
+    <circle cx="66" cy="40" r="1.6" fill="#fb923c"/>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- WIERSZ 2 (Y: 256..384) - PALNIK PILOTUJĄCY (0..3) ORAZ ROZBRZYSK (4..7)   -->
+  <!-- ========================================================================= -->
+
+  <!-- Klatka 0 (X: 0..128): Płomyk pilotujący 0 (Pilot flame idle) -->
+  <g id="pilot-frame-0" transform="translate(0, 256)">
+    <path d="M 60 76 Q 64 48 65 42 Q 66 48 70 76 Z" fill="url(#pilot-flame-grad)"/>
+    <ellipse cx="65" cy="74" rx="4" ry="2.5" fill="#38bdf8" opacity="0.9"/>
+    <circle cx="65" cy="54" r="1.8" fill="#ffffff"/>
+  </g>
+
+  <!-- Klatka 1 (X: 128..256): Płomyk pilotujący 1 (Lekkie drganie w prawo) -->
+  <g id="pilot-frame-1" transform="translate(128, 256)">
+    <path d="M 60 76 Q 65 50 68 40 Q 67 48 70 76 Z" fill="url(#pilot-flame-grad)"/>
+    <ellipse cx="65" cy="74" rx="4" ry="2.5" fill="#38bdf8" opacity="0.9"/>
+    <circle cx="66" cy="52" r="1.8" fill="#ffffff"/>
+  </g>
+
+  <!-- Klatka 2 (X: 256..384): Płomyk pilotujący 2 (Lekkie uniesienie) -->
+  <g id="pilot-frame-2" transform="translate(256, 256)">
+    <path d="M 59 76 Q 64 46 65 38 Q 66 46 71 76 Z" fill="url(#pilot-flame-grad)"/>
+    <ellipse cx="65" cy="74" rx="4" ry="2.5" fill="#38bdf8" opacity="0.9"/>
+    <circle cx="65" cy="50" r="2.0" fill="#ffffff"/>
+  </g>
+
+  <!-- Klatka 3 (X: 384..512): Płomyk pilotujący 3 (Lekkie drganie w lewo) -->
+  <g id="pilot-frame-3" transform="translate(384, 256)">
+    <path d="M 60 76 Q 63 48 62 40 Q 65 50 70 76 Z" fill="url(#pilot-flame-grad)"/>
+    <ellipse cx="65" cy="74" rx="4" ry="2.5" fill="#38bdf8" opacity="0.9"/>
+    <circle cx="64" cy="52" r="1.8" fill="#ffffff"/>
+  </g>
+
+  <!-- Klatka 4 (X: 512..640): Rozbryzg napalmu przy uderzeniu w ścianę (Impact Splash 0) -->
+  <g id="impact-frame-0" transform="translate(512, 256)">
+    <circle cx="64" cy="64" r="28" fill="#f97316" opacity="0.7"/>
+    <circle cx="64" cy="64" r="16" fill="#fef08a" opacity="0.9"/>
+    <circle cx="64" cy="64" r="8" fill="#ffffff"/>
+    <path d="M 64 64 L 88 52 M 64 64 L 82 84 M 64 64 L 46 80 M 64 64 L 44 48 M 64 64 L 64 36" stroke="#fde047" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Klatka 5 (X: 640..768): Rozbryzg napalmu (Impact Splash 1) -->
+  <g id="impact-frame-1" transform="translate(640, 256)">
+    <circle cx="64" cy="64" r="36" fill="#dc2626" opacity="0.6"/>
+    <circle cx="64" cy="64" r="22" fill="#f97316" opacity="0.85"/>
+    <circle cx="64" cy="64" r="10" fill="#fef08a"/>
+    <circle cx="94" cy="46" r="3" fill="#fde047"/>
+    <circle cx="90" cy="88" r="3.5" fill="#f97316"/>
+    <circle cx="38" cy="84" r="2.8" fill="#ea580c"/>
+    <circle cx="36" cy="42" r="3.2" fill="#fef08a"/>
+  </g>
+
+  <!-- Klatka 6 (X: 768..896): Rozbryzg napalmu (Impact Splash 2) -->
+  <g id="impact-frame-2" transform="translate(768, 256)">
+    <circle cx="64" cy="64" r="42" fill="#991b1b" opacity="0.5"/>
+    <circle cx="64" cy="64" r="26" fill="#ea580c" opacity="0.75"/>
+    <circle cx="64" cy="64" r="12" fill="#fde047" opacity="0.9"/>
+    <circle cx="100" cy="40" r="2.5" fill="#f97316"/>
+    <circle cx="96" cy="94" r="3.0" fill="#dc2626"/>
+    <circle cx="32" cy="88" r="2.5" fill="#7f1d1d"/>
+    <circle cx="30" cy="38" r="2.8" fill="#fde047"/>
+  </g>
+
+  <!-- Klatka 7 (X: 896..1024): Dogasający dymny rozbryzg (Impact Splash 3) -->
+  <g id="impact-frame-3" transform="translate(896, 256)">
+    <circle cx="64" cy="64" r="44" fill="#18181b" opacity="0.4"/>
+    <circle cx="64" cy="64" r="28" fill="#7f1d1d" opacity="0.55"/>
+    <circle cx="64" cy="64" r="14" fill="#ea580c" opacity="0.7"/>
+    <circle cx="64" cy="64" r="5" fill="#fef08a" opacity="0.85"/>
+    <circle cx="104" cy="38" r="1.8" fill="#ea580c"/>
+    <circle cx="98" cy="98" r="2.0" fill="#7f1d1d"/>
+  </g>
+</svg>

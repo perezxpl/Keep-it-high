@@ -190,6 +190,12 @@ export const WEAPON_CONFIG = {
     reserveAmmo: 3,
     reloadTime: 2.6
   },
+  FLAMETHROWER: {
+    magSize: 100,
+    currentAmmo: 100,
+    reserveAmmo: 200,
+    reloadTime: 2.6
+  },
   KNIFE: {
     magSize: 0,
     currentAmmo: 0,
