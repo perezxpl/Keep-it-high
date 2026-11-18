@@ -334,7 +334,8 @@ export function startRound() {
         GLOCK: { currentAmmo: 17, reserveAmmo: 68 },
         REVOLVER: { currentAmmo: 6, reserveAmmo: 36 },
         SAWED_OFF: { currentAmmo: 2, reserveAmmo: 18 },
-        RPG7: { currentAmmo: 1, reserveAmmo: 3 }
+        RPG7: { currentAmmo: 1, reserveAmmo: 3 },
+        FLAMETHROWER: { currentAmmo: 100, reserveAmmo: 200 }
       };
       for (const [wepId, def] of Object.entries(wepDefaults)) {
         if (player.ammo[wepId]) {

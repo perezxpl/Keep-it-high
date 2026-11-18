@@ -1188,8 +1188,8 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
 
   // Pobranie stanu amunicji z obiektu gracza
   const ammoObj = player.ammo?.[btn.id];
-  const defMag = (btn.id === 'SHOTGUN' ? 8 : (btn.id === 'SNIPER' ? 5 : 30));
-  const defRes = (btn.id === 'SHOTGUN' ? 64 : (btn.id === 'SNIPER' ? 25 : 90));
+  const defMag = (btn.id === 'SHOTGUN' ? 8 : (btn.id === 'SNIPER' ? 5 : (btn.id === 'FLAMETHROWER' ? 100 : (btn.id === 'RPG7' ? 1 : 30))));
+  const defRes = (btn.id === 'SHOTGUN' ? 64 : (btn.id === 'SNIPER' ? 25 : (btn.id === 'FLAMETHROWER' ? 200 : (btn.id === 'RPG7' ? 3 : 90))));
   const bCurrentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
   const bReserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
   const bMagSize = ammoObj ? (ammoObj.magSize || defMag) : defMag;
@@ -1294,8 +1294,8 @@ export function drawSingleMobileWeaponIcon(ctx, x, y, size, player) {
   const accentCol = isShotgun ? '#fb923c' : (isSniper ? '#38bdf8' : '#f59e0b');
 
   const ammoObj = player.ammo?.[curWepId];
-  const defMag = isShotgun ? 8 : (isSniper ? 5 : 30);
-  const defRes = isShotgun ? 64 : (isSniper ? 25 : 90);
+  const defMag = isShotgun ? 8 : (isSniper ? 5 : (curWepId === 'FLAMETHROWER' ? 100 : (curWepId === 'RPG7' ? 1 : 30)));
+  const defRes = isShotgun ? 64 : (isSniper ? 25 : (curWepId === 'FLAMETHROWER' ? 200 : (curWepId === 'RPG7' ? 3 : 90)));
   const currentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
   const reserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
   const isReloading = !!ammoObj?.isReloading;
@@ -1499,8 +1499,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     : (curWepId === 'SNIPER' ? '#38bdf8' : (curWepId === 'GRENADE' ? '#4ade80' : '#f59e0b'));
 
   const curAmmoObj = player.ammo?.[curWepId];
-  const defM = curWepId === 'SHOTGUN' ? 8 : (curWepId === 'SNIPER' ? 5 : (curWepId === 'GRENADE' ? 1 : 30));
-  const defR = curWepId === 'SHOTGUN' ? 64 : (curWepId === 'SNIPER' ? 25 : (curWepId === 'GRENADE' ? 0 : 90));
+  const defM = curWepId === 'SHOTGUN' ? 8 : (curWepId === 'SNIPER' ? 5 : (curWepId === 'FLAMETHROWER' ? 100 : (curWepId === 'RPG7' ? 1 : (curWepId === 'GRENADE' ? 1 : 30))));
+  const defR = curWepId === 'SHOTGUN' ? 64 : (curWepId === 'SNIPER' ? 25 : (curWepId === 'FLAMETHROWER' ? 200 : (curWepId === 'RPG7' ? 3 : (curWepId === 'GRENADE' ? 0 : 90))));
   const cAmmo = curAmmoObj ? curAmmoObj.currentAmmo : defM;
   const rAmmo = curAmmoObj ? curAmmoObj.reserveAmmo : defR;
   const isRel = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;

@@ -116,7 +116,9 @@ const WEAPON_PARTS_PATHS = {
   RPG7: './assets/weapons/rpg7.png?v=v336_rpg7_modular_rocket_reload',
   RPG7_BODY: './assets/weapons/rpg7_body.png?v=v336_rpg7_modular_rocket_reload',
   RPG7_ROCKET: './assets/weapons/rpg7_rocket.png?v=v336_rpg7_modular_rocket_reload',
-  FLAMETHROWER: './assets/weapons/flamethrower.png?v=v444_flamethrower',
+  FLAMETHROWER: './assets/weapons/flamethrower.png?v=v487_flamethrower_modular_reload',
+  FLAMETHROWER_BODY: './assets/weapons/flamethrower_body.png?v=v487_flamethrower_modular_reload',
+  FLAMETHROWER_CANISTER: './assets/weapons/flamethrower_canister.png?v=v487_flamethrower_modular_reload',
   KNIFE: './assets/weapons/knife.png?v=v256_modular_melee_weapons',
   MACHETE: './assets/weapons/machete.png?v=v256_modular_melee_weapons',
   AXE: './assets/weapons/axe.png?v=v256_modular_melee_weapons'
@@ -1455,10 +1457,11 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
     }
   } else if (weapon.id === 'FLAMETHROWER') {
     // -------------------------------------------------------------
-    // TACTICAL M2 VULCAN FLAMETHROWER RENDERER
+    // TACTICAL M2 VULCAN FLAMETHROWER RENDERER (MODULAR BODY & CANISTER)
     // -------------------------------------------------------------
-    const imgFlame = getWeaponPartSprite('FLAMETHROWER');
-    if (imgFlame && imgFlame.complete && imgFlame.naturalWidth > 0) {
+    const imgBody = getWeaponPartSprite('FLAMETHROWER_BODY') || getWeaponPartSprite('FLAMETHROWER');
+    const imgCanister = getWeaponPartSprite('FLAMETHROWER_CANISTER');
+    if (imgBody && imgBody.complete && imgBody.naturalWidth > 0) {
       const s = 48.0 / 1290;
       const pvt = getWeaponSpritePivot('FLAMETHROWER', hold.weight);
       const pivotSpriteX = pvt.x;
@@ -1470,15 +1473,35 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
       ctx.save();
       ctx.scale(s, s);
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      drawWeaponSprite(ctx, imgFlame, 0, 0);
+
+      // 1. Podwieszona butla paliwowa (gdy jest zamontowana w gnieździe broni)
+      if (imgCanister && imgCanister.complete && imgCanister.naturalWidth > 0) {
+        if (hold.isMagInGun !== false) {
+          drawWeaponSprite(ctx, imgCanister, 0, 0);
+        }
+      }
+
+      // 2. Korpus miotacza ognia (lufa, osłona termiczna, komora, kolba i chwyty)
+      drawWeaponSprite(ctx, imgBody, 0, 0);
+
       ctx.restore();
+
+      // 3. Butla paliwowa trzymana w dłoni podczas przeładowania (heldMag)
+      if (imgCanister && imgCanister.complete && imgCanister.naturalWidth > 0 && hold.heldMag && hold.heldMag.type === 'FLAMETHROWER_CANISTER') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle || 0);
+        ctx.scale(s, s);
+        // Punkt chwytu dłoni na kołnierzu butli (750, 160)
+        drawWeaponSprite(ctx, imgCanister, -750, -160);
+        ctx.restore();
+      }
 
       const bLen = (typeof hold.barrelLen === 'number') ? hold.barrelLen : 31.00;
       const bOffY = (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -1.00;
 
-      if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, bLen, bOffY, 18, true);
-      } else if (!isReloading) {
+      // Pilot light / płomyk zapalnika na wylocie dyszy - widoczny gdy gracz nie przeładowuje broni
+      if (!isReloading) {
         drawPilotFlame(ctx, bLen + 2.0, bOffY, 0, 1);
       }
     } else {

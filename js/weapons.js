@@ -798,17 +798,6 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   if (weapon.id === 'FLAMETHROWER' || weapon.isFlamethrower) {
     spawnFlamethrowerStream(shooter, muzzleX, muzzleY, theta, weapon);
 
-    shooter.muzzleFlashTimer = 2;
-
-    addDynamicLight({
-      x: muzzleX,
-      y: muzzleY,
-      radius: 95,
-      color: '#f97316',
-      intensity: 0.65,
-      duration: 5
-    });
-
     if (!shooter.isRemote) {
       shooter.shootCooldown = weapon.fireRate;
       if (Math.random() < 0.25) {
@@ -1073,14 +1062,14 @@ export function updateWeaponState(p) {
       const u = Math.max(0, Math.min(1.0, 1.0 - (ammo.reloadTimer / (ammo.reloadDuration || 120))));
       p.reloadProgress = u;
 
-      // Obsługa wyrzutu pustego magazynka (Fizyczna cząsteczka spadająca na ziemię)
-      const magThreshold = (curWepId === 'GLOCK') ? 0.14 : 0.24;
-      if (u >= magThreshold && !ammo._magEjected && (curWepId === 'AK47' || curWepId === 'SNIPER' || curWepId === 'GLOCK')) {
+      // Obsługa wyrzutu pustego magazynka / zużytej butli (Fizyczna cząsteczka spadająca na ziemię)
+      const magThreshold = (curWepId === 'GLOCK') ? 0.14 : (curWepId === 'FLAMETHROWER' ? 0.40 : 0.24);
+      if (u >= magThreshold && !ammo._magEjected && (curWepId === 'AK47' || curWepId === 'SNIPER' || curWepId === 'GLOCK' || curWepId === 'FLAMETHROWER')) {
         ammo._magEjected = true;
         const hold = getWeaponHoldTransform(p);
         const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);
-        const magDist = curWepId === 'SNIPER' ? 7.0 : (curWepId === 'GLOCK' ? 1.0 : 6.5);
-        const magYOffset = curWepId === 'SNIPER' ? 5.5 : (curWepId === 'GLOCK' ? 6.0 : 5.0);
+        const magDist = curWepId === 'SNIPER' ? 7.0 : (curWepId === 'GLOCK' ? 1.0 : (curWepId === 'FLAMETHROWER' ? 10.5 : 6.5));
+        const magYOffset = curWepId === 'SNIPER' ? 5.5 : (curWepId === 'GLOCK' ? 6.0 : (curWepId === 'FLAMETHROWER' ? 14.0 : 5.0));
         const mX = hold.pivotX + (Math.cos(hold.angle) * magDist - Math.sin(hold.angle) * magYOffset) * charFacing;
         const mY = hold.pivotY + (Math.sin(hold.angle) * magDist + Math.cos(hold.angle) * magYOffset);
         spawnDroppedMagazine(mX, mY, curWepId, charFacing, p.vx || 0, p.vy || 0);

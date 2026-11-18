@@ -423,6 +423,7 @@ export function spawnDroppedMagazine(x, y, weaponType = 'AK47', facing = 1, inhe
   const normType = String(weaponType || 'AK47').toUpperCase();
   const isSniper = normType.includes('SNIPER');
   const isGlock = normType.includes('GLOCK');
+  const isFlame = normType.includes('FLAMETHROWER');
 
   const vx = inheritVx * 0.35 + (facing * (-24 - Math.random() * 25));
   const vy = inheritVy * 0.35 + (20 + Math.random() * 25);
@@ -433,15 +434,15 @@ export function spawnDroppedMagazine(x, y, weaponType = 'AK47', facing = 1, inhe
     y,
     vx,
     vy,
-    angle: isSniper ? 0.15 : (isGlock ? 0.25 : 0.45),
+    angle: isSniper ? 0.15 : (isGlock ? 0.25 : (isFlame ? 0.10 : 0.45)),
     vRot,
-    width: isGlock ? 4.5 : (isSniper ? 6 : 7),
-    height: isGlock ? 7.5 : (isSniper ? 9 : 11),
-    color: isGlock ? '#18181b' : '#334155',
+    width: isGlock ? 4.5 : (isSniper ? 6 : (isFlame ? 8 : 7)),
+    height: isGlock ? 7.5 : (isSniper ? 9 : (isFlame ? 15 : 11)),
+    color: isGlock ? '#18181b' : (isFlame ? '#854d0e' : '#334155'),
     maxBounces: 2,
     life: 5.5,
     alpha: 1.0,
-    type: isGlock ? 'GLOCK' : (isSniper ? 'SNIPER' : 'AK47'),
+    type: isGlock ? 'GLOCK' : (isSniper ? 'SNIPER' : (isFlame ? 'FLAMETHROWER' : 'AK47')),
     groundTimer: 4.5
   });
   casing.isMagazine = true;
@@ -505,6 +506,17 @@ export function drawBulletCasing(ctx, casing) {
       ctx.strokeRect(-2.2, -3.8, 4.4, 7.6);
       ctx.fillStyle = '#f97316';
       ctx.fillRect(-2.2, 3.2, 4.4, 0.8);
+    } else if (casing.type === 'FLAMETHROWER') {
+      // Upuszczona pusta butla napalmu (oliwkowo-żółty cylinder ze stalowym zaworem)
+      ctx.fillStyle = '#854d0e';
+      ctx.fillRect(-3.5, -6.5, 7.0, 13.0);
+      ctx.fillStyle = '#ca8a04';
+      ctx.fillRect(-3.0, -6.0, 6.0, 12.0);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(-1.5, -8.0, 3.0, 2.0);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(-3.5, -6.5, 7.0, 13.0);
     }
   } else {
     ctx.fillStyle = casing.color;

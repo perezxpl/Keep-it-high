@@ -491,18 +491,6 @@ export function spawnFlamethrowerStream(shooter, muzzleX, muzzleY, theta, weapon
     const p = new FlameParticle(shooter, muzzleX, muzzleY, jitterAngle, speed, weapon);
     activeFlameStreams.push(p);
   }
-
-  // Efekt dynamicznego ciepłego rozbłysku przy wylocie
-  addDynamicLight({
-    x: muzzleX,
-    y: muzzleY,
-    radius: 70,
-    color: '#f97316',
-    intensity: 0.85,
-    duration: 5
-  });
-
-  shooter.muzzleFlashTimer = 3;
 }
 
 /**

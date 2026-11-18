@@ -220,11 +220,11 @@ export function awardCarePackageLoot(crate, recipient, player) {
     }
 
     case 'FULL_AMMO': {
-      for (const wepId of ['AK47', 'SHOTGUN', 'SNIPER']) {
+      for (const wepId of ['AK47', 'SHOTGUN', 'SNIPER', 'FLAMETHROWER']) {
         const ammo = getWeaponAmmo(recipient, wepId);
         if (ammo) {
           ammo.currentAmmo = ammo.magSize;
-          ammo.reserveAmmo = (wepId === 'SHOTGUN' ? 64 : (wepId === 'SNIPER' ? 25 : 120));
+          ammo.reserveAmmo = (wepId === 'SHOTGUN' ? 64 : (wepId === 'SNIPER' ? 25 : (wepId === 'FLAMETHROWER' ? 200 : 120)));
           ammo.isReloading = false;
           ammo.reloadTimer = 0;
         }

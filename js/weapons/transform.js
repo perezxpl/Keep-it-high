@@ -1272,41 +1272,50 @@ export function getWeaponHoldTransform(p) {
       // -------------------------------------------------------------
       // FLAMETHROWER RELOAD ANIMATION (WYMIANA BUTLI NAPALMU POD LUFA)
       // -------------------------------------------------------------
-      if (u < 0.22) {
-        // Faza 1: Ruch ręki ku podwieszonej butli paliwowej
-        const t = u / 0.22;
-        leftHandLocalX = lerp(foreGripDistX, 9.5, ease(t));
-        leftHandLocalY = lerp(foreGripDistY, 6.5, ease(t));
+      if (u < 0.20) {
+        // Faza 1: Ruch ręki ku kołnierzowi podwieszonej butli paliwowej
+        const t = u / 0.20;
+        leftHandLocalX = lerp(foreGripDistX, 10.5, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 4.5, ease(t));
         isMagInGun = true;
-      } else if (u < 0.42) {
+        heldMag = null;
+      } else if (u < 0.40) {
         // Faza 2: Odkręcenie i wyjęcie pustego kartusza w dół
-        const t = (u - 0.22) / 0.20;
-        leftHandLocalX = lerp(9.5, 7.0, t);
-        leftHandLocalY = lerp(6.5, 14.5, t);
-        isMagInGun = (u < 0.28);
-      } else if (u < 0.65) {
-        // Faza 3: Sięgnięcie po nową butlę napalmu z zasobnika
-        const t = (u - 0.42) / 0.23;
-        leftHandLocalX = lerp(7.0, -2.5, ease(t));
-        leftHandLocalY = lerp(14.5, 17.0, ease(t));
+        const t = (u - 0.20) / 0.20;
+        leftHandLocalX = lerp(10.5, 9.0, t);
+        leftHandLocalY = lerp(4.5, 16.0, t);
         isMagInGun = false;
+        heldMag = { type: 'FLAMETHROWER_CANISTER', x: leftHandLocalX, y: leftHandLocalY, angle: 0.12 * t };
+      } else if (u < 0.62) {
+        // Faza 3: Pusty kartusz upuszczony na ziemię, ręka sięga do zasobnika po nową butlę
+        const t = (u - 0.40) / 0.22;
+        leftHandLocalX = lerp(9.0, -2.5, ease(t));
+        leftHandLocalY = lerp(16.0, 18.0, ease(t));
+        isMagInGun = false;
+        heldMag = null;
       } else if (u < 0.85) {
-        // Faza 4: Wprowadzenie nowej butli i dokręcenie zaworu ciśnieniowego
-        const t = (u - 0.65) / 0.20;
-        leftHandLocalX = lerp(-2.5, 9.5, ease(t));
-        leftHandLocalY = lerp(17.0, 6.5, ease(t));
-        isMagInGun = (t > 0.60);
-        if (t > 0.75) {
-          const snapT = (t - 0.75) / 0.25;
+        // Faza 4: Uniesienie nowej butli i dokręcenie w gnieździe pod lufą
+        const t = (u - 0.62) / 0.23;
+        leftHandLocalX = lerp(-2.5, 10.5, ease(t));
+        leftHandLocalY = lerp(18.0, 4.5, ease(t));
+        if (t < 0.70) {
+          isMagInGun = false;
+          heldMag = { type: 'FLAMETHROWER_CANISTER', x: leftHandLocalX, y: leftHandLocalY, angle: -0.15 * (1 - t) };
+        } else {
+          isMagInGun = true;
+          heldMag = null;
+          const snapT = (t - 0.70) / 0.30;
           reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.08;
-          reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 1.0;
+          reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 1.2;
         }
       } else {
         // Faza 5: Powrót dłoni na przedni chwyt stabilizujący
         const t = (u - 0.85) / 0.15;
         const s = ease(t);
-        leftHandLocalX = lerp(9.5, foreGripDistX, s);
-        leftHandLocalY = lerp(6.5, foreGripDistY, s);
+        leftHandLocalX = lerp(10.5, foreGripDistX, s);
+        leftHandLocalY = lerp(4.5, foreGripDistY, s);
+        isMagInGun = true;
+        heldMag = null;
       }
     } else if (isRpg) {
       // -------------------------------------------------------------
