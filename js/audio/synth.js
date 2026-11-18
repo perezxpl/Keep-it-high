@@ -220,38 +220,40 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
     }
 
     case 'weapon_flamethrower': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.18);
-      // Gęsty szum palącego się pod ciśnieniem napalmu (Bandpass + Lowpass noise)
-      scheduleNoise(ctx, out, {
-        startTime: now,
-        duration: 0.16,
-        gain: gain * 1.1,
-        attack: 0.015,
-        filterType: 'bandpass',
-        freqStart: 1200 * p,
-        freqEnd: 480 * p,
-        Q: 1.4
-      });
-      // Głęboki pomruk spalania komorowego
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.22);
+      // Głęboki sub-bass i ryk komory spalania napalmu
       scheduleTone(ctx, out, {
         startTime: now,
         type: 'sawtooth',
-        freqStart: 110 * p,
-        freqEnd: 65 * p,
-        duration: 0.14,
-        gain: gain * 0.45,
+        freqStart: 85 * p,
+        freqEnd: 55 * p,
+        duration: 0.18,
+        gain: gain * 0.75,
+        attack: 0.02,
         filterType: 'lowpass',
-        filterFreq: 320
+        filterFreq: 220
       });
-      // Skwierczące wysokie częstotliwości płomienia
+      // Gęsty, basowy szum turbulentnego ognia (Low-mid flame turbulence)
       scheduleNoise(ctx, out, {
         startTime: now,
-        duration: 0.10,
-        gain: gain * 0.55,
-        filterType: 'highpass',
-        freqStart: 2400 * p,
-        freqEnd: 1600 * p,
-        Q: 0.8
+        duration: 0.20,
+        gain: gain * 0.85,
+        attack: 0.02,
+        filterType: 'bandpass',
+        freqStart: 340 * p,
+        freqEnd: 220 * p,
+        Q: 1.1
+      });
+      // Miękka otoczka szumu rozprężającego się gazu (ścięta filtrem dolnoprzepustowym, bez drażniącego gwizdu)
+      scheduleNoise(ctx, out, {
+        startTime: now,
+        duration: 0.16,
+        gain: gain * 0.40,
+        attack: 0.015,
+        filterType: 'lowpass',
+        freqStart: 650 * p,
+        freqEnd: 420 * p,
+        Q: 0.7
       });
       return true;
     }
