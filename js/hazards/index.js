@@ -20,6 +20,8 @@ export {
   checkBarrelKickInteraction,
   getBarrelSurfaceY,
   getValidBarrelSpawnSurfaceY,
+  getAcidPoolSupportBounds,
+  fitAcidPoolToTerrain,
   spawnAirdropBarrel
 } from './logic.js';
 
@@ -39,6 +41,8 @@ import {
   checkBarrelKickInteraction,
   getBarrelSurfaceY,
   getValidBarrelSpawnSurfaceY,
+  getAcidPoolSupportBounds,
+  fitAcidPoolToTerrain,
   spawnAirdropBarrel
 } from './logic.js';
 
@@ -52,5 +56,7 @@ if (typeof window !== 'undefined') {
   window.detonateBarrel = detonateBarrel;
   window.getBarrelSurfaceY = getBarrelSurfaceY;
   window.getValidBarrelSpawnSurfaceY = getValidBarrelSpawnSurfaceY;
+  window.getAcidPoolSupportBounds = getAcidPoolSupportBounds;
+  window.fitAcidPoolToTerrain = fitAcidPoolToTerrain;
   window.spawnAirdropBarrel = spawnAirdropBarrel;
 }

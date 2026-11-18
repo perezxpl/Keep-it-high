@@ -238,4 +238,134 @@ console.log('--- TEST 8: Eksplozja granatu (detonateGrenadeExplosion) zadaje obr
   console.log('PASS: detonateGrenadeExplosion zadaje obrazenia beczkom.');
 }
 
+console.log('--- TEST 9: Przycinanie (Clamping) kaluzy kwasu do krawedzi platformy ---');
+{
+  const { ARENA_PLATFORMS } = await import('../js/obstacles/state.js');
+  const { fitAcidPoolToTerrain } = await import('../js/hazards/logic.js');
+
+  // Symulacja platformy o szerokosci 100px: X: 400..500 na Y: 600
+  const testPlat = {
+    id: 'test_platform_clamping',
+    x: 400,
+    y: 600,
+    w: 100,
+    h: 20,
+    solid: true,
+    isPlatform: true,
+    intact: true
+  };
+  ARENA_PLATFORMS.push(testPlat);
+
+  // Kaluza o baseRadius = 65 wybuchla przy prawej krawedzi (x: 480)
+  // Bez przyciecia siegalaby do 480 + 65 = 545 (wisialaby 45px w powietrzu!)
+  const pool = {
+    x: 480,
+    y: 600,
+    radius: 65,
+    baseRadius: 65,
+    timer: 8.0
+  };
+
+  const ok = fitAcidPoolToTerrain(pool, 800, 'arena-1');
+  assert.strictEqual(ok, true, 'Kaluza na platformie 100px powinna sie zmiescic');
+  // Prawa krawedz platformy to 500, wiec z marginesem 4px: max right = 496
+  const rightEdge = pool.x + pool.radius;
+  assert.ok(rightEdge <= 496.01, `Prawa krawedz kaluzy (${rightEdge}) nie moze wystawac poza 496px`);
+  assert.ok(pool.radius < 65, 'Promien kaluzy powinien zostac zredukowany przez przyciecie do krawedzi');
+  assert.strictEqual(pool.angle, 0, 'Kat na plaskiej platformie powinien wynosic 0');
+
+  // Sprzatanie platformy
+  const pIdx = ARENA_PLATFORMS.indexOf(testPlat);
+  if (pIdx !== -1) ARENA_PLATFORMS.splice(pIdx, 1);
+
+  console.log('PASS: Kaluza kwasu zostaje przycieta do krawedzi platformy i nie wisi w powietrzu.');
+}
+
+console.log('--- TEST 10: Anulowanie kaluzy kwasu gdy dostepna szerokosc podloza < 28px ---');
+{
+  const { ARENA_PLATFORMS } = await import('../js/obstacles/state.js');
+  const { fitAcidPoolToTerrain } = await import('../js/hazards/logic.js');
+
+  // Waska platforma o szerokosci 20px: X: 400..420 na Y: 600
+  const narrowPlat = {
+    id: 'test_narrow_platform',
+    x: 400,
+    y: 600,
+    w: 20,
+    h: 20,
+    solid: true,
+    isPlatform: true,
+    intact: true
+  };
+  ARENA_PLATFORMS.push(narrowPlat);
+
+  const pool = {
+    x: 410,
+    y: 600,
+    radius: 65,
+    baseRadius: 65,
+    timer: 8.0
+  };
+
+  const ok = fitAcidPoolToTerrain(pool, 800, 'arena-1');
+  assert.strictEqual(ok, false, 'Kaluza na waskiej platformie (< 28px) musi zostac calkowicie anulowana');
+
+  // Sprzatanie
+  const pIdx = ARENA_PLATFORMS.indexOf(narrowPlat);
+  if (pIdx !== -1) ARENA_PLATFORMS.splice(pIdx, 1);
+
+  console.log('PASS: Kaluza na zbyt waskim fragmencie zostaje prawidlowo anulowana.');
+}
+
+console.log('--- TEST 11: Dopasowanie kata i wysokosci kaluzy kwasu do skosu skarpy (Arena 3) ---');
+{
+  const { fitAcidPoolToTerrain } = await import('../js/hazards/logic.js');
+  const { getRiverbankGroundY } = await import('../js/arenas/arena3/state.js');
+
+  // Kaluza na lewej skarpie rzeki (x: 1300, gdzie Y opada w strone rzeki od 1200 do 1260)
+  const groundYAt1300 = getRiverbankGroundY(1300);
+  const pool = {
+    x: 1300,
+    y: groundYAt1300,
+    radius: 50,
+    baseRadius: 50,
+    timer: 8.0
+  };
+
+  const ok = fitAcidPoolToTerrain(pool, 1380, 'arena-3');
+  assert.strictEqual(ok, true, 'Kaluza powinna poprawnie dopasowac sie do skarpy rzeki');
+  assert.ok(Math.abs(pool.angle) > 0.05, `Kat nachylenia kaluzy (${pool.angle}) musi byc niezerowy na skarpie`);
+  assert.ok(pool.angle > 0, 'Na lewej skarpie deltaY > 0 (opadanie w prawo w strone rzeki)');
+  assert.ok(Math.abs(pool.y - groundYAt1300) < 6, 'Wysokosc kaluzy musi odpowiadac rzeczywistej wysokosci podloza');
+
+  console.log('PASS: Kaluza kwasu precyzyjnie dopasowuje kat i wysokosc do skosu skarpy rzeki.');
+}
+
+console.log('--- TEST 12: Dopasowanie kaluzy kwasu do dna wycietego krateru ---');
+{
+  const { fitAcidPoolToTerrain } = await import('../js/hazards/logic.js');
+  const { carveTerrainCrater, getRiverbankGroundY } = await import('../js/arenas/arena3/state.js');
+
+  const craterX = 600;
+  const initialGroundY = getRiverbankGroundY(craterX); // 1200
+  carveTerrainCrater(craterX, initialGroundY, 140);
+  const craterBottomY = getRiverbankGroundY(craterX);
+  assert.ok(craterBottomY > initialGroundY, 'W dnie krateru podloze musi byc obnizone');
+
+  const pool = {
+    x: craterX,
+    y: initialGroundY, // Poczatkowa wysokosc sprzed wybuchu
+    radius: 40,
+    baseRadius: 40,
+    timer: 8.0
+  };
+
+  const ok = fitAcidPoolToTerrain(pool, 1380, 'arena-3');
+  assert.strictEqual(ok, true, 'Kaluza w kraterze powinna zostac poprawnie spasowana');
+  assert.ok(pool.y > initialGroundY + 5, `Wysokosc kaluzy (${pool.y}) musi opasc w glab krateru`);
+  assert.ok(Math.abs(pool.angle) < 0.1, 'Symetryczny krater w srodku powinien miec kat bliski zeru');
+
+  console.log('PASS: Kaluza kwasu prawidlowo opada na dno wycietego krateru i zachowuje symetrie.');
+}
+
 console.log('\n[SUKCES] Wszystkie testy fizyki i zachowania beczek oraz kwasu zakonczone sukcesem!');

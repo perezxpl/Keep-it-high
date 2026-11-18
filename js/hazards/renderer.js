@@ -211,36 +211,43 @@ function drawAcidPools(ctx, viewLeft, viewRight, viewTop, viewBottom) {
   for (let i = 0; i < pools.length; i++) {
     const pool = pools[i];
     const r = pool.radius || 65;
+    const angle = pool.angle || 0;
 
-    // Culling w przestrzeni widoku kamery 2D
-    if (pool.x + r < viewLeft || pool.x - r > viewRight || pool.y + 20 < viewTop || pool.y - 20 > viewBottom) {
+    // Culling w przestrzeni widoku kamery 2D z marginesem na promień i nachylenie
+    if (pool.x + r < viewLeft || pool.x - r > viewRight || pool.y + r < viewTop || pool.y - r > viewBottom) {
       continue;
     }
 
     const alpha = Math.min(1.0, pool.timer / 1.5) * 0.78;
 
+    ctx.save();
+    ctx.translate(pool.x, pool.y);
+    if (Math.abs(angle) > 0.005) {
+      ctx.rotate(angle);
+    }
+
     if (acidCanv) {
-      ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.drawImage(acidCanv, pool.x - r, pool.y - 7.5, r * 2, 15);
-      ctx.restore();
+      ctx.drawImage(acidCanv, -r, -7.5, r * 2, 15);
     } else {
       ctx.fillStyle = `rgba(22, 163, 74, ${alpha * 0.65})`;
       ctx.beginPath();
-      ctx.ellipse(pool.x, pool.y, r, 7.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, r, 7.5, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 3 bąble kwasu w pojedynczym wywołaniu fill (zero createRadialGradient na klatkę)
+    // 3 bąble kwasu w lokalnym układzie obróconym o angle (zgodnie z nachyleniem podłoża)
     ctx.fillStyle = `rgba(187, 247, 208, ${alpha * 0.9})`;
     ctx.beginPath();
     for (let j = 0; j < 3; j++) {
-      const bx = pool.x + Math.sin(pool.bubbleAnim + j * 1.6) * (r * 0.6);
-      const by = pool.y + Math.cos(pool.bubbleAnim * 0.8 + j) * 2.5;
+      const bx = Math.sin(pool.bubbleAnim + j * 1.6) * (r * 0.6);
+      const by = Math.cos(pool.bubbleAnim * 0.8 + j) * 2.5;
       ctx.moveTo(bx + 1.5, by - 2);
       ctx.arc(bx, by - 2, 1.5, 0, Math.PI * 2);
     }
     ctx.fill();
+
+    ctx.restore();
   }
 }
 

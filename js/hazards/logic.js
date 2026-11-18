@@ -67,9 +67,9 @@ export function spawnBarrelShrapnel(x, y, barrelType = 'EXPLOSIVE') {
 /**
  * Oblicza wysokość podłoża lub platformy pod beczką
  */
-export function getBarrelSurfaceY(x, y, baseGroundY) {
+export function getBarrelSurfaceY(x, y, baseGroundY, arenaKeyOverride = null) {
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
+  const rawId = arenaKeyOverride || curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
   const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
   const isA5 = (arenaKey === 'arena-5' || arenaKey === 'prefab-tower');
   const isA4 = (arenaKey === 'arena-4' || arenaKey === 'armored-train');
@@ -242,6 +242,182 @@ export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
   }
 
   return yCenter;
+}
+
+/**
+ * Wyznacza lewą i prawą granicę ciągłego podłoża pod plamą kwasu.
+ * Obsługuje platformy, segmenty modułowe oraz grunt naturalny i kratery.
+ */
+export function getAcidPoolSupportBounds(centerX, surfaceY, maxRadius, groundY, arenaKey) {
+  let supportLeftX = centerX - maxRadius;
+  let supportRightX = centerX + maxRadius;
+
+  const a5Plats = (typeof window !== 'undefined' && window.arena5State?.platforms) ? window.arena5State.platforms : null;
+  const platformList = a5Plats ? [...ARENA_PLATFORMS, ...a5Plats] : ARENA_PLATFORMS;
+
+  let matchedPlatform = null;
+  if (Array.isArray(platformList)) {
+    for (const plat of platformList) {
+      if (!plat || plat.destroyed || plat.isDestroyed || plat.intact === false || plat.solid === false || plat.isPlatform === false || (plat.hp !== undefined && plat.hp <= 0)) continue;
+      if (plat.isFalling || plat.isStilt || plat.isDecorative || plat.isRope || plat.type === 'stilt' || plat.type === 'rope') continue;
+      if (arenaKey === 'arena-3' && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
+      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
+      if (centerX >= bnds.minX - 4 && centerX <= bnds.maxX + 4) {
+        let topY;
+        if (plat.surfacePoints && typeof getPlatformSurfaceY === 'function') {
+          topY = getPlatformSurfaceY(plat, centerX, groundY);
+        } else if (plat.y !== undefined) {
+          topY = plat.y;
+        } else {
+          topY = groundY - (plat.relY || 0);
+        }
+        if (Math.abs(surfaceY - topY) <= 12) {
+          matchedPlatform = plat;
+          break;
+        }
+      }
+    }
+  }
+
+  if (matchedPlatform) {
+    // Kałuża na platformie: wyznacz ciągłą lewą i prawą krawędź
+    const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(matchedPlatform) : { minX: matchedPlatform.x, maxX: matchedPlatform.x + (matchedPlatform.w || 100) };
+    let leftLimit = bnds.minX;
+    let rightLimit = bnds.maxX;
+
+    // Rozszerzenie na sąsiednie nienaruszone segmenty na tej samej wysokości
+    let expanded = true;
+    let iter = 0;
+    while (expanded && iter < 10) {
+      expanded = false;
+      iter++;
+      for (const other of platformList) {
+        if (!other || other === matchedPlatform || other.destroyed || other.isDestroyed || other.intact === false || other.solid === false || other.isPlatform === false || (other.hp !== undefined && other.hp <= 0)) continue;
+        if (other.isFalling || other.isStilt || other.isDecorative || other.isRope || other.type === 'stilt' || other.type === 'rope') continue;
+        if (arenaKey === 'arena-3' && (other.id === 'ground_left' || other.id === 'ground_right' || other.id === 'riverbank_left_oval' || other.id === 'riverbank_right_oval' || other.id === 'world_boundary_left' || other.id === 'world_boundary_right')) continue;
+        const oBnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(other) : { minX: other.x, maxX: other.x + (other.w || 100) };
+        const oY = (other.y !== undefined) ? other.y : (groundY - (other.relY || 0));
+        if (Math.abs(surfaceY - oY) <= 8) {
+          if (oBnds.maxX >= leftLimit - 6 && oBnds.minX < leftLimit) {
+            leftLimit = oBnds.minX;
+            expanded = true;
+          }
+          if (oBnds.minX <= rightLimit + 6 && oBnds.maxX > rightLimit) {
+            rightLimit = oBnds.maxX;
+            expanded = true;
+          }
+        }
+      }
+    }
+    supportLeftX = leftLimit;
+    supportRightX = rightLimit;
+  } else {
+    // Kałuża na terenie naturalnym (grunt stały, skarpa rzeczna, krater)
+    const step = 8;
+    let prevY = surfaceY;
+    let curLeft = centerX;
+    for (let x = centerX - step; x >= centerX - maxRadius - 16; x -= step) {
+      const sampleY = Math.min(surfaceY, prevY) - 50;
+      const yVal = getBarrelSurfaceY(x, sampleY, groundY, arenaKey);
+      const inRiver = (arenaKey === 'arena-3' && yVal >= 1280);
+      const inLava = (arenaKey === 'arena-4' && yVal >= 1390);
+      const inAcid = (arenaKey === 'arena-2' && yVal >= 1420);
+      if (yVal === Infinity || inRiver || inLava || inAcid || Math.abs(yVal - prevY) > 22) {
+        curLeft = x + step;
+        break;
+      }
+      prevY = yVal;
+      curLeft = x;
+    }
+
+    prevY = surfaceY;
+    let curRight = centerX;
+    for (let x = centerX + step; x <= centerX + maxRadius + 16; x += step) {
+      const sampleY = Math.min(surfaceY, prevY) - 50;
+      const yVal = getBarrelSurfaceY(x, sampleY, groundY, arenaKey);
+      const inRiver = (arenaKey === 'arena-3' && yVal >= 1280);
+      const inLava = (arenaKey === 'arena-4' && yVal >= 1390);
+      const inAcid = (arenaKey === 'arena-2' && yVal >= 1420);
+      if (yVal === Infinity || inRiver || inLava || inAcid || Math.abs(yVal - prevY) > 22) {
+        curRight = x - step;
+        break;
+      }
+      prevY = yVal;
+      curRight = x;
+    }
+
+    supportLeftX = curLeft;
+    supportRightX = curRight;
+  }
+
+  return { supportLeftX, supportRightX };
+}
+
+/**
+ * Dopasowuje kałużę kwasu do geometrii terenu:
+ * 1. Przycinanie do granic ciągłego podłoża (supportLeftX, supportRightX)
+ * 2. Anulowanie kałuży jeśli dostępna szerokość < 28px (radius < 14)
+ * 3. Próbkowanie lewej, środkowej i prawej wysokości (yLeft, yMid, yRight)
+ * 4. Obliczanie kąta nachylenia: pool.angle = Math.atan2(yRight - yLeft, pool.radius * 2)
+ * 5. Wyrównanie wysokości pool.y = (yLeft + yRight) * 0.5 (lub w dnie krateru)
+ * Zwraca false jeśli kałuża powinna zostać usunięta / anulowana.
+ */
+export function fitAcidPoolToTerrain(pool, groundY, arenaKey) {
+  if (!pool) return false;
+
+  const maxR = pool.baseRadius || pool.maxRadius || pool.radius || 65;
+  pool.baseRadius = maxR;
+
+  // Sprawdzamy najpierw czy grunt pod kałużą się obniżył (np. wycięty krater lub zapadnięcie platformy)
+  const centerFloor = getBarrelSurfaceY(pool.x, pool.y - 50, groundY, arenaKey);
+  if (centerFloor !== Infinity && centerFloor > pool.y + 4) {
+    pool.y = centerFloor;
+  }
+
+  // 1. Wyznaczenie granic ciągłego podłoża
+  const { supportLeftX, supportRightX } = getAcidPoolSupportBounds(pool.x, pool.y, maxR, groundY, arenaKey);
+
+  // Przycinamy zakres [pool.x - maxR, pool.x + maxR] do granic [supportLeftX + 4, supportRightX - 4]
+  const clampedLeft = Math.max(pool.x - maxR, supportLeftX + 4);
+  const clampedRight = Math.min(pool.x + maxR, supportRightX - 4);
+  const clampedWidth = clampedRight - clampedLeft;
+
+  if (clampedWidth < 28) {
+    // Dostępna szerokość zbyt mała (promień < 14) -> usunięcie kałuży
+    return false;
+  }
+
+  pool.radius = clampedWidth * 0.5;
+  pool.x = clampedLeft + pool.radius;
+
+  // 2. Próbkowanie wysokości podłoża na lewym skraju, w środku i na prawym skraju
+  const xLeft = pool.x - pool.radius;
+  const xMid = pool.x;
+  const xRight = pool.x + pool.radius;
+
+  const sampleY = pool.y - 50;
+  const yLeft = getBarrelSurfaceY(xLeft, sampleY, groundY, arenaKey);
+  const yMid = getBarrelSurfaceY(xMid, sampleY, groundY, arenaKey);
+  const yRight = getBarrelSurfaceY(xRight, sampleY, groundY, arenaKey);
+
+  const inRiver = (arenaKey === 'arena-3' && (yLeft >= 1280 || yRight >= 1280 || yMid >= 1280));
+  const inLava = (arenaKey === 'arena-4' && (yLeft >= 1390 || yRight >= 1390 || yMid >= 1390));
+  const inAcid = (arenaKey === 'arena-2' && (yLeft >= 1420 || yRight >= 1420 || yMid >= 1420));
+
+  if (yLeft === Infinity || yRight === Infinity || yMid === Infinity || inRiver || inLava || inAcid) {
+    return false;
+  }
+
+  // 3. Obliczenie kąta nachylenia podłoża i dopasowanie wysokości
+  const deltaY = yRight - yLeft;
+  const deltaX = pool.radius * 2;
+  pool.angle = Math.atan2(deltaY, deltaX);
+
+  // Wyrównanie wysokości do powierzchni terenu (z uwzględnieniem zagłębienia w misie krateru)
+  const avgY = (yLeft + yRight) * 0.5;
+  pool.y = Math.abs(yMid - avgY) > 2 ? (yMid * 0.6 + avgY * 0.4) : avgY;
+
+  return true;
 }
 
 /**
@@ -646,15 +822,22 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
     const inAcidLakeA2 = (arenaKey === 'arena-2' && surfaceY >= 1420);
 
     if (surfaceY !== Infinity && !inRiverA3 && !inLavaA4 && !inAcidLakeA2) {
-      hazardsState.acidPools.push({
+      const baseR = typeDef.poolRadius || 65;
+      const pool = {
         x: bx,
         y: surfaceY,
-        radius: typeDef.poolRadius || 65,
+        radius: baseR,
+        baseRadius: baseR,
+        angle: 0,
         timer: typeDef.poolDuration || 8.0,
         maxTimer: typeDef.poolDuration || 8.0,
         dps: typeDef.poolDps || 14.0,
         bubbleAnim: 0
-      });
+      };
+
+      if (fitAcidPoolToTerrain(pool, groundY, arenaKey)) {
+        hazardsState.acidPools.push(pool);
+      }
     }
   }
 
@@ -953,21 +1136,10 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     pool.timer -= dt;
     pool.bubbleAnim = (pool.bubbleAnim || 0) + dt * 4;
 
-    // Sprawdzenie realnego podłoża pod kałużą w każdej klatce:
-    const curFloor = getBarrelSurfaceY(pool.x, pool.y, groundY);
-    const inRiverA3 = (arenaId === 'arena-3' && curFloor >= 1280);
-    const inLavaA4 = (arenaId === 'arena-4' && curFloor >= 1390);
-    const inAcidLakeA2 = (arenaId === 'arena-2' && curFloor >= 1420);
-
-    if (curFloor === Infinity || inRiverA3 || inLavaA4 || inAcidLakeA2) {
-      // Podłoże zniknęło lub wpadło do rzeki/lawy/przepaści - kałuża znika natychmiast
+    // Dopasowanie do terenu, krawędzi platformy i skosów (oraz usunięcie jeśli podłoże runęło lub zostało < 14px)
+    if (!fitAcidPoolToTerrain(pool, groundY, arenaId)) {
       hazardsState.acidPools.splice(i, 1);
       continue;
-    }
-
-    if (curFloor > pool.y + 4) {
-      // Grunt zapadł się w krater lub platforma runęła: kałuża natychmiast opada na nowe dno!
-      pool.y = curFloor;
     }
 
     // Zadawanie ciągłych obrażeń postaciom i rozpuszczanie powalonych zombie
@@ -976,16 +1148,20 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       const cx = c.x + (c.w || 24) * 0.5;
       const cy = c.y + (c.h || 70);
 
-      if (Math.abs(cx - pool.x) <= pool.radius && Math.abs(cy - pool.y) <= 18) {
-        c.hp = Math.max(0, (c.hp !== undefined ? c.hp : 100) - pool.dps * dt);
+      const dx = cx - pool.x;
+      if (Math.abs(dx) <= pool.radius) {
+        const poolSurfaceAtCx = pool.y + dx * Math.tan(pool.angle || 0);
+        if (Math.abs(cy - poolSurfaceAtCx) <= 22) {
+          c.hp = Math.max(0, (c.hp !== undefined ? c.hp : 100) - pool.dps * dt);
 
-        if (c.isZombie && c.isDead) {
-          // Powalony zombie w kwasie natychmiast ulega rozpuszczeniu
-          c.hasHead = false;
-          c.decapitated = true;
-          c.reviveTimer = 0;
-          c.decayTimer = 15;
-          spawnBloodSpurt(cx, cy - 10, (Math.random() - 0.5) * 2, -2, 8, 1.0);
+          if (c.isZombie && c.isDead) {
+            // Powalony zombie w kwasie natychmiast ulega rozpuszczeniu
+            c.hasHead = false;
+            c.decapitated = true;
+            c.reviveTimer = 0;
+            c.decayTimer = 15;
+            spawnBloodSpurt(cx, cy - 10, (Math.random() - 0.5) * 2, -2, 8, 1.0);
+          }
         }
       }
     }
@@ -1132,4 +1308,6 @@ if (typeof window !== 'undefined') {
   window.damageBarrel = damageBarrel;
   window.detonateBarrel = detonateBarrel;
   window.getValidBarrelSpawnSurfaceY = getValidBarrelSpawnSurfaceY;
+  window.getAcidPoolSupportBounds = getAcidPoolSupportBounds;
+  window.fitAcidPoolToTerrain = fitAcidPoolToTerrain;
 }
