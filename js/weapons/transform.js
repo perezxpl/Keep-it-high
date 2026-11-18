@@ -103,7 +103,7 @@ export const WEAPONS = {
     auto: true,             // Ciągły strumień ognia przy trzymaniu spustu
     fireRate: 2,            // Strumień wypływający co 2 klatki (~30 klatek ognia / s)
     damage: 4,              // Ciągłe obrażenia bezpośrednie + DoT podpalenia
-    bulletSpeed: 20.5,      // Prędkość wylotowa ciekłego napalmu
+    bulletSpeed: 19.5,      // Prędkość wylotowa ciekłego napalmu
     spread: 0.055,          // Stożek rozproszenia płomieni
     crouchSpreadMult: 0.70,
     recoil: 0.25,           // Równomierny, pulsujący odrzut ciśnieniowy
