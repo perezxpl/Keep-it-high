@@ -19,7 +19,7 @@ import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { zombieState } from '../zombie/state.js';
 import { GROUND_Y } from '../world/state.js';
 
-export const FLAME_SPRITESHEET_URL = './assets/weapons/flame_spritesheet.svg?v=v444_flamethrower';
+export const FLAME_SPRITESHEET_URL = './assets/weapons/flame_spritesheet.svg?v=v489_liquid_napalm_continuous_stream';
 export const FLAME_CELL_SIZE = 128;
 export const FLAME_COLS = 8;
 export const FLAME_ROW_STREAM = 0;
@@ -983,14 +983,14 @@ export function drawFlamethrowerStreams(ctx, camera) {
       }
     }
 
-    // C) Warstwa 3: Ciśnieniowy rdzeń ciekłego napalmu (Pressurized Liquid Fuel Jet Ribbon)
+    // C) Warstwa 3: Masywna, lita struga ciekłego napalmu (Heavy Liquid Napalm Jet Hose)
     const corePoints = [];
     if (shooter?._lastFlameMuzzle && shooter._lastFlameMuzzle.timer > 0) {
       corePoints.push({ x: shooter._lastFlameMuzzle.x, y: shooter._lastFlameMuzzle.y });
     }
 
     for (const p of spineNodes) {
-      if ((p.life / p.maxLife) > 0.32) {
+      if ((p.life / p.maxLife) > 0.25) {
         corePoints.push({ x: p.x, y: p.y });
       }
     }
@@ -1000,53 +1000,73 @@ export function drawFlamethrowerStreams(ctx, camera) {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      ctx.beginPath();
-      ctx.moveTo(corePoints[0].x, corePoints[0].y);
-      for (let k = 1; k < corePoints.length - 1; k++) {
-        const xc = (corePoints[k].x + corePoints[k + 1].x) * 0.5;
-        const yc = (corePoints[k].y + corePoints[k + 1].y) * 0.5;
-        ctx.quadraticCurveTo(corePoints[k].x, corePoints[k].y, xc, yc);
-      }
-      const lastPt = corePoints[corePoints.length - 1];
-      ctx.lineTo(lastPt.x, lastPt.y);
+      const traceSpline = () => {
+        ctx.beginPath();
+        ctx.moveTo(corePoints[0].x, corePoints[0].y);
+        for (let k = 1; k < corePoints.length - 1; k++) {
+          const xc = (corePoints[k].x + corePoints[k + 1].x) * 0.5;
+          const yc = (corePoints[k].y + corePoints[k + 1].y) * 0.5;
+          ctx.quadraticCurveTo(corePoints[k].x, corePoints[k].y, xc, yc);
+        }
+        const lastPt = corePoints[corePoints.length - 1];
+        ctx.lineTo(lastPt.x, lastPt.y);
+      };
 
-      // Zewnętrzny płaszcz płonącego ciekłego żelu
+      // 1. Zewnętrzna gorąca poświata strugi (Deep fiery halo)
+      traceSpline();
+      ctx.strokeStyle = 'rgba(234, 88, 12, 0.45)';
+      ctx.lineWidth = 36;
+      ctx.stroke();
+
+      // 2. Główny lejący się płaszcz napalmu (Thick boiling orange gel)
+      traceSpline();
       ctx.strokeStyle = '#ea580c';
-      ctx.lineWidth = 7.5;
-      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = 22;
+      ctx.globalAlpha = 0.90;
       ctx.stroke();
 
-      // Płonąca warstwa napalmu
-      ctx.strokeStyle = '#fef08a';
-      ctx.lineWidth = 4.2;
-      ctx.globalAlpha = 0.95;
+      // 3. Płonąca złota ciecz (Boiling golden napalm core)
+      traceSpline();
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 12;
+      ctx.globalAlpha = 0.96;
       ctx.stroke();
 
-      // Biało-żółty lity ciśnieniowy rdzeń cieczy
+      // 4. Biało-żółty lity ciśnieniowy rdzeń napalmu (White-hot pressurized jet spine)
+      traceSpline();
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.0;
+      ctx.lineWidth = 5.0;
       ctx.globalAlpha = 1.0;
       ctx.stroke();
 
       ctx.restore();
     }
 
-    // D) Warstwa 4: Odrywające się lepkie krople ciekłego napalmu
+    // D) Warstwa 4: Odrywające się lepkie krople i skrzepy napalmu
     for (const p of droplets) {
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.angle);
-      const dropLen = Math.max(5.0, Math.hypot(p.vx, p.vy) * 0.45);
+      const dropLen = Math.max(7.0, Math.hypot(p.vx, p.vy) * 0.55);
 
+      // Płonący skrzep żelu
       ctx.fillStyle = '#ea580c';
       ctx.beginPath();
-      ctx.ellipse(0, 0, dropLen, p.radius, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, dropLen, p.radius * 1.3, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      // Jaskrawy płonący rdzeń
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.ellipse(dropLen * 0.2, 0, dropLen * 0.55, p.radius * 0.75, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Biała główka kropli
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(dropLen * 0.25, 0, dropLen * 0.45, p.radius * 0.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(dropLen * 0.35, 0, dropLen * 0.30, p.radius * 0.45, 0, 0, Math.PI * 2);
       ctx.fill();
+
       ctx.restore();
     }
   }
