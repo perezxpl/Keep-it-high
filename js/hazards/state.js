@@ -103,13 +103,13 @@ export const ARENA_BARREL_SPAWNS = {
     { type: 'TOXIC',     x: 2000, y: 944, id: 'a2_barrel_mid_catwalk' }// Pomost dolny
   ],
   // Arena 3 - Tajemnicza Dżungla
-  // Całkowity zakaz spawnowania w strefie centralnej (X: 1100..3300: rampy, pale, pylony, most, rzeka).
-  // Beczki wyłącznie na stałym, płaskim gruncie lewym i prawym (X: 220..1100 oraz X: 3300..4180).
+  // Całkowity zakaz spawnowania w strefie ramp, pali, pylonów, mostu i rzeki (X: 750..3650).
+  // Beczki wyłącznie na stałym, płaskim gruncie bazy Alfa (X: 420, 580) i bazy Bravo (X: 3820, 3980).
   'arena-3': [
-    { type: 'EXPLOSIVE', x: 480,  y: 1162, id: 'a3_barrel_flat_w1' },  // Płaski grunt zachodni (strefa bazy Alfa)
-    { type: 'EXPLOSIVE', x: 880,  y: 1162, id: 'a3_barrel_flat_w2' },  // Płaski grunt zachodni (przed wejściem na rampę)
-    { type: 'EXPLOSIVE', x: 3520, y: 1162, id: 'a3_barrel_flat_e1' },  // Płaski grunt wschodni (za zejściem z rampy)
-    { type: 'EXPLOSIVE', x: 3920, y: 1162, id: 'a3_barrel_flat_e2' }   // Płaski grunt wschodni (strefa bazy Bravo)
+    { type: 'EXPLOSIVE', x: 420,  y: 1162, id: 'a3_barrel_flat_w1' },  // Płaski grunt zachodni (strefa bazy Alfa)
+    { type: 'EXPLOSIVE', x: 580,  y: 1162, id: 'a3_barrel_flat_w2' },  // Płaski grunt zachodni (bezpieczna strefa bazy Alfa)
+    { type: 'EXPLOSIVE', x: 3820, y: 1162, id: 'a3_barrel_flat_e1' },  // Płaski grunt wschodni (bezpieczna strefa bazy Bravo)
+    { type: 'EXPLOSIVE', x: 3980, y: 1162, id: 'a3_barrel_flat_e2' }   // Płaski grunt wschodni (strefa bazy Bravo)
   ],
   // Arena 4 - Obsidian Caldera (Wulkan)
   'arena-4': [

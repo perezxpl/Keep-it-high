@@ -368,4 +368,57 @@ console.log('--- TEST 12: Dopasowanie kaluzy kwasu do dna wycietego krateru ---'
   console.log('PASS: Kaluza kwasu prawidlowo opada na dno wycietego krateru i zachowuje symetrie.');
 }
 
+console.log('--- TEST 13: Weryfikacja punktow spawnu na Arenie 3 (zakaz w strefie pali i mostu) ---');
+{
+  const { ARENA_BARREL_SPAWNS } = await import('../js/hazards/state.js');
+  const a3Spawns = ARENA_BARREL_SPAWNS['arena-3'];
+  assert.ok(Array.isArray(a3Spawns), 'ARENA_BARREL_SPAWNS dla arena-3 musi byc tablica');
+  assert.ok(a3Spawns.length > 0, 'Arena 3 powinna miec zdefiniowane punkty spawnu');
+
+  for (const sp of a3Spawns) {
+    assert.ok(
+      sp.x <= 750 || sp.x >= 3650,
+      `Punkt spawnu beczki X=${sp.x} na Arenie 3 znajduje sie w zabronionej strefie pali/ramp/mostu (750..3650)!`
+    );
+  }
+  console.log('PASS: Wszystkie predefiniowane punkty spawnu na Arenie 3 leza bezpiecznie w strefie baz z dala od pali.');
+}
+
+console.log('--- TEST 14: getValidBarrelSpawnSurfaceY na Arenie 3 twardo odrzuca strefy pali i ramp ---');
+{
+  const { getValidBarrelSpawnSurfaceY } = await import('../js/hazards/logic.js');
+
+  // Sprawdzamy strefy ramp i pali: x = 1140..1755 (lewe pale i rampa) oraz x = 880
+  const yInStilts = getValidBarrelSpawnSurfaceY(1400, 1100, 1380, 'arena-3');
+  assert.strictEqual(yInStilts, null, 'Spawn w palach lewej rampy (X=1400) musi byc bezwzglednie zablokowany');
+
+  const yAtOldPiling = getValidBarrelSpawnSurfaceY(880, 1162, 1380, 'arena-3');
+  assert.strictEqual(yAtOldPiling, null, 'Spawn w strefie X=880 musi byc zablokowany');
+
+  const yInBridge = getValidBarrelSpawnSurfaceY(2100, 900, 1380, 'arena-3');
+  assert.strictEqual(yInBridge, null, 'Spawn w srodku mostu (X=2100) musi byc zablokowany');
+
+  const yAtBaseAlfa = getValidBarrelSpawnSurfaceY(420, 1162, 1380, 'arena-3');
+  assert.ok(yAtBaseAlfa !== null, 'Spawn w bezpiecznej strefie bazy Alfa (X=420) powinien byc dozwolony');
+  console.log('PASS: getValidBarrelSpawnSurfaceY bezwzglednie blokuje strefy pali, mostu i ramp.');
+}
+
+console.log('--- TEST 15: resetArena czysci i poprawnie resetuje stan hazardsState ---');
+{
+  const { resetArena } = await import('../js/obstacles.js');
+  hazardsState.barrels.push(createBarrelInstance({ type: 'EXPLOSIVE', x: 500, y: 700 }));
+  hazardsState.acidPools.push({ x: 500, y: 700, radius: 40 });
+  hazardsState.currentArenaId = 'arena-3';
+
+  assert.ok(hazardsState.barrels.length > 0);
+  assert.ok(hazardsState.acidPools.length > 0);
+
+  resetArena();
+
+  assert.strictEqual(hazardsState.barrels.length, 0, 'Beczki musza zostac wyczyszczone przy resetArena');
+  assert.strictEqual(hazardsState.acidPools.length, 0, 'Kaluze kwasu musza zostac wyczyszczone przy resetArena');
+  assert.strictEqual(hazardsState.currentArenaId, null, 'currentArenaId musi byc zresetowany przy resetArena');
+  console.log('PASS: resetArena prawidlowo resetuje hazardsState.');
+}
+
 console.log('\n[SUKCES] Wszystkie testy fizyki i zachowania beczek oraz kwasu zakonczone sukcesem!');

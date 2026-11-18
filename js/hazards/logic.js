@@ -9,7 +9,7 @@
 
 import { hazardsState, BARREL_CONFIG, BARREL_TYPES, ARENA_BARREL_SPAWNS, createBarrelInstance } from './state.js';
 import { triggerScreenShake, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, carveGroundHole } from '../world.js';
-import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
+import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena, registerArenaResetCallback } from '../obstacles.js';
 import {
   spawnShockwaveRing,
   spawnConcreteDebris,
@@ -106,6 +106,7 @@ export function getBarrelSurfaceY(x, y, baseGroundY, arenaKeyOverride = null) {
     for (const plat of platformList) {
       if (!plat || plat.destroyed || plat.isDestroyed || plat.intact === false || plat.isWall || plat.solid === false || plat.isPlatform === false || (plat.hp !== undefined && plat.hp <= 0)) continue;
       if (plat.isFalling || plat.isStilt || plat.isDecorative || plat.isRope || plat.type === 'stilt' || plat.type === 'rope') continue;
+      if (!isA5 && (plat.isA5Block || plat.id === 'a5_base_floor')) continue;
       if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
 
       if (isA5 && plat.isA5Block) {
@@ -184,7 +185,7 @@ export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
 
   // 1. Twarda blokada strefy centralnej Areny 3 (rampy podejściowe, pale, pylony, most i rzeka)
   if (isA3) {
-    if (midX > 1100 && midX < 3300) {
+    if (midX > 750 && midX < 3650) {
       return null;
     }
     if (midX < 220 || midX > 4180) {
@@ -197,9 +198,9 @@ export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
   const xCenter = midX;
   const xRight = midX + halfW;
 
-  const yLeft = getBarrelSurfaceY(xLeft, testY, groundY);
-  const yCenter = getBarrelSurfaceY(xCenter, testY, groundY);
-  const yRight = getBarrelSurfaceY(xRight, testY, groundY);
+  const yLeft = getBarrelSurfaceY(xLeft, testY, groundY, arenaId);
+  const yCenter = getBarrelSurfaceY(xCenter, testY, groundY, arenaId);
+  const yRight = getBarrelSurfaceY(xRight, testY, groundY, arenaId);
 
   // 2. Weryfikacja obecności stałego podłoża pod całą szerokością beczki
   if (yLeft === Infinity || yCenter === Infinity || yRight === Infinity) {
@@ -252,6 +253,10 @@ export function getAcidPoolSupportBounds(centerX, surfaceY, maxRadius, groundY, 
   let supportLeftX = centerX - maxRadius;
   let supportRightX = centerX + maxRadius;
 
+  const normKey = String(arenaKey || '').toLowerCase().replace(/_/g, '-');
+  const isA3 = (normKey === 'arena-3' || normKey === 'arena-foundry');
+  const isA5 = (normKey === 'arena-5' || normKey === 'prefab-tower');
+
   const a5Plats = (typeof window !== 'undefined' && window.arena5State?.platforms) ? window.arena5State.platforms : null;
   const platformList = a5Plats ? [...ARENA_PLATFORMS, ...a5Plats] : ARENA_PLATFORMS;
 
@@ -260,7 +265,8 @@ export function getAcidPoolSupportBounds(centerX, surfaceY, maxRadius, groundY, 
     for (const plat of platformList) {
       if (!plat || plat.destroyed || plat.isDestroyed || plat.intact === false || plat.solid === false || plat.isPlatform === false || (plat.hp !== undefined && plat.hp <= 0)) continue;
       if (plat.isFalling || plat.isStilt || plat.isDecorative || plat.isRope || plat.type === 'stilt' || plat.type === 'rope') continue;
-      if (arenaKey === 'arena-3' && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
+      if (!isA5 && (plat.isA5Block || plat.id === 'a5_base_floor')) continue;
+      if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
       const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
       if (centerX >= bnds.minX - 4 && centerX <= bnds.maxX + 4) {
         let topY;
@@ -294,7 +300,9 @@ export function getAcidPoolSupportBounds(centerX, surfaceY, maxRadius, groundY, 
       for (const other of platformList) {
         if (!other || other === matchedPlatform || other.destroyed || other.isDestroyed || other.intact === false || other.solid === false || other.isPlatform === false || (other.hp !== undefined && other.hp <= 0)) continue;
         if (other.isFalling || other.isStilt || other.isDecorative || other.isRope || other.type === 'stilt' || other.type === 'rope') continue;
-        if (arenaKey === 'arena-3' && (other.id === 'ground_left' || other.id === 'ground_right' || other.id === 'riverbank_left_oval' || other.id === 'riverbank_right_oval' || other.id === 'world_boundary_left' || other.id === 'world_boundary_right')) continue;
+        if (other.type === 'metal_ramp_left' || other.type === 'metal_ramp_right' || other.isSlope || other.isRamp || other.isRampBlock) continue;
+        if (!isA5 && (other.isA5Block || other.id === 'a5_base_floor')) continue;
+        if (isA3 && (other.id === 'ground_left' || other.id === 'ground_right' || other.id === 'riverbank_left_oval' || other.id === 'riverbank_right_oval' || other.id === 'world_boundary_left' || other.id === 'world_boundary_right')) continue;
         const oBnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(other) : { minX: other.x, maxX: other.x + (other.w || 100) };
         const oY = (other.y !== undefined) ? other.y : (groundY - (other.relY || 0));
         if (Math.abs(surfaceY - oY) <= 8) {
@@ -1216,12 +1224,12 @@ export function spawnAirdropBarrel(arenaId, groundY = 800, combatants = []) {
   for (let attempt = 0; attempt < 25; attempt++) {
     let candX = 0;
     if (isA3) {
-      // Na Arenie 3 twardy zakaz spawnowania w strefie ramp, pali, pylonów, mostu i rzeki (X: 1100..3300)
-      // Beczki mogą pojawiać się wyłącznie na stałym, płaskim gruncie lewym (X: 220..1100) i prawym (X: 3300..4180)
+      // Na Arenie 3 twardy zakaz spawnowania w strefie ramp, pali, pylonów, mostu i rzeki (X: 750..3650)
+      // Beczki mogą pojawiać się wyłącznie na stałym, płaskim gruncie lewym (X: 240..720) i prawym (X: 3680..4160)
       const leftBank = Math.random() < 0.5;
       candX = leftBank
-        ? (220 + Math.random() * (1100 - 220))
-        : (3300 + Math.random() * (4180 - 3300));
+        ? (240 + Math.random() * (720 - 240))
+        : (3680 + Math.random() * (4160 - 3680));
     } else {
       candX = minX + Math.random() * (maxX - minX);
     }
@@ -1310,4 +1318,13 @@ if (typeof window !== 'undefined') {
   window.getValidBarrelSpawnSurfaceY = getValidBarrelSpawnSurfaceY;
   window.getAcidPoolSupportBounds = getAcidPoolSupportBounds;
   window.fitAcidPoolToTerrain = fitAcidPoolToTerrain;
+}
+
+if (typeof registerArenaResetCallback === 'function') {
+  registerArenaResetCallback(() => {
+    hazardsState.currentArenaId = null;
+    hazardsState.barrels.length = 0;
+    hazardsState.acidPools.length = 0;
+    hazardsState.airdropTimer = 28.0;
+  });
 }
