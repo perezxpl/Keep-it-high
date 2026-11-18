@@ -55,6 +55,69 @@ export function getFlameSpritesheet() {
 
 export const activeFlameStreams = [];
 export const activeSurfaceFires = [];
+export const activeImpactSplashes = [];
+
+/**
+ * Klasa rozbryzgu napalmu przy uderzeniu w ścianę / przeszkodę (Impact Splash)
+ */
+export class ImpactSplash {
+  constructor(x, y, nx, ny) {
+    this.x = x;
+    this.y = y;
+    this.nx = nx;
+    this.ny = ny;
+    this.angle = Math.atan2(ny, nx);
+    this.life = 14;
+    this.maxLife = 14;
+    this.dead = false;
+  }
+
+  update() {
+    this.life--;
+    if (this.life <= 0) {
+      this.dead = true;
+      return false;
+    }
+    return true;
+  }
+
+  draw(ctx) {
+    if (this.dead || !ctx) return;
+    const sheet = getFlameSpritesheet();
+    const progress = Math.max(0, Math.min(1.0, 1.0 - (this.life / this.maxLife)));
+    const frameIdx = 4 + Math.min(3, Math.floor(progress * 4));
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+
+    const drawSize = 34 + progress * 18;
+    if (sheet && sheet.complete && sheet.naturalWidth > 0) {
+      const sx = frameIdx * FLAME_CELL_SIZE;
+      const sy = FLAME_ROW_PILOT * FLAME_CELL_SIZE;
+      ctx.globalAlpha = Math.min(1.0, (this.life / this.maxLife) * 1.15);
+      ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize);
+    } else {
+      ctx.globalAlpha = Math.min(1.0, (this.life / this.maxLife));
+      ctx.fillStyle = '#ea580c';
+      ctx.beginPath();
+      ctx.arc(0, 0, drawSize * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(0, 0, drawSize * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+export function spawnImpactSplash(x, y, nx, ny) {
+  while (activeImpactSplashes.length >= 25) {
+    activeImpactSplashes.shift();
+  }
+  activeImpactSplashes.push(new ImpactSplash(x, y, nx, ny));
+}
 
 /**
  * Wyznacza odległość punktu (px, py) od odcinka (x1, y1)-(x2, y2)
@@ -108,22 +171,41 @@ function getSegmentAABBHitT(x1, y1, x2, y2, left, top, right, bottom) {
  * Klasa pojedynczej cząstki strumienia ognia (Flying Flame Particle)
  */
 export class FlameParticle {
-  constructor(shooter, startX, startY, angle, speed, weapon = null) {
+  constructor(shooter, startX, startY, angle, speed, weapon = null, options = {}) {
     this.shooter = shooter;
+    this.shooterId = shooter ? (shooter.id || (shooter.isBot ? `bot_${shooter.botIndex}` : 'player')) : 'p_default';
     this.team = shooter?.team || (shooter?.isBot ? 'BOT' : (shooter?.isRemote ? 'P2' : 'P1'));
     this.x = startX;
     this.y = startY;
     this.prevX = startX;
     this.prevY = startY;
     this.angle = angle;
-    this.baseSpeed = speed || 17;
-    this.vx = Math.cos(angle) * this.baseSpeed + (shooter?.vx || 0) * 0.18;
-    this.vy = Math.sin(angle) * this.baseSpeed + (shooter?.vy || 0) * 0.18;
+    this.baseSpeed = speed || 17.5;
+    this.vx = Math.cos(angle) * this.baseSpeed + (shooter?.vx || 0) * 0.16;
+    this.vy = Math.sin(angle) * this.baseSpeed + (shooter?.vy || 0) * 0.16;
 
-    this.life = 32 + Math.floor(Math.random() * 6);
+    this.isSpine = options.isSpine ?? false;
+    this.isDroplet = options.isDroplet ?? false;
+
+    if (this.isDroplet) {
+      this.life = 22 + Math.floor(Math.random() * 8);
+      this.radius = 3.2;
+      this.gravity = 0.22;
+      this.drag = 0.985;
+    } else if (this.isSpine) {
+      this.life = 34 + Math.floor(Math.random() * 4);
+      this.radius = 10;
+      this.gravity = 0.155;
+      this.drag = 0.982;
+    } else {
+      this.life = 30 + Math.floor(Math.random() * 6);
+      this.radius = 12;
+      this.gravity = 0.145;
+      this.drag = 0.980;
+    }
+
     this.maxLife = this.life;
     this.damage = weapon?.damage || 4;
-    this.radius = 8;
     this.dead = false;
     this.hitCombatants = new Set();
   }
@@ -135,9 +217,9 @@ export class FlameParticle {
     this.prevY = this.y;
 
     // 1. Fizyka lotu: grawitacja łukowa opadania napalmu i opór powietrza
-    this.vy += 0.145; // Grawitacja opadania strumienia cieczy
-    this.vx *= 0.982;
-    this.vy *= 0.982;
+    this.vy += this.gravity;
+    this.vx *= this.drag;
+    this.vy *= this.drag;
 
     this.x += this.vx;
     this.y += this.vy;
@@ -150,7 +232,13 @@ export class FlameParticle {
     }
 
     const progress = 1.0 - (this.life / this.maxLife);
-    this.radius = 8 + progress * 22; // Rozrost stożka ognia od 8px do 30px
+    if (this.isDroplet) {
+      this.radius = Math.max(1.8, 3.2 * (1.0 - progress * 0.4));
+    } else if (this.isSpine) {
+      this.radius = 10 + progress * 24;
+    } else {
+      this.radius = 12 + progress * 32;
+    }
 
     const obs = customObs || obstacles;
     let mapHit = checkRayObstacleCollision(this.prevX, this.prevY, this.x, this.y, groundY, obs, null);
@@ -290,8 +378,9 @@ export class FlameParticle {
       this.y = mapHit.y;
       this.dead = true;
 
-      // Tworzenie rozlanego ognia na powierzchni
+      // Tworzenie rozlanego ognia na powierzchni oraz korony rozbryzgu hydraulicznego
       spawnSurfaceFire(mapHit.x, mapHit.y, mapHit.nx || 0, mapHit.ny || -1, this.shooter, this.team);
+      spawnImpactSplash(mapHit.x, mapHit.y, mapHit.nx || 0, mapHit.ny || -1);
       return false;
     }
 
@@ -300,6 +389,7 @@ export class FlameParticle {
       this.y = groundY - 1;
       this.dead = true;
       spawnSurfaceFire(this.x, groundY, 0, -1, this.shooter, this.team);
+      spawnImpactSplash(this.x, groundY, 0, -1);
       return false;
     }
 
@@ -638,17 +728,35 @@ export function spawnFlamethrowerStream(shooter, muzzleX, muzzleY, theta, weapon
   const clearanceHit = checkRayObstacleCollision(chestX, chestY, muzzleX, muzzleY, effectiveGroundY, obstacles, null);
   if (clearanceHit) {
     spawnSurfaceFire(clearanceHit.x, clearanceHit.y, clearanceHit.nx || 0, clearanceHit.ny || -1, shooter, shooter.team);
+    spawnImpactSplash(clearanceHit.x, clearanceHit.y, clearanceHit.nx || 0, clearanceHit.ny || -1);
     return;
   }
 
-  const count = 2; // 2 cząstki na wystrzał dla gęstego, ciągłego strumienia
-  const spread = weapon?.spread || 0.055;
+  // Zapisujemy najświeższy punkt wylotu lufy dla ciągłego rdzenia cieczy
+  shooter._lastFlameMuzzle = { x: muzzleX, y: muzzleY, timer: 6 };
 
-  for (let k = 0; k < count; k++) {
-    const jitterAngle = theta + (Math.random() - 0.5) * spread;
-    const speed = (weapon?.bulletSpeed || 17) * (0.92 + Math.random() * 0.16);
-    const p = new FlameParticle(shooter, muzzleX, muzzleY, jitterAngle, speed, weapon);
-    activeFlameStreams.push(p);
+  const spread = weapon?.spread || 0.055;
+  const baseSpd = weapon?.bulletSpeed || 17.5;
+
+  // 1. Główny węzeł strugi ciekłego napalmu (Spine Node) - zwarty kierunek
+  const spineAngle = theta + (Math.random() - 0.5) * (spread * 0.35);
+  const spineSpd = baseSpd * (0.97 + Math.random() * 0.08);
+  const pSpine = new FlameParticle(shooter, muzzleX, muzzleY, spineAngle, spineSpd, weapon, { isSpine: true });
+  activeFlameStreams.push(pSpine);
+
+  // 2. Turbulentny kłąb płomieni (Combustion Billow) - szerszy płaszcz ognia
+  const billowAngle = theta + (Math.random() - 0.5) * (spread * 1.15);
+  const billowSpd = baseSpd * (0.88 + Math.random() * 0.16);
+  const pBillow = new FlameParticle(shooter, muzzleX, muzzleY, billowAngle, billowSpd, weapon, { isSpine: false });
+  activeFlameStreams.push(pBillow);
+
+  // 3. Lepka kropla ciekłego napalmu (co 2. strzał) - ciężki odryw cieczy
+  shooter._flameDropCount = (shooter._flameDropCount || 0) + 1;
+  if (shooter._flameDropCount % 2 === 0) {
+    const dropAngle = theta + (Math.random() - 0.5) * (spread * 0.65);
+    const dropSpd = baseSpd * (0.92 + Math.random() * 0.12);
+    const pDrop = new FlameParticle(shooter, muzzleX, muzzleY, dropAngle, dropSpd, weapon, { isDroplet: true });
+    activeFlameStreams.push(pDrop);
   }
 }
 
@@ -690,7 +798,16 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
     }
   }
 
-  // 2. Aktualizacja rozlanego ognia na powierzchniach
+  // 2. Aktualizacja rozbryzgów uderzeniowych
+  for (let i = activeImpactSplashes.length - 1; i >= 0; i--) {
+    const splash = activeImpactSplashes[i];
+    const alive = splash.update();
+    if (!alive || splash.dead) {
+      activeImpactSplashes.splice(i, 1);
+    }
+  }
+
+  // 3. Aktualizacja rozlanego ognia na powierzchniach
   for (let i = activeSurfaceFires.length - 1; i >= 0; i--) {
     const fire = activeSurfaceFires[i];
     const alive = fire.update(combatants, ball, groundY, customObs);
@@ -699,8 +816,18 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
     }
   }
 
-  // 3. Obsługa statusu podpalenia postaci (DoT palenia się)
+  // 4. Odliczanie timerów wylotu lufy
   const targets = Array.isArray(combatants) ? combatants : [];
+  for (const ch of targets) {
+    if (ch && ch._lastFlameMuzzle && ch._lastFlameMuzzle.timer > 0) {
+      ch._lastFlameMuzzle.timer--;
+    }
+  }
+  if (typeof window !== 'undefined' && window.player && window.player._lastFlameMuzzle && window.player._lastFlameMuzzle.timer > 0) {
+    window.player._lastFlameMuzzle.timer--;
+  }
+
+  // 5. Obsługa statusu podpalenia postaci (DoT palenia się)
   for (const ch of targets) {
     if (!ch) continue;
     const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
@@ -739,12 +866,189 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
 }
 
 /**
- * Renderowanie strumienia ognia w locie
+ * Renderowanie strumienia ciekłego napalmu w locie (Liquid Napalm Stream Pipeline)
+ * Warstwy:
+ * 1. Rozbryzgi uderzeniowe napalmu na przeszkodach (Impact Splashes)
+ * 2. Kłęby dymu i ciemny żar tła na czole strugi (Outer Soot & Smoke)
+ * 3. Zwarty, ryczący płaszcz ognia z interpolacją węzłów bez pustych luk (Combustion Mantle)
+ * 4. Ciśnieniowy, biało-żółty lity rdzeń ciekłego napalmu od wylotu lufy (Pressurized Liquid Fuel Jet Ribbon)
+ * 5. Odrywające się lepkie krople ciekłego żelu z trajektorią grawitacyjną (Viscous Droplets)
  */
 export function drawFlamethrowerStreams(ctx, camera) {
-  if (!ctx || activeFlameStreams.length === 0) return;
+  if (!ctx || (activeFlameStreams.length === 0 && activeImpactSplashes.length === 0)) return;
+
+  const sheet = getFlameSpritesheet();
+  const hasSheet = !!(sheet && sheet.complete && sheet.naturalWidth > 0);
+
+  // 1. Rysowanie rozbryzgów uderzeniowych na przeszkodach
+  for (const splash of activeImpactSplashes) {
+    splash.draw(ctx);
+  }
+
+  if (activeFlameStreams.length === 0) return;
+
+  // 2. Grupowanie cząstek według strzelca dla zachowania niezależnych, ciągłych strug
+  const streamGroups = new Map();
   for (const p of activeFlameStreams) {
-    p.draw(ctx);
+    if (p.dead) continue;
+    const sId = p.shooterId || 'default';
+    let grp = streamGroups.get(sId);
+    if (!grp) {
+      grp = { shooter: p.shooter, particles: [] };
+      streamGroups.set(sId, grp);
+    }
+    grp.particles.push(p);
+  }
+
+  for (const { shooter, particles } of streamGroups.values()) {
+    const spineNodes = [];
+    const droplets = [];
+    const billows = [];
+
+    for (const p of particles) {
+      if (p.isDroplet) droplets.push(p);
+      else if (p.isSpine) spineNodes.push(p);
+      else billows.push(p);
+    }
+
+    // Sortowanie węzłów strugi od najmłodszych (blisko lufy) do najstarszych (czoło strugi)
+    spineNodes.sort((a, b) => b.life - a.life);
+
+    // A) Warstwa 1: Kłęby dymu i ciemny żar tła (starsze cząstki na czole strugi)
+    for (const p of billows) {
+      const progress = 1.0 - (p.life / p.maxLife);
+      if (progress > 0.42) {
+        const frameIdx = Math.min(7, Math.floor(progress * 8));
+        const drawSize = p.radius * 2.3;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        if (hasSheet) {
+          const sx = frameIdx * FLAME_CELL_SIZE;
+          const sy = FLAME_ROW_STREAM * FLAME_CELL_SIZE;
+          ctx.globalAlpha = Math.min(0.60, (p.life / p.maxLife) * 1.1);
+          ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize);
+        }
+        ctx.restore();
+      }
+    }
+
+    // B) Warstwa 2: Zwarty, ryczący płaszcz turbulentnego ognia (Combustion Mantle)
+    for (let i = 0; i < spineNodes.length; i++) {
+      const p = spineNodes[i];
+      p.draw(ctx);
+
+      // Interpolacja kłębu ognia pomiędzy sąsiednimi węzłami dla wyeliminowania pustych luk
+      if (i < spineNodes.length - 1) {
+        const nextP = spineNodes[i + 1];
+        const dx = nextP.x - p.x;
+        const dy = nextP.y - p.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > p.radius * 0.75) {
+          const midX = (p.x + nextP.x) * 0.5;
+          const midY = (p.y + nextP.y) * 0.5;
+          const midRad = (p.radius + nextP.radius) * 0.5;
+          const midLife = (p.life + nextP.life) * 0.5;
+          const midMaxLife = (p.maxLife + nextP.maxLife) * 0.5;
+          const progress = Math.max(0, Math.min(1.0, 1.0 - (midLife / midMaxLife)));
+          const frameIdx = Math.min(7, Math.floor(progress * 8));
+          const drawSize = midRad * 2.1;
+
+          ctx.save();
+          ctx.translate(midX, midY);
+          ctx.rotate(p.angle);
+          if (hasSheet) {
+            const sx = frameIdx * FLAME_CELL_SIZE;
+            const sy = FLAME_ROW_STREAM * FLAME_CELL_SIZE;
+            ctx.globalAlpha = Math.min(0.85, (midLife / midMaxLife) * 1.2);
+            ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize);
+          } else {
+            ctx.globalAlpha = Math.min(0.85, (midLife / midMaxLife));
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            ctx.arc(0, 0, midRad, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+    }
+
+    // Uzupełnienie płaszcza cząstkami turbulentnymi (billow)
+    for (const p of billows) {
+      const progress = 1.0 - (p.life / p.maxLife);
+      if (progress <= 0.42) {
+        p.draw(ctx);
+      }
+    }
+
+    // C) Warstwa 3: Ciśnieniowy rdzeń ciekłego napalmu (Pressurized Liquid Fuel Jet Ribbon)
+    const corePoints = [];
+    if (shooter?._lastFlameMuzzle && shooter._lastFlameMuzzle.timer > 0) {
+      corePoints.push({ x: shooter._lastFlameMuzzle.x, y: shooter._lastFlameMuzzle.y });
+    }
+
+    for (const p of spineNodes) {
+      if ((p.life / p.maxLife) > 0.32) {
+        corePoints.push({ x: p.x, y: p.y });
+      }
+    }
+
+    if (corePoints.length >= 2) {
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(corePoints[0].x, corePoints[0].y);
+      for (let k = 1; k < corePoints.length - 1; k++) {
+        const xc = (corePoints[k].x + corePoints[k + 1].x) * 0.5;
+        const yc = (corePoints[k].y + corePoints[k + 1].y) * 0.5;
+        ctx.quadraticCurveTo(corePoints[k].x, corePoints[k].y, xc, yc);
+      }
+      const lastPt = corePoints[corePoints.length - 1];
+      ctx.lineTo(lastPt.x, lastPt.y);
+
+      // Zewnętrzny płaszcz płonącego ciekłego żelu
+      ctx.strokeStyle = '#ea580c';
+      ctx.lineWidth = 7.5;
+      ctx.globalAlpha = 0.85;
+      ctx.stroke();
+
+      // Płonąca warstwa napalmu
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 4.2;
+      ctx.globalAlpha = 0.95;
+      ctx.stroke();
+
+      // Biało-żółty lity ciśnieniowy rdzeń cieczy
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.0;
+      ctx.globalAlpha = 1.0;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // D) Warstwa 4: Odrywające się lepkie krople ciekłego napalmu
+    for (const p of droplets) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      const dropLen = Math.max(5.0, Math.hypot(p.vx, p.vy) * 0.45);
+
+      ctx.fillStyle = '#ea580c';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, dropLen, p.radius, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(dropLen * 0.25, 0, dropLen * 0.45, p.radius * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 }
 
@@ -853,4 +1157,5 @@ export function drawPilotFlame(ctx, muzzleX, muzzleY, angle, facing = 1) {
 export function clearFlamethrowerState() {
   activeFlameStreams.length = 0;
   activeSurfaceFires.length = 0;
+  activeImpactSplashes.length = 0;
 }
