@@ -28,7 +28,7 @@ import {
   spawnRicochetSparks
 } from './particles.js';
 import { spawnRpgRocket } from './weapons/rocket.js';
-import { spawnFlamethrowerStream, updateFlamethrower } from './weapons/flamethrower.js';
+import { spawnFlamethrowerStream, spawnSurfaceFire, updateFlamethrower } from './weapons/flamethrower.js';
 import { playSound, playWeaponFireSound } from './audio/index.js';
 import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
 import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRenderer.js';
@@ -715,8 +715,8 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
         return true;
       }
       if (weapon.id === 'FLAMETHROWER' || weapon.isFlamethrower) {
-        const hitAng = theta || Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
-        spawnFlamethrowerStream(shooter, wallHit.x, wallHit.y, hitAng, weapon);
+        // Blokada ognia przez przeszkodę: płomień uderza w ścianę od strony strzelca i nie przenika dalej
+        spawnSurfaceFire(wallHit.x, wallHit.y, wallHit.nx || 0, wallHit.ny || -1, shooter, shooter.team);
         if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
         return true;
       }

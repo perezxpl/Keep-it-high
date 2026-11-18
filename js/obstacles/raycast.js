@@ -261,14 +261,16 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
       if (!plat) continue;
 
       // W Arenie 3 zniszczalne segmenty (most, kładki w koronach, rampy, płyty snajperskie, podesty wież)
-      // są w całości i precyzyjnie obsługiwane przez activeArena.onBulletHit() wraz z fizyką i cząstkami!
-      if (isA3 && (plat.isBridgeBlock || plat.isRampBlock || plat.isCanopyBlock || plat.isSniperSlab || plat.isTowerBlock)) {
+      // są delegowane do activeArena.onBulletHit() dla pocisków (bulletObj),
+      // natomiast dla testów promieni, weryfikacji przeszkód i ognia (bulletObj === null) stanowią pełną przeszkodę!
+      if (isA3 && bulletObj && (plat.isBridgeBlock || plat.isRampBlock || plat.isCanopyBlock || plat.isSniperSlab || plat.isTowerBlock)) {
         continue;
       }
 
-      // W Arenie 5 zniszczalne klocki wieży są w całości obsługiwane przez activeArena.onBulletHit()
+      // W Arenie 5 zniszczalne klocki wieży są delegowane do activeArena.onBulletHit() dla pocisków,
+      // natomiast dla promieni i weryfikacji przeszkód (bulletObj === null) stanowią litą przeszkodę!
       const isA5 = (curArenaObj?.id === 'arena-5' || activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
-      if (isA5 && plat.isA5Block) {
+      if (isA5 && bulletObj && plat.isA5Block) {
         continue;
       }
 
@@ -400,6 +402,7 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
   const obsList = extraObstacles || obstacles;
   if (Array.isArray(obsList)) {
     for (const obs of obsList) {
+      if (!obs) continue;
       const oType = normalizeObstacleType(obs.type);
       if (oType === 'sandbags' || oType === 'ammo_depot') {
         const left = obs.x;
@@ -407,13 +410,20 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         const top = groundY - obs.h;
         const bottom = groundY;
         const hit = getSegmentAABBIntersection(x1, y1, x2, y2, left, top, right, bottom);
-        recordHit(hit);
+        recordHit(hit, bType => bType || 'barricade');
       } else if (obs.type === 'hedgehog') {
         const cx = obs.x;
         const r = (obs.size || 30) / 2;
         const cy = groundY - r;
         const hit = getSegmentCircleIntersection(x1, y1, x2, y2, cx, cy, r);
-        recordHit(hit);
+        recordHit(hit, 'hedgehog');
+      } else if (obs.solid || (obs.w && obs.h)) {
+        const left = obs.x !== undefined ? obs.x : 0;
+        const right = left + (obs.w || 40);
+        const top = obs.y !== undefined ? obs.y : (groundY - (obs.relY || obs.h || 40));
+        const bottom = obs.y !== undefined ? (obs.y + (obs.h || 40)) : groundY;
+        const hit = getSegmentAABBIntersection(x1, y1, x2, y2, left, top, right, bottom);
+        recordHit(hit, obs.id || obs.type || 'obstacle');
       }
     }
   }

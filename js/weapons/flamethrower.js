@@ -15,6 +15,9 @@ import { getActiveArena } from '../arenas/index.js';
 import { ARENA_LEFT, ARENA_RIGHT } from '../config.js';
 import { addDynamicLight, LIGHT_PRESETS } from '../lighting/index.js';
 import { playSound } from '../audio/index.js';
+import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
+import { zombieState } from '../zombie/state.js';
+import { GROUND_Y } from '../world/state.js';
 
 export const FLAME_SPRITESHEET_URL = './assets/weapons/flame_spritesheet.svg?v=v444_flamethrower';
 export const FLAME_CELL_SIZE = 128;
@@ -150,7 +153,33 @@ export class FlameParticle {
     this.radius = 8 + progress * 22; // Rozrost stożka ognia od 8px do 30px
 
     const obs = customObs || obstacles;
-    const mapHit = checkRayObstacleCollision(this.prevX, this.prevY, this.x, this.y, groundY, obs, null);
+    let mapHit = checkRayObstacleCollision(this.prevX, this.prevY, this.x, this.y, groundY, obs, null);
+
+    // Integracja ze zniszczalnymi elementami specyficznymi dla areny (np. klocki wieży w A5, most w A3)
+    const activeArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+    if (!mapHit && activeArena && typeof activeArena.onBulletHit === 'function') {
+      const dummyHit = {
+        x: this.x,
+        y: this.y,
+        prevX: this.prevX,
+        prevY: this.prevY,
+        vx: this.vx,
+        vy: this.vy,
+        damage: this.damage,
+        shooter: this.shooter
+      };
+      if (activeArena.onBulletHit(dummyHit)) {
+        mapHit = {
+          hit: true,
+          t: 0.5,
+          x: this.x,
+          y: this.y,
+          nx: -Math.sign(this.vx || 1),
+          ny: 0
+        };
+      }
+    }
+
     const endX = mapHit ? mapHit.x : this.x;
     const endY = mapHit ? mapHit.y : this.y;
     const maxT = mapHit ? mapHit.t : 1.0;
@@ -167,17 +196,24 @@ export class FlameParticle {
       }
     }
 
-    // 3. Kolizje z postaciami (Gracze i boty)
+    // 3. Kolizje z postaciami (Gracze, boty i zombie)
     const targets = Array.isArray(combatants) ? combatants : [];
     const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
       (deathmatchState && deathmatchState.mode === 'FFA') ||
       (deathmatchConfig && deathmatchConfig.mode === 'FFA');
 
     for (const ch of targets) {
-      if (!ch || ch === this.shooter || ch.isDead) continue;
-      if (ch.isBot && !ch.active) continue;
-      if (!isFFA && this.shooter && this.shooter.team && ch.team && this.shooter.team === ch.team) continue;
-      if (ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) continue;
+      if (!ch || ch === this.shooter) continue;
+      const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
+      if (ch.isZombie) {
+        // Poprawny cel: żywy zombie, wstający zombie lub powalony z głową
+        if (ch.isDead && !isLyingZombie) continue;
+      } else {
+        if (ch.isDead) continue;
+        if (ch.isBot && !ch.active) continue;
+      }
+      if (!isFFA && !ch.isZombie && this.shooter && this.shooter.team && ch.team && this.shooter.team === ch.team) continue;
+      if (!ch.isZombie && ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) continue;
       if (this.hitCombatants.has(ch)) continue;
 
       const hitW = ch.w || 24;
@@ -187,38 +223,60 @@ export class FlameParticle {
       let chTop = ch.y - 20;
       let chBottom = ch.y + hitH;
 
-      if (ch.isProne || ch.staggerTimer > 0) {
+      if (ch.isProne || ch.staggerTimer > 0 || isLyingZombie) {
         chTop = ch.y + hitH - 24;
         chBottom = ch.y + hitH + 2;
         chLeft = ch.x - (ch.facing === 1 ? 14 : 38);
         chRight = ch.x + hitW + (ch.facing === 1 ? 38 : 14);
+      } else if (ch.isZombie && ch.riseTimer > 0) {
+        chTop = ch.y + hitH - 52;
+        chBottom = ch.y + hitH;
       } else if (ch.isCrouching) {
         chTop = ch.y + 12;
       }
 
       const hitT = getSegmentAABBHitT(this.prevX, this.prevY, this.x, this.y, chLeft, chTop, chRight, chBottom);
       if (hitT !== null && hitT <= maxT) {
-        this.hitCombatants.add(ch);
-
-        // Obrażenia bezpośrednie od strumienia płomieni
-        ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - this.damage);
-        ch.lastAttacker = this.shooter;
-        ch.lastAttackerTimer = 240;
-
-        // Podpalenie postaci (DoT palenia napalmem)
-        igniteCombatant(ch, this.shooter, 100);
-
-        // Odrzut kinetyczny celu
-        ch.vx += this.vx * 0.035;
-
-        // Krótki rozbryzg krwi/iskier
-        if (Math.random() < 0.35) {
-          spawnBloodSpurt(ch.x + hitW * 0.5, ch.y + hitH * 0.4, this.vx * 0.2, -1.2, 4, 0.7);
+        // Blokada ognia przez przeszkodę: sprawdzamy czy przeszkoda nie stoi między cząstką a celem
+        const losHit = checkRayObstacleCollision(this.prevX, this.prevY, ch.x + hitW * 0.5, ch.y + hitH * 0.45, groundY, obs, null);
+        if (losHit && losHit.t < 0.92) {
+          continue;
         }
 
-        // Zgon od płomieni
-        if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying) {
-          handleFireDeath(ch, this.shooter, groundY);
+        this.hitCombatants.add(ch);
+
+        if (isLyingZombie) {
+          // Zadawanie obrażeń powalonemu zombie (spalanie leżącego ciała)
+          ch.downedHp = (ch.downedHp !== undefined ? ch.downedHp : 60) - this.damage * 1.5;
+          igniteCombatant(ch, this.shooter, 100);
+          if (ch.downedHp <= 0) {
+            handleZombieFireDeath(ch, this.shooter, groundY, true);
+          }
+        } else {
+          // Obrażenia bezpośrednie od strumienia płomieni dla żywych postaci i zombie
+          ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - this.damage);
+          ch.lastAttacker = this.shooter;
+          ch.lastAttackerTimer = 240;
+
+          // Podpalenie postaci (DoT palenia napalmem)
+          igniteCombatant(ch, this.shooter, 100);
+
+          // Odrzut kinetyczny celu
+          ch.vx += this.vx * 0.035;
+
+          // Krótki rozbryzg krwi/iskier
+          if (Math.random() < 0.35) {
+            spawnBloodSpurt(ch.x + hitW * 0.5, ch.y + hitH * 0.4, this.vx * 0.2, -1.2, 4, 0.7);
+          }
+
+          // Zgon od płomieni
+          if (ch.hp <= 0) {
+            if (ch.isZombie) {
+              handleZombieFireDeath(ch, this.shooter, groundY, false);
+            } else if (!ch.isDead && !ch.isAcidDying) {
+              handleFireDeath(ch, this.shooter, groundY);
+            }
+          }
         }
 
         // Cząstka traci część energii przy uderzeniu w ciało
@@ -302,7 +360,7 @@ export class SurfaceFire {
     this.dead = false;
   }
 
-  update(combatants, ball) {
+  update(combatants, ball, groundY = 500, customObs = null) {
     if (this.dead) return false;
 
     this.life--;
@@ -344,35 +402,59 @@ export class SurfaceFire {
     const fireRight = this.x + halfW;
     const fireTop = this.y - 28;
     const fireBottom = this.y + 4;
+    const obs = customObs || obstacles;
 
     for (const ch of targets) {
-      if (!ch || ch.isDead) continue;
-      if (ch.isBot && !ch.active) continue;
-      if (!isFFA && this.shooter && this.shooter.team && ch.team && this.shooter.team === ch.team) continue;
-      if (ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) continue;
+      if (!ch) continue;
+      const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
+      if (ch.isZombie) {
+        if (ch.isDead && !isLyingZombie) continue;
+      } else {
+        if (ch.isDead) continue;
+        if (ch.isBot && !ch.active) continue;
+      }
+      if (!isFFA && !ch.isZombie && this.shooter && this.shooter.team && ch.team && this.shooter.team === ch.team) continue;
+      if (!ch.isZombie && ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) continue;
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;
-      const chLeft = ch.x;
-      const chRight = ch.x + hitW;
-      const chTop = ch.y;
+      const chLeft = isLyingZombie ? ch.x - (ch.facing === 1 ? 14 : 38) : ch.x;
+      const chRight = isLyingZombie ? ch.x + hitW + (ch.facing === 1 ? 38 : 14) : ch.x + hitW;
+      const chTop = isLyingZombie ? ch.y + hitH - 24 : ch.y;
       const chBottom = ch.y + hitH;
 
       // Sprawdzenie nachodzenia AABB postaci na strefę ognia
       const overlaps = !(chRight < fireLeft || chLeft > fireRight || chBottom < fireTop || chTop > fireBottom);
       if (overlaps) {
+        // Blokada ognia przez przeszkodę: kałuża ognia nie rani postaci za ścianą
+        const wallBetween = checkRayObstacleCollision(this.x, this.y - 6, ch.x + hitW * 0.5, ch.y + hitH * 0.45, groundY, obs, null);
+        if (wallBetween && wallBetween.t < 0.92) {
+          continue;
+        }
+
         // Podpalenie postaci
         igniteCombatant(ch, this.shooter, 90);
 
         if (!this.damageCooldown.has(ch)) {
           this.damageCooldown.set(ch, 11); // Tick obrażeń co 11 klatek (~5.5 ticków/s)
           const fireTickDmg = 4;
-          ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - fireTickDmg);
-          ch.lastAttacker = this.shooter;
-          ch.lastAttackerTimer = 240;
+          if (isLyingZombie) {
+            ch.downedHp = (ch.downedHp !== undefined ? ch.downedHp : 60) - fireTickDmg * 1.5;
+            if (ch.downedHp <= 0) {
+              handleZombieFireDeath(ch, this.shooter, groundY, true);
+            }
+          } else {
+            ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - fireTickDmg);
+            ch.lastAttacker = this.shooter;
+            ch.lastAttackerTimer = 240;
 
-          if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying) {
-            handleFireDeath(ch, this.shooter, this.y);
+            if (ch.hp <= 0) {
+              if (ch.isZombie) {
+                handleZombieFireDeath(ch, this.shooter, this.y, false);
+              } else if (!ch.isDead && !ch.isAcidDying) {
+                handleFireDeath(ch, this.shooter, this.y);
+              }
+            }
           }
         }
       }
@@ -450,9 +532,73 @@ export function igniteCombatant(combatant, attacker, durationFrames = 100) {
 }
 
 /**
+ * Obsługa definitywnego spalenia zombie na popiół
+ */
+export function handleZombieFireDeath(z, killer, groundY, wasDowned = false) {
+  if (!z) return;
+  z.isDead = true;
+  z.decapitated = true; // Dekapitacja w logice zombie blokuje ponowne powstanie (brak reviveTimer)
+  z.hasHead = false;
+  z.reviveTimer = 0;
+  z.decayTimer = 0;
+  z.hp = 0;
+  z.downedHp = 0;
+  z.killer = killer || { name: 'PŁOMIENIE', isSelf: false };
+  z.corpseFloorY = groundY;
+  z.isBurnedToAsh = true;
+  z.deathHitPoint = { x: z.x + (z.w || 24) * 0.5, y: z.y + (z.h || 70) * 0.4 };
+  z.bleedTimer = 40;
+  z.deathImpulse = { vx: (z.facing || 1) * 2.0, vy: -1.8 };
+
+  spawnBloodSpurt(z.x + (z.w || 24) * 0.5, z.y + (z.h || 70) * 0.4, 0, -2.0, 18, 1.2);
+  triggerScreenShake(6);
+
+  if (typeof triggerCombatFeedBanner === 'function') {
+    const msg = wasDowned
+      ? '[SPALENIE] POWALONY ZOMBIE SPALONY NA POPIÓŁ!'
+      : '[SPALENIE] ZOMBIE SPALONY NA POPIÓŁ!';
+    triggerCombatFeedBanner('KILL', msg);
+  }
+
+  if (typeof window !== 'undefined') {
+    if (typeof window.recordKill === 'function' && killer === window.player) {
+      window.recordKill();
+    }
+    if (typeof window.registerKillstreakKill === 'function' && killer === window.player) {
+      window.registerKillstreakKill();
+    }
+    if (zombieState && zombieState.stats) {
+      zombieState.stats.killed = (zombieState.stats.killed || 0) + 1;
+      zombieState.stats.decapitations = (zombieState.stats.decapitations || 0) + 1;
+    }
+  }
+
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+  const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || (netState && netState.isConnected));
+  const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+    ? window.isMatchHost()
+    : Boolean(netState && netState.isHost);
+
+  if (isNetConnected && !isNetHost) {
+    if (typeof window.sendDamageEvent === 'function') {
+      window.sendDamageEvent({
+        target: 'zombie',
+        zombieId: z.id,
+        damage: 999,
+        isHeadshot: true,
+        attackerId: killer?.id
+      });
+    }
+  }
+}
+
+/**
  * Obsługa zgonu postaci od ognia (rozczłonkowanie / okopcenie / impuls)
  */
 function handleFireDeath(ch, killer, groundY) {
+  if (ch.isZombie) {
+    return handleZombieFireDeath(ch, killer, groundY, false);
+  }
   ch.isDead = true;
   ch.killer = killer || { name: 'PŁOMIENIE', isSelf: false };
   ch.respawnTimer = 180;
@@ -481,6 +627,19 @@ function handleFireDeath(ch, killer, groundY) {
  */
 export function spawnFlamethrowerStream(shooter, muzzleX, muzzleY, theta, weapon) {
   if (!shooter) return;
+
+  const effectiveGroundY = (typeof shooter.groundY === 'number' && shooter.groundY > 0)
+    ? shooter.groundY
+    : (typeof GROUND_Y === 'number' && GROUND_Y > 0 ? GROUND_Y : 500);
+
+  // Weryfikacja: nie pozwalamy ziać ogniem przez przeszkody, gdy wylot styka się ze ścianą
+  const chestX = shooter.x + (shooter.w || 24) * 0.5;
+  const chestY = shooter.y + (shooter.h || 70) * 0.35;
+  const clearanceHit = checkRayObstacleCollision(chestX, chestY, muzzleX, muzzleY, effectiveGroundY, obstacles, null);
+  if (clearanceHit) {
+    spawnSurfaceFire(clearanceHit.x, clearanceHit.y, clearanceHit.nx || 0, clearanceHit.ny || -1, shooter, shooter.team);
+    return;
+  }
 
   const count = 2; // 2 cząstki na wystrzał dla gęstego, ciągłego strumienia
   const spread = weapon?.spread || 0.055;
@@ -534,7 +693,7 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
   // 2. Aktualizacja rozlanego ognia na powierzchniach
   for (let i = activeSurfaceFires.length - 1; i >= 0; i--) {
     const fire = activeSurfaceFires[i];
-    const alive = fire.update(combatants, ball);
+    const alive = fire.update(combatants, ball, groundY, customObs);
     if (!alive || fire.dead) {
       activeSurfaceFires.splice(i, 1);
     }
@@ -543,13 +702,31 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
   // 3. Obsługa statusu podpalenia postaci (DoT palenia się)
   const targets = Array.isArray(combatants) ? combatants : [];
   for (const ch of targets) {
-    if (!ch || ch.isDead) continue;
+    if (!ch) continue;
+    const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
+    if (ch.isZombie) {
+      if (ch.isDead && !isLyingZombie) continue;
+    } else {
+      if (ch.isDead) continue;
+    }
+
     if (ch.burnTimer && ch.burnTimer > 0) {
       ch.burnTimer--;
       if (ch.burnTimer % 15 === 0) {
-        ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - 2);
-        if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying) {
-          handleFireDeath(ch, ch.burnAttacker, groundY);
+        if (isLyingZombie) {
+          ch.downedHp = (ch.downedHp !== undefined ? ch.downedHp : 60) - 3;
+          if (ch.downedHp <= 0) {
+            handleZombieFireDeath(ch, ch.burnAttacker, groundY, true);
+          }
+        } else {
+          ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - 2);
+          if (ch.hp <= 0) {
+            if (ch.isZombie) {
+              handleZombieFireDeath(ch, ch.burnAttacker, groundY, false);
+            } else if (!ch.isDead && !ch.isAcidDying) {
+              handleFireDeath(ch, ch.burnAttacker, groundY);
+            }
+          }
         }
       }
     }
@@ -589,12 +766,20 @@ export function drawBurningEffects(ctx, combatants, ball) {
   const sheet = getFlameSpritesheet();
   const now = performance.now() * 0.012;
 
-  // Płomienie na ciele postaci
+  // Płomienie na ciele postaci (w tym zombie)
   const targets = Array.isArray(combatants) ? combatants : [];
   for (const ch of targets) {
-    if (!ch || ch.isDead || !ch.burnTimer || ch.burnTimer <= 0) continue;
+    if (!ch) continue;
+    const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
+    if (ch.isZombie) {
+      if (ch.isDead && !isLyingZombie) continue;
+    } else {
+      if (ch.isDead) continue;
+    }
+    if (!ch.burnTimer || ch.burnTimer <= 0) continue;
+
     const cx = ch.x + (ch.w || 24) * 0.5;
-    const cy = ch.y + (ch.h || 70) * 0.45;
+    const cy = isLyingZombie ? ch.y + (ch.h || 70) - 10 : ch.y + (ch.h || 70) * 0.45;
     const flicker = Math.sin(now + ch.x) * 2;
 
     ctx.save();
