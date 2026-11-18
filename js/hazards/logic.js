@@ -105,6 +105,7 @@ export function getBarrelSurfaceY(x, y, baseGroundY) {
   if (Array.isArray(platformList)) {
     for (const plat of platformList) {
       if (!plat || plat.destroyed || plat.isDestroyed || plat.intact === false || plat.isWall || plat.solid === false || plat.isPlatform === false || (plat.hp !== undefined && plat.hp <= 0)) continue;
+      if (plat.isFalling || plat.isStilt || plat.isDecorative || plat.isRope || plat.type === 'stilt' || plat.type === 'rope') continue;
       if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
 
       if (isA5 && plat.isA5Block) {
@@ -166,6 +167,81 @@ export function getBarrelSurfaceY(x, y, baseGroundY) {
   }
 
   return floor;
+}
+
+/**
+ * Weryfikuje i oblicza poprawną wysokość podłoża do utworzenia nowej beczki.
+ * Zasady:
+ * - Pełne podparcie pod lewą krawędzią (x - W/2), środkiem (x) oraz prawą krawędzią (x + W/2)
+ * - Różnica wysokości Math.abs(yLeft - yRight) <= 6 (zakaz wiszenia na krawędziach i stromiznach)
+ * - Zakaz spawnowania na palach (stilts), linach, dekoracjach i zniszczonych segmentach (!intact)
+ * - Na Arenie 3: CAŁKOWITY ZAKAZ spawnowania w strefie centralnej X: 1100..3300 (rampy, pale, pylony, most, rzeka)
+ *   Beczki mogą pojawiać się wyłącznie na stałym, płaskim gruncie (X: 220..1100 oraz X: 3300..4180)
+ */
+export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
+  const normArena = String(arenaId || '').toLowerCase().replace(/_/g, '-');
+  const isA3 = (normArena === 'arena-3' || normArena === 'arena-foundry');
+
+  // 1. Twarda blokada strefy centralnej Areny 3 (rampy podejściowe, pale, pylony, most i rzeka)
+  if (isA3) {
+    if (midX > 1100 && midX < 3300) {
+      return null;
+    }
+    if (midX < 220 || midX > 4180) {
+      return null;
+    }
+  }
+
+  const halfW = BARREL_CONFIG.WIDTH * 0.5; // 13px
+  const xLeft = midX - halfW;
+  const xCenter = midX;
+  const xRight = midX + halfW;
+
+  const yLeft = getBarrelSurfaceY(xLeft, testY, groundY);
+  const yCenter = getBarrelSurfaceY(xCenter, testY, groundY);
+  const yRight = getBarrelSurfaceY(xRight, testY, groundY);
+
+  // 2. Weryfikacja obecności stałego podłoża pod całą szerokością beczki
+  if (yLeft === Infinity || yCenter === Infinity || yRight === Infinity) {
+    return null;
+  }
+
+  // Woda / kratery / przepaść
+  if (isA3 && (yCenter >= 1260 || yLeft >= 1260 || yRight >= 1260)) {
+    return null;
+  }
+
+  // 3. Weryfikacja płaskiego podłoża pod całą szerokością beczki (max 6px różnicy wysokości)
+  if (Math.abs(yLeft - yRight) > 6 || Math.abs(yCenter - yLeft) > 6 || Math.abs(yCenter - yRight) > 6) {
+    return null;
+  }
+
+  // 4. Weryfikacja braku zniszczenia i zakazanych typów na platformie
+  const platformList = (typeof window !== 'undefined' && window.arena5State?.platforms)
+    ? [...ARENA_PLATFORMS, ...window.arena5State.platforms]
+    : ARENA_PLATFORMS;
+
+  if (Array.isArray(platformList)) {
+    for (const plat of platformList) {
+      if (!plat) continue;
+      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
+      if (midX >= bnds.minX - 4 && midX <= bnds.maxX + 4) {
+        if (plat.destroyed || plat.isDestroyed || plat.intact === false || plat.solid === false || plat.isPlatform === false || (plat.hp !== undefined && plat.hp <= 0)) {
+          if (Math.abs(yCenter - (plat.y || 0)) < 24) {
+            return null;
+          }
+        }
+        if (plat.isStilt || plat.isRope || plat.isDecorative || plat.type === 'stilt' || plat.type === 'rope') {
+          return null;
+        }
+        if (isA3 && (plat.isRampBlock || plat.isBridgeBlock)) {
+          return null;
+        }
+      }
+    }
+  }
+
+  return yCenter;
 }
 
 /**
@@ -335,8 +411,8 @@ export function initHazardsForArena(arenaId, groundY = 800) {
   if (Array.isArray(spawns)) {
     for (const sp of spawns) {
       const spawnMidX = sp.x + BARREL_CONFIG.WIDTH * 0.5;
-      const surfaceY = getBarrelSurfaceY(spawnMidX, sp.y + BARREL_CONFIG.HEIGHT, groundY);
-      if (surfaceY === Infinity || surfaceY > 1320) continue;
+      const surfaceY = getValidBarrelSpawnSurfaceY(spawnMidX, sp.y + BARREL_CONFIG.HEIGHT, groundY, normalizedId);
+      if (surfaceY === null || surfaceY === Infinity || surfaceY > 1320) continue;
 
       let tooClose = false;
       for (const b of hazardsState.barrels) {
@@ -624,19 +700,35 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       }
     }
 
+    const leftX = b.x + 3;
+    const rightX = b.x + b.w - 3;
     const midX = b.x + b.w * 0.5;
     const feetY = b.y + b.h;
-    const currentSurfaceY = getBarrelSurfaceY(midX, feetY, groundY);
 
-    // Dynamiczne podłoże: czy grunt pod beczką nie zapadł się w krater lub został zniszczony?
+    const surfaceLeftY = getBarrelSurfaceY(leftX, feetY, groundY);
+    const surfaceMidY = getBarrelSurfaceY(midX, feetY, groundY);
+    const surfaceRightY = getBarrelSurfaceY(rightX, feetY, groundY);
+
+    // Dynamiczne podłoże: weryfikacja stabilnego podparcia pod stojącą beczką
     if (b.onGround) {
-      if (currentSurfaceY === Infinity || currentSurfaceY > feetY + 4) {
-        // Podłoże zapadło się w krater lub platforma runęła: natychmiastowa utrata oparcia!
+      const curMinSurfaceY = Math.min(surfaceLeftY, surfaceMidY, surfaceRightY);
+      const curMaxSurfaceY = Math.max(surfaceLeftY, surfaceMidY, surfaceRightY);
+
+      const lostGround = (
+        surfaceLeftY === Infinity ||
+        surfaceMidY === Infinity ||
+        surfaceRightY === Infinity ||
+        curMinSurfaceY > feetY + 4 ||
+        (curMaxSurfaceY - curMinSurfaceY > 12)
+      );
+
+      if (lostGround) {
+        // Podłoże zapadło się w krater, platforma runęła lub krawędź odpadła: natychmiastowe spadanie!
         b.onGround = false;
-        b.vy = Math.max(b.vy, 0.5);
-      } else if (currentSurfaceY < feetY - 4) {
+        b.vy = Math.max(b.vy, 1.0);
+      } else if (surfaceMidY < feetY - 4) {
         // Teren się podniósł
-        b.y = currentSurfaceY - b.h;
+        b.y = surfaceMidY - b.h;
         b.vy = 0;
       }
     }
@@ -679,9 +771,17 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
         b.rotVel *= 0.6;
         spawnRicochetSparks(midX, newSurfaceY, (Math.random() - 0.5) * 3, -1, 3);
       } else {
-        b.y = newSurfaceY - b.h;
-        b.vy = 0;
-        b.onGround = true;
+        const checkL = getBarrelSurfaceY(b.x + 3, newFeetY, groundY);
+        const checkR = getBarrelSurfaceY(b.x + b.w - 3, newFeetY, groundY);
+        if (checkL !== Infinity && checkR !== Infinity && Math.abs(checkL - checkR) <= 12) {
+          b.y = newSurfaceY - b.h;
+          b.vy = 0;
+          b.onGround = true;
+        } else {
+          // Połowa beczki wisi w powietrzu na krawędzi - zsuwanie się grawitacyjne
+          b.vx += (checkL > checkR ? 0.8 : -0.8);
+          b.y = newSurfaceY - b.h;
+        }
       }
     } else if (newSurfaceY !== Infinity && b.onGround && Math.abs(newFeetY - newSurfaceY) <= 8 && b.vy >= 0) {
       b.y = newSurfaceY - b.h;
@@ -940,17 +1040,18 @@ export function spawnAirdropBarrel(arenaId, groundY = 800, combatants = []) {
   for (let attempt = 0; attempt < 25; attempt++) {
     let candX = 0;
     if (isA3) {
-      // Na Arenie 3 unikaj zrzutu prosto do rzeki (1620..2780)
+      // Na Arenie 3 twardy zakaz spawnowania w strefie ramp, pali, pylonów, mostu i rzeki (X: 1100..3300)
+      // Beczki mogą pojawiać się wyłącznie na stałym, płaskim gruncie lewym (X: 220..1100) i prawym (X: 3300..4180)
       const leftBank = Math.random() < 0.5;
       candX = leftBank
-        ? (minX + Math.random() * (1520 - minX))
-        : (2880 + Math.random() * (maxX - 2880));
+        ? (220 + Math.random() * (1100 - 220))
+        : (3300 + Math.random() * (4180 - 3300));
     } else {
       candX = minX + Math.random() * (maxX - minX);
     }
 
-    const surfaceY = getBarrelSurfaceY(candX, 300, groundY);
-    if (surfaceY === Infinity || surfaceY > 1300) continue;
+    const surfaceY = getValidBarrelSpawnSurfaceY(candX, 300, groundY, arenaId);
+    if (surfaceY === null || surfaceY === Infinity || surfaceY > 1300) continue;
     if (isA2 && surfaceY >= 1420) continue;
     if (isA3 && surfaceY >= 1260) continue;
     if (isA4 && surfaceY >= 1350) continue;
@@ -1030,4 +1131,5 @@ export function checkBarrelKickInteraction(char, isSlide = false) {
 if (typeof window !== 'undefined') {
   window.damageBarrel = damageBarrel;
   window.detonateBarrel = detonateBarrel;
+  window.getValidBarrelSpawnSurfaceY = getValidBarrelSpawnSurfaceY;
 }

@@ -19,6 +19,7 @@ export {
   updateHazards,
   checkBarrelKickInteraction,
   getBarrelSurfaceY,
+  getValidBarrelSpawnSurfaceY,
   spawnAirdropBarrel
 } from './logic.js';
 
@@ -37,6 +38,7 @@ import {
   detonateBarrel,
   checkBarrelKickInteraction,
   getBarrelSurfaceY,
+  getValidBarrelSpawnSurfaceY,
   spawnAirdropBarrel
 } from './logic.js';
 
@@ -49,5 +51,6 @@ if (typeof window !== 'undefined') {
   window.checkBarrelKickInteraction = checkBarrelKickInteraction;
   window.detonateBarrel = detonateBarrel;
   window.getBarrelSurfaceY = getBarrelSurfaceY;
+  window.getValidBarrelSpawnSurfaceY = getValidBarrelSpawnSurfaceY;
   window.spawnAirdropBarrel = spawnAirdropBarrel;
 }
