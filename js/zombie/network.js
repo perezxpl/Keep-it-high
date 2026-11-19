@@ -38,6 +38,7 @@ export function serializeZombiesState() {
       decayTimer: Math.round((z.decayTimer || 0) * 100) / 100,
       isReaching: !!z.isReaching,
       reachBlend: Math.round((z.reachBlend || 0) * 100) / 100,
+      reachAngle: Math.round((z.reachAngle || 0) * 100) / 100,
       isCrawling: !!z.isCrawling,
       crawlPhase: Math.round((z.crawlPhase || 0) * 100) / 100,
       legHp: Math.round(z.legHp !== undefined ? z.legHp : 40),
@@ -148,6 +149,7 @@ export function applyRemoteZombiesState(data) {
         localZ.groundY = rz.groundY !== undefined ? rz.groundY : (rz.y + (rz.isCrawling ? 26 : 70));
         localZ.isReaching = !!rz.isReaching;
         localZ.reachBlend = rz.reachBlend || 0;
+        localZ.reachAngle = rz.reachAngle || 0;
         localZ.isCrawling = !!rz.isCrawling;
         localZ.crawlPhase = rz.crawlPhase || 0;
         localZ.legHp = rz.legHp !== undefined ? rz.legHp : 40;
@@ -189,6 +191,7 @@ export function applyRemoteZombiesState(data) {
         localZ.groundY = rz.groundY !== undefined ? rz.groundY : (rz.y + (rz.isCrawling ? 26 : 70));
         localZ.isReaching = !!rz.isReaching;
         localZ.reachBlend = rz.reachBlend || 0;
+        localZ.reachAngle = rz.reachAngle || 0;
         localZ.isCrawling = !!rz.isCrawling;
         localZ.crawlPhase = rz.crawlPhase || 0;
         localZ.legHp = rz.legHp !== undefined ? rz.legHp : 40;

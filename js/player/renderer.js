@@ -524,30 +524,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.22 + Math.abs(armSway) * 0.1;
     rawBackSwing = 1.40 + attackLunge - armSway;
     rawBackElbow = 0.26 + Math.abs(armSway) * 0.1;
-
-    // Reakcja na bliskość żywej postaci: pochylenie tułowia ku ofierze i szarpiący wyciąg obu rąk
-    const reachBlend = (p.reachBlend && !p.isCrawling) ? Math.max(0, Math.min(1.0, p.reachBlend)) : 0;
-    if (reachBlend > 0.05) {
-      // 1. Lekkie pochylenie tułowia do przodu w kierunku p.facing proporcjonalnie do reachBlend
-      p.torsoTilt = (0.22 + 0.16 * reachBlend) * fDir;
-      p.headPitch = 0.15 - 0.06 * reachBlend;
-
-      // 2. Wyciągnięcie obu rąk prosto przed siebie z naprzemiennym ruchem chwytającym/szarpiącym
-      const animTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-      const grabPulseFront = Math.sin(animTime * 0.012);
-      const grabPulseBack = Math.sin(animTime * 0.012 + Math.PI * 0.75);
-
-      const reachFrontSwing = 1.57 + grabPulseFront * 0.09 + attackLunge;
-      const reachFrontElbow = 0.08 + (grabPulseFront * 0.5 + 0.5) * 0.10;
-
-      const reachBackSwing = 1.55 + grabPulseBack * 0.09 + attackLunge;
-      const reachBackElbow = 0.10 + (grabPulseBack * 0.5 + 0.5) * 0.10;
-
-      rawFrontSwing = rawFrontSwing * (1 - reachBlend) + reachFrontSwing * reachBlend;
-      rawFrontElbow = rawFrontElbow * (1 - reachBlend) + reachFrontElbow * reachBlend;
-      rawBackSwing = rawBackSwing * (1 - reachBlend) + reachBackSwing * reachBlend;
-      rawBackElbow = rawBackElbow * (1 - reachBlend) + reachBackElbow * reachBlend;
-    }
   } else if (p.isIntro) {
     const choreo = getFreestyleChoreography(p.juggleTimer, hipX, hipY, floorY, p.facing, 8);
     hipX += choreo.hipShiftX;
@@ -1349,6 +1325,16 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
   pose.shoulderTilt += (shoulderCounterTilt - pose.shoulderTilt) * 0.20;
 
+  // Wymuszenie widocznego wyciągania rąk i pochylenia tułowia zombie ku ofierze
+  const zReach = (p.isZombie && !p.isDead && !p.isCrawling && (p.riseTimer || 0) <= 0)
+    ? Math.max(0, Math.min(1, p.reachBlend || (p.isReaching ? 1 : 0)))
+    : 0;
+
+  if (zReach > 0.05) {
+    const dir = p.facing || 1;
+    pose.torsoTilt += dir * 0.24 * zReach;
+  }
+
   const cosTorsoT = Math.cos(pose.torsoTilt);
   const sinTorsoT = Math.sin(pose.torsoTilt);
 
@@ -1368,6 +1354,75 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const tacticalLeadSh = hasActiveWeapon ? (1.8 * cosYaw) : 0;
   const shLeftX = hipX + ((-shOffsetHoriz + tacticalLeadSh) * cosTorsoT - lyLeftSh * sinTorsoT);
   const shLeftY = hipY + ((-shOffsetHoriz + tacticalLeadSh) * sinTorsoT + lyLeftSh * cosTorsoT);
+
+  const frontShoulderX = isRightLimbForeground ? shRightX : shLeftX;
+  const frontShoulderY = isRightLimbForeground ? shRightY : shLeftY;
+  const backShoulderX  = isRightLimbForeground ? shLeftX : shRightX;
+  const backShoulderY  = isRightLimbForeground ? shLeftY : shRightY;
+
+  if (zReach > 0.05) {
+    const dir = p.facing || 1;
+    const tAnim = (p.walkAnim || 0) * 2.4;
+    const lunge = p.attackAnim > 0 ? Math.sin((p.attackAnim / 0.35) * Math.PI) * 10 : 0;
+    const pitch = p.reachAngle || 0;
+    const armUpper = p.upperArmLen || 14;
+    const armFore = p.forearmLen || 13;
+    const armLen = armUpper + armFore; // ~27px pelny wyprost
+
+    // Aktualne katy ramion przedniej i tylnej reki z biezacej pozy
+    const curFrontSwing = isRightLimbForeground ? pose.armFrontSwing : pose.armBackSwing;
+    const curFrontElbow = isRightLimbForeground ? pose.armFrontElbow : pose.armBackElbow;
+    const curBackSwing  = isRightLimbForeground ? pose.armBackSwing  : pose.armFrontSwing;
+    const curBackElbow  = isRightLimbForeground ? pose.armBackElbow  : pose.armFrontElbow;
+
+    // Aktualna pozycja dloni wyliczona z katow biezacej pozy
+    const curFrontElbowX = frontShoulderX + Math.sin(curFrontSwing) * armUpper * dir;
+    const curFrontElbowY = frontShoulderY + Math.cos(curFrontSwing) * armUpper;
+    let frontHandX = curFrontElbowX + Math.sin(curFrontSwing + curFrontElbow) * armFore * dir;
+    let frontHandY = curFrontElbowY + Math.cos(curFrontSwing + curFrontElbow) * armFore;
+
+    const curBackElbowX = backShoulderX + Math.sin(curBackSwing) * armUpper * dir;
+    const curBackElbowY = backShoulderY + Math.cos(curBackSwing) * armUpper;
+    let backHandX = curBackElbowX + Math.sin(curBackSwing + curBackElbow) * armFore * dir;
+    let backHandY = curBackElbowY + Math.cos(curBackSwing + curBackElbow) * armFore;
+
+    // Docelowe pozycje dloni wyciagnietych daleko przed siebie na wysokosci barkow/klatki:
+    const reachDistFront = (armLen * 0.94 + lunge) + Math.sin(tAnim) * 3.5;
+    const reachDistBack  = (armLen * 0.86 + lunge) + Math.sin(tAnim + Math.PI) * 3.5;
+
+    const targetFrontX = frontShoulderX + dir * Math.cos(pitch - 0.08) * reachDistFront;
+    const targetFrontY = frontShoulderY + Math.sin(pitch - 0.08) * reachDistFront + Math.cos(tAnim) * 3.0;
+
+    const targetBackX  = backShoulderX + dir * Math.cos(pitch + 0.10) * reachDistBack;
+    const targetBackY  = backShoulderY + Math.sin(pitch + 0.10) * reachDistBack + Math.cos(tAnim + Math.PI) * 3.0;
+
+    // Plynny blend z normalnej pozycji rak do wyciagnietych rak zombie (lerp po zReach)
+    frontHandX = frontHandX + (targetFrontX - frontHandX) * zReach;
+    frontHandY = frontHandY + (targetFrontY - frontHandY) * zReach;
+    backHandX  = backHandX  + (targetBackX  - backHandX)  * zReach;
+    backHandY  = backHandY  + (targetBackY  - backHandY)  * zReach;
+
+    // Wyznaczenie nowych katow IK dla obu rak
+    const frontRelX = (frontHandX - frontShoulderX) * dir;
+    const frontRelY = frontHandY - frontShoulderY;
+    const backRelX  = (backHandX  - backShoulderX)  * dir;
+    const backRelY  = backHandY  - backShoulderY;
+
+    const frontAngles = getArmAnglesForTarget(frontRelX, frontRelY, armUpper, armFore, 1);
+    const backAngles  = getArmAnglesForTarget(backRelX,  backRelY,  armUpper, armFore, 1);
+
+    if (isRightLimbForeground) {
+      pose.armFrontSwing = frontAngles.swing;
+      pose.armFrontElbow = frontAngles.elbow;
+      pose.armBackSwing  = backAngles.swing;
+      pose.armBackElbow  = backAngles.elbow;
+    } else {
+      pose.armBackSwing  = frontAngles.swing;
+      pose.armBackElbow  = frontAngles.elbow;
+      pose.armFrontSwing = backAngles.swing;
+      pose.armFrontElbow = backAngles.elbow;
+    }
+  }
 
   const hipOffsetHoriz = (cosYaw * 0.35) - (sinYaw * 3.2);
   const hipRightX = hipX + hipOffsetHoriz;

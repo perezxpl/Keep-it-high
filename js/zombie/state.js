@@ -9,7 +9,10 @@ import { CLASSES } from '../classes/index.js';
 export const STORAGE_KEY_ZOMBIE_MODE = 'kih_zombie_mode_v2';
 
 export const ZOMBIE_CONFIG = {
-  SPEED: 1.35,              // Powolny, człapiący chód (~35% prędkości sprintu gracza)
+  SPEED: 1.25,              // Spokojne człapanie z daleka
+  AGGRO_SPEED: 2.45,        // Wyraźne przyspieszenie (zryw ~2x szybszy) w pobliżu ofiary
+  AGGRO_RANGE_X: 340,       // Zasięg wykrycia i wyciągnięcia rąk (px)
+  AGGRO_RANGE_Y: 160,
   MAX_HP: 100,              // Wytrzymałość zombie
   BITE_RANGE: 36,           // Zasięg ugryzienia / ataku wręcz (px)
   BITE_DAMAGE: 12,          // Obrażenia od pojedynczego ugryzienia
@@ -340,6 +343,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     twitchTimer: 0,
     isReaching: false,                     // Flaga agresji i wyciagania rak ku ofierze
     reachBlend: 0,                         // Wspolczynnik wyciagniecia rak i zrywu (0..1)
+    reachAngle: 0,                         // Kat wycelowania rak ku klatce piersiowej ofiary
     isCrawling: false,                     // Tryb czolgania sie po odstrzeleniu nogi
     crawlPhase: 0,                         // Faza animacji podciagania sie na rekach
     legHp: 40,                             // Wytrzymalosc konczyn dolnych (odstrzelenie przy <= 0)
