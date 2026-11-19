@@ -224,7 +224,7 @@ export function createUndeadVisuals(baseVisuals = {}) {
  * Tworzy nową instancję wrogiego zombie NPC zachowującego model i tożsamość poległego operatora
  */
 export function createZombieInstance(x, y, facing = 1, options = {}) {
-  const instanceId = `zombie_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  const instanceId = options.id || `zombie_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
   let baseVisuals = options.charVisuals;
   let zClass = options.charClass;
@@ -267,8 +267,8 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     team: 'ZOMBIE',        // Frakcja Zombie wroga dla wszystkich innych druzyn
     spawnProtectionTimer: 0, // Zombie nigdy nie posiada oslony odrodzenia
 
-    x: x - (zBody.w || 24) * 0.5,
-    y: y - 70,
+    x: options.rawCoords ? x : (x - (zBody.w || 24) * 0.5),
+    y: options.rawCoords ? y : (y - 70),
     w: 24,
     h: 70,
     pelvisY: -11.8,

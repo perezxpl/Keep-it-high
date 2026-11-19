@@ -41,6 +41,15 @@ export function serializeZombiesState() {
       isCrawling: !!z.isCrawling,
       crawlPhase: Math.round((z.crawlPhase || 0) * 100) / 100,
       legHp: Math.round(z.legHp !== undefined ? z.legHp : 40),
+      reviveTimer: Math.round((z.reviveTimer || 0) * 100) / 100,
+      downedHp: Math.round(z.downedHp !== undefined ? z.downedHp : 60),
+      groundY: Math.round((z.groundY || (z.y + (z.h || 70))) * 10) / 10,
+      dismembered: z.dismembered ? {
+        armFront: !!z.dismembered.armFront,
+        armBack: !!z.dismembered.armBack,
+        legFront: !!z.dismembered.legFront,
+        legBack: !!z.dismembered.legBack
+      } : null,
       name: z.name || 'ZOMBIE',
       originalName: z.originalName || '',
       classId: z.currentClass?.id || 'STRIKER',
@@ -116,12 +125,15 @@ export function applyRemoteZombiesState(data) {
           name: rz.name,
           originalName: rz.originalName,
           classId: rz.classId,
-          customVisuals: rz.customVisuals
+          customVisuals: rz.customVisuals,
+          rawCoords: true
         });
         localZ.targetX = rz.x;
         localZ.targetY = rz.y;
         localZ.vx = rz.vx;
         localZ.vy = rz.vy;
+        localZ.facing = rz.facing || 1;
+        localZ.yaw = (rz.facing < 0 ? Math.PI : 0);
         localZ.hp = rz.hp;
         localZ.maxHp = rz.maxHp;
         localZ.isDead = rz.isDead;
@@ -131,11 +143,22 @@ export function applyRemoteZombiesState(data) {
         localZ.attackAnim = rz.attackAnim;
         localZ.riseTimer = rz.riseTimer;
         localZ.decayTimer = rz.decayTimer;
+        localZ.reviveTimer = rz.reviveTimer !== undefined ? rz.reviveTimer : 0;
+        localZ.downedHp = rz.downedHp !== undefined ? rz.downedHp : 60;
+        localZ.groundY = rz.groundY !== undefined ? rz.groundY : (rz.y + (rz.isCrawling ? 26 : 70));
         localZ.isReaching = !!rz.isReaching;
         localZ.reachBlend = rz.reachBlend || 0;
         localZ.isCrawling = !!rz.isCrawling;
         localZ.crawlPhase = rz.crawlPhase || 0;
         localZ.legHp = rz.legHp !== undefined ? rz.legHp : 40;
+        if (rz.dismembered) {
+          localZ.dismembered = {
+            armFront: !!rz.dismembered.armFront,
+            armBack: !!rz.dismembered.armBack,
+            legFront: !!rz.dismembered.legFront,
+            legBack: !!rz.dismembered.legBack
+          };
+        }
         if (localZ.isCrawling) {
           localZ.h = 26;
           localZ.w = 34;
@@ -148,7 +171,10 @@ export function applyRemoteZombiesState(data) {
         localZ.targetY = rz.y;
         localZ.vx = rz.vx;
         localZ.vy = rz.vy;
-        localZ.facing = rz.facing;
+        if (localZ.facing !== rz.facing) {
+          localZ.facing = rz.facing;
+          localZ.yaw = (rz.facing < 0 ? Math.PI : 0);
+        }
         localZ.hp = rz.hp;
         localZ.maxHp = rz.maxHp;
         localZ.isDead = rz.isDead;
@@ -158,11 +184,22 @@ export function applyRemoteZombiesState(data) {
         localZ.attackAnim = rz.attackAnim;
         localZ.riseTimer = rz.riseTimer;
         localZ.decayTimer = rz.decayTimer;
+        localZ.reviveTimer = rz.reviveTimer !== undefined ? rz.reviveTimer : 0;
+        localZ.downedHp = rz.downedHp !== undefined ? rz.downedHp : 60;
+        localZ.groundY = rz.groundY !== undefined ? rz.groundY : (rz.y + (rz.isCrawling ? 26 : 70));
         localZ.isReaching = !!rz.isReaching;
         localZ.reachBlend = rz.reachBlend || 0;
         localZ.isCrawling = !!rz.isCrawling;
         localZ.crawlPhase = rz.crawlPhase || 0;
         localZ.legHp = rz.legHp !== undefined ? rz.legHp : 40;
+        if (rz.dismembered) {
+          localZ.dismembered = {
+            armFront: !!rz.dismembered.armFront,
+            armBack: !!rz.dismembered.armBack,
+            legFront: !!rz.dismembered.legFront,
+            legBack: !!rz.dismembered.legBack
+          };
+        }
         if (localZ.isCrawling) {
           localZ.h = 26;
           localZ.w = 34;
@@ -206,7 +243,7 @@ export function applyRemoteZombiesState(data) {
           isZombie: true,
           isBot: true,
           active: true,
-          team: 'INFECTED',
+          team: 'ZOMBIE',
           isDead: true,
           hasHead: true,
           decapitated: false,
@@ -254,9 +291,52 @@ export function applyRemoteZombieDamage(damageData) {
   if (!isMatchHost() || !damageData || !damageData.zombieId) return;
 
   const targetZombie = zombieState.zombies.find(z => z.id === damageData.zombieId);
-  if (!targetZombie || targetZombie.isDead) return;
+  if (!targetZombie) return;
+  if (targetZombie.isDead && (!targetZombie.hasHead || targetZombie.decapitated)) return;
 
   const dmg = damageData.damage || 20;
+
+  if (targetZombie.isDead) {
+    // Lezacy zombie czekajacy na reanimacje - klient moze go dobic lub wykonac headshot
+    if (damageData.isHeadshot) {
+      targetZombie.hasHead = false;
+      targetZombie.decapitated = true;
+      targetZombie.reviveTimer = 0;
+      targetZombie.neckFountainTimer = 65;
+    } else {
+      targetZombie.downedHp = (targetZombie.downedHp !== undefined ? targetZombie.downedHp : 60) - dmg;
+      targetZombie.reviveTimer = Math.max(targetZombie.reviveTimer || 0, 3.5);
+      if (targetZombie.downedHp <= 0) {
+        targetZombie.hasHead = false;
+        targetZombie.decapitated = true;
+        targetZombie.reviveTimer = 0;
+        targetZombie.neckFountainTimer = 65;
+      }
+    }
+    lastZombiesSyncTime = 0;
+    sendZombiesState();
+    return;
+  }
+
+  // Zywy zombie - sprawdzenie trafienia w nogi
+  const isLegHit = !!damageData.isLegshot || (damageData.hitY !== undefined && damageData.hitY >= targetZombie.y + (targetZombie.h || 70) * 0.62);
+  if (isLegHit && !targetZombie.isCrawling) {
+    targetZombie.legHp = (targetZombie.legHp !== undefined ? targetZombie.legHp : 40) - dmg;
+    if (targetZombie.legHp <= 0) {
+      targetZombie.isCrawling = true;
+      targetZombie.isReaching = false;
+      targetZombie.h = 26;
+      targetZombie.w = 34;
+      targetZombie.y += 44;
+      targetZombie.groundY = targetZombie.y + targetZombie.h;
+      if (!targetZombie.dismembered) {
+        targetZombie.dismembered = { armFront: false, armBack: false, legFront: true, legBack: false };
+      } else {
+        targetZombie.dismembered.legFront = true;
+      }
+    }
+  }
+
   targetZombie.hp = Math.max(0, targetZombie.hp - dmg);
   targetZombie.hitStunTimer = 0.18;
 
@@ -267,6 +347,13 @@ export function applyRemoteZombieDamage(damageData) {
     if (damageData.isHeadshot) {
       targetZombie.decapitated = true;
       targetZombie.hasHead = false;
+      targetZombie.reviveTimer = 0;
+      targetZombie.neckFountainTimer = 65;
+    } else {
+      targetZombie.hasHead = true;
+      targetZombie.decapitated = false;
+      targetZombie.reviveTimer = ZOMBIE_CONFIG.REVIVE_DELAY || 4.0;
+      targetZombie.downedHp = targetZombie.maxDownedHp || 60;
     }
   }
 

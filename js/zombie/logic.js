@@ -14,8 +14,60 @@ import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { hazardsState } from '../hazards/state.js';
 import { damageBarrel } from '../hazards/logic.js';
+import { ARENA_RIGHT } from '../config.js';
 
 let _activeZombiesCache = [];
+
+/**
+ * Zwraca zunifikowany kontekst aktywnej areny
+ */
+function getArenaContext() {
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
+  const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
+  return {
+    curArena,
+    arenaId: rawId,
+    arenaKey,
+    isA5: (arenaKey === 'arena-5' || arenaKey === 'prefab-tower'),
+    isA4: (arenaKey === 'arena-4' || arenaKey === 'armored-train'),
+    isA3: (arenaKey === 'arena-3' || arenaKey === 'arena-foundry'),
+    isA2: (arenaKey === 'arena-2' || arenaKey === 'arena-2-pandora' || arenaKey === 'arena-2-sector-x')
+  };
+}
+
+/**
+ * Sprawdza czy platforma powinna być zignorowana w kolizjach zombie
+ */
+function isPlatformIgnoredForZombie(plat, isA3) {
+  if (!plat) return true;
+  if (plat.destroyed || plat.isDestroyed || plat.solid === false) return true;
+  if (plat.intact === false) return true;
+  if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) return true;
+  return false;
+}
+
+/**
+ * Sprawdza czy zombie znalazł się w zabójczym zagrożeniu środowiskowym
+ */
+function checkZombieEnvironmentalHazard(z) {
+  const { arenaKey } = getArenaContext();
+  const feetY = z.y + (z.h || 70);
+
+  if (arenaKey === 'arena-2' || arenaKey === 'arena-2-pandora' || arenaKey === 'arena-2-sector-x') {
+    const acidY = (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM) ? window.ACID_SURGE_SYSTEM.currentY : 1440;
+    if (feetY >= acidY - 4) return true;
+  } else if (arenaKey === 'arena-3' || arenaKey === 'arena-foundry') {
+    if (feetY >= 1315) return true;
+  } else if (arenaKey === 'arena-4' || arenaKey === 'armored-train') {
+    if (feetY >= 1390) return true;
+  } else if (arenaKey === 'arena-5' || arenaKey === 'prefab-tower') {
+    const a5Floor = (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200;
+    if (feetY >= a5Floor + 90) return true;
+  }
+  if (z.y > 2400) return true;
+  return false;
+}
 
 /**
  * Pomocnicze sprawdzanie powierzchni na liście platform bez alokacji tablic
@@ -25,9 +77,8 @@ function checkPlatformList(list, x, y, baseGroundY, isA3, currentFloor, isA5 = f
   let floor = currentFloor;
   for (let i = 0; i < list.length; i++) {
     const plat = list[i];
-    if (!plat || plat.destroyed || plat.isDestroyed || plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
-    if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
-    if (isA3 && plat.intact === false && plat.y >= 1310) continue;
+    if (isPlatformIgnoredForZombie(plat, isA3)) continue;
+    if (plat.isWall || plat.isPlatform === false) continue;
 
     if (isA5 && plat.isA5Block) {
       if (plat.topExposed === false) continue;
@@ -70,7 +121,7 @@ function checkPlatformList(list, x, y, baseGroundY, isA3, currentFloor, isA5 = f
         }
       }
 
-      if (y <= topY + 6 && topY < floor) {
+      if (y <= topY + 18 && topY < floor) {
         floor = topY;
       }
     }
@@ -147,11 +198,12 @@ export function getZombieSurfaceY(x, y, baseGroundY) {
 export function checkZombieCeiling(z, groundY) {
   const headY = z.y;
   const centerX = z.x + (z.w || 24) * 0.5;
+  const { isA3 } = getArenaContext();
 
   // 1. Sprawdzanie sufitów na platformach ARENA_PLATFORMS
   for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
     const plat = ARENA_PLATFORMS[i];
-    if (!plat || plat.destroyed || plat.isDestroyed || plat.solid === false) continue;
+    if (isPlatformIgnoredForZombie(plat, isA3)) continue;
     if (plat.isDropThrough || plat.dropThrough || plat.type === 'catwalk') continue;
 
     const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
@@ -170,7 +222,7 @@ export function checkZombieCeiling(z, groundY) {
   if (Array.isArray(customObstacles)) {
     for (let i = 0; i < customObstacles.length; i++) {
       const obs = customObstacles[i];
-      if (!obs || obs.destroyed) continue;
+      if (isPlatformIgnoredForZombie(obs, isA3)) continue;
       if (obs.type === 'bunker_block' || obs.type === 'cyber_pillar' || obs.type === 'tall_concrete_wall') {
         const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
         const bottomY = topY + obs.h;
@@ -188,14 +240,17 @@ export function checkZombieCeiling(z, groundY) {
   // 3. Sprawdzanie sufitów w klockach Areny 5
   const a5 = (typeof window !== 'undefined' && window.arena5State?.gridRows) ? window.arena5State : null;
   if (a5) {
-    const col = Math.floor(centerX / 100);
-    if (col >= 0 && col < 10) {
+    const gridOriginX = (a5.gridOriginX !== undefined) ? a5.gridOriginX : (a5.shaftLeft !== undefined ? a5.shaftLeft : 0);
+    const cellSize = a5.cellSize || 100;
+    const totalCols = a5.cols || 16;
+    const col = Math.floor((centerX - gridOriginX) / cellSize);
+    if (col >= 0 && col < totalCols) {
       const minR = a5.minFloorRow || 0;
       for (let r = minR; r < minR + 15; r++) {
         const row = a5.gridRows.get(r);
         const cell = row ? row[col] : null;
         if (cell && cell.hp > 0 && !cell.isFalling) {
-          const bottomY = cell.y + 100;
+          const bottomY = cell.y + (cell.h || cellSize);
           if (headY <= bottomY && headY >= cell.y) {
             z.y = bottomY + 1;
             if (z.vy < 0) z.vy = 0.5;
@@ -215,10 +270,12 @@ export function checkZombieCeiling(z, groundY) {
 export function checkZombieCeilingAbove(z, groundY) {
   const headY = z.y;
   const centerX = z.x + (z.w || 24) * 0.5;
+  const { isA3 } = getArenaContext();
 
   for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
     const plat = ARENA_PLATFORMS[i];
-    if (!plat || plat.destroyed || plat.solid === false || plat.isDropThrough || plat.type === 'catwalk') continue;
+    if (isPlatformIgnoredForZombie(plat, isA3)) continue;
+    if (plat.isDropThrough || plat.dropThrough || plat.type === 'catwalk') continue;
     const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
     if (centerX >= bnds.minX - 4 && centerX <= bnds.maxX + 4) {
       const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
@@ -231,14 +288,17 @@ export function checkZombieCeilingAbove(z, groundY) {
 
   const a5 = (typeof window !== 'undefined' && window.arena5State?.gridRows) ? window.arena5State : null;
   if (a5) {
-    const col = Math.floor(centerX / 100);
-    if (col >= 0 && col < 10) {
+    const gridOriginX = (a5.gridOriginX !== undefined) ? a5.gridOriginX : (a5.shaftLeft !== undefined ? a5.shaftLeft : 0);
+    const cellSize = a5.cellSize || 100;
+    const totalCols = a5.cols || 16;
+    const col = Math.floor((centerX - gridOriginX) / cellSize);
+    if (col >= 0 && col < totalCols) {
       const minR = a5.minFloorRow || 0;
       for (let r = minR; r < minR + 15; r++) {
         const row = a5.gridRows.get(r);
         const cell = row ? row[col] : null;
         if (cell && cell.hp > 0 && !cell.isFalling) {
-          const bottomY = cell.y + 100;
+          const bottomY = cell.y + (cell.h || cellSize);
           if (bottomY < headY && bottomY >= headY - 95) {
             return true;
           }
@@ -257,11 +317,12 @@ export function resolveZombieWallCollisions(z, groundY) {
   const feetY = z.y + (z.h || 70);
   const headY = z.y;
   const halfW = (z.w || 24) * 0.5;
+  const { isA3 } = getArenaContext();
 
   // 1. Lite platformy, filary, monolity i ściany ARENA_PLATFORMS
   for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
     const plat = ARENA_PLATFORMS[i];
-    if (!plat || plat.destroyed || plat.isDestroyed || plat.solid === false) continue;
+    if (isPlatformIgnoredForZombie(plat, isA3)) continue;
     if (plat.isDropThrough || plat.dropThrough || plat.type === 'catwalk' || plat.isSlope) continue;
 
     const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
@@ -291,7 +352,7 @@ export function resolveZombieWallCollisions(z, groundY) {
   if (Array.isArray(customObstacles)) {
     for (let i = 0; i < customObstacles.length; i++) {
       const obs = customObstacles[i];
-      if (!obs || obs.destroyed || obs.isDestroyed || obs.solid === false) continue;
+      if (isPlatformIgnoredForZombie(obs, isA3)) continue;
       if (obs.type === 'hedgehog' || obs.type === 'barbed_wire' || obs.type === 'laser_gate') continue;
 
       const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
@@ -313,11 +374,14 @@ export function resolveZombieWallCollisions(z, groundY) {
     }
   }
 
-  // 3. Klocki wieży Areny 5 (100x100)
+  // 3. Klocki wieży Areny 5
   const a5 = (typeof window !== 'undefined' && window.arena5State?.gridRows) ? window.arena5State : null;
   if (a5) {
-    const colLeft = Math.max(0, Math.floor((z.x - 20) / 100));
-    const colRight = Math.min(9, Math.floor((z.x + (z.w || 24) + 20) / 100));
+    const gridOriginX = (a5.gridOriginX !== undefined) ? a5.gridOriginX : (a5.shaftLeft !== undefined ? a5.shaftLeft : 0);
+    const cellSize = a5.cellSize || 100;
+    const totalCols = a5.cols || 16;
+    const colLeft = Math.max(0, Math.floor((z.x - 20 - gridOriginX) / cellSize));
+    const colRight = Math.min(totalCols - 1, Math.floor((z.x + (z.w || 24) + 20 - gridOriginX) / cellSize));
     const minR = a5.minFloorRow || 0;
 
     for (let c = colLeft; c <= colRight; c++) {
@@ -326,12 +390,12 @@ export function resolveZombieWallCollisions(z, groundY) {
         const cell = row ? row[c] : null;
         if (cell && cell.hp > 0 && !cell.isFalling) {
           const cellTop = cell.y;
-          const cellBottom = cell.y + 100;
+          const cellBottom = cell.y + (cell.h || cellSize);
           const cellLeft = cell.x;
-          const cellRight = cell.x + 100;
+          const cellRight = cell.x + (cell.w || cellSize);
 
           if (z.x + (z.w || 24) > cellLeft && z.x < cellRight && feetY > cellTop + 14 && headY < cellBottom - 6) {
-            const midX = cellLeft + 50;
+            const midX = cellLeft + (cell.w || cellSize) * 0.5;
             if (z.x + halfW < midX) {
               z.x = cellLeft - (z.w || 24);
               if (z.vx > 0) z.vx = 0;
@@ -360,7 +424,7 @@ export function resolveZombieWallCollisions(z, groundY) {
             const pushDir = Math.sign(z.vx);
             b.vx = pushDir * Math.max(Math.abs(z.vx), 1.6);
             b.rotVel = pushDir * 0.08;
-            b.x += b.vx * 0.5;
+            // Nadajemy b.vx bez bezposredniej modyfikacji b.x
             z.vx *= 0.6;
           }
           if (z.x + halfW < midX) {
@@ -387,16 +451,31 @@ export function handleZombieStepAndClimb(z, groundY, nearestTarget = null) {
   const facing = z.facing || 1;
   const footX = facing > 0 ? (z.x + (z.w || 24)) : z.x;
   const feetY = z.y + (z.h || 70);
+  const { isA3 } = getArenaContext();
 
   let bestStepTop = null;
 
   // Platformy z przodu
   for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
     const plat = ARENA_PLATFORMS[i];
-    if (!plat || plat.destroyed || plat.isWall || plat.solid === false) continue;
+    if (isPlatformIgnoredForZombie(plat, isA3)) continue;
+    if (plat.isWall || plat.isPlatform === false) continue;
     const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + (plat.w || 100) };
     if (footX >= bnds.minX - 2 && footX <= bnds.maxX + 2) {
-      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+      let topY;
+      if (plat.type === 'metal_ramp_left') {
+        const t = Math.max(0, Math.min(1, (footX - plat.x) / (plat.w || 1)));
+        topY = (plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0))) + t * plat.h;
+      } else if (plat.type === 'metal_ramp_right') {
+        const t = Math.max(0, Math.min(1, (footX - plat.x) / (plat.w || 1)));
+        topY = (plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0))) + (1 - t) * plat.h;
+      } else if (typeof getPlatformSurfaceY === 'function') {
+        topY = getPlatformSurfaceY(plat, footX, groundY);
+      } else if (plat.y !== undefined) {
+        topY = plat.y;
+      } else {
+        topY = groundY - (plat.relY || 0);
+      }
       if (topY < feetY && topY >= feetY - 110) {
         if (bestStepTop === null || topY < bestStepTop) {
           bestStepTop = topY;
@@ -409,9 +488,10 @@ export function handleZombieStepAndClimb(z, groundY, nearestTarget = null) {
   if (Array.isArray(customObstacles)) {
     for (let i = 0; i < customObstacles.length; i++) {
       const obs = customObstacles[i];
-      if (!obs || obs.destroyed || obs.solid === false) continue;
+      if (isPlatformIgnoredForZombie(obs, isA3)) continue;
+      if (obs.isWall || obs.solid === false) continue;
       if (footX >= obs.x - 2 && footX <= obs.x + obs.w + 2) {
-        const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+        const topY = (typeof getPlatformSurfaceY === 'function') ? getPlatformSurfaceY(obs, footX, groundY) : (obs.y !== undefined ? obs.y : (groundY - obs.relY));
         if (topY < feetY && topY >= feetY - 110) {
           if (bestStepTop === null || topY < bestStepTop) {
             bestStepTop = topY;
@@ -424,8 +504,11 @@ export function handleZombieStepAndClimb(z, groundY, nearestTarget = null) {
   // Klocki Areny 5 z przodu
   const a5 = (typeof window !== 'undefined' && window.arena5State?.gridRows) ? window.arena5State : null;
   if (a5) {
-    const col = Math.floor(footX / 100);
-    if (col >= 0 && col < 10) {
+    const gridOriginX = (a5.gridOriginX !== undefined) ? a5.gridOriginX : (a5.shaftLeft !== undefined ? a5.shaftLeft : 0);
+    const cellSize = a5.cellSize || 100;
+    const totalCols = a5.cols || 16;
+    const col = Math.floor((footX - gridOriginX) / cellSize);
+    if (col >= 0 && col < totalCols) {
       const minR = a5.minFloorRow || 0;
       for (let r = minR; r < minR + 15; r++) {
         const row = a5.gridRows.get(r);
@@ -491,7 +574,7 @@ export function handleZombieStepAndClimb(z, groundY, nearestTarget = null) {
  */
 export function getActiveZombies() {
   if (!zombieState.enabled) return [];
-  return refreshActiveZombiesCache();
+  return _activeZombiesCache;
 }
 
 /**
@@ -753,7 +836,10 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         c.corpseAngle = 0;
         c.corpseRotVel = 0;
         c.torsoTiltVel = 0;
-        c.corpseFloorY = groundY;
+        const cX = c.x + (c.w || 24) * 0.5;
+        const cY = c.y + (c.h || 70);
+        const cSurfY = getZombieSurfaceY(cX, cY, groundY);
+        c.corpseFloorY = (cSurfY !== Infinity && cSurfY < 1500) ? cSurfY : groundY;
         c.ragdoll = null;
         c.deathImpulse = {
           vx: (Math.random() - 0.5) * 1.8,
@@ -773,6 +859,13 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
   // -------------------------------------------------------------------------
   for (let i = zombieState.zombies.length - 1; i >= 0; i--) {
     const z = zombieState.zombies[i];
+
+    // Zagrożenia środowiskowe areny (kwas, woda, lawa, utylizator) - niszczą zarówno żywe, jak i powalone zombie
+    if (checkZombieEnvironmentalHazard(z)) {
+      spawnBloodSpurt(z.x + z.w / 2, z.y + z.h - 10, 0, -2.5, 12, 1.0);
+      zombieState.zombies.splice(i, 1);
+      continue;
+    }
 
     // --- STAN ZGONU / POWALENIA ZOMBIE ---
     if (z.isDead) {
@@ -1142,7 +1235,10 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
             nearestTarget.corpseAngle = 0;
             nearestTarget.corpseRotVel = 0;
             nearestTarget.torsoTiltVel = 0;
-            nearestTarget.corpseFloorY = groundY;
+            const tX = nearestTarget.x + (nearestTarget.w || 24) * 0.5;
+            const tY = nearestTarget.y + (nearestTarget.h || 70);
+            const tSurfY = getZombieSurfaceY(tX, tY, groundY);
+            nearestTarget.corpseFloorY = (tSurfY !== Infinity && tSurfY < 1500) ? tSurfY : groundY;
             nearestTarget.ragdoll = null;
             nearestTarget.deathImpulse = {
               vx: z.facing * 3.2,
@@ -1171,7 +1267,6 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
             if (typeof dmgFn === 'function') {
               dmgFn(bar, ZOMBIE_CONFIG.BITE_DAMAGE, z);
             }
-            spawnBloodSpurt(barMidX, barMidY, z.facing * 2.0, -1.5, 6, 0.8);
             triggerScreenShake(2.0);
             break;
           }
@@ -1181,9 +1276,16 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       // Brak żywych celów – zombie snuje się powoli
       z.isReaching = false;
       z.reachBlend = Math.max(0, (z.reachBlend || 0) - 0.08);
-      desiredVx = Math.sin(Date.now() * 0.001 + i) * (ZOMBIE_CONFIG.SPEED * 0.4);
-      z.walkAnim += dt * 1.5;
-      if (Math.abs(desiredVx) > 0.1) z.facing = desiredVx > 0 ? 1 : -1;
+      if (z.isCrawling) {
+        z.crawlPhase = (z.crawlPhase || 0) + dt * 3.0;
+        const pullFactor = 0.55 + 0.45 * Math.max(0, Math.sin(z.crawlPhase));
+        desiredVx = Math.sin(Date.now() * 0.001 + i) * (ZOMBIE_CONFIG.SPEED * 0.25) * pullFactor;
+        z.walkAnim += dt * 1.2;
+      } else {
+        desiredVx = Math.sin(Date.now() * 0.001 + i) * (ZOMBIE_CONFIG.SPEED * 0.4);
+        z.walkAnim += dt * 1.5;
+      }
+      if (Math.abs(desiredVx) > 0.05) z.facing = desiredVx > 0 ? 1 : -1;
     }
 
     // Wypadkowa prędkość pozioma: intencja ruchu + odrzut kinetyczny + separacja stada
@@ -1242,32 +1344,17 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
     // Blokada przenikania przez ściany pionowe, monolity i klocki Areny 5
     resolveZombieWallCollisions(z, groundY);
 
-    // --- ZAGROŻENIA ŚRODOWISKOWE AREN (KWAS, LAWA, UTYLIZATOR) ---
-    const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-    const arenaId = curArena?.id || '';
-    let shouldDissolve = false;
-
-    if (arenaId === 'arena-2') {
-      const acidY = (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM) ? window.ACID_SURGE_SYSTEM.currentY : 1440;
-      if (z.y + z.h >= acidY - 4) shouldDissolve = true;
-    } else if (arenaId === 'arena-4') {
-      if (z.y + z.h >= 1390) shouldDissolve = true;
-    } else if (arenaId === 'arena-5') {
-      const a5Floor = (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200;
-      if (z.y + z.h >= a5Floor + 90) shouldDissolve = true;
-    } else if (z.y > 2400) {
-      shouldDissolve = true;
-    }
-
-    if (shouldDissolve) {
+    // --- ZAGROŻENIA ŚRODOWISKOWE AREN (KWAS, WODA, LAWA, UTYLIZATOR) ---
+    if (checkZombieEnvironmentalHazard(z)) {
       spawnBloodSpurt(z.x + z.w / 2, z.y + z.h - 10, 0, -2.5, 12, 1.0);
       zombieState.zombies.splice(i, 1);
       continue;
     }
 
     // Granice poziome areny: zapobieganie wypadaniu poza mapę
+    const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
     const minBoundsX = curArena?.bounds?.minX ?? 0;
-    const maxBoundsX = curArena?.bounds?.maxX ?? 3800;
+    const maxBoundsX = curArena?.bounds?.maxX ?? ARENA_RIGHT;
     z.x = Math.max(minBoundsX + 12, Math.min(maxBoundsX - z.w - 12, z.x));
   }
 }
@@ -1289,10 +1376,10 @@ export function onCharacterRespawnCorpse(char, groundY) {
 
   if (surfaceY === Infinity || surfaceY > 1400) return;
 
-  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const arenaId = curArena?.id || '';
-  if (arenaId === 'arena-2' && surfaceY >= 1430) return;
-  if (arenaId === 'arena-4' && surfaceY >= 1385) return;
+  const { arenaKey } = getArenaContext();
+  if ((arenaKey === 'arena-2' || arenaKey === 'arena-2-pandora' || arenaKey === 'arena-2-sector-x') && surfaceY >= 1430) return;
+  if ((arenaKey === 'arena-3' || arenaKey === 'arena-foundry') && surfaceY >= 1300) return;
+  if ((arenaKey === 'arena-4' || arenaKey === 'armored-train') && surfaceY >= 1385) return;
 
   registerCorpseForReanimation(char, surfaceY);
   refreshActiveZombiesCache();
