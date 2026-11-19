@@ -356,19 +356,19 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   if (!p.forearmLen) p.forearmLen = p.body?.forearmLen || 13;
   if (!p.pose) p.pose = { initialized: false };
 
-  const colH = (p.isZombie && !p.isDead) ? 70 : ((p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 70)));
+  const colH = (p.isZombie && !p.isDead) ? (p.isCrawling ? (p.h || 26) : 70) : ((p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 70)));
   const centerX = p.x + p.w / 2;
   const isGrounded = (p.onGround !== undefined)
     ? (p.onGround && !p.isJumping)
     : (!p.isJumping && (p.y >= (GROUND_Y - colH - 2) || (typeof p.currentGroundY === 'number' && Math.abs(p.y + colH - p.currentGroundY) < 6)));
   const standingY = p.isZombie
-    ? ((typeof GROUND_Y === 'number' && GROUND_Y < 1500) ? GROUND_Y : (p.y + 70))
+    ? (p.groundY || ((typeof GROUND_Y === 'number' && GROUND_Y < 1500) ? GROUND_Y : (p.y + (p.isCrawling ? (p.h || 26) : 70))))
     : ((isGrounded && typeof p.currentGroundY === 'number') ? p.currentGroundY : (p.y + colH));
   const floorY = standingY;
   const plantFloorY = floorY - 3.5;
   let hipX = centerX;
   let hipY = (p.isZombie && !p.isDead && (!p.riseTimer || p.riseTimer <= 0))
-    ? (plantFloorY - 48.3)
+    ? (p.isCrawling ? (plantFloorY - 3.5) : (plantFloorY - 48.3))
     : (p.y + colH - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8));
   if (p.isProne) {
     hipY = plantFloorY - 2.5; // Tors i miednica przylegają równolegle do podłoża (y = floorY - 6 px)
@@ -468,6 +468,37 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = (1 - progress) * 0.15 + progress * 0.22;
     rawBackSwing = (1 - progress) * 0.2 + progress * 1.40;
     rawBackElbow = (1 - progress) * 0.15 + progress * 0.26;
+  } else if (p.isZombie && p.isCrawling && !p.isDead) {
+    // Czołgający się zombie (odstrzelone nogi): tułów ułożony płasko przy ziemi, głowa uniesiona ku ofierze
+    const fDir = (p.facing >= 0 ? 1 : -1);
+    const crawlPhase = p.crawlPhase || 0;
+
+    // Tułów ułożony płasko/pod niskim kątem tuż nad powierzchnią gruntu
+    p.torsoTilt = (1.32 + Math.sin(crawlPhase * 2) * 0.035) * fDir;
+    // Głowa uniesiona i skierowana w stronę p.facing
+    p.headPitch = -0.32 + Math.sin(crawlPhase) * 0.05;
+
+    hipX = centerX - 8 * fDir;
+    hipY = plantFloorY - 3.5;
+
+    // Kikuty nóg oraz ewentualna druga noga ciągną się płasko za tułowiem po podłożu
+    rawFootFrontTargetX = hipX - 22 * fDir;
+    rawFootFrontTargetY = plantFloorY - 1;
+    rawFootFrontAnkle = 0.25 * fDir;
+
+    rawFootBackTargetX = hipX - 26 * fDir;
+    rawFootBackTargetY = plantFloorY - 1;
+    rawFootBackAnkle = 0.20 * fDir;
+
+    // Ręce wykonują naprzemienny ruch podciągania ciała po ziemi zsynchronizowany z p.crawlPhase
+    const armCycleFront = Math.sin(crawlPhase);
+    const armCycleBack = Math.sin(crawlPhase + Math.PI);
+
+    rawFrontSwing = 1.35 + armCycleFront * 0.45;
+    rawFrontElbow = 0.35 + Math.max(0, -armCycleFront) * 0.40;
+
+    rawBackSwing = 1.35 + armCycleBack * 0.45;
+    rawBackElbow = 0.35 + Math.max(0, -armCycleBack) * 0.40;
   } else if (p.isZombie) {
     // Aktywny, polujący zombie: zgarbiony tułów, powłóczący krok, wyciągnięte ramiona
     const fDir = (p.facing >= 0 ? 1 : -1);
@@ -1352,8 +1383,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const isArmFrontDismembered = !p.isZombie && !!p.dismembered?.armFront;
   const isArmBackDismembered = !p.isZombie && !!p.dismembered?.armBack;
-  const isLegFrontDismembered = !p.isZombie && !!p.dismembered?.legFront;
-  const isLegBackDismembered = !p.isZombie && !!p.dismembered?.legBack;
+  const isLegFrontDismembered = (!p.isZombie || p.isCrawling) && !!p.dismembered?.legFront;
+  const isLegBackDismembered = (!p.isZombie || p.isCrawling) && !!p.dismembered?.legBack;
 
   const maxHp = p.maxHp || 100;
   const curHp = Math.max(0, p.hp ?? 100);

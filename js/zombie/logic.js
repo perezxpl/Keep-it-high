@@ -467,7 +467,7 @@ export function handleZombieStepAndClimb(z, groundY, nearestTarget = null) {
       z.vy = 0;
       z.onGround = true;
       return true;
-    } else if (stepDiff > 16 && stepDiff <= 110 && z.jumpCooldown <= 0) {
+    } else if (!z.isCrawling && stepDiff > 16 && stepDiff <= 110 && z.jumpCooldown <= 0) {
       // Skok wspinaczkowy: TYLKO gdy cel jest wyzej niz zombie!
       const targetIsHigher = nearestTarget && ((nearestTarget.y + (nearestTarget.h || 70)) < feetY - 16);
       if (targetIsHigher) {
@@ -512,12 +512,17 @@ export function refreshActiveZombiesCache() {
       z.spawnProtectionTimer = 0;
       if (typeof z.isReaching !== 'boolean') z.isReaching = false;
       if (typeof z.reachBlend !== 'number') z.reachBlend = 0;
+      if (typeof z.isCrawling !== 'boolean') z.isCrawling = false;
+      if (typeof z.crawlPhase !== 'number') z.crawlPhase = 0;
+      if (typeof z.legHp !== 'number') z.legHp = 40;
       if (!z.thighLen) z.thighLen = 25;
       if (!z.shinLen) z.shinLen = 24;
       if (!z.upperArmLen) z.upperArmLen = 14;
       if (!z.forearmLen) z.forearmLen = 13;
       if (!z.dismembered) {
-        z.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+        z.dismembered = { armFront: false, armBack: false, legFront: z.isCrawling, legBack: false };
+      } else if (z.isCrawling) {
+        z.dismembered.legFront = true;
       } else {
         z.dismembered.legFront = false;
         z.dismembered.legBack = false;
@@ -534,12 +539,17 @@ export function refreshActiveZombiesCache() {
       c.spawnProtectionTimer = 0;
       if (typeof c.isReaching !== 'boolean') c.isReaching = false;
       if (typeof c.reachBlend !== 'number') c.reachBlend = 0;
+      if (typeof c.isCrawling !== 'boolean') c.isCrawling = false;
+      if (typeof c.crawlPhase !== 'number') c.crawlPhase = 0;
+      if (typeof c.legHp !== 'number') c.legHp = 40;
       if (!c.thighLen) c.thighLen = 25;
       if (!c.shinLen) c.shinLen = 24;
       if (!c.upperArmLen) c.upperArmLen = 14;
       if (!c.forearmLen) c.forearmLen = 13;
       if (!c.dismembered) {
-        c.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+        c.dismembered = { armFront: false, armBack: false, legFront: c.isCrawling, legBack: false };
+      } else if (c.isCrawling) {
+        c.dismembered.legFront = true;
       } else {
         c.dismembered.legFront = false;
         c.dismembered.legBack = false;
@@ -808,9 +818,28 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.isZombie = true;
         z.active = true;
         z.spawnProtectionTimer = 0;
-        z.w = 24;
-        z.h = 70;
-        z.pelvisY = -11.8;
+        if (z.isCrawling) {
+          z.w = 34;
+          z.h = 26;
+          z.pelvisY = 0;
+          z.gaitMode = 'CRAWL';
+          if (!z.dismembered) {
+            z.dismembered = { armFront: false, armBack: false, legFront: true, legBack: false };
+          } else {
+            z.dismembered.legFront = true;
+          }
+        } else {
+          z.w = 24;
+          z.h = 70;
+          z.pelvisY = -11.8;
+          z.gaitMode = 'IDLE';
+          if (!z.dismembered) {
+            z.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+          } else {
+            z.dismembered.legFront = false;
+            z.dismembered.legBack = false;
+          }
+        }
         z.isCrouching = false;
         z.crouching = false;
         z.crouchTimer = 0;
@@ -824,22 +853,16 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.rollTimer = 0;
         z.isProne = false;
         z.staggerTimer = 0;
-        z.gaitMode = 'IDLE';
         if (!z.keys) {
           z.keys = { left: false, right: false, up: false, down: false };
         } else {
+          z.keys.up = false;
           z.keys.down = false;
         }
         z.thighLen = 25;
         z.shinLen = 24;
         z.upperArmLen = 14;
         z.forearmLen = 13;
-        if (!z.dismembered) {
-          z.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
-        } else {
-          z.dismembered.legFront = false;
-          z.dismembered.legBack = false;
-        }
         if (z.pose) z.pose.initialized = false;
         const feetX = z.x + z.w * 0.5;
         const curSurf = getZombieSurfaceY(feetX, z.y + z.h, groundY);
@@ -879,9 +902,17 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       // Moment ukończenia sekwencji wstawania: korekta pozycji do podłoża i reset pozy
       if (z.riseTimer <= 0) {
         z.riseTimer = 0;
-        z.w = 24;
-        z.h = 70;
-        z.pelvisY = -11.8;
+        if (z.isCrawling) {
+          z.w = 34;
+          z.h = 26;
+          z.pelvisY = 0;
+          z.gaitMode = 'CRAWL';
+        } else {
+          z.w = 24;
+          z.h = 70;
+          z.pelvisY = -11.8;
+          z.gaitMode = 'IDLE';
+        }
         z.isCrouching = false;
         z.crouching = false;
         z.crouchTimer = 0;
@@ -895,10 +926,10 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.rollTimer = 0;
         z.isProne = false;
         z.staggerTimer = 0;
-        z.gaitMode = 'IDLE';
         if (!z.keys) {
           z.keys = { left: false, right: false, up: false, down: false };
         } else {
+          z.keys.up = false;
           z.keys.down = false;
         }
         const standSurf = getZombieSurfaceY(feetX, z.y + z.h, groundY);
@@ -913,30 +944,56 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       continue;
     }
 
-    // Twardy reset stanu kucania i ślizgu w każdej klatce dla żywego, stojącego zombie
-    z.w = 24;
-    z.h = 70;
-    z.pelvisY = -11.8;
-    z.isCrouching = false;
-    z.crouching = false;
-    z.crouchTimer = 0;
-    z.crouchBlend = 0;
-    z.crouchFactor = 0;
-    z.crouchToggled = false;
-    z.crouchHoldTimer = 0;
-    z.sliding = false;
-    z.isSliding = false;
-    z.slideTimer = 0;
-    z.rollTimer = 0;
-    z.isProne = false;
-    z.staggerTimer = 0;
-    if (z.gaitMode === 'CROUCH' || z.gaitMode === 'CROUCH_WALK' || z.gaitMode === 'PRONE' || z.gaitMode === 'CRAWL') {
-      z.gaitMode = Math.abs(z.vx || 0) > 0.1 ? 'WALK' : 'IDLE';
-    }
-    if (!z.keys) {
-      z.keys = { left: false, right: false, up: false, down: false };
+    // Twardy reset stanu kucania i ślizgu w każdej klatce dla żywego zombie
+    if (z.isCrawling) {
+      z.w = 34;
+      z.h = 26;
+      z.pelvisY = 0;
+      z.isCrouching = false;
+      z.crouching = false;
+      z.crouchTimer = 0;
+      z.crouchBlend = 0;
+      z.crouchFactor = 0;
+      z.crouchToggled = false;
+      z.crouchHoldTimer = 0;
+      z.sliding = false;
+      z.isSliding = false;
+      z.slideTimer = 0;
+      z.rollTimer = 0;
+      z.isProne = false;
+      z.staggerTimer = 0;
+      z.gaitMode = 'CRAWL';
+      if (!z.keys) {
+        z.keys = { left: false, right: false, up: false, down: false };
+      } else {
+        z.keys.up = false;
+        z.keys.down = false;
+      }
     } else {
-      z.keys.down = false;
+      z.w = 24;
+      z.h = 70;
+      z.pelvisY = -11.8;
+      z.isCrouching = false;
+      z.crouching = false;
+      z.crouchTimer = 0;
+      z.crouchBlend = 0;
+      z.crouchFactor = 0;
+      z.crouchToggled = false;
+      z.crouchHoldTimer = 0;
+      z.sliding = false;
+      z.isSliding = false;
+      z.slideTimer = 0;
+      z.rollTimer = 0;
+      z.isProne = false;
+      z.staggerTimer = 0;
+      if (z.gaitMode === 'CROUCH' || z.gaitMode === 'CROUCH_WALK' || z.gaitMode === 'PRONE' || z.gaitMode === 'CRAWL') {
+        z.gaitMode = Math.abs(z.vx || 0) > 0.1 ? 'WALK' : 'IDLE';
+      }
+      if (!z.keys) {
+        z.keys = { left: false, right: false, up: false, down: false };
+      } else {
+        z.keys.down = false;
+      }
     }
 
     // Timery animacji, odnowienia ataku i hitstuna
@@ -992,44 +1049,63 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.facing = dx >= 0 ? 1 : -1;
       z.yaw = (z.facing < 0 ? Math.PI : 0);
 
-      // Detekcja bliskości celu i wyciąganie rąk (agresywny zryw w stronę ofiary)
-      const dist = Math.hypot(dx, dy);
-      const isTargetAlive = !nearestTarget.isDead;
-      const inAggroRange = isTargetAlive && Math.abs(dx) < 260 && Math.abs(dy) < 120;
-      const isOutOfRange = !isTargetAlive || dist > 300 || Math.abs(dx) > 300 || Math.abs(dy) > 160;
-
-      if (!z.isCrawling && inAggroRange) {
-        z.isReaching = true;
-        z.reachBlend = Math.min(1.0, (z.reachBlend || 0) + 0.12);
-      } else if (isOutOfRange) {
+      if (z.isCrawling) {
         z.isReaching = false;
-        z.reachBlend = Math.max(0, (z.reachBlend || 0) - 0.08);
-      } else {
-        // Histereza podtrzymująca agresję pomiędzy 260 a 300 px
-        if (z.isReaching && !z.isCrawling) {
-          z.reachBlend = Math.min(1.0, (z.reachBlend || 0) + 0.04);
-        } else {
-          z.reachBlend = Math.max(0, (z.reachBlend || 0) - 0.08);
+        z.reachBlend = 0;
+        // Rytmiczny cykl podciągania się na rękach (szarpany ruch w stronę ofiary)
+        z.crawlPhase = (z.crawlPhase || 0) + dt * 4.5;
+        const pullFactor = 0.55 + 0.45 * Math.max(0, Math.sin(z.crawlPhase));
+        const crawlSpeed = (ZOMBIE_CONFIG.SPEED * 0.42) * pullFactor;
+
+        if (z.hitStunTimer <= 0) {
+          if (Math.abs(dx) > 16) {
+            desiredVx = (dx > 0 ? 1 : -1) * crawlSpeed;
+            z.walkAnim += dt * 2.2;
+          } else {
+            desiredVx = 0;
+          }
         }
-      }
+      } else {
+        // Detekcja bliskości celu i wyciąganie rąk (agresywny zryw w stronę ofiary)
+        const dist = Math.hypot(dx, dy);
+        const isTargetAlive = !nearestTarget.isDead;
+        const inAggroRange = isTargetAlive && Math.abs(dx) < 260 && Math.abs(dy) < 120;
+        const isOutOfRange = !isTargetAlive || dist > 300 || Math.abs(dx) > 300 || Math.abs(dy) > 160;
 
-      // Zwiększenie prędkości poruszania się zombie o 30–35% względem bazowego chodu przy zrywie
-      const reachFactor = (z.reachBlend || 0);
-      const speedMultiplier = 1.0 + reachFactor * 0.33; // 33% agresywnego zrywu
-      const moveSpeed = ZOMBIE_CONFIG.SPEED * speedMultiplier;
-
-      // Człapiący ruch w stronę celu (zablokowany w ułamku sekundy podczas mocnego uderzenia/hitstuna)
-      if (z.hitStunTimer <= 0) {
-        if (Math.abs(dx) > 16) {
-          desiredVx = (dx > 0 ? 1 : -1) * moveSpeed;
-          z.walkAnim += dt * (3.4 * speedMultiplier);
+        if (inAggroRange) {
+          z.isReaching = true;
+          z.reachBlend = Math.min(1.0, (z.reachBlend || 0) + 0.12);
+        } else if (isOutOfRange) {
+          z.isReaching = false;
+          z.reachBlend = Math.max(0, (z.reachBlend || 0) - 0.08);
         } else {
-          desiredVx = 0;
+          // Histereza podtrzymująca agresję pomiędzy 260 a 300 px
+          if (z.isReaching) {
+            z.reachBlend = Math.min(1.0, (z.reachBlend || 0) + 0.04);
+          } else {
+            z.reachBlend = Math.max(0, (z.reachBlend || 0) - 0.08);
+          }
+        }
+
+        // Zwiększenie prędkości poruszania się zombie o 30–35% względem bazowego chodu przy zrywie
+        const reachFactor = (z.reachBlend || 0);
+        const speedMultiplier = 1.0 + reachFactor * 0.33; // 33% agresywnego zrywu
+        const moveSpeed = ZOMBIE_CONFIG.SPEED * speedMultiplier;
+
+        // Człapiący ruch w stronę celu (zablokowany w ułamku sekundy podczas mocnego uderzenia/hitstuna)
+        if (z.hitStunTimer <= 0) {
+          if (Math.abs(dx) > 16) {
+            desiredVx = (dx > 0 ? 1 : -1) * moveSpeed;
+            z.walkAnim += dt * (3.4 * speedMultiplier);
+          } else {
+            desiredVx = 0;
+          }
         }
       }
 
       // --- ATAK WRĘCZ / UGRYZIENIE ---
-      if (Math.abs(dx) <= ZOMBIE_CONFIG.BITE_RANGE && Math.abs(dy) <= 38) {
+      const biteToleranceY = z.isCrawling ? 52 : 38;
+      if (Math.abs(dx) <= ZOMBIE_CONFIG.BITE_RANGE && Math.abs(dy) <= biteToleranceY) {
         if (z.attackCooldown <= 0) {
           z.attackCooldown = ZOMBIE_CONFIG.BITE_COOLDOWN;
           z.attackAnim = 0.35;
@@ -1147,7 +1223,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
     const climbed = handleZombieStepAndClimb(z, groundY, nearestTarget);
 
     // Celowany skok na platformę gdy cel znajduje się bezpośrednio nad głową w zasięgu skoku
-    if (!climbed && nearestTarget && z.onGround && z.jumpCooldown <= 0) {
+    if (!climbed && !z.isCrawling && nearestTarget && z.onGround && z.jumpCooldown <= 0) {
       const targetFeetY = nearestTarget.y + (nearestTarget.h || 70);
       const heightDiff = (z.y + z.h) - targetFeetY; // dodatnie gdy cel jest wyżej
       const targetDx = (nearestTarget.x + (nearestTarget.w || 24) * 0.5) - (z.x + z.w * 0.5);

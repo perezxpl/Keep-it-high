@@ -842,6 +842,26 @@ export class ThrownTomahawk {
               }
             }
 
+            if (isLegshot && ch.isZombie && !ch.isDead && !ch.isCrawling && ch.hp > 0) {
+              ch.legHp = 0;
+              if (!ch.dismembered) ch.dismembered = { armFront: false, armBack: false, legFront: true, legBack: false };
+              else ch.dismembered.legFront = true;
+              const targetVisuals = ch._cachedVisuals || { ...DEFAULT_VISUALS, ...(ch.visuals || {}), ...(ch.customVisuals || {}) };
+              spawnLimbGib('leg', this.x, this.y, Math.sign(this.vx || 1) * 3.8, -2.5, ch.facing, targetVisuals);
+              spawnBloodSpurt(this.x, this.y, Math.sign(this.vx || 1) * 4.0, -1.8, 16, 1.3);
+              ch.isCrawling = true;
+              ch.isReaching = false;
+              ch.reachBlend = 0;
+              ch.crawlPhase = 0;
+              ch.h = 26;
+              ch.w = 34;
+              ch.y += 44;
+              ch.groundY = ch.y + ch.h;
+              ch.vy = 0;
+              ch.onGround = true;
+              triggerCombatFeedBanner('HIT', '[ODSTRZELENIE NÓG] ZOMBIE STRACIŁ NOGĘ OD TOPOKA I CZOŁGA SIĘ!');
+            }
+
             if (ch.hp <= 0 && !ch.isDead) {
               ch.isDead = true;
               ch.killer = this.shooter;
@@ -1245,6 +1265,33 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       }
       spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
 
+      // Odstrzelenie / urwanie nóg w pobliskiej eksplozji i przejście w tryb czołgania (isCrawling)
+      if (ch.isZombie && !ch.isDead && !ch.isCrawling && ch.hp > 0 && dist <= radius * 0.82) {
+        ch.legHp = 0;
+        if (!ch.dismembered) {
+          ch.dismembered = { armFront: false, armBack: false, legFront: true, legBack: false };
+        } else {
+          ch.dismembered.legFront = true;
+          if (dist <= radius * 0.58) {
+            ch.dismembered.legBack = true;
+          }
+        }
+        const targetVisuals = ch._cachedVisuals || { ...DEFAULT_VISUALS, ...(ch.visuals || {}), ...(ch.customVisuals || {}) };
+        spawnLimbGib('leg', chCenterX, ch.y + 46, normX * 4.5, -3.2, ch.facing, targetVisuals);
+        spawnBloodSpurt(chCenterX, ch.y + 42, normX * 3.5, -2.5, 22, 1.4);
+        ch.isCrawling = true;
+        ch.isReaching = false;
+        ch.reachBlend = 0;
+        ch.crawlPhase = 0;
+        ch.h = 26;
+        ch.w = 34;
+        ch.y += 44;
+        ch.groundY = ch.y + ch.h;
+        ch.vy = 0;
+        ch.onGround = true;
+        triggerCombatFeedBanner('HIT', '[URWANE NOGI] ZOMBIE STRACIŁ KOŃCZYNY W EKSPLOZJI I CZOŁGA SIĘ!');
+      }
+
       // Dobicie lub fala uderzeniowa na leżącego zombie
       if (isLyingZombie) {
         if (dist <= radius * 0.65) {
@@ -1355,7 +1402,12 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
           spawnDroppedWeapon(chCenterX, chCenterY, normX * 4.5, -5.0, ch.currentWeapon, ch.facing, null, ch);
         }
 
-        ch.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+        if (!ch.isZombie || !ch.isCrawling) {
+          ch.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+        } else {
+          ch.dismembered = ch.dismembered || { armFront: false, armBack: false, legFront: true, legBack: false };
+          ch.dismembered.legFront = true;
+        }
 
         if (dist <= radius * 0.45) {
           // Bezpośrednie trafienie w epicentrum: totalne rozczłonkowanie (Gibbing)

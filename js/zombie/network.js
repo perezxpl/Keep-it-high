@@ -38,6 +38,9 @@ export function serializeZombiesState() {
       decayTimer: Math.round((z.decayTimer || 0) * 100) / 100,
       isReaching: !!z.isReaching,
       reachBlend: Math.round((z.reachBlend || 0) * 100) / 100,
+      isCrawling: !!z.isCrawling,
+      crawlPhase: Math.round((z.crawlPhase || 0) * 100) / 100,
+      legHp: Math.round(z.legHp !== undefined ? z.legHp : 40),
       name: z.name || 'ZOMBIE',
       originalName: z.originalName || '',
       classId: z.currentClass?.id || 'STRIKER',
@@ -130,6 +133,15 @@ export function applyRemoteZombiesState(data) {
         localZ.decayTimer = rz.decayTimer;
         localZ.isReaching = !!rz.isReaching;
         localZ.reachBlend = rz.reachBlend || 0;
+        localZ.isCrawling = !!rz.isCrawling;
+        localZ.crawlPhase = rz.crawlPhase || 0;
+        localZ.legHp = rz.legHp !== undefined ? rz.legHp : 40;
+        if (localZ.isCrawling) {
+          localZ.h = 26;
+          localZ.w = 34;
+          if (!localZ.dismembered) localZ.dismembered = { armFront: false, armBack: false, legFront: true, legBack: false };
+          else localZ.dismembered.legFront = true;
+        }
         zombieState.zombies.push(localZ);
       } else {
         localZ.targetX = rz.x;
@@ -148,6 +160,15 @@ export function applyRemoteZombiesState(data) {
         localZ.decayTimer = rz.decayTimer;
         localZ.isReaching = !!rz.isReaching;
         localZ.reachBlend = rz.reachBlend || 0;
+        localZ.isCrawling = !!rz.isCrawling;
+        localZ.crawlPhase = rz.crawlPhase || 0;
+        localZ.legHp = rz.legHp !== undefined ? rz.legHp : 40;
+        if (localZ.isCrawling) {
+          localZ.h = 26;
+          localZ.w = 34;
+          if (!localZ.dismembered) localZ.dismembered = { armFront: false, armBack: false, legFront: true, legBack: false };
+          else localZ.dismembered.legFront = true;
+        }
 
         // Płynny lerp pozycji
         const dx = localZ.targetX - localZ.x;

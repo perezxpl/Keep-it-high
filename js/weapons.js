@@ -420,8 +420,10 @@ function updateMeleeCollision(shooter, ms) {
               t.dismembered.legFront = true;
               spawnLimbGib('leg', hitX, hitY, facing * 5.5, -6.0, t.facing, targetVisuals);
             } else {
-              t.dismembered.legFront = false;
-              t.dismembered.legBack = false;
+              t.dismembered.legFront = true;
+              t.isCrawling = true;
+              t.h = 26;
+              spawnLimbGib('leg', hitX, hitY, facing * 5.5, -6.0, t.facing, targetVisuals);
             }
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 45, t.facing, 6);
             triggerScreenShake(16);
@@ -1345,9 +1347,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       let charTop = ch.y - 25;
       let charBottom = ch.y + hitH;
 
-      if (ch.isProne || ch.staggerTimer > 0 || isLyingZombie) {
-        // Obniżony profil kolizji dla pozycji leżącej na brzuchu lub na plecach po powaleniu
-        charTop = ch.y + hitH - 32;
+      if (ch.isProne || ch.staggerTimer > 0 || isLyingZombie || (ch.isZombie && ch.isCrawling)) {
+        // Obniżony profil kolizji dla pozycji leżącej na brzuchu, czołgającej się lub na plecach po powaleniu
+        charTop = ch.y + (ch.isCrawling ? (hitH - 26) : (hitH - 32));
         charBottom = ch.y + hitH + 8;
         charLeft = ch.x - (ch.facing === 1 ? 28 : 42);
         charRight = ch.x + hitW + (ch.facing === 1 ? 42 : 28);
@@ -1410,7 +1412,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       let isLegshot = false;
       let isTorsoShot = false;
 
-      if (closestChar.isProne || (closestChar.staggerTimer > 0) || (closestChar.isZombie && (closestChar.isDead || closestChar.riseTimer > 0.4))) {
+      if (closestChar.isProne || (closestChar.staggerTimer > 0) || (closestChar.isZombie && (closestChar.isDead || closestChar.riseTimer > 0.4 || closestChar.isCrawling))) {
         // Pozycja leżąca: sylwetka rozciągnięta wzdłuż osi X
         if (closestChar.facing === 1) {
           isHeadshot = (hitPtX >= closestChar.x + closestChar.w * 0.50);
@@ -1537,6 +1539,51 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (b.shooter && b.shooter !== closestChar) {
         closestChar.lastAttacker = b.shooter;
         closestChar.lastAttackerTimer = 240; // 4 sekundy aktywnego okna walki
+      }
+
+      // Odstrzeliwanie nóg u zombie i przejście w tryb czołgania (isCrawling)
+      if (closestChar.isZombie && !closestChar.isDead && !closestChar.isCrawling && closestChar.hp > 0) {
+        const charH = closestChar.h || 70;
+        const isLegZone = isLegshot || (hitPtY >= closestChar.y + charH * 0.62);
+        if (isLegZone) {
+          if (closestChar.legHp === undefined) closestChar.legHp = 40;
+          const isShotgunHit = (b.weaponId === 'SHOTGUN' || b.weaponId === 'SAWED_OFF');
+          const isSniperHit = (b.weaponId === 'BARRETT' || b.weaponId === 'SNIPER');
+          const distToShooter = b.shooter ? Math.hypot(closestChar.x - b.shooter.x, closestChar.y - b.shooter.y) : (b.distTraveled || 0);
+          const isCloseShotgun = isShotgunHit && distToShooter < 180;
+
+          if (isCloseShotgun || isSniperHit) {
+            closestChar.legHp = 0;
+          } else {
+            closestChar.legHp -= totalDamage;
+          }
+
+          if (closestChar.legHp <= 0) {
+            closestChar.legHp = 0;
+            if (!closestChar.dismembered) {
+              closestChar.dismembered = { armFront: false, armBack: false, legFront: true, legBack: false };
+            } else {
+              closestChar.dismembered.legFront = true;
+              if (isShotgunHit || isSniperHit) closestChar.dismembered.legBack = true;
+            }
+            const zVis = closestChar._cachedVisuals || closestChar.visuals;
+            spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.55, -2.2, 22, 1.4);
+            spawnLimbGib('leg', hitPtX, hitPtY, b.vx * 0.45, -2.8, closestChar.facing, zVis);
+            closestChar.isCrawling = true;
+            closestChar.isReaching = false;
+            closestChar.reachBlend = 0;
+            closestChar.crawlPhase = 0;
+            closestChar.h = 26;
+            closestChar.w = 34;
+            closestChar.y += 44;
+            closestChar.groundY = closestChar.y + closestChar.h;
+            closestChar.vy = 0;
+            closestChar.onGround = true;
+            triggerCombatFeedBanner('HIT', '[ODSTRZELENIE NÓG] ZOMBIE STRACIŁ KOŃCZYNY I CZOŁGA SIĘ!');
+            playSound('hit_flesh', { x: hitPtX, y: hitPtY });
+            triggerScreenShake(isShotgunHit ? 4.5 : 2.5);
+          }
+        }
       }
 
       // Synchronizacja zadanych obrażeń w grze sieciowej
@@ -1825,8 +1872,11 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             closestChar.dismembered.legFront = true;
             spawnLimbGib('leg', hitPtX, hitPtY, b.vx, b.vy, closestChar.facing, charVisuals);
           } else {
-            closestChar.dismembered.legFront = false;
-            closestChar.dismembered.legBack = false;
+            closestChar.dismembered.legFront = true;
+            if (isShotgun || isSniper) closestChar.dismembered.legBack = true;
+            closestChar.isCrawling = true;
+            closestChar.h = 26;
+            spawnLimbGib('leg', hitPtX, hitPtY, b.vx, b.vy, closestChar.facing, charVisuals);
           }
 
           triggerHitstop(2);

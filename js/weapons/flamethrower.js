@@ -331,8 +331,8 @@ export class FlameParticle {
       let chTop = ch.y - 20;
       let chBottom = ch.y + hitH;
 
-      if (ch.isProne || ch.staggerTimer > 0 || isLyingZombie) {
-        chTop = ch.y + hitH - 24;
+      if (ch.isProne || ch.staggerTimer > 0 || isLyingZombie || (ch.isZombie && ch.isCrawling)) {
+        chTop = ch.y + hitH - (ch.isCrawling ? 20 : 24);
         chBottom = ch.y + hitH + 2;
         chLeft = ch.x - (ch.facing === 1 ? 14 : 38);
         chRight = ch.x + hitW + (ch.facing === 1 ? 38 : 14);
@@ -537,9 +537,10 @@ export class SurfaceFire {
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;
-      const chLeft = isLyingZombie ? ch.x - (ch.facing === 1 ? 14 : 38) : ch.x;
-      const chRight = isLyingZombie ? ch.x + hitW + (ch.facing === 1 ? 38 : 14) : ch.x + hitW;
-      const chTop = isLyingZombie ? ch.y + hitH - 24 : ch.y;
+      const isLowProfile = isLyingZombie || (ch.isZombie && ch.isCrawling);
+      const chLeft = isLowProfile ? ch.x - (ch.facing === 1 ? 14 : 38) : ch.x;
+      const chRight = isLowProfile ? ch.x + hitW + (ch.facing === 1 ? 38 : 14) : ch.x + hitW;
+      const chTop = isLowProfile ? ch.y + hitH - 24 : ch.y;
       const chBottom = ch.y + hitH;
 
       // Sprawdzenie nachodzenia AABB postaci na strefę ognia
@@ -1260,7 +1261,7 @@ export function drawBurningEffects(ctx, combatants, ball) {
     if (!ch.burnTimer || ch.burnTimer <= 0) continue;
 
     const cx = ch.x + (ch.w || 24) * 0.5;
-    const cy = isLyingZombie ? ch.y + (ch.h || 70) - 10 : ch.y + (ch.h || 70) * 0.45;
+    const cy = (isLyingZombie || (ch.isZombie && ch.isCrawling)) ? ch.y + (ch.h || 70) - 10 : ch.y + (ch.h || 70) * 0.45;
     const flicker = Math.sin(now + ch.x) * 2;
 
     ctx.save();

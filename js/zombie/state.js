@@ -340,6 +340,10 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     twitchTimer: 0,
     isReaching: false,                     // Flaga agresji i wyciagania rak ku ofierze
     reachBlend: 0,                         // Wspolczynnik wyciagniecia rak i zrywu (0..1)
+    isCrawling: false,                     // Tryb czolgania sie po odstrzeleniu nogi
+    crawlPhase: 0,                         // Faza animacji podciagania sie na rekach
+    legHp: 40,                             // Wytrzymalosc konczyn dolnych (odstrzelenie przy <= 0)
+    maxLegHp: 40,
 
     // Cechy wizualne
     charVisuals: baseVisuals,
@@ -461,6 +465,10 @@ export function registerCorpseForReanimation(char, surfaceY) {
     twitch: 0,
     isReaching: false,
     reachBlend: 0,
+    isCrawling: false,
+    crawlPhase: 0,
+    legHp: 40,
+    maxLegHp: 40,
     originalName: char.name || (char.isBot ? 'BOT' : 'OPERATOR'),
 
     // Pełna tożsamość i model poległego
