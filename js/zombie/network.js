@@ -36,6 +36,8 @@ export function serializeZombiesState() {
       attackAnim: Math.round((z.attackAnim || 0) * 100) / 100,
       riseTimer: Math.round((z.riseTimer || 0) * 100) / 100,
       decayTimer: Math.round((z.decayTimer || 0) * 100) / 100,
+      isReaching: !!z.isReaching,
+      reachBlend: Math.round((z.reachBlend || 0) * 100) / 100,
       name: z.name || 'ZOMBIE',
       originalName: z.originalName || '',
       classId: z.currentClass?.id || 'STRIKER',
@@ -126,6 +128,8 @@ export function applyRemoteZombiesState(data) {
         localZ.attackAnim = rz.attackAnim;
         localZ.riseTimer = rz.riseTimer;
         localZ.decayTimer = rz.decayTimer;
+        localZ.isReaching = !!rz.isReaching;
+        localZ.reachBlend = rz.reachBlend || 0;
         zombieState.zombies.push(localZ);
       } else {
         localZ.targetX = rz.x;
@@ -142,6 +146,8 @@ export function applyRemoteZombiesState(data) {
         localZ.attackAnim = rz.attackAnim;
         localZ.riseTimer = rz.riseTimer;
         localZ.decayTimer = rz.decayTimer;
+        localZ.isReaching = !!rz.isReaching;
+        localZ.reachBlend = rz.reachBlend || 0;
 
         // Płynny lerp pozycji
         const dx = localZ.targetX - localZ.x;

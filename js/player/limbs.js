@@ -625,7 +625,7 @@ export function drawHeadWoundsAway(ctx, dmgRatio) {
  * Renderuje anatomiczną, taktyczną dłoń bojową w rękawicy taktycznej z protektorem kostek
  * Zastępuje dawną "kulkę" profesjonalną rękawicą operatorską (Mechanix / Oakley style)
  */
-export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v) {
+export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v, playerRef = null) {
   const handScale = (isFront ? 1.0 : 0.88) * (isSculpted ? Math.max(1.0, muscle * 0.95) : muscle);
   const hX = foreLen - 0.4;
   const useGloves = v.hasTacticalGloves !== false;
@@ -742,30 +742,34 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
     ctx.fill();
   }
 
-  // 5. SEGMENTY ZGIĘTYCH PALCÓW (Fingers in Grip)
+  // 5. SEGMENTY ZGIĘTYCH PALCÓW (Fingers in Grip / Zombie Claws)
+  const isReachingZombie = Boolean((playerRef?.isZombie || v?.isZombieVisuals) && !playerRef?.isCrawling && (playerRef?.reachBlend > 0.05));
+  const clawExtend = isReachingZombie ? (Math.min(1.0, playerRef.reachBlend) * 1.4) : 0;
+
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.8;
   ctx.beginPath();
   ctx.moveTo(hX + palmLen * 0.75, -0.2);
-  ctx.lineTo(hX + palmLen + 0.8, -0.2);
+  ctx.lineTo(hX + palmLen + 0.8 + clawExtend, -0.2);
   ctx.moveTo(hX + palmLen * 0.70, 0.8);
-  ctx.lineTo(hX + palmLen + 0.4, 0.8);
+  ctx.lineTo(hX + palmLen + 0.4 + clawExtend, 0.8);
   ctx.moveTo(hX + palmLen * 0.55, 1.6);
-  ctx.lineTo(hX + palmLen * 0.85, 1.6);
+  ctx.lineTo(hX + palmLen * 0.85 + clawExtend, 1.6);
   ctx.stroke();
 
   ctx.fillStyle = useGloves ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.4)';
   ctx.fillRect(hX + palmLen * 0.8, -0.8, 1.4, 0.6);
 
-  // Krew na szponach i dłoniach zombie
+  // Krew na szponach i dłoniach zombie (wyszarpane szpony w pozycji sięgania ku ofierze)
   if (v.isZombieVisuals) {
+    const clawReachExtra = isReachingZombie ? (Math.min(1.0, playerRef.reachBlend) * 1.4) : 0;
     ctx.fillStyle = '#7f1d1d';
     ctx.beginPath();
-    ctx.arc(hX + palmLen + 0.6, 0.4, 2.0 * handScale, 0, Math.PI * 2);
+    ctx.arc(hX + palmLen + 0.6 + clawReachExtra, 0.4, (2.0 + (isReachingZombie ? playerRef.reachBlend * 0.4 : 0)) * handScale, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#ef4444';
     ctx.beginPath();
-    ctx.arc(hX + palmLen + 1.0, 0.2, 1.0 * handScale, 0, Math.PI * 2);
+    ctx.arc(hX + palmLen + 1.0 + clawReachExtra, 0.2, (1.0 + (isReachingZombie ? playerRef.reachBlend * 0.3 : 0)) * handScale, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -1160,7 +1164,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   }
 
   // DŁOŃ BOJOWA W RĘKAWICY TAKTYCZNEJ (Zastępuje dawną kulkę)
-  drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v);
+  drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v, playerRef);
 
   if (isFront && visuals && visuals.heldGrenade) {
     drawHandheldGrenade(ctx, foreLen + 4.2, 0, 1.0, (visuals && visuals.grenadeCookRatio) || 0);

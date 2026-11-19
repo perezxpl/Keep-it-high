@@ -486,13 +486,37 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFootBackTargetY = plantFloorY - (isMoving && stride < 0 ? lift : 0);
     rawFootBackAnkle = (isMoving && stride < 0 ? 0.25 * fDir : 0);
 
-    const attackLunge = (p.attackCooldown && p.attackCooldown > 0.8) ? 0.35 : 0;
+    const attackLunge = (p.attackCooldown && p.attackCooldown > 0.8) ? 0.35 : ((p.attackAnim && p.attackAnim > 0) ? (p.attackAnim * 0.8) : 0);
     const armSway = Math.sin((p.idleAnim || walkAnim) * 2) * 0.12;
 
     rawFrontSwing = 1.45 + attackLunge + armSway;
     rawFrontElbow = 0.22 + Math.abs(armSway) * 0.1;
     rawBackSwing = 1.40 + attackLunge - armSway;
     rawBackElbow = 0.26 + Math.abs(armSway) * 0.1;
+
+    // Reakcja na bliskość żywej postaci: pochylenie tułowia ku ofierze i szarpiący wyciąg obu rąk
+    const reachBlend = (p.reachBlend && !p.isCrawling) ? Math.max(0, Math.min(1.0, p.reachBlend)) : 0;
+    if (reachBlend > 0.05) {
+      // 1. Lekkie pochylenie tułowia do przodu w kierunku p.facing proporcjonalnie do reachBlend
+      p.torsoTilt = (0.22 + 0.16 * reachBlend) * fDir;
+      p.headPitch = 0.15 - 0.06 * reachBlend;
+
+      // 2. Wyciągnięcie obu rąk prosto przed siebie z naprzemiennym ruchem chwytającym/szarpiącym
+      const animTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const grabPulseFront = Math.sin(animTime * 0.012);
+      const grabPulseBack = Math.sin(animTime * 0.012 + Math.PI * 0.75);
+
+      const reachFrontSwing = 1.57 + grabPulseFront * 0.09 + attackLunge;
+      const reachFrontElbow = 0.08 + (grabPulseFront * 0.5 + 0.5) * 0.10;
+
+      const reachBackSwing = 1.55 + grabPulseBack * 0.09 + attackLunge;
+      const reachBackElbow = 0.10 + (grabPulseBack * 0.5 + 0.5) * 0.10;
+
+      rawFrontSwing = rawFrontSwing * (1 - reachBlend) + reachFrontSwing * reachBlend;
+      rawFrontElbow = rawFrontElbow * (1 - reachBlend) + reachFrontElbow * reachBlend;
+      rawBackSwing = rawBackSwing * (1 - reachBlend) + reachBackSwing * reachBlend;
+      rawBackElbow = rawBackElbow * (1 - reachBlend) + reachBackElbow * reachBlend;
+    }
   } else if (p.isIntro) {
     const choreo = getFreestyleChoreography(p.juggleTimer, hipX, hipY, floorY, p.facing, 8);
     hipX += choreo.hipShiftX;

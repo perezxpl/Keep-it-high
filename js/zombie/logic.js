@@ -510,6 +510,8 @@ export function refreshActiveZombiesCache() {
       z.isZombie = true;
       z.active = true;
       z.spawnProtectionTimer = 0;
+      if (typeof z.isReaching !== 'boolean') z.isReaching = false;
+      if (typeof z.reachBlend !== 'number') z.reachBlend = 0;
       if (!z.thighLen) z.thighLen = 25;
       if (!z.shinLen) z.shinLen = 24;
       if (!z.upperArmLen) z.upperArmLen = 14;
@@ -530,6 +532,8 @@ export function refreshActiveZombiesCache() {
       c.isZombie = true;
       c.active = true;
       c.spawnProtectionTimer = 0;
+      if (typeof c.isReaching !== 'boolean') c.isReaching = false;
+      if (typeof c.reachBlend !== 'number') c.reachBlend = 0;
       if (!c.thighLen) c.thighLen = 25;
       if (!c.shinLen) c.shinLen = 24;
       if (!c.upperArmLen) c.upperArmLen = 14;
@@ -762,6 +766,8 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
     // --- STAN ZGONU / POWALENIA ZOMBIE ---
     if (z.isDead) {
+      z.isReaching = false;
+      z.reachBlend = 0;
       // Grawitacja i kolizja z podłożem dla powalonego/martwego ciała
       z.vy += 0.45;
       if (z.vy > 12) z.vy = 12;
@@ -851,6 +857,8 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
     // --- WSTAWANIE Z ZIEMI ---
     if (z.riseTimer > 0) {
+      z.isReaching = false;
+      z.reachBlend = 0;
       z.riseTimer -= dt;
       z.vx = 0;
       z.knockbackVx = 0;
@@ -984,11 +992,37 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.facing = dx >= 0 ? 1 : -1;
       z.yaw = (z.facing < 0 ? Math.PI : 0);
 
+      // Detekcja bliskości celu i wyciąganie rąk (agresywny zryw w stronę ofiary)
+      const dist = Math.hypot(dx, dy);
+      const isTargetAlive = !nearestTarget.isDead;
+      const inAggroRange = isTargetAlive && Math.abs(dx) < 260 && Math.abs(dy) < 120;
+      const isOutOfRange = !isTargetAlive || dist > 300 || Math.abs(dx) > 300 || Math.abs(dy) > 160;
+
+      if (!z.isCrawling && inAggroRange) {
+        z.isReaching = true;
+        z.reachBlend = Math.min(1.0, (z.reachBlend || 0) + 0.12);
+      } else if (isOutOfRange) {
+        z.isReaching = false;
+        z.reachBlend = Math.max(0, (z.reachBlend || 0) - 0.08);
+      } else {
+        // Histereza podtrzymująca agresję pomiędzy 260 a 300 px
+        if (z.isReaching && !z.isCrawling) {
+          z.reachBlend = Math.min(1.0, (z.reachBlend || 0) + 0.04);
+        } else {
+          z.reachBlend = Math.max(0, (z.reachBlend || 0) - 0.08);
+        }
+      }
+
+      // Zwiększenie prędkości poruszania się zombie o 30–35% względem bazowego chodu przy zrywie
+      const reachFactor = (z.reachBlend || 0);
+      const speedMultiplier = 1.0 + reachFactor * 0.33; // 33% agresywnego zrywu
+      const moveSpeed = ZOMBIE_CONFIG.SPEED * speedMultiplier;
+
       // Człapiący ruch w stronę celu (zablokowany w ułamku sekundy podczas mocnego uderzenia/hitstuna)
       if (z.hitStunTimer <= 0) {
         if (Math.abs(dx) > 16) {
-          desiredVx = (dx > 0 ? 1 : -1) * ZOMBIE_CONFIG.SPEED;
-          z.walkAnim += dt * 3.4;
+          desiredVx = (dx > 0 ? 1 : -1) * moveSpeed;
+          z.walkAnim += dt * (3.4 * speedMultiplier);
         } else {
           desiredVx = 0;
         }
@@ -1069,6 +1103,8 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       }
     } else {
       // Brak żywych celów – zombie snuje się powoli
+      z.isReaching = false;
+      z.reachBlend = Math.max(0, (z.reachBlend || 0) - 0.08);
       desiredVx = Math.sin(Date.now() * 0.001 + i) * (ZOMBIE_CONFIG.SPEED * 0.4);
       z.walkAnim += dt * 1.5;
       if (Math.abs(desiredVx) > 0.1) z.facing = desiredVx > 0 ? 1 : -1;
