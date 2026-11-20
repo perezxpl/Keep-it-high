@@ -19,7 +19,7 @@ import {
 } from './killstreaks/index.js';
 import { registerCalloutKill, onPlayerDeathCallout } from './callouts/index.js';
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
-import { spawnAeroSuperGrenade, spawnThrownTomahawk } from './projectiles.js';
+import { spawnAeroSuperGrenade, spawnThrownTomahawk, spawnMolotovCocktail } from './projectiles.js';
 import { getLocalPlayerCustomVisuals } from './player/hair.js';
 import { sendZombiesState, applyRemoteZombiesState, applyRemoteZombieDamage, isZombieModeActive, setZombieModeActive } from './zombie/index.js';
 import { updateUIStatus, updatePingUI, displayHostRoomCode, openMultiplayerModal, closeMultiplayerModal, updateCursorVisibility, isChatActive, openChat, closeChat, addChatMessageToUI, syncMpBotUI, initNetworkUI } from './networkUI.js';
@@ -486,11 +486,12 @@ export function sendKillBroadcast(killData) {
   } catch (_) {}
 }
 
-export function sendGrenadeThrow(targetX, targetY, power, originX, originY, fuse = null) {
+export function sendGrenadeThrow(targetX, targetY, power, originX, originY, fuse = null, throwType = 'GRENADE') {
   if (!isNetworkActive()) return;
   try {
     broadcastNetworkPacket({
       type: 'grenade_throw',
+      throwType: throwType || 'GRENADE',
       x: Math.round(targetX * 10) / 10,
       y: Math.round(targetY * 10) / 10,
       relY: Math.round((GROUND_Y - targetY) * 10) / 10,
@@ -1585,7 +1586,11 @@ export function handleNetworkData(data, senderPeerId = null) {
         ? (GROUND_Y - data.relOriginY)
         : ((typeof data.originY === 'number') ? data.originY : (targetRp.y + 20));
       const targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
-      spawnAeroSuperGrenade(targetRp, data.x, targetY, data.power, originX, originY, data.fuse);
+      if (data.throwType === 'MOLOTOV') {
+        spawnMolotovCocktail(targetRp, data.x, targetY, data.power, originX, originY);
+      } else {
+        spawnAeroSuperGrenade(targetRp, data.x, targetY, data.power, originX, originY, data.fuse);
+      }
       break;
     }
 

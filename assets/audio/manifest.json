@@ -77,6 +77,7 @@
       "grenade_bounce_1.wav",
       "grenade_bounce_2.wav"
     ],
+    "glass_shatter": null,
     "explosion_grenade": {
       "src": ["explosion_grenade_1.wav", "explosion_grenade_2.wav"],
       "volume": 0.90,

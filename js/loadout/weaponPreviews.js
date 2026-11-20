@@ -96,6 +96,7 @@ const WEAPON_SPRITE_PATHS = {
   MACHETE: './assets/weapons/machete.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   AXE: './assets/weapons/axe.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   GRENADE: './assets/weapons/grenade.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
+  MOLOTOV: './assets/weapons/molotov.png?v=v492_molotov_cocktail',
   SMOKE: './assets/weapons/smoke.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   FLASH: './assets/weapons/flash.png?v=v252_fix_picker_weapons_narrowing_and_card_height'
 };
@@ -189,8 +190,8 @@ export function drawWeaponPreview(canvas, weaponId) {
       } else if (weaponId === 'KNIFE' || weaponId === 'MACHETE' || weaponId === 'AXE') {
         maxWFactor = 0.82;
         maxHFactor = 0.80;
-      } else if (weaponId === 'GRENADE' || weaponId === 'SMOKE' || weaponId === 'FLASH') {
-        maxWFactor = 0.52; // Pionowy granat
+      } else if (weaponId === 'GRENADE' || weaponId === 'MOLOTOV' || weaponId === 'SMOKE' || weaponId === 'FLASH') {
+        maxWFactor = 0.52; // Pionowy granat / butelka zapalająca
         maxHFactor = 0.84;
       } else {
         // Długa broń główna (AK47, SPAS-12, Barrett .50)

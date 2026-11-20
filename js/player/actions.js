@@ -6,7 +6,8 @@
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
-import { spawnAeroSuperGrenade, detonateGrenadeExplosion, spawnThrownTomahawk } from '../projectiles.js';
+import { spawnAeroSuperGrenade, detonateGrenadeExplosion, spawnThrownTomahawk, spawnMolotovCocktail } from '../projectiles.js';
+import { detonateMolotovExplosion } from '../weapons/molotov.js';
 import { getActiveBots } from '../bot.js';
 import { getActiveZombies } from '../zombie/index.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
@@ -1370,12 +1371,15 @@ export function prepareGrenadeThrow(p, targetX = null, targetY = null, customPow
     p.facing = dx > 0 ? 1 : -1;
   }
 
+  const selectedThrowable = p?.loadout?.pocket2?.throwables?.[p.loadout?.pocket2?.activeThrowableIndex || 0] || 'GRENADE';
+
   // Jeśli rzut jest już aktywny i gracz celuje (trzyma klawisz/drążek):
   // NIE resetujemy timera gotowania zapalnika (cookTimer), a jedynie aktualizujemy cel i moc!
   if (p.throwAnim && p.throwAnim.active && p.throwAnim.aiming) {
     p.throwAnim.targetX = aimX;
     p.throwAnim.targetY = aimY;
     p.throwAnim.aimAngle = aimAngle;
+    p.throwAnim.throwType = selectedThrowable;
     if (typeof customPower === 'number' && customPower > 0) {
       p.throwAnim.power = customPower;
     }
@@ -1397,7 +1401,7 @@ export function prepareGrenadeThrow(p, targetX = null, targetY = null, customPow
     power: customPower,
     spawned: false,
     aimAngle,
-    throwType: 'GRENADE'
+    throwType: selectedThrowable
   };
 
   return true;
@@ -1558,6 +1562,8 @@ export function throwTacticalGrenade(p, targetX = null, targetY = null, customPo
     p.facing = dx > 0 ? 1 : -1;
   }
 
+  const selectedThrowable = p?.loadout?.pocket2?.throwables?.[p.loadout?.pocket2?.activeThrowableIndex || 0] || 'GRENADE';
+
   p.throwAnim = {
     active: true,
     aiming: false,
@@ -1572,7 +1578,8 @@ export function throwTacticalGrenade(p, targetX = null, targetY = null, customPo
     targetY: aimY,
     power: customPower,
     spawned: false,
-    aimAngle
+    aimAngle,
+    throwType: selectedThrowable
   };
 
   return true;
@@ -1614,18 +1621,32 @@ export function updatePlayerThrow(p) {
         allCombatants.push(...getActiveZombies());
       }
 
-      detonateGrenadeExplosion(
-        handPos.x,
-        handPos.y,
-        145,
-        p,
-        p.currentGroundY || p.groundY || 500,
-        arenaPlatforms,
-        null,
-        allCombatants,
-        null,
-        'GRENADE'
-      );
+      if (tAnim.throwType === 'MOLOTOV') {
+        detonateMolotovExplosion(
+          handPos.x,
+          handPos.y,
+          160,
+          p,
+          p.currentGroundY || p.groundY || 500,
+          arenaPlatforms,
+          null,
+          allCombatants,
+          null
+        );
+      } else {
+        detonateGrenadeExplosion(
+          handPos.x,
+          handPos.y,
+          145,
+          p,
+          p.currentGroundY || p.groundY || 500,
+          arenaPlatforms,
+          null,
+          allCombatants,
+          null,
+          'GRENADE'
+        );
+      }
       triggerScreenShake(14);
       return;
     }
@@ -1676,6 +1697,19 @@ export function updatePlayerThrow(p) {
           }
         }
         triggerScreenShake(2.5);
+      } else if (tAnim.throwType === 'MOLOTOV') {
+        spawnMolotovCocktail(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+        playSound('grenade_throw', { x: handPos.x, y: handPos.y });
+        if (!p.isRemote && !p.isBot) {
+          const isNet = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || window.networkState?.isConnected);
+          const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;
+          if (isNet && typeof sendGrenade === 'function') {
+            sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, 0, 'MOLOTOV');
+          }
+        }
+        p.grenadeMaxCooldown = 3.5;
+        p.grenadeCooldown = 3.5;
+        triggerScreenShake(2.0);
       } else {
         const remainingFuse = Math.max(1, (tAnim.maxFuse || 300) - (tAnim.cookTimer || 0));
         spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
@@ -1684,7 +1718,7 @@ export function updatePlayerThrow(p) {
           const isNet = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || window.networkState?.isConnected);
           const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;
           if (isNet && typeof sendGrenade === 'function') {
-            sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
+            sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse, 'GRENADE');
           }
         }
         p.grenadeMaxCooldown = 3.5;

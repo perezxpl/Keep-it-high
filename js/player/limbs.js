@@ -11,6 +11,7 @@ import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
 import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
 import { getJetpackFlamePalette, drawJetpackThrustPlume } from './jetpack.js';
 import { drawRightThighPistolHolster, drawLeftThighMeleeSheath } from './holsters.js';
+import { drawHandheldMolotov } from '../weapons/molotov.js';
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -1167,7 +1168,11 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v, playerRef);
 
   if (isFront && visuals && visuals.heldGrenade) {
-    drawHandheldGrenade(ctx, foreLen + 4.2, 0, 1.0, (visuals && visuals.grenadeCookRatio) || 0);
+    if (visuals.throwType === 'MOLOTOV') {
+      drawHandheldMolotov(ctx, foreLen + 4.2, 0, 1.0);
+    } else {
+      drawHandheldGrenade(ctx, foreLen + 4.2, 0, 1.0, (visuals && visuals.grenadeCookRatio) || 0);
+    }
   } else if (isFront && visuals && visuals.heldTomahawk) {
     drawHandheldTomahawk(ctx, foreLen + 4.2, 0, 1.0);
   }

@@ -345,6 +345,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
   v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned && p.throwAnim.throwType !== 'TOMAHAWK');
   v.heldTomahawk = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned && p.throwAnim.throwType === 'TOMAHAWK');
+  v.throwType = p.throwAnim?.throwType || 'GRENADE';
   v.grenadeCookRatio = (p.throwAnim && p.throwAnim.active && p.throwAnim.cookTimer) ? Math.min(1.0, p.throwAnim.cookTimer / 300) : 0;
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;

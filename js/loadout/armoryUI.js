@@ -196,6 +196,19 @@ export const ARMORY_CATALOG = {
       fuse: '5.0s (OD ZAWLECZKI)',
       stats: { dmgBar: 100, radBar: 90, fuseBar: 75 },
       desc: 'Gotowanie zapalnika od wyciągnięcia zawleczki. Destrukcja odłamkowa, tworzenie kraterów i niszczenie platform.'
+    },
+    {
+      id: 'MOLOTOV',
+      name: 'KOKTAJL MOŁOTOWA',
+      fullName: 'Butelek Zapalający Mołotow',
+      category: 'MIOTANA',
+      caliber: 'NAPALM / BENZYNA + OLEJ',
+      typeLabel: 'ZAPALAJĄCY',
+      dmg: 95,
+      radius: '160 PX + KAŁUŻE OGNIA',
+      fuse: 'UDAROWY (PRZY ROZBICIU)',
+      stats: { dmgBar: 85, radBar: 95, fuseBar: 100 },
+      desc: 'Szklana butelka z płonącym knotem. Rozbija się przy uderzeniu, rozlewając morze lepkiego napalmu i podpalając teren oraz wrogów.'
     }
   ]
 };

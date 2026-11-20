@@ -414,8 +414,9 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.save();
     ctx.translate(knobX, knobY);
     if (isGrenadeMode) {
+      const throwId = player.loadout?.pocket2?.throwables?.[0] || 'GRENADE';
       ctx.scale(0.65, 0.65);
-      drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, isStickActive);
+      drawWeaponSilhouette(ctx, throwId, 0, 0, isStickActive);
     } else {
       const curId = player.currentWeapon?.id || 'AK47';
       ctx.scale(0.65, 0.65);
@@ -645,7 +646,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.save();
     ctx.translate(pThrowable.x, pThrowable.y - (isReady ? 2 : 3));
     ctx.scale(0.85, 0.85);
-    drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, isReady && (isEquipped || isPressed));
+    const throwId = player.loadout?.pocket2?.throwables?.[0] || 'GRENADE';
+    drawWeaponSilhouette(ctx, throwId, 0, 0, isReady && (isEquipped || isPressed));
     ctx.restore();
 
     if (!isReady) {
@@ -812,8 +814,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.save();
       ctx.translate(cx, cy);
       ctx.scale(0.9, 0.9);
-      if (ds.type === 'GRENADE') {
-        drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, true);
+      if (ds.type === 'GRENADE' || ds.type === 'MOLOTOV') {
+        drawWeaponSilhouette(ctx, ds.type, 0, 0, true);
       } else {
         const curId = player.currentWeapon?.id || 'AK47';
         drawWeaponSilhouette(ctx, curId, 0, 0, true);
@@ -1091,6 +1093,42 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     ctx.beginPath();
     ctx.arc(-3.5, -5.8, 1.8, 0, Math.PI * 2);
     ctx.stroke();
+  } else if (type === 'MOLOTOV') {
+    // Korpus butelki (szkło)
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(-3.5, -1.0, 7.0, 8.5, [0, 0, 2, 2]);
+    } else {
+      ctx.rect(-3.5, -1.0, 7.0, 8.5);
+    }
+    ctx.fill();
+
+    // Poziom ciekłego paliwa / napalmu wewnątrz butelki
+    ctx.fillStyle = isSelected ? '#fbbf24' : '#d97706';
+    ctx.fillRect(-2.7, 1.2, 5.4, 5.5);
+
+    // Zwężające się ramiona i szyjka butelki
+    ctx.fillStyle = isSelected ? '#ffffff' : '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(-3.5, -1.0);
+    ctx.lineTo(-1.6, -4.8);
+    ctx.lineTo(1.6, -4.8);
+    ctx.lineTo(3.5, -1.0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Szyjka i kołnierz wlewu
+    ctx.fillRect(-1.6, -7.5, 3.2, 3.0);
+    ctx.fillRect(-2.1, -8.3, 4.2, 1.4);
+
+    // Płócienny knot z płomieniem
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(-0.9, -10.0, 1.8, 2.2);
+
+    ctx.fillStyle = isSelected ? '#f97316' : '#ea580c';
+    ctx.beginPath();
+    ctx.arc(0, -11.0, 1.6, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   ctx.restore();
@@ -1100,8 +1138,8 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
  * Rysuje pojedynczy, minimalistyczny kwadratowy kafelek broni w interfejsie HUD.
  */
 export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
-  // Specjalna obsługa slotu granatu taktycznego
-  if (btn.id === 'GRENADE') {
+  // Specjalna obsługa slotu granatu taktycznego / butelki zapalającej
+  if (btn.id === 'GRENADE' || btn.id === 'MOLOTOV') {
     const cd = player.grenadeCooldown || 0;
     const maxCd = player.grenadeMaxCooldown || 3.5;
     const isReady = (cd <= 0);
@@ -1148,7 +1186,7 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
     if (!isReady) {
       ctx.globalAlpha = 0.30;
     }
-    drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, isReady);
+    drawWeaponSilhouette(ctx, btn.id, 0, 0, isReady);
     ctx.restore();
 
     // 4. Radialny overlay ładowania jeśli trwa cooldown
@@ -1490,17 +1528,18 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     GLOCK: 'Glock 17',
     REVOLVER: 'Magnum .44',
     SAWED_OFF: 'Obrzyn 12G',
-    GRENADE: 'Granat'
+    GRENADE: 'Granat',
+    MOLOTOV: 'Mołotow'
   };
   const wepName = SHORT_WEAPON_NAMES[curWepId] || curWep.name || curWep.fullName || (curWepId === 'SHOTGUN' ? 'Shotgun' : (curWepId === 'SNIPER' ? 'Barrett .50' : 'AK-47'));
 
   const wepAccent = curWepId === 'SHOTGUN'
     ? '#fb923c'
-    : (curWepId === 'SNIPER' ? '#38bdf8' : (curWepId === 'GRENADE' ? '#4ade80' : '#f59e0b'));
+    : (curWepId === 'SNIPER' ? '#38bdf8' : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? '#f97316' : '#f59e0b'));
 
   const curAmmoObj = player.ammo?.[curWepId];
-  const defM = curWepId === 'SHOTGUN' ? 8 : (curWepId === 'SNIPER' ? 5 : (curWepId === 'FLAMETHROWER' ? 100 : (curWepId === 'RPG7' ? 1 : (curWepId === 'GRENADE' ? 1 : 30))));
-  const defR = curWepId === 'SHOTGUN' ? 64 : (curWepId === 'SNIPER' ? 25 : (curWepId === 'FLAMETHROWER' ? 200 : (curWepId === 'RPG7' ? 3 : (curWepId === 'GRENADE' ? 0 : 90))));
+  const defM = curWepId === 'SHOTGUN' ? 8 : (curWepId === 'SNIPER' ? 5 : (curWepId === 'FLAMETHROWER' ? 100 : (curWepId === 'RPG7' ? 1 : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? 1 : 30))));
+  const defR = curWepId === 'SHOTGUN' ? 64 : (curWepId === 'SNIPER' ? 25 : (curWepId === 'FLAMETHROWER' ? 200 : (curWepId === 'RPG7' ? 3 : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? 0 : 90))));
   const cAmmo = curAmmoObj ? curAmmoObj.currentAmmo : defM;
   const rAmmo = curAmmoObj ? curAmmoObj.reserveAmmo : defR;
   const isRel = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;
@@ -1722,7 +1761,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
         ctx.fillStyle = `rgba(249, 115, 22, ${0.7 + pulse * 0.3})`;
         ctx.fillText('[RZUCONY]', ammoRightX, ammoMidY);
       }
-    } else if (curWepId === 'GRENADE') {
+    } else if (curWepId === 'GRENADE' || curWepId === 'MOLOTOV') {
       const cd = (player.grenadeCooldownTimer || 0) / 60;
       const isReady = (cd <= 0);
       ctx.font = 'bold 11.5px monospace';

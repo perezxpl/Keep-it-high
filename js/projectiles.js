@@ -37,6 +37,14 @@ import {
   clearExplosionParticles
 } from './particles.js';
 import { playSound } from './audio/index.js';
+import {
+  MolotovCocktail,
+  spawnMolotovCocktail,
+  updateGlassShards,
+  drawGlassShards
+} from './weapons/molotov.js';
+
+export { MolotovCocktail, spawnMolotovCocktail };
 
 const GRENADE_SPRITE_PATH = './assets/weapons/grenade.png?v=v257_m67_grenade_gameplay_sprite';
 let _grenadeSprite = null;
@@ -2178,6 +2186,7 @@ export function updateProjectiles(groundY, platforms, customObs, combatants, bal
   updateRubbleParticles(groundY, platforms);
   updateExplosionEffects();
   updateGrenadeSmoke();
+  updateGlassShards(groundY, platforms);
 
   // Twarde ograniczenie i wygaszanie kraterów (maks. 25 sztuk, 15 sekund = 900 klatek)
   for (let i = explosionCraters.length - 1; i >= 0; i--) {
@@ -2230,6 +2239,7 @@ export function drawProjectiles(ctx) {
   // 6. Smugi naddźwiękowego szrapnela i iskry rykoszetu
   drawShrapnelStreaks(ctx);
   drawRicochetSparks(ctx);
+  drawGlassShards(ctx);
 
   // 7. Pociski lecące
   const { viewLeft, viewRight } = getProjectileViewBounds(ctx);
@@ -2245,6 +2255,8 @@ export function drawProjectiles(ctx) {
 if (typeof window !== 'undefined') {
   window.AeroSuperGrenade = AeroSuperGrenade;
   window.spawnAeroSuperGrenade = spawnAeroSuperGrenade;
+  window.MolotovCocktail = MolotovCocktail;
+  window.spawnMolotovCocktail = spawnMolotovCocktail;
   window.activeProjectiles = activeProjectiles;
   window.rubbleParticles = rubbleParticles;
   window.explosionCraters = explosionCraters;

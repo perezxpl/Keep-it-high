@@ -57,7 +57,9 @@ export function getStoredLoadout() {
         activeSlotIndex: Math.max(0, Math.min(validatedSlots.length - 1, Number(parsed?.pocket1?.activeSlotIndex) || 0))
       },
       pocket2: {
-        throwables: Array.isArray(parsed?.pocket2?.throwables) ? parsed.pocket2.throwables : ['GRENADE'],
+        throwables: Array.isArray(parsed?.pocket2?.throwables) && parsed.pocket2.throwables.length > 0
+          ? parsed.pocket2.throwables.map(t => (t === 'MOLOTOV' ? 'MOLOTOV' : 'GRENADE'))
+          : ['GRENADE'],
         activeThrowableIndex: 0
       },
       previousSlotIndex: 1

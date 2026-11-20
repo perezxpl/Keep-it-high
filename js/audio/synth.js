@@ -318,6 +318,15 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
       return true;
     }
 
+    case 'glass_shatter': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.28);
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 3850 * p, freqEnd: 2400 * p, duration: 0.12, gain: gain * 0.7 });
+      scheduleTone(ctx, out, { startTime: now + 0.015, type: 'sine', freqStart: 4950 * p, freqEnd: 3100 * p, duration: 0.16, gain: gain * 0.5 });
+      scheduleTone(ctx, out, { startTime: now + 0.035, type: 'triangle', freqStart: 2750 * p, freqEnd: 1800 * p, duration: 0.18, gain: gain * 0.45 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.22, gain: gain * 0.85, filterType: 'bandpass', freqStart: 4200 * p, freqEnd: 1900 * p, Q: 2.8 });
+      return true;
+    }
+
     case 'explosion_grenade':
     case 'explosion_rpg':
     case 'explosion_heavy':

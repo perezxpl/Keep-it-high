@@ -48,6 +48,7 @@ export const SOUND_CATALOG = {
   // --- Granaty i Eksplozje ---
   grenade_throw: { bus: 'sfx', volume: 0.24, pitchJitter: 0.04, cooldownMs: 90, spatial: true, maxDistance: 950 },
   grenade_bounce: { bus: 'sfx', volume: 0.30, pitchJitter: 0.05, cooldownMs: 110, spatial: true, maxDistance: 1050 },
+  glass_shatter: { bus: 'sfx', volume: 0.58, pitchJitter: 0.06, cooldownMs: 70, spatial: true, maxDistance: 1500 },
   explosion_grenade: { bus: 'sfx', volume: 0.74, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2300 },
   explosion_rpg: { bus: 'sfx', volume: 0.78, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2500 },
   explosion_heavy: { bus: 'sfx', volume: 0.80, pitchJitter: 0.04, cooldownMs: 70, spatial: true, maxDistance: 2500 },
