@@ -533,13 +533,20 @@ export function detonateMolotovExplosion(expX, expY, radius, shooter, groundY, p
     }
   }
 
-  // 5. Rozlanie morza ognia na powierzchni (Surface Fire ze sprite sheetu)
-  // Generujemy wachlarz 5 kałuż ognia na podłożu wokół punktu uderzenia
-  const spreadOffsets = [-68, -34, 0, 34, 68];
+  // 5. Rozlanie ciągłego morza ognia na powierzchni (Spójny, gęsty dywan napalmu)
+  // Generujemy gęsty wachlarz 9 połączonych węzłów płonącego paliwa
+  const spreadOffsets = [-72, -54, -36, -18, 0, 18, 36, 54, 72];
   const curArena = getActiveArena?.();
   const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3');
 
-  for (const dx of spreadOffsets) {
+  for (const baseDx of spreadOffsets) {
+    const jitter = (Math.random() - 0.5) * 5;
+    const dx = baseDx + jitter;
+    const distFromCenter = Math.abs(dx);
+    const centerFactor = Math.max(0.2, 1.0 - (distFromCenter / 85)); // 1.0 w centrum, 0.2 na skrajach
+    const puddleW = 34 + centerFactor * 16;
+    const puddleLife = 230 + Math.floor(centerFactor * 70);
+
     const puddleX = expX + dx;
     let puddleY = expY;
     let puddleNx = hitNormal.nx || 0;
@@ -568,7 +575,7 @@ export function detonateMolotovExplosion(expX, expY, radius, shooter, groundY, p
       }
     }
 
-    spawnSurfaceFire(puddleX, puddleY, puddleNx, puddleNy, shooter, shooter?.team);
+    spawnSurfaceFire(puddleX, puddleY, puddleNx, puddleNy, shooter, shooter?.team, puddleW, puddleLife);
   }
 }
 

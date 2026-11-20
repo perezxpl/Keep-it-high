@@ -457,7 +457,7 @@ export class FlameParticle {
  * Klasa rozlanego ognia na powierzchni (Surface Fire / Napalm Puddle)
  */
 export class SurfaceFire {
-  constructor(x, y, nx, ny, shooter, team) {
+  constructor(x, y, nx, ny, shooter, team, customWidth = null, customLife = null) {
     this.x = x;
     this.y = y;
     this.nx = nx;
@@ -471,8 +471,8 @@ export class SurfaceFire {
     while (ang < -Math.PI) ang += Math.PI * 2;
     this.surfaceAngle = ang;
 
-    this.width = 38 + Math.random() * 8;
-    this.life = 240 + Math.floor(Math.random() * 40); // ~4-4.5s płonięcia na powierzchni
+    this.width = (typeof customWidth === 'number' && customWidth > 0) ? customWidth : (38 + Math.random() * 8);
+    this.life = (typeof customLife === 'number' && customLife > 0) ? customLife : (240 + Math.floor(Math.random() * 40)); // ~4-4.5s płonięcia na powierzchni
     this.maxLife = this.life;
     this.animTimer = Math.random() * 8;
     this.damageCooldown = new Map();
@@ -595,51 +595,23 @@ export class SurfaceFire {
 
   draw(ctx) {
     if (this.dead || !ctx) return;
-    const sheet = getFlameSpritesheet();
-    const frameIdx = Math.floor(this.animTimer) % 8;
-
-    // Płynne wejście (FadeIn) i płynne wygasanie (FadeOut)
     const fadeIn = Math.min(1.0, (this.maxLife - this.life) / 12);
     const fadeOut = Math.min(1.0, this.life / 36);
     const alpha = fadeIn * fadeOut;
+    if (alpha <= 0.01) return;
 
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.surfaceAngle);
-
-    const drawW = this.width * 1.5;
-    const drawH = 36;
-
-    if (sheet && sheet.complete && sheet.naturalWidth > 0) {
-      const sx = frameIdx * FLAME_CELL_SIZE;
-      const sy = FLAME_ROW_SURFACE * FLAME_CELL_SIZE;
-      ctx.globalAlpha = Math.min(1.0, alpha * 0.95);
-      // Rysujemy tak, aby podstawa płomienia dotykała dokładnie powierzchni
-      ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -drawW * 0.5, -drawH + 4, drawW, drawH);
-    } else {
-      // Rezerwowy wektorowy kształt rozlanego ognia
-      ctx.globalAlpha = Math.min(1.0, alpha * 0.9);
-      ctx.fillStyle = '#f97316';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, this.width * 0.5, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#fef08a';
-      ctx.beginPath();
-      ctx.ellipse(0, -1, this.width * 0.35, 2.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Tańczące języki
-      const flickerH = 14 + Math.sin(this.animTimer * 2.5) * 5;
-      ctx.fillStyle = '#ea580c';
-      ctx.beginPath();
-      ctx.moveTo(-this.width * 0.35, 0);
-      ctx.lineTo(0, -flickerH);
-      ctx.lineTo(this.width * 0.35, 0);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
+    renderFireCluster(ctx, {
+      fires: [this],
+      surfaceAngle: this.surfaceAngle,
+      cx: this.x,
+      cy: this.y,
+      minT: -this.width * 0.65,
+      maxT: this.width * 0.65,
+      totalW: this.width * 1.3,
+      avgTimer: this.animTimer,
+      maxLifeRatio: alpha,
+      clusterSeed: Math.abs(this.x * 12.9898 + this.y * 78.233) % 1000
+    });
   }
 }
 
@@ -799,24 +771,24 @@ export function spawnFlamethrowerStream(shooter, muzzleX, muzzleY, theta, weapon
 /**
  * Spawnowanie rozlanego ognia na powierzchni
  */
-export function spawnSurfaceFire(x, y, nx, ny, shooter, team) {
-  // Ograniczenie maksymalnej liczby plam ognia dla zachowania 60 FPS
-  while (activeSurfaceFires.length >= 45) {
+export function spawnSurfaceFire(x, y, nx, ny, shooter, team, customWidth = null, customLife = null) {
+  // Ograniczenie maksymalnej liczby węzłów ognia dla zachowania 60 FPS
+  while (activeSurfaceFires.length >= 65) {
     activeSurfaceFires.shift();
   }
 
-  // Scalanie z bliskimi sąsiednimi plamami ognia
+  // Scalanie z bardzo bliskimi sąsiednimi kroplami ognia
   for (const existing of activeSurfaceFires) {
     if (existing.dead) continue;
     const distSq = (existing.x - x) * (existing.x - x) + (existing.y - y) * (existing.y - y);
-    if (distSq < 26 * 26 && (!shooter || existing.shooter === shooter)) {
-      existing.life = Math.min(existing.maxLife, existing.life + 55);
-      existing.width = Math.min(56, existing.width + 4);
+    if (distSq < 15 * 15 && (!shooter || existing.shooter === shooter)) {
+      existing.life = Math.min(existing.maxLife, existing.life + 45);
+      existing.width = Math.min(64, existing.width + 3);
       return existing;
     }
   }
 
-  const fire = new SurfaceFire(x, y, nx, ny, shooter, team);
+  const fire = new SurfaceFire(x, y, nx, ny, shooter, team, customWidth, customLife);
   activeSurfaceFires.push(fire);
   return fire;
 }
@@ -1213,7 +1185,187 @@ export function drawFlamethrowerStreams(ctx, camera) {
 }
 
 /**
- * Renderowanie rozlanego ognia na powierzchniach z 2D Cullingiem
+ * Renderuje pojedynczy, spójny, organiczny pas ognia naziemnego (Fire Cluster / Continuous Fire Bed)
+ * Zastępuje dawne, sztuczne, odseparowane stemple klatkowe płynną symulacją płomieni.
+ */
+function renderFireCluster(ctx, cluster) {
+  const { surfaceAngle, cx, cy, totalW, avgTimer, maxLifeRatio, clusterSeed } = cluster;
+  if (totalW <= 0 || maxLifeRatio <= 0.01) return;
+
+  const halfW = totalW * 0.5;
+  const baseH = 26 + Math.min(22, totalW * 0.15);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(surfaceAngle);
+
+  // 1. Płonący stop napalmowy (Molten Napalm Crust na podłożu)
+  ctx.fillStyle = '#260404';
+  ctx.fillRect(-halfW - 3, -2.5, totalW + 6, 3.5);
+
+  ctx.fillStyle = '#ea580c';
+  ctx.fillRect(-halfW + 1, -2.0, totalW - 2, 2.8);
+
+  ctx.fillStyle = '#fef08a';
+  ctx.fillRect(-halfW + 5, -1.2, totalW - 10, 1.6);
+
+  // 2. Ciągły profil płomieni (Continuous Multi-Harmonic Flame Envelope)
+  const numSteps = Math.max(10, Math.min(36, Math.ceil(totalW / 7)));
+  const stepW = totalW / numSteps;
+
+  const crestPoints = new Array(numSteps + 1);
+  for (let i = 0; i <= numSteps; i++) {
+    const lx = -halfW + i * stepW;
+    const edgeDist = Math.min(lx - (-halfW), halfW - lx);
+    let taper = Math.min(1.0, Math.max(0.0, edgeDist / 22));
+    taper = taper * taper * (3 - 2 * taper); // Smoothstep
+
+    const w1 = Math.sin(lx * 0.085 + avgTimer * 2.8 + clusterSeed);
+    const w2 = Math.sin(lx * 0.18 - avgTimer * 3.6 + clusterSeed * 1.4);
+    const w3 = Math.sin(lx * 0.042 + avgTimer * 1.4);
+    const w4 = Math.sin(lx * 0.34 - avgTimer * 5.1);
+    const waveNoise = (w1 * 0.38 + w2 * 0.28 + w3 * 0.22 + w4 * 0.12);
+
+    const h = Math.max(2, taper * (baseH + waveNoise * 14));
+    crestPoints[i] = { lx, h };
+  }
+
+  // 2A. Warstwa zewnętrzna: Głęboka czerwień i ciemny pomarańcz
+  ctx.globalAlpha = maxLifeRatio * 0.92;
+  ctx.fillStyle = '#dc2626';
+  ctx.beginPath();
+  ctx.moveTo(-halfW, 0);
+  for (let i = 0; i <= numSteps; i++) {
+    ctx.lineTo(crestPoints[i].lx, -crestPoints[i].h);
+  }
+  ctx.lineTo(halfW, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2B. Warstwa środkowa: Jaskrawy gorący pomarańcz (72% wysokości)
+  ctx.globalAlpha = maxLifeRatio * 0.95;
+  ctx.fillStyle = '#f97316';
+  ctx.beginPath();
+  ctx.moveTo(-halfW, 0);
+  for (let i = 0; i <= numSteps; i++) {
+    ctx.lineTo(crestPoints[i].lx, -crestPoints[i].h * 0.72);
+  }
+  ctx.lineTo(halfW, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2C. Rdzeń plazmowy: Addytywne złocisto-białe rozświetlenie ('lighter')
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  // Gorące złoto (45% wysokości)
+  ctx.globalAlpha = maxLifeRatio * 0.70;
+  ctx.fillStyle = '#fde047';
+  ctx.beginPath();
+  ctx.moveTo(-halfW, 0);
+  for (let i = 0; i <= numSteps; i++) {
+    ctx.lineTo(crestPoints[i].lx, -crestPoints[i].h * 0.45);
+  }
+  ctx.lineTo(halfW, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Biały rdzeń u samej podstawy (22% wysokości)
+  ctx.globalAlpha = maxLifeRatio * 0.50;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(-halfW + 3, 0);
+  for (let i = 0; i <= numSteps; i++) {
+    ctx.lineTo(crestPoints[i].lx, -crestPoints[i].h * 0.22);
+  }
+  ctx.lineTo(halfW - 3, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // 3. Strzeliste języki ognia (Lashing Flame Tongues)
+  const numLicks = Math.max(3, Math.min(10, Math.floor(totalW / 18)));
+  const lickStep = totalW / (numLicks + 1);
+
+  for (let k = 1; k <= numLicks; k++) {
+    const lickOffset = Math.sin(k * 4.31 + clusterSeed) * 4;
+    const lickX = -halfW + k * lickStep + lickOffset;
+    const edgeDist = Math.min(lickX - (-halfW), halfW - lickX);
+    let lickTaper = Math.min(1.0, Math.max(0.0, edgeDist / 18));
+    lickTaper = lickTaper * lickTaper * (3 - 2 * lickTaper);
+
+    const lickH = lickTaper * (baseH * 1.35 + Math.sin(avgTimer * 4.6 + k * 2.1) * 12 + Math.cos(avgTimer * 7.1 + k * 1.4) * 6);
+    const sway = Math.sin(avgTimer * 3.7 + k * 1.8) * 5;
+    const lickW = 6 + Math.sin(k * 2.8) * 2;
+
+    // Język zewnętrzny
+    ctx.globalAlpha = maxLifeRatio * 0.90;
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath();
+    ctx.moveTo(lickX - lickW, 0);
+    ctx.quadraticCurveTo(lickX + sway * 0.5, -lickH * 0.65, lickX + sway, -lickH);
+    ctx.quadraticCurveTo(lickX + sway * 0.5 + lickW * 0.2, -lickH * 0.45, lickX + lickW, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wewnętrzny gorący grot języka
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.moveTo(lickX - lickW * 0.5, 0);
+    ctx.quadraticCurveTo(lickX + sway * 0.4, -lickH * 0.5, lickX + sway * 0.7, -lickH * 0.72);
+    ctx.quadraticCurveTo(lickX + sway * 0.4 + lickW * 0.1, -lickH * 0.35, lickX + lickW * 0.5, 0);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 4. Unoszący się żar i iskry (Floating Convective Embers)
+  const numEmbers = Math.min(10, Math.max(3, Math.floor(totalW / 16)));
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let e = 0; e < numEmbers; e++) {
+    const eSeed = clusterSeed + e * 43.17;
+    const eCycle = (avgTimer * 0.07 + e * 0.21) % 1.0;
+    const eProgress = eCycle < 0 ? eCycle + 1.0 : eCycle;
+    const rndX = (Math.sin(eSeed) * 0.5 + 0.5);
+    const eX = -halfW + 8 + rndX * (totalW - 16) + Math.sin(eProgress * 6.28 + e) * 5;
+    const eY = -eProgress * (baseH * 1.6 + 28);
+    const eAlpha = Math.sin(eProgress * Math.PI) * maxLifeRatio * 0.85;
+
+    if (eAlpha > 0.05) {
+      ctx.globalAlpha = eAlpha;
+      ctx.fillStyle = e % 2 === 0 ? '#ffffff' : '#fde047';
+      ctx.beginPath();
+      ctx.arc(eX, eY, 1.2 + (e % 3) * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // 5. Delikatne dymne powiewy nad najwyższymi płomieniami
+  const numSmoke = Math.min(5, Math.max(2, Math.floor(totalW / 32)));
+  ctx.save();
+  ctx.fillStyle = 'rgba(35, 28, 28, 0.22)';
+  for (let s = 0; s < numSmoke; s++) {
+    const sCycle = (avgTimer * 0.045 + s * 0.31) % 1.0;
+    const sProgress = sCycle < 0 ? sCycle + 1.0 : sCycle;
+    const sX = -halfW + 14 + ((Math.cos(clusterSeed + s * 23.1) * 0.5 + 0.5) * (totalW - 28)) + Math.sin(sProgress * 4.0 + s) * 8;
+    const sY = -baseH - sProgress * 22;
+    const sRad = 4 + sProgress * 8;
+    const sAlpha = Math.sin(sProgress * Math.PI) * maxLifeRatio * 0.22;
+    if (sAlpha > 0.02) {
+      ctx.globalAlpha = sAlpha;
+      ctx.beginPath();
+      ctx.arc(sX, sY, sRad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/**
+ * Renderowanie rozlanego ognia na powierzchniach z 2D Cullingiem i łączeniem w spójne klastry
  */
 export function drawSurfaceFires(ctx, camera) {
   if (!ctx || activeSurfaceFires.length === 0) return;
@@ -1224,19 +1376,114 @@ export function drawSurfaceFires(ctx, camera) {
     const zoom = camera.zoom || 1;
     const viewW = camera.viewWidth || (1920 / zoom);
     const viewH = camera.viewHeight || (1080 / zoom);
-    const margin = 80;
+    const margin = 100;
     minX = camera.x - margin;
     maxX = camera.x + viewW + margin;
     minY = camera.y - margin;
     maxY = camera.y + viewH + margin;
   }
 
-  for (const fire of activeSurfaceFires) {
-    if (fire.dead) continue;
-    if (fire.x + fire.width < minX || fire.x - fire.width > maxX || fire.y < minY || fire.y - 45 > maxY) {
+  // 1. Wybierz aktywne ogniska w polu widzenia kamery
+  const visibleFires = [];
+  for (let i = 0; i < activeSurfaceFires.length; i++) {
+    const f = activeSurfaceFires[i];
+    if (f.dead) continue;
+    if (f.x + f.width < minX || f.x - f.width > maxX || f.y < minY || f.y - 65 > maxY) {
       continue;
     }
-    fire.draw(ctx);
+    visibleFires.push(f);
+  }
+
+  if (visibleFires.length === 0) return;
+
+  // 2. Grupowanie sąsiadujących ognisk w spójne, ciągłe pasy ognia (Connected Components Clustering)
+  const visited = new Uint8Array(visibleFires.length);
+  const clusters = [];
+
+  for (let i = 0; i < visibleFires.length; i++) {
+    if (visited[i]) continue;
+    visited[i] = 1;
+
+    const clusterFires = [visibleFires[i]];
+    const queue = [visibleFires[i]];
+
+    while (queue.length > 0) {
+      const cur = queue.pop();
+      for (let j = 0; j < visibleFires.length; j++) {
+        if (visited[j]) continue;
+        const other = visibleFires[j];
+
+        // Sprawdź zgodność kąta powierzchni (ta sama płaszczyzna/skarpa)
+        let angDiff = Math.abs(cur.surfaceAngle - other.surfaceAngle);
+        while (angDiff > Math.PI) angDiff -= Math.PI * 2;
+        angDiff = Math.abs(angDiff);
+        if (angDiff > 0.40) continue;
+
+        // Odległość w przestrzeni świata (dla połączenia w jedno ognisko)
+        const dx = other.x - cur.x;
+        const dy = other.y - cur.y;
+        const dist = Math.hypot(dx, dy);
+        const maxConnectDist = Math.max(38, (cur.width + other.width) * 0.75);
+
+        if (dist <= maxConnectDist) {
+          visited[j] = 1;
+          clusterFires.push(other);
+          queue.push(other);
+        }
+      }
+    }
+
+    // 3. Obliczenie parametrów geometrycznych klastra
+    const refFire = clusterFires[0];
+    const surfaceAngle = refFire.surfaceAngle;
+    const tangX = Math.cos(surfaceAngle);
+    const tangY = Math.sin(surfaceAngle);
+
+    let minT = Infinity;
+    let maxT = -Infinity;
+    let sumTimer = 0;
+    let maxLifeRatio = 0;
+
+    for (let k = 0; k < clusterFires.length; k++) {
+      const f = clusterFires[k];
+      const relX = f.x - refFire.x;
+      const relY = f.y - refFire.y;
+      const t = relX * tangX + relY * tangY;
+      const halfW = f.width * 0.65;
+      if (t - halfW < minT) minT = t - halfW;
+      if (t + halfW > maxT) maxT = t + halfW;
+      sumTimer += f.animTimer;
+
+      const fadeIn = Math.min(1.0, (f.maxLife - f.life) / 12);
+      const fadeOut = Math.min(1.0, f.life / 36);
+      const ratio = fadeIn * fadeOut;
+      if (ratio > maxLifeRatio) maxLifeRatio = ratio;
+    }
+
+    const totalW = maxT - minT;
+    const midT = (minT + maxT) * 0.5;
+    const cx = refFire.x + tangX * midT;
+    const cy = refFire.y + tangY * midT;
+    const avgTimer = sumTimer / clusterFires.length;
+    const clusterSeed = Math.abs(refFire.x * 12.9898 + refFire.y * 78.233) % 1000;
+
+    clusters.push({
+      fires: clusterFires,
+      surfaceAngle,
+      cx,
+      cy,
+      minT,
+      maxT,
+      totalW,
+      avgTimer,
+      maxLifeRatio,
+      clusterSeed
+    });
+  }
+
+  // 4. Renderowanie każdego ciągłego klastra ognia
+  for (let c = 0; c < clusters.length; c++) {
+    renderFireCluster(ctx, clusters[c]);
   }
 }
 
