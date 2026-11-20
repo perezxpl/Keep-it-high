@@ -7,7 +7,6 @@ import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
 import { spawnAeroSuperGrenade, detonateGrenadeExplosion, spawnThrownTomahawk, spawnMolotovCocktail } from '../projectiles.js';
-import { detonateMolotovExplosion } from '../weapons/molotov.js';
 import { getActiveBots } from '../bot.js';
 import { getActiveZombies } from '../zombie/index.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
@@ -1592,8 +1591,8 @@ export function updatePlayerThrow(p) {
   if (!p || !p.throwAnim || !p.throwAnim.active) return;
   const tAnim = p.throwAnim;
 
-  // Odliczanie czasu do detonacji od momentu rozpoczęcia celowania (Cooking the grenade) - wyłącznie dla granatów
-  if (!tAnim.spawned && tAnim.throwType !== 'TOMAHAWK') {
+  // Odliczanie czasu do detonacji od momentu rozpoczęcia celowania (Cooking the grenade) - wyłącznie dla granatów odłamkowych
+  if (!tAnim.spawned && tAnim.throwType !== 'TOMAHAWK' && tAnim.throwType !== 'MOLOTOV') {
     tAnim.cookTimer = (tAnim.cookTimer || 0) + 1;
 
     // Iskry zapalnika w dłoni ostrzegające przed wybuchem w ostatnich 1.5s (cookTimer >= 210)
@@ -1621,32 +1620,18 @@ export function updatePlayerThrow(p) {
         allCombatants.push(...getActiveZombies());
       }
 
-      if (tAnim.throwType === 'MOLOTOV') {
-        detonateMolotovExplosion(
-          handPos.x,
-          handPos.y,
-          160,
-          p,
-          p.currentGroundY || p.groundY || 500,
-          arenaPlatforms,
-          null,
-          allCombatants,
-          null
-        );
-      } else {
-        detonateGrenadeExplosion(
-          handPos.x,
-          handPos.y,
-          145,
-          p,
-          p.currentGroundY || p.groundY || 500,
-          arenaPlatforms,
-          null,
-          allCombatants,
-          null,
-          'GRENADE'
-        );
-      }
+      detonateGrenadeExplosion(
+        handPos.x,
+        handPos.y,
+        145,
+        p,
+        p.currentGroundY || p.groundY || 500,
+        arenaPlatforms,
+        null,
+        allCombatants,
+        null,
+        'GRENADE'
+      );
       triggerScreenShake(14);
       return;
     }

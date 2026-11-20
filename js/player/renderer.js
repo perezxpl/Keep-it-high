@@ -2230,6 +2230,7 @@ export { drawWeaponSilhouette, drawWeaponSlot, drawEntityHealthBar } from '../ui
 export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, groundY = 500) {
   if (!p) return;
   const isAxeThrow = (p.throwAnim?.throwType === 'TOMAHAWK');
+  const isMolotovThrow = (p.throwAnim?.throwType === 'MOLOTOV');
   const pFacing = p.facing || 1;
   const handPos = (typeof getThrowHandPosition === 'function') ? getThrowHandPosition(p) : null;
   const startX = handPos ? handPos.x : (p.x + (p.w || 24) / 2 + pFacing * 14);
@@ -2263,6 +2264,11 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
       ctx.fillStyle = '#fb923c';
       ctx.strokeText(txt, startX, startY - 26);
       ctx.fillText(txt, startX, startY - 26);
+    } else if (isMolotovThrow) {
+      const txt = '[KOKTAJL MOŁOTOWA]';
+      ctx.fillStyle = '#f97316';
+      ctx.strokeText(txt, startX, startY - 26);
+      ctx.fillText(txt, startX, startY - 26);
     } else {
       const cookTimer = p.throwAnim.cookTimer || 0;
       const remainingSec = Math.max(0, (300 - cookTimer) / 60);
@@ -2287,6 +2293,8 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
 
     if (isAxeThrow) {
       ctx.fillStyle = `rgba(251, 146, 60, ${alpha})`;
+    } else if (isMolotovThrow) {
+      ctx.fillStyle = `rgba(249, 115, 22, ${alpha})`;
     } else {
       ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
     }
