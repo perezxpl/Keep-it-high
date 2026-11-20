@@ -1039,11 +1039,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     let throwSwing = 0, throwElbow = 0;
     let guideSwing = 0, guideElbow = 0;
 
+    // Naturalna, taktyczna pozycja zamachu (bez nienaturalnego łamania stawu ramienia w tył za postać)
+    const windupSwing = -0.50 + localAimAngle * 0.15;
+    const windupElbow = 1.35;
+    const windupTorsoTilt = -0.06;
+    const windupShoulderTilt = -0.05;
+
     if (tAnim.phase === 'WINDUP') {
-      // 1. ZAMACH / CHAMBERING: Dłoń z granatem uniesiona za głową/uchem
+      // 1. ZAMACH / CHAMBERING: Dłoń z granatem uniesiona w gotowości przy biodrze/klatce
       const uWindup = Math.min(1.0, (tAnim.timer || 0) / (tAnim.windupDuration || 6));
-      const windupSwing = -2.15 + localAimAngle * 0.22;
-      const windupElbow = 2.05;
       throwSwing = lerp(rawFrontSwing, windupSwing, Math.max(0.4, uWindup));
       throwElbow = lerp(rawFrontElbow, windupElbow, Math.max(0.4, uWindup));
 
@@ -1052,10 +1056,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       guideSwing = lerp(rawBackSwing, pointSwing, Math.max(0.4, uWindup));
       guideElbow = 0.35;
 
-      p.torsoTilt = -0.22 * facingDir;
+      p.torsoTilt = windupTorsoTilt * facingDir;
       if (p.pose) {
         p.pose.torsoTilt = p.torsoTilt;
-        p.pose.shoulderTilt = -0.15;
+        p.pose.shoulderTilt = windupShoulderTilt;
       }
     } else if (tAnim.phase === 'THROW') {
       // 2. WYRZUT / SNAP FORWARD & RELEASE APEX: Eksplozja ramienia w wektor celu
@@ -1067,12 +1071,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       if (uT < 0.45) {
         // Eksplozja w przód w stronę Apex (Klatka 0 do 2)
         const uApex = uT / 0.45;
-        throwSwing = lerp(-2.15 + localAimAngle * 0.22, releaseSwing, uApex);
-        throwElbow = lerp(2.05, 0.25, uApex);
+        throwSwing = lerp(windupSwing, releaseSwing, uApex);
+        throwElbow = lerp(windupElbow, 0.25, uApex);
         guideSwing = lerp(1.05, -0.55, uApex);
         guideElbow = lerp(0.35, 0.85, uApex);
-        p.torsoTilt = lerp(-0.22, 0.35, uApex) * facingDir;
-        if (p.pose) p.pose.shoulderTilt = lerp(-0.15, 0.20, uApex);
+        p.torsoTilt = lerp(windupTorsoTilt, 0.35, uApex) * facingDir;
+        if (p.pose) p.pose.shoulderTilt = lerp(windupShoulderTilt, 0.20, uApex);
       } else {
         // Follow-through po wypuszczeniu granatu z dłoni (Klatka 2 do 5)
         const uFollow = (uT - 0.45) / 0.55;
