@@ -22,6 +22,7 @@ import {
   FLAME_CELL_SIZE,
   spawnSurfaceFire,
   spawnImpactSplash,
+  spawnBurningFuelGlob,
   igniteCombatant
 } from './flamethrower.js';
 
@@ -354,7 +355,9 @@ export class MolotovCocktail {
       customObs,
       combatants,
       ball,
-      hitNormal
+      hitNormal,
+      this.vx,
+      this.vy
     );
   }
 
@@ -450,9 +453,22 @@ export class MolotovCocktail {
  * 2. Odłamki szkła GlassShard
  * 3. Rozbryzg ognia ImpactSplash ze sprite sheetu
  * 4. Obrażenia obszarowe i natychmiastowe podpalenie DoT
- * 5. Rozlanie 5 połączonych kałuż ognia SurfaceFire na podłożu
+ * 5. Rozlanie ciekłego napalmu: fizyczne krople paliwa (BurningFuelGlob) z bezwładnością i odbiciem
  */
-export function detonateMolotovExplosion(expX, expY, radius, shooter, groundY, platforms, customObs, combatants, ball, hitNormal = { nx: 0, ny: -1 }) {
+export function detonateMolotovExplosion(
+  expX,
+  expY,
+  radius,
+  shooter,
+  groundY,
+  platforms,
+  customObs,
+  combatants,
+  ball,
+  hitNormal = { nx: 0, ny: -1 },
+  impactVx = 0,
+  impactVy = 0
+) {
   playSound('glass_shatter', { x: expX, y: expY });
   playSound('explosion_grenade', { x: expX, y: expY });
 
@@ -533,49 +549,79 @@ export function detonateMolotovExplosion(expX, expY, radius, shooter, groundY, p
     }
   }
 
-  // 5. Rozlanie ciągłego morza ognia na powierzchni (Spójny, gęsty dywan napalmu)
-  // Generujemy gęsty wachlarz 9 połączonych węzłów płonącego paliwa
-  const spreadOffsets = [-72, -54, -36, -18, 0, 18, 36, 54, 72];
-  const curArena = getActiveArena?.();
-  const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3');
+  // 5. Rozlanie ciekłego napalmu: fizyczne krople paliwa (BurningFuelGlob) + ognisko bazowe
+  // Zastępuje dawną sztywną tablicę 9 równych segmentów dynamicznym rozbryzgiem hydrodynamicznym!
+  const hNx = hitNormal.nx || 0;
+  const hNy = hitNormal.ny !== undefined ? hitNormal.ny : -1;
 
-  for (const baseDx of spreadOffsets) {
-    const jitter = (Math.random() - 0.5) * 5;
-    const dx = baseDx + jitter;
-    const distFromCenter = Math.abs(dx);
-    const centerFactor = Math.max(0.2, 1.0 - (distFromCenter / 85)); // 1.0 w centrum, 0.2 na skrajach
-    const puddleW = 34 + centerFactor * 16;
-    const puddleLife = 230 + Math.floor(centerFactor * 70);
+  // 5A. W samym punkcie rozbicia (jeśli powierzchnia nośna ny < -0.3): 1-2 nieregularne ogniska bazowe
+  if (hNy < -0.3) {
+    spawnSurfaceFire(
+      expX,
+      expY,
+      hNx,
+      hNy,
+      shooter,
+      shooter?.team,
+      28 + Math.random() * 12,
+      220 + Math.floor(Math.random() * 60),
+      0.95 + Math.random() * 0.35
+    );
+    if (Math.random() < 0.60) {
+      spawnSurfaceFire(
+        expX + (Math.random() - 0.5) * 16,
+        expY,
+        hNx,
+        hNy,
+        shooter,
+        shooter?.team,
+        22 + Math.random() * 10,
+        190 + Math.floor(Math.random() * 50),
+        0.80 + Math.random() * 0.30
+      );
+    }
+  }
 
-    const puddleX = expX + dx;
-    let puddleY = expY;
-    let puddleNx = hitNormal.nx || 0;
-    let puddleNy = hitNormal.ny || -1;
+  // 5B. Wystrzelenie 14-18 fizycznych kropel paliwa BurningFuelGlob z bezwładnością rzutu i odbiciem
+  const numGlobs = 14 + Math.floor(Math.random() * 5);
+  // Pęd uderzenia zrzutowany i odbity od wektora normalnego
+  const dot = impactVx * hNx + impactVy * hNy;
+  const reflVx = impactVx - 1.4 * dot * hNx;
+  const reflVy = impactVy - 1.4 * dot * hNy;
 
-    // Próbkowanie podłoża
-    if (isA3 && typeof getRiverbankGroundY === 'function') {
-      const terrY = getRiverbankGroundY(puddleX);
-      if (Math.abs(terrY - expY) < 65) {
-        puddleY = terrY;
-        const slope = (getRiverbankGroundY(puddleX + 4) - getRiverbankGroundY(puddleX - 4)) / 8;
-        const sLen = Math.hypot(slope, 1);
-        puddleNx = slope / sLen;
-        puddleNy = -1 / sLen;
-      }
-    } else if (platforms && Array.isArray(platforms)) {
-      // Sprawdzenie czy kałuża ląduje na pobliskiej platformie
-      for (const plat of platforms) {
-        if (!plat) continue;
-        if (puddleX >= plat.x && puddleX <= plat.x + plat.w && Math.abs(plat.y - expY) < 30) {
-          puddleY = plat.y;
-          puddleNx = 0;
-          puddleNy = -1;
-          break;
-        }
-      }
+  for (let g = 0; g < numGlobs; g++) {
+    // Wektor bezwładności (35-45% pędu rzutu)
+    const inheritMult = 0.35 + Math.random() * 0.12;
+    const baseGvx = reflVx * inheritMult;
+    const baseGvy = reflVy * inheritMult;
+
+    // Asymetryczny, chaotyczny rozbryzg w półprzestrzeni normalnej
+    let scatterAngle;
+    if (Math.abs(hNx) > 0.6) {
+      // Rozbryzg od ściany: w stronę hNx oraz w dół i lekko w górę
+      scatterAngle = Math.atan2(Math.random() * 2.0 - 0.8, hNx + (Math.random() - 0.5) * 0.4);
+    } else {
+      // Rozbryzg od podłoża: w górę i na boki
+      scatterAngle = -Math.PI * 0.5 + (Math.random() - 0.5) * (Math.PI * 0.85);
     }
 
-    spawnSurfaceFire(puddleX, puddleY, puddleNx, puddleNy, shooter, shooter?.team, puddleW, puddleLife);
+    const scatterSpd = 2.4 + Math.random() * 7.2;
+    const gVx = baseGvx + Math.cos(scatterAngle) * scatterSpd;
+    const gVy = baseGvy + Math.sin(scatterAngle) * scatterSpd - (Math.random() * 2.2);
+
+    const fuelAmt = 0.45 + Math.random() * 0.90;
+    const gRad = 2.4 + Math.random() * 2.8;
+
+    spawnBurningFuelGlob(
+      expX + hNx * 2,
+      expY + hNy * 2,
+      gVx,
+      gVy,
+      shooter,
+      shooter?.team,
+      fuelAmt,
+      gRad
+    );
   }
 }
 
