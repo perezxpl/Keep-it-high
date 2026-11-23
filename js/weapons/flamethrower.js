@@ -445,7 +445,6 @@ export class FlameParticle {
     this.vy = Math.sin(angle) * this.baseSpeed + (shooter?.vy || 0) * 0.16;
 
     this.isSpine = options.isSpine ?? false;
-    this.isDroplet = options.isDroplet ?? false;
 
     // Ciągła rotacja bez przeskoku - kierunek skrętu i mały offset początkowy
     this.curlSpeed = (Math.random() - 0.5) * 0.055;
@@ -453,11 +452,7 @@ export class FlameParticle {
     this.rot = this.angle + this.rotOffset;
     this.turbulenceSeed = Math.random() * 100;
 
-    if (this.isDroplet) {
-      this.life = 24 + Math.floor(Math.random() * 8);
-      this.startRadius = 3.0;
-      this.drag = 0.985;
-    } else if (this.isSpine) {
+    if (this.isSpine) {
       this.life = 34 + Math.floor(Math.random() * 4);
       this.startRadius = 4.5;
       this.drag = 0.965;
@@ -492,17 +487,12 @@ export class FlameParticle {
     this.vx *= this.drag;
     this.vy *= this.drag;
 
-    if (this.isDroplet) {
-      // Ciężkie krople napalmu opadają łukiem w dół
-      this.vy += 0.20;
+    // Strumień trzyma linię strzału (progress < 0.55), a na końcu łagodnie unosi się
+    if (progress < 0.55) {
+      this.vy += 0.05;
     } else {
-      // Strumień trzyma linię strzału (progress < 0.55), a na końcu łagodnie unosi się
-      if (progress < 0.55) {
-        this.vy += 0.05;
-      } else {
-        this.vy -= 0.065;
-        this.vx += Math.sin(this.life * 0.35 + this.turbulenceSeed) * 0.10;
-      }
+      this.vy -= 0.065;
+      this.vx += Math.sin(this.life * 0.35 + this.turbulenceSeed) * 0.10;
     }
 
     this.x += this.vx;
@@ -514,11 +504,7 @@ export class FlameParticle {
     this.rot = this.angle + this.rotOffset;
 
     // Naturalna ekspansja stożkowa dopasowana do skali postaci (bez gigantycznych stempli)
-    if (this.isDroplet) {
-      this.radius = Math.max(1.8, 3.0 * (1.0 - progress * 0.4));
-    } else {
-      this.radius = this.startRadius + Math.pow(progress, 0.9) * (this.isSpine ? 18 : 23);
-    }
+    this.radius = this.startRadius + Math.pow(progress, 0.9) * (this.isSpine ? 18 : 23);
 
     const obs = customObs || obstacles;
     let mapHit = checkRayObstacleCollision(this.prevX, this.prevY, this.x, this.y, groundY, obs, null);
@@ -659,7 +645,7 @@ export class FlameParticle {
       this.dead = true;
 
       const isWall = Math.abs(mapHit.nx || 0) > 0.6;
-      const customW = this.isDroplet ? (16 + Math.random() * 8) : (26 + Math.random() * 12);
+      const customW = 26 + Math.random() * 12;
       const customLife = 180 + Math.floor(Math.random() * 70);
       const customIntensity = 0.65 + Math.random() * 0.55;
 
@@ -707,7 +693,7 @@ export class FlameParticle {
     if (this.y >= effectiveGroundY - 4) {
       this.y = effectiveGroundY - 1;
       this.dead = true;
-      const customW = this.isDroplet ? (18 + Math.random() * 8) : (28 + Math.random() * 12);
+      const customW = 28 + Math.random() * 12;
       const customLife = 180 + Math.floor(Math.random() * 70);
       const customIntensity = 0.70 + Math.random() * 0.50;
       spawnSurfaceFire(this.x, effectiveGroundY, groundNx, groundNy, this.shooter, this.team, customW, customLife, customIntensity);
@@ -1122,15 +1108,6 @@ export function spawnFlamethrowerStream(shooter, muzzleX, muzzleY, theta, weapon
   const billowSpd = baseSpd * (0.88 + Math.random() * 0.16);
   const pBillow = new FlameParticle(shooter, muzzleX, muzzleY, billowAngle, billowSpd, weapon, { isSpine: false });
   activeFlameStreams.push(pBillow);
-
-  // 3. Lepka kropla ciekłego napalmu (co 2. strzał) - ciężki odryw cieczy
-  shooter._flameDropCount = (shooter._flameDropCount || 0) + 1;
-  if (shooter._flameDropCount % 2 === 0) {
-    const dropAngle = theta + (Math.random() - 0.5) * (spread * 0.65);
-    const dropSpd = baseSpd * (0.92 + Math.random() * 0.12);
-    const pDrop = new FlameParticle(shooter, muzzleX, muzzleY, dropAngle, dropSpd, weapon, { isDroplet: true });
-    activeFlameStreams.push(pDrop);
-  }
 }
 
 /**
@@ -1302,12 +1279,10 @@ export function drawFlamethrowerStreams(ctx, camera) {
 
   for (const { shooter, particles } of streamGroups.values()) {
     const spineNodes = [];
-    const droplets = [];
     const billows = [];
 
     for (const p of particles) {
-      if (p.isDroplet) droplets.push(p);
-      else if (p.isSpine) spineNodes.push(p);
+      if (p.isSpine) spineNodes.push(p);
       else billows.push(p);
     }
 
@@ -1399,40 +1374,43 @@ export function drawFlamethrowerStreams(ctx, camera) {
         const dy = nextP.y - p.y;
         const dist = Math.hypot(dx, dy);
 
-        if (dist > p.radius * 0.75 && dist < 120) {
-          const midX = (p.x + nextP.x) * 0.5;
-          const midY = (p.y + nextP.y) * 0.5;
-          const midRad = (p.radius + nextP.radius) * 0.5;
-          const midLife = (p.life + nextP.life) * 0.5;
-          const midMaxLife = (p.maxLife + nextP.maxLife) * 0.5;
-          const midProgress = Math.max(0, Math.min(1.0, 1.0 - (midLife / midMaxLife)));
-          const frameIdx = Math.min(7, Math.floor(midProgress * 8));
-          const drawSize = midRad * 2.0;
-          const endAlpha = Math.pow(midLife / midMaxLife, 0.65);
+        if (dist > p.radius * 0.45 && dist < 120) {
+          const steps = dist > p.radius * 1.05 ? [0.33, 0.67] : [0.5];
+          for (const t of steps) {
+            const midX = p.x + dx * t;
+            const midY = p.y + dy * t;
+            const midRad = p.radius + (nextP.radius - p.radius) * t;
+            const midLife = p.life + (nextP.life - p.life) * t;
+            const midMaxLife = p.maxLife + (nextP.maxLife - p.maxLife) * t;
+            const midProgress = Math.max(0, Math.min(1.0, 1.0 - (midLife / midMaxLife)));
+            const frameIdx = Math.min(7, Math.floor(midProgress * 8));
+            const drawSize = midRad * 2.0;
+            const endAlpha = Math.pow(midLife / midMaxLife, 0.65);
 
-          ctx.save();
-          ctx.translate(midX, midY);
-          ctx.rotate((p.rot + nextP.rot) * 0.5);
-          if (hasSheet) {
-            const sx = frameIdx * FLAME_CELL_SIZE;
-            const sy = FLAME_ROW_STREAM * FLAME_CELL_SIZE;
-            ctx.globalAlpha = Math.min(0.95, endAlpha * 1.05);
-            ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize);
-          } else {
-            ctx.globalAlpha = Math.min(0.95, endAlpha);
-            ctx.fillStyle = midProgress > 0.70 ? '#78350f' : (midProgress > 0.45 ? '#dc2626' : (midProgress > 0.25 ? '#ea580c' : '#f97316'));
-            ctx.beginPath();
-            ctx.arc(0, 0, midRad, 0, Math.PI * 2);
-            ctx.fill();
-
-            if (midProgress < 0.35) {
-              ctx.fillStyle = '#fef08a';
+            ctx.save();
+            ctx.translate(midX, midY);
+            ctx.rotate(p.rot + (nextP.rot - p.rot) * t);
+            if (hasSheet) {
+              const sx = frameIdx * FLAME_CELL_SIZE;
+              const sy = FLAME_ROW_STREAM * FLAME_CELL_SIZE;
+              ctx.globalAlpha = Math.min(0.95, endAlpha * 1.05);
+              ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -drawSize * 0.5, -drawSize * 0.5, drawSize, drawSize);
+            } else {
+              ctx.globalAlpha = Math.min(0.95, endAlpha);
+              ctx.fillStyle = midProgress > 0.70 ? '#78350f' : (midProgress > 0.45 ? '#dc2626' : (midProgress > 0.25 ? '#ea580c' : '#f97316'));
               ctx.beginPath();
-              ctx.arc(0, 0, midRad * 0.5, 0, Math.PI * 2);
+              ctx.arc(0, 0, midRad, 0, Math.PI * 2);
               ctx.fill();
+
+              if (midProgress < 0.35) {
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(0, 0, midRad * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+              }
             }
+            ctx.restore();
           }
-          ctx.restore();
         }
       }
     }
@@ -1481,82 +1459,47 @@ export function drawFlamethrowerStreams(ctx, camera) {
       // Rdzeń w punktach pośrednich midX, midY
       if (i < spineNodes.length - 1) {
         const nextP = spineNodes[i + 1];
-        const midLife = (p.life + nextP.life) * 0.5;
-        const midMaxLife = (p.maxLife + nextP.maxLife) * 0.5;
-        const midProgress = Math.max(0, Math.min(1.0, 1.0 - (midLife / midMaxLife)));
-        if (midProgress < 0.70) {
-          const dx = nextP.x - p.x;
-          const dy = nextP.y - p.y;
-          const dist = Math.hypot(dx, dy);
+        const dx = nextP.x - p.x;
+        const dy = nextP.y - p.y;
+        const dist = Math.hypot(dx, dy);
 
-          if (dist > p.radius * 0.75 && dist < 120) {
-            const midX = (p.x + nextP.x) * 0.5;
-            const midY = (p.y + nextP.y) * 0.5;
-            const midRad = (p.radius + nextP.radius) * 0.5;
-            const drawSize = midRad * 2.0;
-            const coreSize = drawSize * 0.58;
-            const coreAlpha = (1.0 - midProgress / 0.70) * 0.34;
-            const frameIdx = Math.min(7, Math.floor(midProgress * 8));
+        if (dist > p.radius * 0.45 && dist < 120) {
+          const steps = dist > p.radius * 1.05 ? [0.33, 0.67] : [0.5];
+          for (const t of steps) {
+            const midLife = p.life + (nextP.life - p.life) * t;
+            const midMaxLife = p.maxLife + (nextP.maxLife - p.maxLife) * t;
+            const midProgress = Math.max(0, Math.min(1.0, 1.0 - (midLife / midMaxLife)));
+            if (midProgress < 0.70) {
+              const midX = p.x + dx * t;
+              const midY = p.y + dy * t;
+              const midRad = p.radius + (nextP.radius - p.radius) * t;
+              const drawSize = midRad * 2.0;
+              const coreSize = drawSize * 0.58;
+              const coreAlpha = (1.0 - midProgress / 0.70) * 0.34;
+              const frameIdx = Math.min(7, Math.floor(midProgress * 8));
 
-            ctx.save();
-            ctx.translate(midX, midY);
-            ctx.rotate((p.rot + nextP.rot) * 0.5);
-            ctx.globalAlpha = coreAlpha;
+              ctx.save();
+              ctx.translate(midX, midY);
+              ctx.rotate(p.rot + (nextP.rot - p.rot) * t);
+              ctx.globalAlpha = coreAlpha;
 
-            if (hasSheet) {
-              const sx = frameIdx * FLAME_CELL_SIZE;
-              const sy = FLAME_ROW_STREAM * FLAME_CELL_SIZE;
-              ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -coreSize * 0.5, -coreSize * 0.5, coreSize, coreSize);
-            } else {
-              ctx.fillStyle = midProgress < 0.25 ? '#ffffff' : '#fef08a';
-              ctx.beginPath();
-              ctx.arc(0, 0, coreSize * 0.5, 0, Math.PI * 2);
-              ctx.fill();
+              if (hasSheet) {
+                const sx = frameIdx * FLAME_CELL_SIZE;
+                const sy = FLAME_ROW_STREAM * FLAME_CELL_SIZE;
+                ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -coreSize * 0.5, -coreSize * 0.5, coreSize, coreSize);
+              } else {
+                ctx.fillStyle = midProgress < 0.25 ? '#ffffff' : '#fef08a';
+                ctx.beginPath();
+                ctx.arc(0, 0, coreSize * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              ctx.restore();
             }
-            ctx.restore();
           }
         }
       }
     }
 
-    ctx.restore();
-
-    // =========================================================================
-    // WARSTWA C: Gorące iskry i krople napalmu (droplets) - source-over
-    // Smukłe, szybkie smugi ognia wzdłuż wektora prędkości
-    // =========================================================================
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    for (const p of droplets) {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.angle);
-      const spd = Math.hypot(p.vx, p.vy);
-      const dropLen = Math.max(6.0, spd * 0.65);
-      const dropH = p.radius * 1.1;
-      const endAlpha = Math.pow(p.life / p.maxLife, 0.65);
-      ctx.globalAlpha = Math.min(1.0, endAlpha * 1.1);
-
-      // Płonący skrzep żelu
-      ctx.fillStyle = '#ea580c';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, dropLen, dropH, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Jaskrawy płonący rdzeń
-      ctx.fillStyle = '#fef08a';
-      ctx.beginPath();
-      ctx.ellipse(dropLen * 0.15, 0, dropLen * 0.55, dropH * 0.65, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Biała główka kropli
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.ellipse(dropLen * 0.35, 0, dropLen * 0.25, dropH * 0.40, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-    }
     ctx.restore();
   }
 }
