@@ -294,8 +294,21 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const localVisualsChanged = isLocalOrCreator && (p._lastLocalVisuals !== localPlayerCustomVisuals);
 
   if (p.isZombie) {
-    p.w = 24;
-    p.h = 70;
+    if (p.isCrawling && !p.isDead) {
+      p.w = 34;
+      p.h = 26;
+      p.pelvisY = 0;
+      p.gaitMode = 'CRAWL';
+    } else {
+      p.w = 24;
+      p.h = 70;
+      if (!p.isDead && (!p.riseTimer || p.riseTimer <= 0)) {
+        p.pelvisY = -11.8;
+        if (p.gaitMode === 'CROUCH' || p.gaitMode === 'CROUCH_WALK' || p.gaitMode === 'PRONE' || p.gaitMode === 'CRAWL') {
+          p.gaitMode = Math.abs(p.vx || 0) > 0.1 ? 'WALK' : 'IDLE';
+        }
+      }
+    }
     p.thighLen = 25;
     p.shinLen = 24;
     p.upperArmLen = 14;
@@ -314,12 +327,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     p.isProne = false;
     p.staggerTimer = 0;
     if (p.keys) p.keys.down = false;
-    if (!p.isDead && (!p.riseTimer || p.riseTimer <= 0)) {
-      p.pelvisY = -11.8;
-      if (p.gaitMode === 'CROUCH' || p.gaitMode === 'CROUCH_WALK' || p.gaitMode === 'PRONE' || p.gaitMode === 'CRAWL') {
-        p.gaitMode = Math.abs(p.vx || 0) > 0.1 ? 'WALK' : 'IDLE';
-      }
-    }
   }
 
   if (!p._cachedVisuals || p._visualsDirty || localVisualsChanged) {
@@ -449,11 +456,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else if (p.isZombie && p.riseTimer > 0) {
     // Sekwencja powstawania z ziemi (płynna transformacja z leżenia do stójki)
-    const progress = Math.max(0, Math.min(1, 1 - (p.riseTimer / 1.3)));
+    const progress = Math.max(0, Math.min(1, 1 - (p.riseTimer / 1.4)));
     const fDir = (p.facing >= 0 ? 1 : -1);
     const riseTilt = (1 - progress) * 1.52 * fDir + progress * (0.22 * fDir);
     hipX = centerX;
-    hipY = (plantFloorY - 5) * (1 - progress) + (plantFloorY - 30) * progress;
+    hipY = (plantFloorY - 5) * (1 - progress) + (plantFloorY - 48.3) * progress;
     p.torsoTilt = riseTilt;
     p.headPitch = 0.3 * (1 - progress) + 0.15 * progress;
 
@@ -465,10 +472,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFootBackTargetY = plantFloorY;
     rawFootBackAnkle = 0;
 
-    rawFrontSwing = (1 - progress) * 0.4 + progress * 1.45;
-    rawFrontElbow = (1 - progress) * 0.15 + progress * 0.22;
-    rawBackSwing = (1 - progress) * 0.2 + progress * 1.40;
-    rawBackElbow = (1 - progress) * 0.15 + progress * 0.26;
+    rawFrontSwing = (1 - progress) * 0.65 + progress * 0.22;
+    rawFrontElbow = (1 - progress) * 0.20 + progress * 0.36;
+    rawBackSwing = (1 - progress) * 0.45 + progress * 0.12;
+    rawBackElbow = (1 - progress) * 0.20 + progress * 0.32;
   } else if (p.isZombie && p.isCrawling && !p.isDead) {
     // Czołgający się zombie (odstrzelone nogi): tułów ułożony płasko przy ziemi, głowa uniesiona ku ofierze
     const fDir = (p.facing >= 0 ? 1 : -1);
@@ -501,9 +508,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawBackSwing = 1.35 + armCycleBack * 0.45;
     rawBackElbow = 0.35 + Math.max(0, -armCycleBack) * 0.40;
   } else if (p.isZombie) {
-    // Aktywny, polujący zombie: zgarbiony tułów, powłóczący krok, wyciągnięte ramiona
+    // Aktywny, polujący zombie: zgarbiony tułów, powłóczący krok, luźne ramiona z daleka
     const fDir = (p.facing >= 0 ? 1 : -1);
-    p.torsoTilt = 0.22 * fDir;
+    p.torsoTilt = 0.14 * fDir;
     p.headPitch = 0.15;
     const walkAnim = p.walkAnim || 0;
     const isMoving = speed > 0.4;
@@ -518,13 +525,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFootBackTargetY = plantFloorY - (isMoving && stride < 0 ? lift : 0);
     rawFootBackAnkle = (isMoving && stride < 0 ? 0.25 * fDir : 0);
 
-    const attackLunge = (p.attackCooldown && p.attackCooldown > 0.8) ? 0.35 : ((p.attackAnim && p.attackAnim > 0) ? (p.attackAnim * 0.8) : 0);
-    const armSway = Math.sin((p.idleAnim || walkAnim) * 2) * 0.12;
-
-    rawFrontSwing = 1.45 + attackLunge + armSway;
-    rawFrontElbow = 0.22 + Math.abs(armSway) * 0.1;
-    rawBackSwing = 1.40 + attackLunge - armSway;
-    rawBackElbow = 0.26 + Math.abs(armSway) * 0.1;
+    const walkSwing = isMoving ? Math.sin(walkAnim) * 0.32 : Math.sin((typeof performance !== 'undefined' ? performance.now() * 0.003 : 0)) * 0.06;
+    rawFrontSwing = 0.22 + walkSwing;
+    rawFrontElbow = 0.36 + Math.max(0, walkSwing) * 0.18;
+    rawBackSwing  = 0.12 - walkSwing;
+    rawBackElbow  = 0.32 + Math.max(0, -walkSwing) * 0.18;
   } else if (p.isIntro) {
     const choreo = getFreestyleChoreography(p.juggleTimer, hipX, hipY, floorY, p.facing, 8);
     hipX += choreo.hipShiftX;
@@ -1337,7 +1342,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const fLeanDir = (p.facing >= 0 ? 1 : -1);
   if (p.isZombie && !p.isDead && !p.isCrawling && (p.riseTimer || 0) <= 0) {
-    pose.torsoTilt = (0.22 + 0.24 * zReach) * fLeanDir;
+    pose.torsoTilt = (0.14 + 0.30 * zReach) * fLeanDir;
   }
 
   const cosTorsoT = Math.cos(pose.torsoTilt);
@@ -1360,7 +1365,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const shLeftX = hipX + ((-shOffsetHoriz + tacticalLeadSh) * cosTorsoT - lyLeftSh * sinTorsoT);
   const shLeftY = hipY + ((-shOffsetHoriz + tacticalLeadSh) * sinTorsoT + lyLeftSh * cosTorsoT);
 
-  if (zReach > 0.05) {
+  if (zReach > 0.01) {
     const animTime = (p.walkAnim || 0) * 2.8 + (typeof performance !== 'undefined' ? performance.now() * 0.003 : 0);
     const swayFront = Math.sin(animTime);
     const swayBack  = Math.sin(animTime + Math.PI * 0.72);

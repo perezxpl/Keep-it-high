@@ -913,7 +913,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.isDead = false;
         z.hp = z.maxHp;
         z.downedHp = z.maxDownedHp || 60;
-        z.riseTimer = 1.3;
+        z.riseTimer = 1.4;
         z.attackCooldown = 0.8;
         z.jumpCooldown = 1.2;
         z.team = 'ZOMBIE';
@@ -1043,7 +1043,6 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
           z.vy = 0;
           z.onGround = true;
         }
-        if (z.pose) z.pose.initialized = false;
       }
       continue;
     }
@@ -1153,8 +1152,10 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       const dx = tx - zx;
       const dy = ty - zy;
 
-      z.facing = dx >= 0 ? 1 : -1;
-      z.yaw = (z.facing < 0 ? Math.PI : 0);
+      if ((z.biteWindupTimer || 0) <= 0) {
+        z.facing = dx >= 0 ? 1 : -1;
+        z.yaw = (z.facing < 0 ? Math.PI : 0);
+      }
 
       if (z.isCrawling) {
         z.isReaching = false;
@@ -1219,6 +1220,9 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
             z.gaitMode = 'IDLE';
             z.keys.left = false;
             z.keys.right = false;
+            if (z.isReaching) {
+              z.walkAnim += dt * 2.4;
+            }
           }
         }
       }
@@ -1361,6 +1365,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.isReaching = false;
       z.reachBlend = Math.max(0, (z.reachBlend || 0) - dt * 3.5);
       z.reachAngle = 0;
+      z.biteWindupTimer = 0;
       if (z.isCrawling) {
         z.crawlPhase = (z.crawlPhase || 0) + dt * 3.0;
         const pullFactor = 0.55 + 0.45 * Math.max(0, Math.sin(z.crawlPhase));
