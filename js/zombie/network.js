@@ -35,6 +35,7 @@ export function serializeZombiesState() {
       walkAnim: Math.round((z.walkAnim || 0) * 100) / 100,
       attackAnim: Math.round((z.attackAnim || 0) * 100) / 100,
       lastBiteHit: !!z.lastBiteHit,
+      grabTargetId: z.grabTargetId || null,
       biteWindupTimer: Math.round((z.biteWindupTimer || 0) * 100) / 100,
       riseTimer: Math.round((z.riseTimer || 0) * 100) / 100,
       decayTimer: Math.round((z.decayTimer || 0) * 100) / 100,
@@ -145,6 +146,16 @@ export function applyRemoteZombiesState(data) {
         localZ.walkAnim = rz.walkAnim;
         localZ.attackAnim = rz.attackAnim;
         localZ.lastBiteHit = !!rz.lastBiteHit;
+        localZ.grabTargetId = rz.grabTargetId || null;
+        if (localZ.grabTargetId) {
+          if (localZ.grabTargetId === 'player' || (typeof window !== 'undefined' && localZ.grabTargetId === window.player?.id)) {
+            localZ._grabTarget = typeof window !== 'undefined' ? window.player : null;
+          } else if (typeof window !== 'undefined' && Array.isArray(window.bots)) {
+            localZ._grabTarget = window.bots.find(b => b && b.id === localZ.grabTargetId) || null;
+          }
+        } else {
+          localZ._grabTarget = null;
+        }
         localZ.biteWindupTimer = rz.biteWindupTimer || 0;
         localZ.riseTimer = rz.riseTimer;
         localZ.decayTimer = rz.decayTimer;
@@ -189,6 +200,16 @@ export function applyRemoteZombiesState(data) {
         localZ.walkAnim = rz.walkAnim;
         localZ.attackAnim = rz.attackAnim;
         localZ.lastBiteHit = !!rz.lastBiteHit;
+        localZ.grabTargetId = rz.grabTargetId || null;
+        if (localZ.grabTargetId) {
+          if (localZ.grabTargetId === 'player' || (typeof window !== 'undefined' && localZ.grabTargetId === window.player?.id)) {
+            localZ._grabTarget = typeof window !== 'undefined' ? window.player : null;
+          } else if (typeof window !== 'undefined' && Array.isArray(window.bots)) {
+            localZ._grabTarget = window.bots.find(b => b && b.id === localZ.grabTargetId) || null;
+          }
+        } else {
+          localZ._grabTarget = null;
+        }
         localZ.biteWindupTimer = rz.biteWindupTimer || 0;
         localZ.riseTimer = rz.riseTimer;
         localZ.decayTimer = rz.decayTimer;

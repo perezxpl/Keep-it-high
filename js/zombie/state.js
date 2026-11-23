@@ -15,9 +15,10 @@ export const ZOMBIE_CONFIG = {
   AGGRO_RANGE_Y: 150,
   MAX_HP: 100,              // Wytrzymałość zombie
   BITE_RANGE: 36,           // Poprzedni ogólny zasięg (pozostawiony dla kompatybilności)
-  BITE_TRIGGER_RANGE: 34,   // Dystans rozpoczęcia zamachu
-  BITE_HIT_RANGE: 32,       // Dystans trafienia po zakończeniu zamachu (ciało przy ciele)
-  BITE_WINDUP: 0.36,        // Czas zamachu przed ugryzieniem (sekundy) — gracz może odskoczyć lub kopnąć!
+  BITE_TRIGGER_RANGE: 32,   // Dystans rozpoczęcia zamachu
+  BITE_HIT_RANGE: 34,       // Dystans trafienia po zakończeniu zamachu (ciało przy ciele)
+  BITE_WINDUP: 0.30,        // Krótki, czytelny zamach przed złapaniem (gracz ma czas odskoczyć lub kopnąć)
+  GRAB_HOLD_DURATION: 0.45, // Czas fizycznego przytrzymania i wgryzienia
   BITE_DAMAGE: 12,          // Obrażenia od pojedynczego ugryzienia
   BITE_COOLDOWN: 1.5,       // Czas odnowienia po ataku (sekundy)
   INFECTION_CHANCE: 0.30,   // 30% szansy na zakażenie przy UDAJĄCYM SIĘ ugryzieniu (zamiast 100%)
@@ -216,7 +217,6 @@ export function createUndeadVisuals(baseVisuals = {}) {
     headgearColor: v.headgearColor,
     maskStyle: v.maskStyle,
     maskColor: v.maskColor,
-    torsoStyle: v.torsoStyle,
     torsoColor: v.torsoColor,
     pantsStyle: v.pantsStyle,
     pantsColor: v.pantsColor,
@@ -349,6 +349,8 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     attackCooldown: 0.6,
     attackAnim: 0,
     lastBiteHit: false,
+    grabTargetId: null,
+    _grabTarget: null,
     biteWindupTimer: 0,                    // Czas zamachu przed ugryzieniem
     walkAnim: Math.random() * 10,
     stridePhase: 0,
@@ -482,6 +484,8 @@ export function registerCorpseForReanimation(char, surfaceY) {
     walkAnim: 0,
     stridePhase: 0,
     lastBiteHit: false,
+    grabTargetId: null,
+    _grabTarget: null,
     isReaching: false,
     reachBlend: 0,
     isCrawling: false,

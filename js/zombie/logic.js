@@ -790,6 +790,8 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       newZombie.biteWindupTimer = 0;
       newZombie.stridePhase = 0;
       newZombie.lastBiteHit = false;
+      newZombie.grabTargetId = null;
+      newZombie._grabTarget = null;
       newZombie.thighLen = 25;
       newZombie.shinLen = 24;
       newZombie.upperArmLen = 14;
@@ -882,6 +884,9 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.reachBlend = 0;
       z.reachAngle = 0;
       z.biteWindupTimer = 0;
+      z.lastBiteHit = false;
+      z._grabTarget = null;
+      z.grabTargetId = null;
       // Grawitacja i kolizja z podłożem dla powalonego/martwego ciała
       z.vy += 0.45;
       if (z.vy > 12) z.vy = 12;
@@ -1103,10 +1108,19 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
     // Timery animacji, odnowienia ataku i hitstuna
     if (z.attackCooldown > 0) z.attackCooldown -= dt;
-    if (z.attackAnim > 0) z.attackAnim -= dt;
+    if (z.attackAnim > 0) {
+      z.attackAnim -= dt;
+      if (z.attackAnim <= 0) {
+        z._grabTarget = null;
+        z.grabTargetId = null;
+      }
+    }
     if (z.hitStunTimer > 0) {
       z.hitStunTimer -= dt;
       z.biteWindupTimer = 0;
+      z._grabTarget = null;
+      z.grabTargetId = null;
+      z.lastBiteHit = false;
     }
     if (z.jumpCooldown > 0) z.jumpCooldown -= dt;
 
@@ -1215,9 +1229,6 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
             if (z.biteWindupTimer > 0) {
               desiredVx *= 0.5;
             }
-            if (z.attackAnim > 0 && z.lastBiteHit) {
-              desiredVx *= 0.25;
-            }
             z.walkAnim += dt * (3.2 + reachFactor * 3.6);
             z.stridePhase = z.walkAnim;
             z.gaitMode = reachFactor > 0.35 ? 'RUN' : 'WALK';
@@ -1238,15 +1249,15 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
       // --- ATAK WRĘCZ / UGRYZIENIE ---
       const biteToleranceY = z.isCrawling ? 52 : 38;
-      const triggerRangeX = ZOMBIE_CONFIG.BITE_TRIGGER_RANGE || 34;
-      const hitRangeX = ZOMBIE_CONFIG.BITE_HIT_RANGE || 32;
+      const triggerRangeX = ZOMBIE_CONFIG.BITE_TRIGGER_RANGE || 32;
+      const hitRangeX = ZOMBIE_CONFIG.BITE_HIT_RANGE || 34;
 
       // 1. Rozpoczęcie fazy zamachu do ugryzienia (brak natychmiastowych obrażeń)
       const inTriggerRange = Math.abs(dx) <= triggerRangeX && Math.abs(dy) <= biteToleranceY;
       const isFacingVictim = (dx * z.facing) >= -6;
 
       if (inTriggerRange && isFacingVictim && z.attackCooldown <= 0 && (z.biteWindupTimer || 0) <= 0 && z.hitStunTimer <= 0 && !nearestTarget.isDead) {
-        z.biteWindupTimer = ZOMBIE_CONFIG.BITE_WINDUP || 0.36;
+        z.biteWindupTimer = ZOMBIE_CONFIG.BITE_WINDUP || 0.30;
       }
 
       // 2. Odliczanie zamachu i egzekucja uderzenia
@@ -1267,13 +1278,17 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
             if (isMissed) {
               // Atak chybił (ofiara odskoczyła lub minęła zombie)
               z.lastBiteHit = false;
+              z._grabTarget = null;
+              z.grabTargetId = null;
               z.attackAnim = 0.25;
               z.attackCooldown = 0.7;
             } else {
-              // Udany atak / ugryzienie
+              // Udany atak / ugryzienie i fizyczny chwyt
+              z._grabTarget = nearestTarget;
+              z.grabTargetId = nearestTarget.id || (nearestTarget === player ? 'player' : null);
               z.lastBiteHit = true;
               z.attackCooldown = ZOMBIE_CONFIG.BITE_COOLDOWN || 1.5;
-              z.attackAnim = 0.38;
+              z.attackAnim = ZOMBIE_CONFIG.GRAB_HOLD_DURATION || 0.45;
 
               // Lekko przyhamuj ofiarę na ułamek sekundy (fizyczny chwyt)
               if (nearestTarget && typeof nearestTarget.vx === 'number') {
@@ -1367,6 +1382,9 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
           const bDy = barMidY - zy;
           const isAhead = (bDx * z.facing) >= -4 && (bDx * z.facing) <= (ZOMBIE_CONFIG.BITE_RANGE + 8);
           if (isAhead && Math.abs(bDy) <= 42) {
+            z.lastBiteHit = false;
+            z._grabTarget = null;
+            z.grabTargetId = null;
             z.attackCooldown = ZOMBIE_CONFIG.BITE_COOLDOWN;
             z.attackAnim = 0.35;
             const dmgFn = (typeof damageBarrel === 'function') ? damageBarrel : (typeof window !== 'undefined' ? window.damageBarrel : null);
@@ -1407,8 +1425,36 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       }
     }
 
-    // Podczas wgryzienia zombie stoi przy ofierze zamiast przez nia przebiegac
-    if (z.attackAnim > 0 && z.lastBiteHit) {
+    // W KAŻDEJ klatce trwania chwytu (z.attackAnim > 0 && z.lastBiteHit && z._grabTarget):
+    if (z.attackAnim > 0 && z.lastBiteHit && z._grabTarget) {
+      const target = z._grabTarget;
+      const targetMidX = target.x + (target.w || 24) * 0.5;
+      const targetMidY = target.y + (target.h || 70) * 0.5;
+      const zMidX = z.x + (z.w || 24) * 0.5;
+      const zMidY = z.y + (z.h || 70) * 0.5;
+      const dist = Math.hypot(targetMidX - zMidX, targetMidY - zMidY);
+
+      const isBroken = target.isDead || z.isDead || (z.hitStunTimer && z.hitStunTimer > 0) ||
+        target.isJumping || target.kickState === 'SWING' || !!target.rocketBoots?.dashing ||
+        dist > 48;
+
+      if (isBroken) {
+        z._grabTarget = null;
+        z.grabTargetId = null;
+        z.lastBiteHit = false;
+      } else {
+        // Silne spowolnienie ruchu poziomego ofiary
+        if (typeof target.vx === 'number') {
+          target.vx *= 0.60;
+        }
+        // Delikatne przyciąganie w stronę dłoni zombie na dystans ok. 22 px
+        const desiredTargetX = (z.x + (z.w || 24) * 0.5) + z.facing * 22 - (target.w || 24) * 0.5;
+        target.x += (desiredTargetX - target.x) * 0.14;
+
+        // Zombie przywiera do ofiary w trakcie wgryzienia
+        desiredVx = 0;
+      }
+    } else if (z.attackAnim > 0 && z.lastBiteHit) {
       desiredVx *= 0.25;
     }
 

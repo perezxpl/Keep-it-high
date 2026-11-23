@@ -374,6 +374,84 @@ async function run() {
     }
     console.log('[ASSERTION OK] Scenariusz C shoulderTilt jest skonczona liczba:', diagC.resReal.shoulderTilt);
 
+    // SCENARIUSZ D: TEST FIZYCZNEGO CHWYTU I UGRYZIENIA Z IK RAMION ORAZ ZERWANIA
+    console.log('[TEST] Uruchamianie Scenariusza D (fizyczny chwyt, IK ramion i zerwanie)...');
+    const diagD = await page.evaluate(async () => {
+      const z = window.zombieState.zombies[0];
+      if (!z) throw new Error('Brak aktywnego zombie dla testu chwytu!');
+
+      function getClip(entity) {
+        const cam = window.camera;
+        const zoom = cam.zoom || 1;
+        const ew = entity.w || 24;
+        const eh = entity.h || 70;
+        const cx = entity.x + ew * 0.5;
+        const cy = entity.y + eh * 0.5;
+        const sx = (cx - cam.x) * zoom;
+        const sy = (cy - cam.y) * zoom;
+        const boxW = 380;
+        const boxH = 380;
+        const rx = Math.max(0, Math.min(1280 - boxW, Math.round(sx - boxW * 0.5)));
+        const ry = Math.max(0, Math.min(720 - boxH, Math.round(sy - boxH * 0.5)));
+        return { x: rx, y: ry, width: boxW, height: boxH };
+      }
+
+      // Ustawienie gracza i zombie w zasiegu ataku
+      window.player.x = z.x - 26;
+      window.player.y = z.y;
+      window.player.isJumping = false;
+      window.player.kickState = null;
+      window.player.vx = 2.0;
+      z.attackAnim = 0;
+      z.biteWindupTimer = 0.04;
+
+      // 6 klatek na wygasniecie windup i aktywacje chwytu
+      for (let f = 0; f < 6; f++) {
+        await new Promise(r => requestAnimationFrame(r));
+      }
+
+      const grabActive = {
+        attackAnim: z.attackAnim,
+        grabTargetId: z.grabTargetId,
+        hasGrabTarget: !!z._grabTarget,
+        isGrabTargetPlayer: z._grabTarget === window.player,
+        lastBiteHit: z.lastBiteHit,
+        playerVxAfterBrake: window.player.vx,
+        armFrontSwing: z.pose?.armFrontSwing,
+        armBackSwing: z.pose?.armBackSwing,
+        armFrontElbow: z.pose?.armFrontElbow,
+        armBackElbow: z.pose?.armBackElbow,
+        torsoTilt: z.pose?.torsoTilt,
+        headPitch: z.pose?.headPitch
+      };
+
+      // Zerwanie chwytu kopnieciem / odskokiem gracza
+      window.player.kickState = 'SWING';
+      for (let f = 0; f < 3; f++) {
+        await new Promise(r => requestAnimationFrame(r));
+      }
+
+      const grabAfterBreak = {
+        hasGrabTarget: !!z._grabTarget,
+        grabTargetId: z.grabTargetId,
+        lastBiteHit: z.lastBiteHit
+      };
+
+      return { grabActive, grabAfterBreak, clip: getClip(z) };
+    });
+
+    const grabPath = path.join(reportsDir, 'zombie-grab.png');
+    await page.screenshot({ path: grabPath, clip: diagD.clip });
+    console.log('[ZAPISANO ZRZUT D]:', grabPath);
+
+    console.log('=== WYNIKI SCENARIUSZA D (FIZYCZNY CHWYT I IK) ===');
+    console.log('Stan chwytu:', JSON.stringify(diagD.grabActive, null, 2));
+    console.log('Po skoku (zerwanie):', JSON.stringify(diagD.grabAfterBreak, null, 2));
+    if (!Number.isFinite(diagD.grabActive.armFrontSwing) || !Number.isFinite(diagD.grabActive.armBackSwing)) {
+      throw new Error('ASSERTION ERROR: Scenariusz D arm swings are not finite numbers');
+    }
+    console.log('[ASSERTION OK] Scenariusz D ramiona zombie IK sa skonczonymi liczbami');
+
   } finally {
     if (browser) await browser.close();
     server.close();
