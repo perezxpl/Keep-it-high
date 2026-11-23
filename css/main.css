@@ -810,9 +810,14 @@ button, .dev-btn {
 }
 
 #main-menu-overlay {
-  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.35) 0%, rgba(5, 8, 16, 0.65) 85%);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: radial-gradient(circle at center, rgba(2, 6, 23, 0.35) 0%, rgba(2, 6, 23, 0.75) 100%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #pause-overlay {
@@ -827,47 +832,113 @@ button, .dev-btn {
 }
 
 /* -------------------------------------------------------------------------
-   1. MENU GŁÓWNE
+   1. MENU GŁÓWNE (KONCEPCJA 2: BOTTOM COMMAND DECK - DOLNA KONSOLA BOJOWA)
    ------------------------------------------------------------------------- */
 .menu-container {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
-  max-width: 980px;
+  max-width: 100%;
   width: 100%;
-  max-height: 98vh;
-  overflow-y: auto;
-  padding: 8px 12px;
+  height: 100%;
+  max-height: 100vh;
+  padding: 0;
   box-sizing: border-box;
+  position: relative;
+}
+
+#main-menu-overlay.in-arena-select .menu-container {
+  max-width: 980px;
+  max-height: calc(100vh - 16px);
+  justify-content: center;
+  padding: 8px 12px;
 }
 
 #menu-main-view {
   width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
+  position: relative;
+  box-sizing: border-box;
+  pointer-events: none;
+  padding: 16px;
 }
 
 #menu-main-view.hidden {
   display: none !important;
 }
 
-.menu-header-bar {
-  position: relative;
-  width: 100%;
-  max-width: 960px;
-  margin-bottom: 12px;
+/* 1. MINIMALISTYCZNY PŁYWAJĄCY NAGŁÓWEK NA GÓRZE */
+.deck-top-bar {
+  position: absolute;
+  top: 14px;
+  left: 24px;
+  right: 24px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
+  box-sizing: border-box;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.deck-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 16, 28, 0.78);
+  border: 1px solid rgba(0, 229, 255, 0.32);
+  border-radius: 8px;
+  padding: 6px 14px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 229, 255, 0.12);
+}
+
+.deck-brand-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00e5ff;
+  box-shadow: 0 0 8px #00e5ff;
+  animation: pulseDot 1.4s infinite ease-in-out;
+}
+
+.feed-status-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #10b981;
+  letter-spacing: 1.2px;
+}
+
+.deck-brand-tag {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 1px;
+  border-left: 1px solid rgba(0, 229, 255, 0.35);
+  padding-left: 10px;
+  margin-left: 4px;
+  opacity: 0.9;
+}
+
+.deck-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
 }
 
 .menu-sound-toggle-btn {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  position: static;
+  transform: none;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -949,15 +1020,16 @@ button, .dev-btn {
 
 .menu-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: clamp(26px, 4.8vw, 52px);
+  font-size: clamp(18px, 2.2vw, 28px);
   font-weight: 900;
-  letter-spacing: 4px;
+  letter-spacing: 3.5px;
   line-height: 1.1;
-  margin: 0 0 6px 0;
+  margin: 0;
   background: linear-gradient(135deg, #ffffff 0%, #38bdf8 45%, #00e5ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 24px rgba(0, 229, 255, 0.45));
+  filter: drop-shadow(0 0 20px rgba(0, 229, 255, 0.45));
+  pointer-events: auto;
 }
 
 .menu-subtitle {
@@ -979,11 +1051,11 @@ button, .dev-btn {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.94) 0%, rgba(9, 14, 26, 0.96) 100%);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(0, 229, 255, 0.35);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 18px rgba(0, 229, 255, 0.14);
+  background: linear-gradient(180deg, rgba(10, 16, 28, 0.82) 0%, rgba(6, 11, 20, 0.88) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 229, 255, 0.32);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6), 0 0 18px rgba(0, 229, 255, 0.12);
   border-radius: 12px;
   padding: 12px 16px;
   width: 100%;
@@ -1783,289 +1855,351 @@ button, .dev-btn {
 }
 
 /* =========================================================================
-   UKŁAD MENU GŁÓWNEGO (DWUKOLUMNOWY DLA PC I TELEFONU W POZIOMIE)
+   MENU GŁÓWNE: CENTRUM DOWODZENIA (WYŚRODKOWANA KONSOLA BOJOWA)
    ========================================================================= */
-.menu-columns-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  width: 100%;
-  max-width: 960px;
+
+/* Główna wyśrodkowana konsola dowodzenia */
+.menu-center-hub,
+#menu-columns-layout {
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
-}
-
-.menu-col-profile {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.menu-col-actions {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   gap: 12px;
   width: 100%;
+  max-width: 520px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(8, 14, 26, 0.86) 0%, rgba(4, 7, 14, 0.94) 100%);
+  border: 1.5px solid rgba(0, 229, 255, 0.36);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(0, 229, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 18px 22px;
+  pointer-events: auto;
+  z-index: 25;
+  animation: hubFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* -------------------------------------------------------------------------
-   KARTA STATUSU GOTOWOŚCI BOJOWEJ OPERATORA (PRAWA KOLUMNA)
-   ------------------------------------------------------------------------- */
-.status-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.16);
-  padding-bottom: 6px;
-  margin-bottom: 2px;
+@keyframes hubFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-.status-card-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'Orbitron', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  color: #00e5ff;
-  letter-spacing: 1.5px;
-}
-
-.status-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 6px #10b981;
-  animation: pulseDot 1.5s infinite ease-in-out;
-}
-
-.status-sys-tag {
-  font-family: 'Orbitron', monospace;
-  font-size: 9px;
-  font-weight: 700;
-  color: #10b981;
-  letter-spacing: 0.8px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  border-radius: 4px;
-  padding: 2px 6px;
-}
-
-.menu-op-info-box {
+/* 1. SEKCJA NAGŁÓWKA: TYTUŁ I CALLSIGN OPERATORA */
+.hub-header-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: rgba(2, 6, 23, 0.72);
-  border: 1px solid rgba(0, 229, 255, 0.22);
-  border-radius: 6px;
-  padding: 8px 10px;
-  box-sizing: border-box;
-}
-
-.menu-op-primary-row {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   width: 100%;
 }
 
-.menu-op-identity {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+.hub-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(20px, 2.5vw, 26px);
+  font-weight: 900;
+  letter-spacing: 3px;
+  margin: 0;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #ffffff 0%, #38bdf8 45%, #00e5ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.35));
 }
 
-.menu-op-role-label {
+.hub-callsign-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.hub-callsign-row .operator-callsign-box {
+  margin-bottom: 0;
+  min-height: 36px;
+  padding: 4px 10px;
+  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 6px;
+  flex: 1;
+}
+
+.hub-callsign-row .callsign-label {
   font-family: 'Orbitron', monospace;
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 700;
-  color: #64748b;
+  color: #00e5ff;
   letter-spacing: 1px;
 }
 
-.menu-op-name {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 14px;
-  font-weight: 900;
-  color: #ffffff;
-  letter-spacing: 1.5px;
+.hub-callsign-row .callsign-input {
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.menu-op-badges {
+.hub-callsign-row .player-card-tool-btn {
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  font-size: 9.5px;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.hub-callsign-row .player-card-tool-btn:hover {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.15);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+/* 2. KLIKALNY WIERSZ STOPNIA WOJSKOWEGO I PASKIEM XP */
+.hub-rank-box {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.menu-op-class-badge {
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  font-weight: 700;
-  padding: 2px 6px;
+.hub-rank-box:hover {
+  background: rgba(0, 229, 255, 0.08);
+  border-color: rgba(0, 229, 255, 0.45);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+}
+
+.hub-rank-box .rank-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.deck-ranks-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.35);
   border-radius: 4px;
-  letter-spacing: 0.6px;
-}
-
-.menu-op-hp-badge {
+  color: #00e5ff;
   font-family: 'Orbitron', monospace;
   font-size: 9px;
   font-weight: 800;
-  color: #facc15;
-  background: rgba(250, 204, 21, 0.12);
-  border: 1px solid rgba(250, 204, 21, 0.35);
-  border-radius: 4px;
-  padding: 2px 6px;
-}
-
-.menu-op-trait-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.menu-op-trait-text {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
   letter-spacing: 0.8px;
-  text-transform: uppercase;
+  padding: 5px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
-.menu-op-trait-desc {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 10px;
-  color: #94a3b8;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.deck-ranks-btn:hover {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
 }
 
-.menu-op-quick-selector {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+.deck-ranks-btn .ranks-tile-arrow {
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* 3. GŁÓWNY PRZYCISK STARTU GRY */
+.hub-play-section {
   width: 100%;
 }
 
-.menu-op-pill-btn {
+.hub-hero-play-btn {
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  padding: 6px 4px;
+  gap: 3px;
+  background: linear-gradient(135deg, #00e5ff 0%, #0284c7 100%);
+  color: #020617;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.45), inset 0 0 12px rgba(255, 255, 255, 0.3);
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
   user-select: none;
-  min-height: 36px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+.hub-hero-play-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 36px rgba(0, 229, 255, 0.75), inset 0 0 16px rgba(255, 255, 255, 0.45);
+}
+
+.hub-hero-play-btn:active {
+  transform: translateY(0);
+}
+
+.hub-hero-play-btn .deck-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hub-hero-play-btn .deck-hero-icon {
+  font-size: 15px;
+  color: #020617;
+  line-height: 1;
+}
+
+.hub-hero-play-btn .btn-hero-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 15px;
+  letter-spacing: 2px;
+  font-weight: 900;
+  color: #020617;
+  line-height: 1.1;
+}
+
+.hub-hero-play-btn .btn-hero-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #042f2e;
+  opacity: 0.9;
+  text-transform: uppercase;
+}
+
+/* 4. PRZYCISKI NAWIGACJI (ZBROJOWNIA, KREATOR, USTAWIENIA) */
+.hub-actions-section {
+  width: 100%;
+}
+
+.hub-actions-section .deck-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
   box-sizing: border-box;
 }
 
-.menu-op-pill-btn:hover {
+.deck-tile-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 6px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(0, 229, 255, 0.24);
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  text-align: center;
+  min-height: 58px;
+  user-select: none;
+}
+
+.deck-tile-btn:hover {
+  background: rgba(0, 229, 255, 0.16);
+  border-color: #00e5ff;
+  transform: translateY(-2px);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.32);
+}
+
+.deck-tile-btn:active {
+  transform: translateY(0);
+}
+
+.deck-tile-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   background: rgba(0, 229, 255, 0.1);
-  border-color: rgba(0, 229, 255, 0.5);
-  transform: translateY(-1px);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  color: #00e5ff;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.menu-op-pill-btn.active {
-  background: rgba(0, 229, 255, 0.18);
-  border: 1.5px solid #00e5ff;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+.deck-tile-btn:hover .deck-tile-icon-box {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
 }
 
-.menu-op-pill-btn.op-pill-raptor.active {
-  background: rgba(16, 185, 129, 0.18);
-  border-color: #10b981;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+.deck-tile-label-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
 }
 
-.menu-op-pill-btn.op-pill-enforcer.active {
-  background: rgba(249, 115, 22, 0.18);
-  border-color: #f97316;
-  box-shadow: 0 0 10px rgba(249, 115, 22, 0.35);
-}
-
-.menu-op-pill-btn .pill-name {
+.deck-tile-label-col .btn-text {
   font-family: 'Orbitron', monospace;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.8px;
   color: #ffffff;
+  line-height: 1;
 }
 
-.menu-op-pill-btn .pill-hp {
-  font-family: 'Orbitron', monospace;
-  font-size: 8.5px;
-  font-weight: 700;
-  color: #94a3b8;
-}
-
-.menu-loadout-meta-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: rgba(2, 6, 23, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.loadout-meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.loadout-meta-lbl {
-  font-family: 'Orbitron', monospace;
+.deck-tile-label-col .deck-tile-sub {
+  font-family: 'Rajdhani', sans-serif;
   font-size: 8px;
   font-weight: 700;
-  color: #64748b;
-  letter-spacing: 0.5px;
-}
-
-.loadout-meta-val {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
+  letter-spacing: 0.6px;
   color: #94a3b8;
-  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
-.menu-action-buttons-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* 5. KARTA STATYSTYK BOJOWYCH */
+.hub-stats-section {
   width: 100%;
 }
 
 .player-stats-compact-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  gap: 5px;
   width: 100%;
-  margin-top: 6px;
+  box-sizing: border-box;
 }
 
 .stat-pill-mini {
-  background: rgba(2, 6, 23, 0.75);
+  background: rgba(2, 6, 23, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 5px 6px;
+  border-radius: 5px;
+  padding: 3px 5px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   transition: all 0.2s ease;
 }
 
@@ -2076,70 +2210,19 @@ button, .dev-btn {
 
 .stat-mini-lbl {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
   color: #64748b;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   line-height: 1;
+  text-transform: uppercase;
 }
 
 .stat-mini-val {
   font-family: 'Orbitron', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.ui-btn-hero {
-  width: 100%;
-  padding: 14px 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  background: linear-gradient(135deg, #00e5ff 0%, #0284c7 100%);
-  color: #020617;
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 0 24px rgba(0, 229, 255, 0.4);
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  user-select: none;
-}
-
-.ui-btn-hero:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 32px rgba(0, 229, 255, 0.65);
-}
-
-.btn-hero-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 15px;
-  letter-spacing: 2px;
-  font-weight: 900;
-}
-
-.btn-hero-sub {
-  font-family: 'Rajdhani', sans-serif;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1px;
-  opacity: 0.88;
-}
-
-.menu-sub-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  width: 100%;
-}
-
-.menu-quick-sound-box {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 2px;
+  line-height: 1.1;
 }
 
 /* =========================================================================
@@ -3041,20 +3124,19 @@ button, .dev-btn {
 }
 
 @media (max-width: 680px) and (min-height: 521px) {
-  .menu-columns-layout {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    max-height: calc(100vh - 100px);
-    overflow-y: auto;
-    padding-right: 4px;
+  .menu-center-hub,
+  #menu-columns-layout {
+    max-width: 95%;
+    padding: 14px 14px;
+    gap: 10px;
   }
-  .menu-header-bar {
-    flex-direction: column;
-    gap: 6px;
+  .hub-title {
+    font-size: 18px;
   }
-  .menu-sound-toggle-btn {
-    position: static;
-    transform: none;
+  .deck-top-bar {
+    top: 8px;
+    left: 10px;
+    right: 10px;
   }
   .briefing-columns-layout { grid-template-columns: 1fr; gap: 10px; }
   .briefing-operator-grid { grid-template-columns: 1fr; }
@@ -3064,251 +3146,143 @@ button, .dev-btn {
 
 @media (max-height: 520px) {
   #main-menu-overlay {
-    padding: 6px 10px;
+    padding: 0;
     align-items: center;
     justify-content: center;
   }
-  #main-menu-overlay .menu-container {
-    max-height: calc(100vh - 8px);
-    padding: 2px 4px;
+  #menu-main-view {
+    padding: 6px;
+    justify-content: center;
+  }
+  .deck-top-bar {
+    top: 4px;
+    left: 10px;
+    right: 10px;
+    padding: 0;
+  }
+  .deck-brand-pill {
+    padding: 2px 8px;
     gap: 6px;
-    width: 98%;
-    max-width: 940px;
   }
-  .menu-header-bar {
-    margin-bottom: 4px;
-    width: 100%;
+  .feed-status-text {
+    font-size: 8px;
   }
-  .menu-title {
-    font-size: 16px;
-    letter-spacing: 2px;
-    margin: 0;
-    line-height: 1.1;
+  .deck-brand-tag {
+    font-size: 8px;
+    padding-left: 6px;
   }
   .menu-sound-toggle-btn {
-    padding: 4px 10px;
-    font-size: 11px;
-    min-height: 28px;
-    gap: 5px;
+    padding: 2px 8px;
+    font-size: 8.5px;
+    min-height: 24px;
   }
-  .menu-sound-toggle-btn .sound-svg-icon {
-    width: 13px;
-    height: 13px;
-  }
-  .menu-columns-layout {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    width: 100%;
-    align-items: stretch;
-  }
-  .menu-col-profile,
-  .menu-col-actions {
-    gap: 8px;
-  }
-  .menu-player-card,
-  .menu-status-card {
-    padding: 8px 12px;
+  .menu-center-hub,
+  #menu-columns-layout {
+    max-width: 480px;
+    padding: 8px 14px;
     gap: 6px;
     border-radius: 10px;
+    margin-top: 18px;
   }
-  .player-card-header,
-  .status-card-header {
-    padding-bottom: 4px;
-    margin-bottom: 2px;
+  .hub-title {
+    font-size: 14px;
+    letter-spacing: 1.5px;
   }
-  .player-card-id-badge,
-  .status-card-badge {
-    font-size: 11px;
-    letter-spacing: 1px;
-  }
-  .player-card-tool-btn {
-    padding: 4px 8px;
+  .hub-callsign-row .operator-callsign-box {
     min-height: 26px;
-    font-size: 10px;
+    padding: 2px 6px;
   }
-  .operator-callsign-box {
-    min-height: 32px;
-    padding: 4px 8px;
-    margin-bottom: 2px;
+  .hub-callsign-row .callsign-label {
+    font-size: 8px;
   }
-  .callsign-label {
-    font-size: 10px;
-    letter-spacing: 1px;
+  .hub-callsign-row .callsign-input {
+    font-size: 11px;
   }
-  .callsign-input {
-    font-size: 13px;
-    letter-spacing: 1px;
+  .hub-callsign-row .player-card-tool-btn {
+    min-height: 26px;
+    padding: 2px 6px;
+    font-size: 8px;
   }
-  .callsign-edit-svg {
-    width: 13px;
-    height: 13px;
-  }
-  .player-card-rank-section {
-    padding: 6px 8px;
+  .hub-rank-box {
+    padding: 3px 6px;
     gap: 6px;
   }
   .rank-badge-shield {
-    width: 26px;
-    height: 26px;
-    font-size: 12px;
-  }
-  .rank-label, .rank-xp-current {
-    font-size: 10px;
-  }
-  .rank-name-row {
-    margin-top: 2px;
+    width: 22px;
+    height: 22px;
   }
   .rank-name {
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 10px;
   }
   .rank-tier-badge {
-    font-size: 9.5px;
-    padding: 1px 5px;
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+  .rank-xp-current {
+    font-size: 8.5px;
   }
   .rank-progress-bar-bg {
-    height: 5px;
-    margin-top: 3px;
+    height: 3px;
+    margin-top: 1px;
   }
   .rank-progress-meta-row {
-    display: flex;
-    margin-top: 2px;
-    gap: 6px;
-  }
-  .rank-next-badge {
-    font-size: 10px;
-  }
-  .rank-missing-xp {
-    font-size: 10px;
-  }
-  .rank-reward-row {
-    display: flex;
-    margin-top: 2px;
-  }
-  .rank-reward-badge {
-    font-size: 9.5px;
-    padding: 1px 5px;
-  }
-  .player-stats-compact-grid {
+    margin-top: 1px;
     gap: 4px;
-    margin-top: 2px;
   }
-  .stat-pill-mini {
-    padding: 3px 6px;
-    border-radius: 6px;
+  .rank-next-badge, .rank-missing-xp {
+    font-size: 8px;
+  }
+  .deck-ranks-btn {
+    padding: 2px 6px;
+    font-size: 8px;
+  }
+  .hub-hero-play-btn {
+    min-height: 40px;
+    padding: 4px 10px;
+    gap: 1px;
+    border-radius: 8px;
+  }
+  .hub-hero-play-btn .btn-hero-title {
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .hub-hero-play-btn .btn-hero-sub {
+    display: none;
+  }
+  .deck-tile-btn {
+    min-height: 38px;
+    padding: 3px;
     gap: 2px;
-  }
-  .stat-mini-lbl {
-    font-size: 9px;
-    letter-spacing: 0.5px;
-  }
-  .stat-mini-val {
-    font-size: 12px;
-    font-weight: 800;
-  }
-  .menu-ranks-tile-btn {
-    padding: 5px 10px;
     border-radius: 6px;
-    margin-top: 2px;
-    min-height: 30px;
   }
-  .ranks-tile-icon-box {
+  .deck-tile-icon-box {
     width: 18px;
     height: 18px;
   }
-  .ranks-tile-svg {
-    width: 13px;
-    height: 13px;
+  .deck-tile-icon-box svg {
+    width: 11px;
+    height: 11px;
   }
-  .ranks-tile-title {
-    font-size: 11px;
-    font-weight: 800;
-  }
-  .ranks-tile-sub {
-    display: none;
-  }
-  .ranks-tile-arrow {
-    font-size: 11px;
-  }
-  .status-sys-tag {
-    font-size: 10px;
-    padding: 2px 6px;
-  }
-  .menu-op-info-box {
-    padding: 5px 8px;
-    gap: 3px;
-    border-radius: 6px;
-  }
-  .menu-op-role-label {
-    font-size: 10px;
-  }
-  .menu-op-name {
-    font-size: 13px;
-    font-weight: 800;
-  }
-  .menu-op-class-badge {
-    font-size: 9.5px;
-    padding: 1px 5px;
-  }
-  .menu-op-hp-badge {
-    font-size: 10px;
-    padding: 1px 5px;
-  }
-  .menu-op-trait-row {
-    font-size: 10.5px;
-  }
-  .menu-op-trait-text {
-    font-size: 11px;
-  }
-  .menu-op-trait-desc {
-    display: none;
-  }
-  .menu-op-quick-selector {
-    gap: 4px;
-  }
-  .menu-op-pill-btn {
-    padding: 4px 6px;
-    min-height: 28px;
-    border-radius: 6px;
-    gap: 2px;
-  }
-  .menu-op-pill-btn .pill-name {
-    font-size: 10.5px;
-    font-weight: 800;
-  }
-  .menu-op-pill-btn .pill-hp {
-    font-size: 9px;
-  }
-  .menu-loadout-meta-row {
-    display: none;
-  }
-  .menu-action-buttons-group {
-    gap: 6px;
-  }
-  .ui-btn-hero {
-    padding: 10px 14px;
-    border-radius: 8px;
-    gap: 4px;
-    min-height: 44px;
-  }
-  .btn-hero-title {
-    font-size: 14px;
-    letter-spacing: 1px;
-    font-weight: 900;
-  }
-  .btn-hero-sub {
-    font-size: 10px;
+  .deck-tile-label-col .btn-text {
+    font-size: 8.5px;
     letter-spacing: 0.5px;
   }
-  .menu-sub-actions-grid {
-    gap: 6px;
+  .deck-tile-label-col .deck-tile-sub {
+    display: none;
   }
-  .menu-sub-actions-grid .ui-btn {
-    padding: 6px 10px;
-    font-size: 11.5px;
-    min-height: 32px;
-    border-radius: 6px;
-    font-weight: 700;
+  .player-stats-compact-grid {
+    gap: 2px;
+  }
+  .stat-pill-mini {
+    padding: 1px 3px;
+    border-radius: 4px;
+    gap: 1px;
+  }
+  .stat-mini-lbl {
+    font-size: 7px;
+  }
+  .stat-mini-val {
+    font-size: 9px;
   }
   #main-menu-overlay.in-arena-select {
     padding: 4px 8px;

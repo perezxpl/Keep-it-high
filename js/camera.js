@@ -765,36 +765,49 @@ export function screenToWorld(screenX, screenY, cam = camera) {
 }
 
 /**
- * Sztywna, statyczna kamera zablokowana na centrum Areny 2 (Toksyczna Rafineria) w menu głównym.
+ * Sztywna, statyczna kamera zablokowana na centrum aktywnej areny (Arena 2, Arena 3, Arena 4) w menu głównym.
  * Dynamicznie dopasowuje rozdzielczość i zoom do urządzeń mobilnych (smartfony w poziomie)
- * oraz monitorów PC, tak aby pełna architektura (turbina, platformy i tafla kwasu)
- * była idealnie skadrowana bez obcinania i z zachowaniem ostrości 60 FPS.
+ * oraz monitorów PC, gwarantując idealne kadrowanie centralnych platform i strefy walki botów.
  */
 export function updateMenuCamera() {
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
   const isMobile = isMobileDevice();
+  const arenaId = getCameraArenaId();
 
-  // Wzorzec kadrowania:
-  // Kompozycja Areny 2 obejmuje:
-  // - Szczyt turbiny i magistrale sufitowe: Y ≈ 230 - 260
-  // - Centralny hub i walkę botów: Y ≈ 650 - 820
-  // - Lustro kwasu i wrzące jezioro: Y = 1440 - 1520
-  // 
-  // Na PC Full HD (1920x1080) wysokość widoku w świecie to 1080 / 0.85 = 1270.58 px.
-  // Na telefonach komórkowych wysokość logiczna ekranu w poziomie to zazwyczaj 360 - 430 px.
-  // Skalujemy zoom proporcjonalnie do rozdzielczości ekranu, aby pełna wysokość sceny
-  // z taflą kwasu i turbiną była idealnie widoczna bez powiększenia (makro-zoomu):
-  const targetWorldHeight = isMobile ? 1220 : 1270.588;
-  const targetWorldWidth = isMobile ? 2200 : 2260;
+  const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER' || arenaId === 'SEKTOR_05' || arenaId === 'PREFABRYKATOR');
+  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3' || arenaId === 'JUNGLE');
+
+  let centerX = 2000;
+  let targetBottomY = isMobile ? 1515 : 1485;
+  let targetWorldHeight = isMobile ? 1220 : 1270.588;
+  let targetWorldWidth = isMobile ? 2200 : 2260;
+  let arenaW = 4000;
+  let arenaH = 1600;
+
+  if (isArena3) {
+    centerX = 2180;
+    targetBottomY = isMobile ? 1380 : 1340;
+    targetWorldHeight = isMobile ? 1160 : 1200;
+    targetWorldWidth = isMobile ? 2200 : 2280;
+    arenaW = 4400;
+    arenaH = 1400;
+  } else if (isArena5) {
+    centerX = 800;
+    targetBottomY = isMobile ? 1290 : 1270;
+    targetWorldHeight = isMobile ? 1040 : 1100;
+    targetWorldWidth = isMobile ? 1550 : 1600;
+    arenaW = 1600;
+    arenaH = 2000;
+  }
 
   const zoomByHeight = canvasHeight / targetWorldHeight;
   const zoomByWidth = canvasWidth / targetWorldWidth;
 
   let zoom = Math.min(zoomByHeight, zoomByWidth);
 
-  // Zabezpieczenie przed przekroczeniem granic areny (4000x1600)
-  const minZoomForArenaBounds = Math.max(canvasWidth / 4000, canvasHeight / 1600);
+  // Zabezpieczenie przed przekroczeniem granic areny
+  const minZoomForArenaBounds = Math.max(canvasWidth / arenaW, canvasHeight / arenaH);
   zoom = Math.max(minZoomForArenaBounds, Math.min(1.8, zoom));
   zoom = Math.round(zoom * 1000) / 1000;
 
@@ -807,14 +820,7 @@ export function updateMenuCamera() {
   camera.viewWidth = viewWidth;
   camera.viewHeight = viewHeight;
 
-  // Wyśrodkowanie w poziomie na osi wentylatora i hubu centralnego (X = 2000)
-  camera.x = 2000 - viewWidth * 0.5;
-
-  // Wyśrodkowanie w pionie:
-  // Poziom lustra kwasu to Y = 1440.
-  // Ustawiamy dolną krawędź kadru na Y ≈ 1515 na telefonach (lub 1485 na PC),
-  // gwarantując wyraźną widoczność wrzącego kwasu na dole ekranu telefonu.
-  const targetBottomY = isMobile ? 1515 : 1485;
+  camera.x = centerX - viewWidth * 0.5;
   camera.y = targetBottomY - viewHeight;
 
   if (camera.y < 0) {
