@@ -1342,14 +1342,97 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   pose.shoulderTilt += (shoulderCounterTilt - pose.shoulderTilt) * 0.20;
   if (typeof pose.shoulderTilt !== 'number' || isNaN(pose.shoulderTilt)) pose.shoulderTilt = 0;
 
-  // Wymuszenie widocznego wyciągania rąk i pochylenia tułowia zombie ku ofierze
-  const zReach = (p.isZombie && !p.isDead && !p.isCrawling && (p.riseTimer || 0) <= 0)
+  // Wymuszenie widocznego wyciągania rąk, chwytu i wgryzienia zombie
+  const isLivingStandingZombie = (p.isZombie && !p.isDead && !p.isCrawling && (p.riseTimer || 0) <= 0);
+  const zReach = isLivingStandingZombie
     ? Math.max(0, Math.min(1, p.reachBlend || (p.isReaching ? 1 : 0)))
     : 0;
 
   const fLeanDir = (p.facing >= 0 ? 1 : -1);
-  if (p.isZombie && !p.isDead && !p.isCrawling && (p.riseTimer || 0) <= 0) {
-    pose.torsoTilt = (0.08 + 0.20 * zReach) * fLeanDir;
+  let targetFrontSwing = 1.48;
+  let targetBackSwing  = 1.34;
+  let targetFrontElbow = 0.28;
+  let targetBackElbow  = 0.34;
+
+  if (isLivingStandingZombie) {
+    let zTorsoTilt = (0.08 + 0.20 * zReach) * fLeanDir;
+    let zHeadPitch = 0.15;
+    const clampedPitch = Math.max(-0.45, Math.min(0.45, p.reachAngle || 0));
+
+    if (p.biteWindupTimer && p.biteWindupTimer > 0) {
+      // Faza 1 — ZAMACH I CHWYT OFIARY (p.biteWindupTimer > 0)
+      const windupDur = 0.36;
+      const w = Math.max(0, Math.min(1, 1 - (p.biteWindupTimer / windupDur)));
+      const grabPull = Math.max(0, (w - 0.35) / 0.65);
+
+      // Tułów lekko cofa się / napina przed skokiem
+      zTorsoTilt -= 0.10 * w * fLeanDir;
+      // Głowa wyraźnie odchyla się w tył/do góry, odsłaniając otwierającą się szczękę
+      zHeadPitch = 0.15 - 0.48 * w;
+
+      // Ręce najpierw szerzej sięgają w przód (w < 0.45), a następnie zginają łokcie i przyciągają ofiarę ku klatce
+      targetFrontSwing = (1.62 - grabPull * 0.44) - clampedPitch;
+      targetBackSwing  = (1.54 - grabPull * 0.36) - clampedPitch;
+      targetFrontElbow = 0.26 + grabPull * 0.79;
+      targetBackElbow  = 0.32 + grabPull * 0.73;
+    } else if (p.attackAnim && p.attackAnim > 0) {
+      // Faza 2 — WGRYZIENIE SIĘ I PRZYTRZYMANIE (p.attackAnim > 0)
+      const atkDur = p.lastBiteHit ? 0.38 : 0.25;
+      const u = Math.max(0, Math.min(1, 1 - (p.attackAnim / atkDur)));
+      const biteSnap = u < 0.28 ? (u / 0.28) : (u < 0.72 ? 1.0 : Math.max(0, 1 - (u - 0.72) / 0.28));
+      const gnawJitter = (p.lastBiteHit && u >= 0.25 && u <= 0.72) ? Math.sin(u * 38) * 0.09 : 0;
+
+      if (p.lastBiteHit) {
+        // Tułów rzuca się mocno w przód w stronę karku ofiary
+        zTorsoTilt += (0.34 * biteSnap + gnawJitter * 0.4) * fLeanDir;
+        // Głowa gwałtownie rzuca się w dół/przód (wgryzienie)
+        zHeadPitch = 0.15 + 0.56 * biteSnap + gnawJitter;
+
+        // Ręce zaciskają chwyt na ofierze przy szczęce zombie
+        const holdFrontSwing = 1.12 - clampedPitch * 0.5;
+        const holdBackSwing  = 1.24 - clampedPitch * 0.5;
+        const holdFrontElbow = 1.18 + gnawJitter;
+        const holdBackElbow  = 1.08 - gnawJitter;
+
+        if (u > 0.72) {
+          // Puszczenie chwytu i płynny powrót do pozycji pościgu
+          const releaseFactor = (u - 0.72) / 0.28;
+          const animTime = (p.walkAnim || 0) * 0.85 + (typeof performance !== 'undefined' ? performance.now() * 0.0022 : 0);
+          const chaseFrontSwing = 1.48 - clampedPitch + Math.sin(animTime) * 0.11;
+          const chaseBackSwing  = 1.34 - clampedPitch + Math.sin(animTime + Math.PI * 0.85) * 0.11;
+          const chaseFrontElbow = 0.28 + Math.sin(animTime) * 0.08;
+          const chaseBackElbow  = 0.34 + Math.sin(animTime + Math.PI * 0.85) * 0.08;
+
+          targetFrontSwing = lerp(holdFrontSwing, chaseFrontSwing, releaseFactor);
+          targetBackSwing  = lerp(holdBackSwing,  chaseBackSwing,  releaseFactor);
+          targetFrontElbow = lerp(holdFrontElbow, chaseFrontElbow, releaseFactor);
+          targetBackElbow  = lerp(holdBackElbow,  chaseBackElbow,  releaseFactor);
+        } else {
+          targetFrontSwing = holdFrontSwing;
+          targetBackSwing  = holdBackSwing;
+          targetFrontElbow = holdFrontElbow;
+          targetBackElbow  = holdBackElbow;
+        }
+      } else {
+        // Ugryzienie chybiło: kłapnięcie szczęką w powietrzu
+        zHeadPitch = 0.15 + 0.38 * biteSnap;
+        zTorsoTilt += 0.22 * biteSnap * fLeanDir;
+        targetFrontSwing = 1.62 - clampedPitch;
+        targetBackSwing  = 1.54 - clampedPitch;
+        targetFrontElbow = 0.22;
+        targetBackElbow  = 0.26;
+      }
+    } else {
+      // Ciężki, drapieżny ruch rąk w pościgu (zamiast 3.5 machnięcia/s)
+      const animTime = (p.walkAnim || 0) * 0.85 + (typeof performance !== 'undefined' ? performance.now() * 0.0022 : 0);
+      targetFrontSwing = 1.48 - clampedPitch + Math.sin(animTime) * 0.11;
+      targetBackSwing  = 1.34 - clampedPitch + Math.sin(animTime + Math.PI * 0.85) * 0.11;
+      targetFrontElbow = 0.28 + Math.sin(animTime) * 0.08;
+      targetBackElbow  = 0.34 + Math.sin(animTime + Math.PI * 0.85) * 0.08;
+    }
+
+    pose.torsoTilt = zTorsoTilt;
+    pose.headPitch = zHeadPitch;
   }
 
   const cosTorsoT = Math.cos(pose.torsoTilt);
@@ -1381,31 +1464,21 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     shLeftY = hipY + ((-shOffsetHoriz + tacticalLeadSh) * sinTorsoT + (-19.5) * cosTorsoT);
   }
 
-  if (zReach > 0.01) {
-    const animTime = (p.walkAnim || 0) * 2.8 + (typeof performance !== 'undefined' ? performance.now() * 0.003 : 0);
-    const swayFront = Math.sin(animTime);
-    const swayBack  = Math.sin(animTime + Math.PI * 0.72);
-    const clampedPitch = Math.max(-0.45, Math.min(0.45, p.reachAngle || 0));
-    const windup = (p.biteWindupTimer && p.biteWindupTimer > 0) ? Math.min(1.0, p.biteWindupTimer / 0.36) * 0.20 : 0;
-    const lunge = (p.attackAnim && p.attackAnim > 0) ? Math.sin((p.attackAnim / 0.35) * Math.PI) * 0.22 : 0;
+  const activeReach = (isLivingStandingZombie && ((p.biteWindupTimer && p.biteWindupTimer > 0) || (p.attackAnim && p.attackAnim > 0)))
+    ? 1.0
+    : zReach;
 
-    // Ręce wyciągnięte wyraźnie poziomo przed klatką piersiową z dramatycznym ruchem chwytającym
-    const targetFrontSwing = 1.56 - clampedPitch + windup * 0.14 + lunge * 0.16 + swayFront * 0.14;
-    const targetBackSwing  = 1.42 - clampedPitch + windup * 0.12 + lunge * 0.16 + swayBack * 0.14;
-    // Niemal wyprostowane, lekko sztywne przedramiona
-    const targetFrontElbow = 0.08 + swayFront * 0.08;
-    const targetBackElbow  = 0.14 + swayBack * 0.08;
-
+  if (activeReach > 0.01) {
     if (isRightLimbForeground) {
-      pose.armFrontSwing = lerp(pose.armFrontSwing, targetFrontSwing, zReach);
-      pose.armFrontElbow = lerp(pose.armFrontElbow, targetFrontElbow, zReach);
-      pose.armBackSwing  = lerp(pose.armBackSwing,  targetBackSwing,  zReach);
-      pose.armBackElbow  = lerp(pose.armBackElbow,  targetBackElbow,  zReach);
+      pose.armFrontSwing = lerp(pose.armFrontSwing, targetFrontSwing, activeReach);
+      pose.armFrontElbow = lerp(pose.armFrontElbow, targetFrontElbow, activeReach);
+      pose.armBackSwing  = lerp(pose.armBackSwing,  targetBackSwing,  activeReach);
+      pose.armBackElbow  = lerp(pose.armBackElbow,  targetBackElbow,  activeReach);
     } else {
-      pose.armBackSwing  = lerp(pose.armBackSwing,  targetFrontSwing, zReach);
-      pose.armBackElbow  = lerp(pose.armBackElbow,  targetFrontElbow, zReach);
-      pose.armFrontSwing = lerp(pose.armFrontSwing, targetBackSwing,  zReach);
-      pose.armFrontElbow = lerp(pose.armFrontElbow, targetBackElbow,  zReach);
+      pose.armBackSwing  = lerp(pose.armBackSwing,  targetFrontSwing, activeReach);
+      pose.armBackElbow  = lerp(pose.armBackElbow,  targetFrontElbow, activeReach);
+      pose.armFrontSwing = lerp(pose.armFrontSwing, targetBackSwing,  activeReach);
+      pose.armFrontElbow = lerp(pose.armFrontElbow, targetBackElbow,  activeReach);
     }
   }
 
@@ -1445,7 +1518,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   // KOŃCZYNY W TLE
-  const zArmExtra = (p.isZombie && !p.isDead && !p.isCrawling) ? (zReach * 1.5) : 0;
+  const zArmExtra = (p.isZombie && !p.isDead && !p.isCrawling) ? (activeReach * 1.5) : 0;
   const effUpperArmLen = (p.upperArmLen || 14) + zArmExtra;
   const effForearmLen = (p.forearmLen || 13) + zArmExtra;
 
@@ -1870,6 +1943,60 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       ctx.lineTo(2.0, 5.4);
       ctx.closePath();
       ctx.fill();
+
+      // Animacja otwieranej i kłapiącej szczęki zombie
+      let jawOpen = 0;
+      if (p.biteWindupTimer && p.biteWindupTimer > 0) {
+        jawOpen = Math.min(1.0, Math.max(0, 1 - (p.biteWindupTimer / 0.36)));
+      } else if (p.attackAnim && p.attackAnim > 0) {
+        const atkDur = p.lastBiteHit ? 0.38 : 0.25;
+        const u = Math.max(0, Math.min(1, 1 - (p.attackAnim / atkDur)));
+        jawOpen = u < 0.25 ? (1 - u / 0.25) : (u < 0.65 ? 0.25 + Math.abs(Math.sin(u * 32)) * 0.4 : 0);
+      }
+
+      if (jawOpen > 0.08) {
+        const mouthBottomY = 3.8 + jawOpen * 2.2;
+        ctx.fillStyle = '#3b0707';
+        ctx.beginPath();
+        ctx.moveTo(2.2, 0.4);
+        ctx.lineTo(5.8, 1.2);
+        ctx.lineTo(5.6, mouthBottomY);
+        ctx.lineTo(2.2, mouthBottomY - 0.4);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#180202';
+        ctx.lineWidth = 0.75;
+        ctx.stroke();
+
+        // Górny rząd zębów (jasne kły/siekacze)
+        ctx.fillStyle = '#fefce8';
+        ctx.beginPath();
+        ctx.moveTo(2.5, 0.6);
+        ctx.lineTo(3.2, 0.6);
+        ctx.lineTo(2.85, 1.5);
+        ctx.moveTo(3.5, 0.8);
+        ctx.lineTo(4.3, 0.9);
+        ctx.lineTo(3.9, 1.9);
+        ctx.moveTo(4.6, 1.0);
+        ctx.lineTo(5.5, 1.2);
+        ctx.lineTo(5.05, 2.3);
+        ctx.fill();
+
+        // Dolny rząd zębów (odchylający się w dół z ruchomą żuchwą)
+        const botBase = mouthBottomY - 0.2;
+        ctx.beginPath();
+        ctx.moveTo(2.6, botBase);
+        ctx.lineTo(3.3, botBase);
+        ctx.lineTo(2.95, botBase - 1.2);
+        ctx.moveTo(3.6, botBase);
+        ctx.lineTo(4.4, botBase);
+        ctx.lineTo(4.0, botBase - 1.4);
+        ctx.moveTo(4.7, botBase);
+        ctx.lineTo(5.4, botBase);
+        ctx.lineTo(5.05, botBase - 1.5);
+        ctx.fill();
+      }
     } else {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();

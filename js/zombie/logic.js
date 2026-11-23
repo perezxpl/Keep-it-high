@@ -789,6 +789,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       newZombie.reachAngle = 0;
       newZombie.biteWindupTimer = 0;
       newZombie.stridePhase = 0;
+      newZombie.lastBiteHit = false;
       newZombie.thighLen = 25;
       newZombie.shinLen = 24;
       newZombie.upperArmLen = 14;
@@ -1214,6 +1215,9 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
             if (z.biteWindupTimer > 0) {
               desiredVx *= 0.5;
             }
+            if (z.attackAnim > 0 && z.lastBiteHit) {
+              desiredVx *= 0.25;
+            }
             z.walkAnim += dt * (3.2 + reachFactor * 3.6);
             z.stridePhase = z.walkAnim;
             z.gaitMode = reachFactor > 0.35 ? 'RUN' : 'WALK';
@@ -1262,12 +1266,21 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
             if (isMissed) {
               // Atak chybił (ofiara odskoczyła lub minęła zombie)
+              z.lastBiteHit = false;
               z.attackAnim = 0.25;
               z.attackCooldown = 0.7;
             } else {
               // Udany atak / ugryzienie
+              z.lastBiteHit = true;
               z.attackCooldown = ZOMBIE_CONFIG.BITE_COOLDOWN || 1.5;
-              z.attackAnim = 0.35;
+              z.attackAnim = 0.38;
+
+              // Lekko przyhamuj ofiarę na ułamek sekundy (fizyczny chwyt)
+              if (nearestTarget && typeof nearestTarget.vx === 'number') {
+                nearestTarget.vx *= 0.35;
+              }
+              // Zatrzymaj na chwilę ruch samego zombie w momencie wgryzienia
+              z.vx *= 0.2;
 
               const biteDmg = ZOMBIE_CONFIG.BITE_DAMAGE || 12;
               const hadVest = (nearestTarget.vestHp && nearestTarget.vestHp > 0);
@@ -1392,6 +1405,11 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.facing = desiredVx > 0 ? 1 : -1;
         z.yaw = (z.facing < 0 ? Math.PI : 0);
       }
+    }
+
+    // Podczas wgryzienia zombie stoi przy ofierze zamiast przez nia przebiegac
+    if (z.attackAnim > 0 && z.lastBiteHit) {
+      desiredVx *= 0.25;
     }
 
     // Wypadkowa prędkość pozioma: intencja ruchu + odrzut kinetyczny + separacja stada

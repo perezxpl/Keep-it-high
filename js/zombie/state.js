@@ -348,6 +348,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     decayTimer: 0,                         // Czas rozkladu po permanentnej dekapitacji
     attackCooldown: 0.6,
     attackAnim: 0,
+    lastBiteHit: false,
     biteWindupTimer: 0,                    // Czas zamachu przed ugryzieniem
     walkAnim: Math.random() * 10,
     stridePhase: 0,
@@ -480,6 +481,7 @@ export function registerCorpseForReanimation(char, surfaceY) {
     twitch: 0,
     walkAnim: 0,
     stridePhase: 0,
+    lastBiteHit: false,
     isReaching: false,
     reachBlend: 0,
     isCrawling: false,
