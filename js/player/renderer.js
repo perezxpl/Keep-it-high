@@ -1334,10 +1334,13 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       let targetShoulderAmp = 0.05;
       if (p.gaitMode === 'SPRINT') targetShoulderAmp = 0.12;
       else if (p.gaitMode === 'JOG') targetShoulderAmp = 0.08;
-      shoulderCounterTilt = -Math.sin(p.stridePhase) * targetShoulderAmp * currentFacingDir;
+      const strideAngle = (typeof p.stridePhase === 'number' && !isNaN(p.stridePhase)) ? p.stridePhase : (p.walkAnim || 0);
+      shoulderCounterTilt = -Math.sin(strideAngle) * targetShoulderAmp * currentFacingDir;
     }
   }
+  if (typeof pose.shoulderTilt !== 'number' || isNaN(pose.shoulderTilt)) pose.shoulderTilt = 0;
   pose.shoulderTilt += (shoulderCounterTilt - pose.shoulderTilt) * 0.20;
+  if (typeof pose.shoulderTilt !== 'number' || isNaN(pose.shoulderTilt)) pose.shoulderTilt = 0;
 
   // Wymuszenie widocznego wyciągania rąk i pochylenia tułowia zombie ku ofierze
   const zReach = (p.isZombie && !p.isDead && !p.isCrawling && (p.riseTimer || 0) <= 0)
@@ -1362,12 +1365,21 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const lyRightSh = -19.5 - (pose.shoulderTilt * 7.5 * cosYaw);
   const lyLeftSh = -19.5 + (pose.shoulderTilt * 7.5 * cosYaw);
 
-  const shRightX = hipX + (shOffsetHoriz * cosTorsoT - lyRightSh * sinTorsoT);
-  const shRightY = hipY + (shOffsetHoriz * sinTorsoT + lyRightSh * cosTorsoT);
+  let shRightX = hipX + (shOffsetHoriz * cosTorsoT - lyRightSh * sinTorsoT);
+  let shRightY = hipY + (shOffsetHoriz * sinTorsoT + lyRightSh * cosTorsoT);
 
   const tacticalLeadSh = hasActiveWeapon ? (1.8 * cosYaw) : 0;
-  const shLeftX = hipX + ((-shOffsetHoriz + tacticalLeadSh) * cosTorsoT - lyLeftSh * sinTorsoT);
-  const shLeftY = hipY + ((-shOffsetHoriz + tacticalLeadSh) * sinTorsoT + lyLeftSh * cosTorsoT);
+  let shLeftX = hipX + ((-shOffsetHoriz + tacticalLeadSh) * cosTorsoT - lyLeftSh * sinTorsoT);
+  let shLeftY = hipY + ((-shOffsetHoriz + tacticalLeadSh) * sinTorsoT + lyLeftSh * cosTorsoT);
+
+  if (!Number.isFinite(shRightX) || !Number.isFinite(shRightY)) {
+    shRightX = hipX + (shOffsetHoriz * cosTorsoT - (-19.5) * sinTorsoT);
+    shRightY = hipY + (shOffsetHoriz * sinTorsoT + (-19.5) * cosTorsoT);
+  }
+  if (!Number.isFinite(shLeftX) || !Number.isFinite(shLeftY)) {
+    shLeftX = hipX + ((-shOffsetHoriz + tacticalLeadSh) * cosTorsoT - (-19.5) * sinTorsoT);
+    shLeftY = hipY + ((-shOffsetHoriz + tacticalLeadSh) * sinTorsoT + (-19.5) * cosTorsoT);
+  }
 
   if (zReach > 0.01) {
     const animTime = (p.walkAnim || 0) * 2.8 + (typeof performance !== 'undefined' ? performance.now() * 0.003 : 0);
@@ -1439,7 +1451,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   if (isRightLimbForeground) {
     if (!isArmBackDismembered) {
-      if (!p.isReloading) {
+      if (!p.isReloading && Number.isFinite(shLeftX) && Number.isFinite(shLeftY)) {
         renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
       }
     } else {
@@ -1453,7 +1465,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else {
     if (!isArmFrontDismembered) {
-      if (!p.isReloading) {
+      if (!p.isReloading && Number.isFinite(shRightX) && Number.isFinite(shRightY)) {
         renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
       }
     } else {
@@ -2090,7 +2102,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     // Jeśli gracz przeładowuje broń, lewe ramię manipulujące magazynkiem / bębenkiem pracuje z przodu torsu:
-    if (p.isReloading && !isArmBackDismembered) {
+    if (p.isReloading && !isArmBackDismembered && Number.isFinite(shLeftX) && Number.isFinite(shLeftY)) {
       renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
     }
 
@@ -2099,14 +2111,16 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Prawe ramię na wierzchu (dłoń obejmuje chwyt broni)
     if (!isArmFrontDismembered) {
-      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, effUpperArmLen, effForearmLen, p);
+      if (Number.isFinite(shRightX) && Number.isFinite(shRightY)) {
+        renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, effUpperArmLen, effForearmLen, p);
+      }
     } else {
       drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, true);
     }
   } else {
     // 2. PATRZENIE W LEWO:
     // Prawe ramię trzymające broń z przodu torsu podczas przeładowania:
-    if (p.isReloading && !isArmFrontDismembered) {
+    if (p.isReloading && !isArmFrontDismembered && Number.isFinite(shRightX) && Number.isFinite(shRightY)) {
       renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
     }
 
@@ -2122,7 +2136,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Lewe ramię na pierwszym planie
     if (!isArmBackDismembered) {
-      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColFront, null, true, v, effUpperArmLen, effForearmLen, p);
+      if (Number.isFinite(shLeftX) && Number.isFinite(shLeftY)) {
+        renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColFront, null, true, v, effUpperArmLen, effForearmLen, p);
+      }
     } else {
       drawLimbStump(ctx, shLeftX, shLeftY, pose.armBackSwing, 'arm', currentFacingDir, v, true);
     }

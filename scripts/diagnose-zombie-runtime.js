@@ -157,6 +157,8 @@ async function run() {
         isCrawling: zA.isCrawling,
         gaitMode: zA.gaitMode,
         torsoTilt: zA.pose?.torsoTilt,
+        shoulderTilt: zA.pose?.shoulderTilt,
+        stridePhase: zA.stridePhase,
         armFrontSwing: zA.pose?.armFrontSwing,
         armFrontElbow: zA.pose?.armFrontElbow,
         armBackSwing: zA.pose?.armBackSwing,
@@ -171,6 +173,10 @@ async function run() {
     await page.screenshot({ path: farPath, clip: diagA.clip });
     console.log('[ZAPISANO ZRZUT A]:', farPath);
     console.log('SCENARIUSZ A (dx = 450 px):', JSON.stringify(diagA.resA, null, 2));
+    if (!Number.isFinite(diagA.resA.shoulderTilt)) {
+      throw new Error('ASSERTION ERROR: Scenariusz A shoulderTilt is not finite: ' + diagA.resA.shoulderTilt);
+    }
+    console.log('[ASSERTION OK] Scenariusz A shoulderTilt jest skonczona liczba:', diagA.resA.shoulderTilt);
 
     // =========================================================================
     // SCENARIUSZ B: Zombie w odleglosci dx = 120 px (Blisko)
@@ -230,6 +236,8 @@ async function run() {
         isCrawling: zB.isCrawling,
         gaitMode: zB.gaitMode,
         torsoTilt: zB.pose?.torsoTilt,
+        shoulderTilt: zB.pose?.shoulderTilt,
+        stridePhase: zB.stridePhase,
         armFrontSwing: zB.pose?.armFrontSwing,
         armFrontElbow: zB.pose?.armFrontElbow,
         armBackSwing: zB.pose?.armBackSwing,
@@ -244,6 +252,10 @@ async function run() {
     await page.screenshot({ path: closePath, clip: diagB.clip });
     console.log('[ZAPISANO ZRZUT B]:', closePath);
     console.log('SCENARIUSZ B (dx = 120 px):', JSON.stringify(diagB.resB, null, 2));
+    if (!Number.isFinite(diagB.resB.shoulderTilt)) {
+      throw new Error('ASSERTION ERROR: Scenariusz B shoulderTilt is not finite: ' + diagB.resB.shoulderTilt);
+    }
+    console.log('[ASSERTION OK] Scenariusz B shoulderTilt jest skonczona liczba:', diagB.resB.shoulderTilt);
 
     // =========================================================================
     // SCENARIUSZ C: Prawdziwa reanimacja bota i podejscie na dx = 120 px
@@ -335,6 +347,8 @@ async function run() {
         riseTimer: zReal.riseTimer,
         gaitMode: zReal.gaitMode,
         torsoTilt: zReal.pose?.torsoTilt,
+        shoulderTilt: zReal.pose?.shoulderTilt,
+        stridePhase: zReal.stridePhase,
         armFrontElbow: zReal.pose?.armFrontElbow,
         armBackElbow: zReal.pose?.armBackElbow
       };
@@ -355,6 +369,10 @@ async function run() {
     console.log('isCrawling:', diagC.resReal.isCrawling);
     console.log('riseTimer:', diagC.resReal.riseTimer);
     console.log('PELNY OBIEKT REANIMACJI:', JSON.stringify(diagC.resReal, null, 2));
+    if (!Number.isFinite(diagC.resReal.shoulderTilt)) {
+      throw new Error('ASSERTION ERROR: Scenariusz C shoulderTilt is not finite: ' + diagC.resReal.shoulderTilt);
+    }
+    console.log('[ASSERTION OK] Scenariusz C shoulderTilt jest skonczona liczba:', diagC.resReal.shoulderTilt);
 
   } finally {
     if (browser) await browser.close();

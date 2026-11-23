@@ -788,6 +788,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       newZombie.reachBlend = 0;
       newZombie.reachAngle = 0;
       newZombie.biteWindupTimer = 0;
+      newZombie.stridePhase = 0;
       newZombie.thighLen = 25;
       newZombie.shinLen = 24;
       newZombie.upperArmLen = 14;
@@ -1175,6 +1176,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
               desiredVx *= 0.5;
             }
             z.walkAnim += dt * 2.2;
+            z.stridePhase = z.walkAnim;
             z.keys.left = desiredVx < 0;
             z.keys.right = desiredVx > 0;
           } else {
@@ -1213,6 +1215,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
               desiredVx *= 0.5;
             }
             z.walkAnim += dt * (3.2 + reachFactor * 3.6);
+            z.stridePhase = z.walkAnim;
             z.gaitMode = reachFactor > 0.35 ? 'RUN' : 'WALK';
             z.keys.left = desiredVx < 0;
             z.keys.right = desiredVx > 0;
@@ -1223,6 +1226,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
             z.keys.right = false;
             if (z.isReaching) {
               z.walkAnim += dt * 2.4;
+              z.stridePhase = z.walkAnim;
             }
           }
         }
@@ -1372,12 +1376,14 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         const pullFactor = 0.55 + 0.45 * Math.max(0, Math.sin(z.crawlPhase));
         desiredVx = Math.sin(Date.now() * 0.001 + i) * (ZOMBIE_CONFIG.SPEED * 0.25) * pullFactor;
         z.walkAnim += dt * 1.2;
+        z.stridePhase = z.walkAnim;
         z.gaitMode = 'CRAWL';
         z.keys.left = desiredVx < -0.05;
         z.keys.right = desiredVx > 0.05;
       } else {
         desiredVx = Math.sin(Date.now() * 0.001 + i) * (ZOMBIE_CONFIG.SPEED * 0.4);
         z.walkAnim += dt * 1.5;
+        z.stridePhase = z.walkAnim;
         z.gaitMode = Math.abs(desiredVx) > 0.05 ? 'WALK' : 'IDLE';
         z.keys.left = desiredVx < -0.05;
         z.keys.right = desiredVx > 0.05;
@@ -1420,6 +1426,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
     // --- RUCH POZIOMY I REAKCJE NA OTOCZENIE ---
     z.x += z.vx;
+    z.stridePhase = z.walkAnim || 0;
 
     // Pokonywanie schodkow (do 16px bez skoku) oraz wspinaczka na polki
     const climbed = handleZombieStepAndClimb(z, groundY, nearestTarget);

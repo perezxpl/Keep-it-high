@@ -350,6 +350,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     attackAnim: 0,
     biteWindupTimer: 0,                    // Czas zamachu przed ugryzieniem
     walkAnim: Math.random() * 10,
+    stridePhase: 0,
     twitchTimer: 0,
     isReaching: false,                     // Flaga agresji i wyciagania rak ku ofierze
     reachBlend: 0,                         // Wspolczynnik wyciagniecia rak i zrywu (0..1)
@@ -477,6 +478,8 @@ export function registerCorpseForReanimation(char, surfaceY) {
     timer: Math.min(ZOMBIE_CONFIG.REANIMATE_DELAY, ZOMBIE_CONFIG.CORPSE_LIFESPAN || 8.0),
     lifespan: ZOMBIE_CONFIG.CORPSE_LIFESPAN || 8.0,
     twitch: 0,
+    walkAnim: 0,
+    stridePhase: 0,
     isReaching: false,
     reachBlend: 0,
     isCrawling: false,
