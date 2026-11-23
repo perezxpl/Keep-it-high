@@ -34,6 +34,7 @@ export function serializeZombiesState() {
       hasHead: z.hasHead !== false,
       walkAnim: Math.round((z.walkAnim || 0) * 100) / 100,
       attackAnim: Math.round((z.attackAnim || 0) * 100) / 100,
+      biteWindupTimer: Math.round((z.biteWindupTimer || 0) * 100) / 100,
       riseTimer: Math.round((z.riseTimer || 0) * 100) / 100,
       decayTimer: Math.round((z.decayTimer || 0) * 100) / 100,
       isReaching: !!z.isReaching,
@@ -142,6 +143,7 @@ export function applyRemoteZombiesState(data) {
         localZ.hasHead = rz.hasHead;
         localZ.walkAnim = rz.walkAnim;
         localZ.attackAnim = rz.attackAnim;
+        localZ.biteWindupTimer = rz.biteWindupTimer || 0;
         localZ.riseTimer = rz.riseTimer;
         localZ.decayTimer = rz.decayTimer;
         localZ.reviveTimer = rz.reviveTimer !== undefined ? rz.reviveTimer : 0;
@@ -184,6 +186,7 @@ export function applyRemoteZombiesState(data) {
         localZ.hasHead = rz.hasHead;
         localZ.walkAnim = rz.walkAnim;
         localZ.attackAnim = rz.attackAnim;
+        localZ.biteWindupTimer = rz.biteWindupTimer || 0;
         localZ.riseTimer = rz.riseTimer;
         localZ.decayTimer = rz.decayTimer;
         localZ.reviveTimer = rz.reviveTimer !== undefined ? rz.reviveTimer : 0;
@@ -342,6 +345,7 @@ export function applyRemoteZombieDamage(damageData) {
 
   targetZombie.hp = Math.max(0, targetZombie.hp - dmg);
   targetZombie.hitStunTimer = 0.18;
+  targetZombie.biteWindupTimer = 0;
 
   if (targetZombie.hp <= 0 && !targetZombie.isDead) {
     targetZombie.hp = 0;

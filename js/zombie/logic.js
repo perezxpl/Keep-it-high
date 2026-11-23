@@ -668,7 +668,10 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
   if (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient()) {
     for (const z of zombieState.zombies) {
       if (z.attackAnim > 0) z.attackAnim -= dt;
-      if (z.hitStunTimer > 0) z.hitStunTimer -= dt;
+      if (z.hitStunTimer > 0) {
+      z.hitStunTimer -= dt;
+      z.biteWindupTimer = 0;
+    }
     }
     return;
   }
@@ -784,6 +787,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       newZombie.isReaching = false;
       newZombie.reachBlend = 0;
       newZombie.reachAngle = 0;
+      newZombie.biteWindupTimer = 0;
       newZombie.thighLen = 25;
       newZombie.shinLen = 24;
       newZombie.upperArmLen = 14;
@@ -875,6 +879,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.isReaching = false;
       z.reachBlend = 0;
       z.reachAngle = 0;
+      z.biteWindupTimer = 0;
       // Grawitacja i kolizja z podłożem dla powalonego/martwego ciała
       z.vy += 0.45;
       if (z.vy > 12) z.vy = 12;
@@ -980,6 +985,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.isReaching = false;
       z.reachBlend = 0;
       z.reachAngle = 0;
+      z.biteWindupTimer = 0;
       z.riseTimer -= dt;
       z.vx = 0;
       z.knockbackVx = 0;
@@ -1097,7 +1103,10 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
     // Timery animacji, odnowienia ataku i hitstuna
     if (z.attackCooldown > 0) z.attackCooldown -= dt;
     if (z.attackAnim > 0) z.attackAnim -= dt;
-    if (z.hitStunTimer > 0) z.hitStunTimer -= dt;
+    if (z.hitStunTimer > 0) {
+      z.hitStunTimer -= dt;
+      z.biteWindupTimer = 0;
+    }
     if (z.jumpCooldown > 0) z.jumpCooldown -= dt;
 
     // Tłumienie odrzutu kinetycznego (knockback)
@@ -1160,6 +1169,9 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         if (z.hitStunTimer <= 0) {
           if (Math.abs(dx) > 16) {
             desiredVx = (dx > 0 ? 1 : -1) * crawlSpeed;
+            if (z.biteWindupTimer > 0) {
+              desiredVx *= 0.5;
+            }
             z.walkAnim += dt * 2.2;
             z.keys.left = desiredVx < 0;
             z.keys.right = desiredVx > 0;
@@ -1195,6 +1207,9 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         if (z.hitStunTimer <= 0) {
           if (Math.abs(dx) > 16) {
             desiredVx = (dx > 0 ? 1 : -1) * moveSpeed;
+            if (z.biteWindupTimer > 0) {
+              desiredVx *= 0.5;
+            }
             z.walkAnim += dt * (3.2 + reachFactor * 3.6);
             z.gaitMode = reachFactor > 0.35 ? 'RUN' : 'WALK';
             z.keys.left = desiredVx < 0;
@@ -1210,53 +1225,110 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
       // --- ATAK WRĘCZ / UGRYZIENIE ---
       const biteToleranceY = z.isCrawling ? 52 : 38;
-      if (Math.abs(dx) <= ZOMBIE_CONFIG.BITE_RANGE && Math.abs(dy) <= biteToleranceY) {
-        if (z.attackCooldown <= 0) {
-          z.attackCooldown = ZOMBIE_CONFIG.BITE_COOLDOWN;
-          z.attackAnim = 0.35;
+      const triggerRangeX = ZOMBIE_CONFIG.BITE_TRIGGER_RANGE || 34;
+      const hitRangeX = ZOMBIE_CONFIG.BITE_HIT_RANGE || 32;
 
-          // Zadanie obrażeń celowi
-          nearestTarget.hp -= ZOMBIE_CONFIG.BITE_DAMAGE;
-          spawnBloodSpurt(tx, ty, z.facing * 2.2, -1.8, 14, 1.2);
+      // 1. Rozpoczęcie fazy zamachu do ugryzienia (brak natychmiastowych obrażeń)
+      const inTriggerRange = Math.abs(dx) <= triggerRangeX && Math.abs(dy) <= biteToleranceY;
+      const isFacingVictim = (dx * z.facing) >= -6;
 
-          if (nearestTarget === player) {
-            triggerScreenShake(3.0);
-          }
+      if (inTriggerRange && isFacingVictim && z.attackCooldown <= 0 && (z.biteWindupTimer || 0) <= 0 && z.hitStunTimer <= 0 && !nearestTarget.isDead) {
+        z.biteWindupTimer = ZOMBIE_CONFIG.BITE_WINDUP || 0.36;
+      }
 
-          // Zakażenie wirusem przy ugryzieniu
-          if (!nearestTarget.infected) {
-            nearestTarget.infected = true;
-            nearestTarget.infectionTimer = 0;
+      // 2. Odliczanie zamachu i egzekucja uderzenia
+      if (z.biteWindupTimer > 0) {
+        if (z.hitStunTimer > 0 || z.isDead || nearestTarget.isDead) {
+          // Przerwanie ataku przy postrzale / zgonie
+          z.biteWindupTimer = 0;
+        } else {
+          z.biteWindupTimer -= dt;
+          if (z.biteWindupTimer <= 0) {
+            z.biteWindupTimer = 0;
 
-            if (nearestTarget === player) {
-              triggerCombatFeedBanner('DEATH', '[ZAKAŻENIE] ZOSTAŁEŚ UGRYZIONY! ZNAJDŹ ANTYDOTUM!');
-              triggerScreenShake(4.5);
+            // Ponowna weryfikacja pozycji ofiary po upływie czasu zamachu
+            const nowDx = (nearestTarget.x + (nearestTarget.w || 24) * 0.5) - (z.x + z.w * 0.5);
+            const nowDy = (nearestTarget.y + (nearestTarget.h || 70) * 0.5) - (z.y + z.h * 0.5);
+            const isMissed = (Math.abs(nowDx) > hitRangeX || Math.abs(nowDy) > biteToleranceY || (nowDx * z.facing < -8) || nearestTarget.isDead);
+
+            if (isMissed) {
+              // Atak chybił (ofiara odskoczyła lub minęła zombie)
+              z.attackAnim = 0.25;
+              z.attackCooldown = 0.7;
             } else {
-              triggerCombatFeedBanner('DEATH', `[PLAGA] ${nearestTarget.name || 'BOT'} ZOSTAŁ ZAKAŻONY!`);
-            }
-          }
+              // Udany atak / ugryzienie
+              z.attackCooldown = ZOMBIE_CONFIG.BITE_COOLDOWN || 1.5;
+              z.attackAnim = 0.35;
 
-          // Śmierć od ugryzienia
-          if (nearestTarget.hp <= 0 && !nearestTarget.isDead) {
-            nearestTarget.hp = 0;
-            nearestTarget.isDead = true;
-            nearestTarget.respawnTimer = 180;
-            nearestTarget.hasHead = true;
-            nearestTarget.decapitated = false;
-            nearestTarget.bleedTimer = 90;
-            nearestTarget.corpseAngle = 0;
-            nearestTarget.corpseRotVel = 0;
-            nearestTarget.torsoTiltVel = 0;
-            const tX = nearestTarget.x + (nearestTarget.w || 24) * 0.5;
-            const tY = nearestTarget.y + (nearestTarget.h || 70);
-            const tSurfY = getZombieSurfaceY(tX, tY, groundY);
-            nearestTarget.corpseFloorY = (tSurfY !== Infinity && tSurfY < 1500) ? tSurfY : groundY;
-            nearestTarget.ragdoll = null;
-            nearestTarget.deathImpulse = {
-              vx: z.facing * 3.2,
-              vy: -1.4
-            };
-            triggerCombatFeedBanner('DEATH', `[PLAGA] ${nearestTarget.name || 'OPERATOR'} POLEGŁ W SZPONACH ZOMBIE!`);
+              const biteDmg = ZOMBIE_CONFIG.BITE_DAMAGE || 12;
+              const hadVest = (nearestTarget.vestHp && nearestTarget.vestHp > 0);
+              let remainingDmg = biteDmg;
+
+              // Pancerz/kamizelka pochłania obrażenia i w 100% blokuje zakażenie
+              if (hadVest) {
+                if (nearestTarget.vestHp >= remainingDmg) {
+                  nearestTarget.vestHp -= remainingDmg;
+                  remainingDmg = 0;
+                } else {
+                  remainingDmg -= nearestTarget.vestHp;
+                  nearestTarget.vestHp = 0;
+                }
+              }
+
+              if (remainingDmg > 0) {
+                nearestTarget.hp -= remainingDmg;
+              }
+
+              spawnBloodSpurt(tx, ty, z.facing * 2.2, -1.8, 14, 1.2);
+
+              if (nearestTarget === player) {
+                triggerScreenShake(3.0);
+              }
+
+              // Warunki zakażenia wirusem (kamizelka blokuje; bez kamizelki rosnąca szansa: 30% -> 60% -> 100%)
+              if (!hadVest && !nearestTarget.infected) {
+                nearestTarget.zombieBiteCount = (nearestTarget.zombieBiteCount || 0) + 1;
+                const biteCount = nearestTarget.zombieBiteCount;
+                const infectionProb = biteCount === 1
+                  ? (ZOMBIE_CONFIG.INFECTION_CHANCE || 0.30)
+                  : (biteCount === 2 ? 0.60 : 1.0);
+
+                if (Math.random() < infectionProb) {
+                  nearestTarget.infected = true;
+                  nearestTarget.infectionTimer = 0;
+
+                  if (nearestTarget === player) {
+                    triggerCombatFeedBanner('DEATH', '[ZAKAŻENIE] ZOSTAŁEŚ UGRYZIONY! ZNAJDŹ ANTYDOTUM!');
+                    triggerScreenShake(4.5);
+                  } else {
+                    triggerCombatFeedBanner('DEATH', `[PLAGA] ${nearestTarget.name || 'BOT'} ZOSTAŁ ZAKAŻONY!`);
+                  }
+                }
+              }
+
+              // Śmierć od ugryzienia
+              if (nearestTarget.hp <= 0 && !nearestTarget.isDead) {
+                nearestTarget.hp = 0;
+                nearestTarget.isDead = true;
+                nearestTarget.respawnTimer = 180;
+                nearestTarget.hasHead = true;
+                nearestTarget.decapitated = false;
+                nearestTarget.bleedTimer = 90;
+                nearestTarget.corpseAngle = 0;
+                nearestTarget.corpseRotVel = 0;
+                nearestTarget.torsoTiltVel = 0;
+                const tX = nearestTarget.x + (nearestTarget.w || 24) * 0.5;
+                const tY = nearestTarget.y + (nearestTarget.h || 70);
+                const tSurfY = getZombieSurfaceY(tX, tY, groundY);
+                nearestTarget.corpseFloorY = (tSurfY !== Infinity && tSurfY < 1500) ? tSurfY : groundY;
+                nearestTarget.ragdoll = null;
+                nearestTarget.deathImpulse = {
+                  vx: z.facing * 3.2,
+                  vy: -1.4
+                };
+                triggerCombatFeedBanner('DEATH', `[PLAGA] ${nearestTarget.name || 'OPERATOR'} POLEGŁ W SZPONACH ZOMBIE!`);
+              }
+            }
           }
         }
       }
@@ -1411,6 +1483,7 @@ export function cureInfection(char) {
   if (!char) return;
   char.infected = false;
   char.infectionTimer = 0;
+  char.zombieBiteCount = 0;
   char.hp = Math.min(char.maxHp || 100, char.hp + 50);
   triggerCombatFeedBanner('KILL', `[WYLECZONO] ZASTOSOWANO ANTYDOTUM!`);
 }

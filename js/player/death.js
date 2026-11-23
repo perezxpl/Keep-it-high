@@ -487,6 +487,7 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     player.isGibbed = false;
     player.infected = false;
     player.infectionTimer = 0;
+    player.zombieBiteCount = 0;
     player._droppedWeaponThisDeath = false;
     player.axeThrown = false;
     player.meleeBloodTimer = 0;

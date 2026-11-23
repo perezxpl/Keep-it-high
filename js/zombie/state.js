@@ -14,9 +14,13 @@ export const ZOMBIE_CONFIG = {
   AGGRO_RANGE_X: 340,       // Zasięg wykrycia i wyciągnięcia rąk (px)
   AGGRO_RANGE_Y: 160,
   MAX_HP: 100,              // Wytrzymałość zombie
-  BITE_RANGE: 36,           // Zasięg ugryzienia / ataku wręcz (px)
+  BITE_RANGE: 36,           // Poprzedni ogólny zasięg (pozostawiony dla kompatybilności)
+  BITE_TRIGGER_RANGE: 34,   // Dystans rozpoczęcia zamachu
+  BITE_HIT_RANGE: 32,       // Dystans trafienia po zakończeniu zamachu (ciało przy ciele)
+  BITE_WINDUP: 0.36,        // Czas zamachu przed ugryzieniem (sekundy) — gracz może odskoczyć lub kopnąć!
   BITE_DAMAGE: 12,          // Obrażenia od pojedynczego ugryzienia
-  BITE_COOLDOWN: 1.3,       // Czas odnowienia ataku (sekundy)
+  BITE_COOLDOWN: 1.5,       // Czas odnowienia po ataku (sekundy)
+  INFECTION_CHANCE: 0.30,   // 30% szansy na zakażenie przy UDAJĄCYM SIĘ ugryzieniu (zamiast 100%)
   INFECTION_DURATION: 35,   // Czas trwania infekcji (sekundy)
   INFECTION_DPS: 2.2,       // Utrata życia na sekundę podczas infekcji
   REANIMATE_DELAY: 2.8,     // Czas leżenia ciała przed powstaniem jako zombie (sekundy)
@@ -339,6 +343,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     decayTimer: 0,                         // Czas rozkladu po permanentnej dekapitacji
     attackCooldown: 0.6,
     attackAnim: 0,
+    biteWindupTimer: 0,                    // Czas zamachu przed ugryzieniem
     walkAnim: Math.random() * 10,
     twitchTimer: 0,
     isReaching: false,                     // Flaga agresji i wyciagania rak ku ofierze
