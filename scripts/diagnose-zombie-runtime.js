@@ -70,6 +70,11 @@ async function launchBrowser() {
 
 async function run() {
   const server = await startServer(PORT);
+  const reportsDir = path.join(ROOT_DIR, 'reports');
+  if (!fs.existsSync(reportsDir)) {
+    fs.mkdirSync(reportsDir, { recursive: true });
+  }
+
   let browser;
   try {
     browser = await launchBrowser();
@@ -78,7 +83,7 @@ async function run() {
       console.log('[BROWSER LOG]', msg.type(), msg.text());
     });
 
-    const url = `http://localhost:${PORT}/?arena=3&autostart=STRIKER&zombie=1&aiTest=1&bots=0`;
+    const url = `http://localhost:${PORT}/?arena=3&autostart=STRIKER&zombie=1&aiTest=1&bots=0&zdbg=1`;
     console.log('[TEST] Ladowanie gry:', url);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
@@ -86,13 +91,16 @@ async function run() {
       return window.GAME_STATE && window.GAME_STATE.current === 'PLAYING' && window.player;
     }, { timeout: 10000 });
 
-    console.log('[TEST] Gra aktywna. Rozpoczynanie diagnostyki zombie...');
+    console.log('[TEST] Gra aktywna. Rozpoczynanie diagnostyki wizualnej zombie...');
 
-    const diag = await page.evaluate(async () => {
+    // =========================================================================
+    // SCENARIUSZ A: Zombie w odleglosci dx = 450 px (Daleko)
+    // =========================================================================
+    console.log('[TEST] Uruchamianie Scenariusza A (daleko, dx=450)...');
+    const diagA = await page.evaluate(async () => {
       const { createZombieInstance } = await import('./js/zombie/index.js');
       const isMatchClient = (typeof window.isMatchClient === 'function') ? window.isMatchClient() : false;
 
-      // Usuniecie botow i innych zombie zeby test byl czysty i deterministyczny
       if (typeof window.setBotCount === 'function') {
         window.setBotCount(0);
       }
@@ -102,31 +110,36 @@ async function run() {
       window.zombieState.zombies.length = 0;
       window.zombieState.corpses.length = 0;
 
-      // Scenariusz A: Zombie w odleglosci dx = 500 px
       const px = window.player.x;
       const py = window.player.y;
 
-      const humans = [window.player, ...(window.bots || [])].map(h => ({ name: h.name, x: Math.round(h.x), y: Math.round(h.y), isDead: h.isDead }));
-      console.log('HUMANS IN GAME:', JSON.stringify(humans));
-      const zA = createZombieInstance(px + 500, py, -1, { skipRise: true });
+      const zA = createZombieInstance(px + 450, py, -1, { skipRise: true });
       zA.riseTimer = 0;
       zA.isDead = false;
       zA.isCrawling = false;
       window.zombieState.zombies.push(zA);
+      window._cameraFocusTarget = zA;
 
-      // Czekamy 30 klatek
-      const historyA = [];
-      for (let f = 0; f < 30; f++) {
+      for (let f = 0; f < 35; f++) {
+        window.player.x = zA.x - 450;
+        window.player.y = zA.y;
         await new Promise(r => requestAnimationFrame(r));
-        historyA.push({
-          f,
-          zx: Math.round(zA.x),
-          px: Math.round(window.player.x),
-          dx: Math.round(window.player.x - zA.x),
-          isReaching: zA.isReaching,
-          reachBlend: zA.reachBlend,
-          vx: zA.vx
-        });
+      }
+
+      function getClip(entity) {
+        const cam = window.camera;
+        const zoom = cam.zoom || 1;
+        const ew = entity.w || 24;
+        const eh = entity.h || 70;
+        const cx = entity.x + ew * 0.5;
+        const cy = entity.y + eh * 0.5;
+        const sx = (cx - cam.x) * zoom;
+        const sy = (cy - cam.y) * zoom;
+        const boxW = 380;
+        const boxH = 380;
+        const rx = Math.max(0, Math.min(1280 - boxW, Math.round(sx - boxW * 0.5)));
+        const ry = Math.max(0, Math.min(720 - boxH, Math.round(sy - boxH * 0.5)));
+        return { x: rx, y: ry, width: boxW, height: boxH };
       }
 
       const resA = {
@@ -136,7 +149,6 @@ async function run() {
         zombieY: zA.y,
         dx: window.player.x - zA.x,
         dy: window.player.y - zA.y,
-        targetInfo: zA._target ? { name: zA._target.name, x: Math.round(zA._target.x), y: Math.round(zA._target.y), isDead: zA._target.isDead } : null,
         isReaching: zA.isReaching,
         reachBlend: zA.reachBlend,
         reachAngle: zA.reachAngle,
@@ -152,30 +164,64 @@ async function run() {
         isMatchClient
       };
 
-      // Scenariusz B: Zombie w odleglosci dx = 140 px
+      return { resA, clip: getClip(zA) };
+    });
+
+    const farPath = path.join(reportsDir, 'zombie-far.png');
+    await page.screenshot({ path: farPath, clip: diagA.clip });
+    console.log('[ZAPISANO ZRZUT A]:', farPath);
+    console.log('SCENARIUSZ A (dx = 450 px):', JSON.stringify(diagA.resA, null, 2));
+
+    // =========================================================================
+    // SCENARIUSZ B: Zombie w odleglosci dx = 120 px (Blisko)
+    // =========================================================================
+    console.log('[TEST] Uruchamianie Scenariusza B (blisko, dx=120)...');
+    const diagB = await page.evaluate(async () => {
+      const { createZombieInstance } = await import('./js/zombie/index.js');
+      const isMatchClient = (typeof window.isMatchClient === 'function') ? window.isMatchClient() : false;
+
       window.zombieState.zombies.length = 0;
-      const zB = createZombieInstance(px + 140, py, -1, { skipRise: true });
+      window.zombieState.corpses.length = 0;
+
+      const px = window.player.x;
+      const py = window.player.y;
+
+      const zB = createZombieInstance(px + 120, py, -1, { skipRise: true });
       zB.riseTimer = 0;
       zB.isDead = false;
       zB.isCrawling = false;
       window.zombieState.zombies.push(zB);
+      window._cameraFocusTarget = zB;
 
-      // Czekamy 30 klatek
-      const historyB = [];
-      for (let f = 0; f < 30; f++) {
+      for (let f = 0; f < 35; f++) {
+        window.player.x = zB.x - 120;
+        window.player.y = zB.y;
         await new Promise(r => requestAnimationFrame(r));
-        historyB.push({
-          f,
-          zx: Math.round(zB.x),
-          px: Math.round(window.player.x),
-          dx: Math.round(window.player.x - zB.x),
-          isReaching: zB.isReaching,
-          reachBlend: zB.reachBlend,
-          vx: zB.vx
-        });
+      }
+
+      function getClip(entity) {
+        const cam = window.camera;
+        const zoom = cam.zoom || 1;
+        const ew = entity.w || 24;
+        const eh = entity.h || 70;
+        const cx = entity.x + ew * 0.5;
+        const cy = entity.y + eh * 0.5;
+        const sx = (cx - cam.x) * zoom;
+        const sy = (cy - cam.y) * zoom;
+        const boxW = 380;
+        const boxH = 380;
+        const rx = Math.max(0, Math.min(1280 - boxW, Math.round(sx - boxW * 0.5)));
+        const ry = Math.max(0, Math.min(720 - boxH, Math.round(sy - boxH * 0.5)));
+        return { x: rx, y: ry, width: boxW, height: boxH };
       }
 
       const resB = {
+        playerX: window.player.x,
+        playerY: window.player.y,
+        zombieX: zB.x,
+        zombieY: zB.y,
+        dx: window.player.x - zB.x,
+        dy: window.player.y - zB.y,
         isReaching: zB.isReaching,
         reachBlend: zB.reachBlend,
         reachAngle: zB.reachAngle,
@@ -191,13 +237,124 @@ async function run() {
         isMatchClient
       };
 
-      return { resA, resB, historyA };
+      return { resB, clip: getClip(zB) };
     });
 
-    console.log('HISTORY A (pierwsze i ostatnie klatki):', diag.historyA.slice(0, 5), diag.historyA.slice(-3));
-    console.log('=== WYNIKI DIAGNOSTYKI RUNTIME ===');
-    console.log('SCENARIUSZ A (dx = 500 px):', JSON.stringify(diag.resA, null, 2));
-    console.log('SCENARIUSZ B (dx = 140 px):', JSON.stringify(diag.resB, null, 2));
+    const closePath = path.join(reportsDir, 'zombie-close.png');
+    await page.screenshot({ path: closePath, clip: diagB.clip });
+    console.log('[ZAPISANO ZRZUT B]:', closePath);
+    console.log('SCENARIUSZ B (dx = 120 px):', JSON.stringify(diagB.resB, null, 2));
+
+    // =========================================================================
+    // SCENARIUSZ C: Prawdziwa reanimacja bota i podejscie na dx = 120 px
+    // =========================================================================
+    console.log('[TEST] Uruchamianie Scenariusza C (prawdziwa reanimacja bota)...');
+    const diagC = await page.evaluate(async () => {
+      const { createBotInstance } = await import('./js/bot.js');
+      const { onCharacterRespawnCorpse } = await import('./js/zombie/index.js');
+
+      window.zombieState.zombies.length = 0;
+      window.zombieState.corpses.length = 0;
+
+      const px = window.player.x;
+      const py = window.player.y;
+
+      const bot = (window.bots && window.bots.length > 0)
+        ? window.bots[0]
+        : createBotInstance(0, true);
+      if (!window.bots) window.bots = [];
+      if (!window.bots.includes(bot)) window.bots.push(bot);
+
+      bot.active = true;
+      bot.x = px + 180;
+      bot.y = py;
+      bot.isDead = true;
+      bot.hp = 0;
+      bot.hasHead = true;
+      bot.decapitated = false;
+      bot.respawnTimer = 1;
+
+      // Rejestracja ciala do reanimacji
+      onCharacterRespawnCorpse(bot, 1200);
+
+      if (window.zombieState.corpses.length > 0) {
+        window.zombieState.corpses[0].timer = 0.02;
+      }
+
+      // Oczekiwanie na reanimacje i powstanie obiektu zombie w tablicy
+      for (let f = 0; f < 30; f++) {
+        await new Promise(r => requestAnimationFrame(r));
+        if (window.zombieState.zombies.length > 0) break;
+      }
+
+      const zReal = window.zombieState.zombies[0];
+      if (!zReal) throw new Error('Nie udalo sie zreanimowac bota w zombie!');
+
+      // Oczekiwanie az zombie wstanie z ziemi (riseTimer -> 0)
+      for (let f = 0; f < 90; f++) {
+        await new Promise(r => requestAnimationFrame(r));
+        if (zReal.riseTimer <= 0) break;
+      }
+      zReal.riseTimer = 0;
+
+      // Podejscie graczem na odleglosc dx = 120 px
+      window.player.x = zReal.x - 120;
+      window.player.y = zReal.y;
+      window._cameraFocusTarget = zReal;
+
+      // 35 klatek na settled aggro i uniesienie rak
+      for (let f = 0; f < 35; f++) {
+        window.player.x = zReal.x - 120;
+        window.player.y = zReal.y;
+        await new Promise(r => requestAnimationFrame(r));
+      }
+
+      function getClip(entity) {
+        const cam = window.camera;
+        const zoom = cam.zoom || 1;
+        const ew = entity.w || 24;
+        const eh = entity.h || 70;
+        const cx = entity.x + ew * 0.5;
+        const cy = entity.y + eh * 0.5;
+        const sx = (cx - cam.x) * zoom;
+        const sy = (cy - cam.y) * zoom;
+        const boxW = 380;
+        const boxH = 380;
+        const rx = Math.max(0, Math.min(1280 - boxW, Math.round(sx - boxW * 0.5)));
+        const ry = Math.max(0, Math.min(720 - boxH, Math.round(sy - boxH * 0.5)));
+        return { x: rx, y: ry, width: boxW, height: boxH };
+      }
+
+      const resReal = {
+        isReaching: zReal.isReaching,
+        reachBlend: zReal.reachBlend,
+        vx: zReal.vx,
+        armFrontSwing: zReal.pose?.armFrontSwing,
+        armBackSwing: zReal.pose?.armBackSwing,
+        isCrawling: zReal.isCrawling,
+        riseTimer: zReal.riseTimer,
+        gaitMode: zReal.gaitMode,
+        torsoTilt: zReal.pose?.torsoTilt,
+        armFrontElbow: zReal.pose?.armFrontElbow,
+        armBackElbow: zReal.pose?.armBackElbow
+      };
+
+      return { resReal, clip: getClip(zReal) };
+    });
+
+    const realClosePath = path.join(reportsDir, 'zombie-real-close.png');
+    await page.screenshot({ path: realClosePath, clip: diagC.clip });
+    console.log('[ZAPISANO ZRZUT C]:', realClosePath);
+
+    console.log('=== WYNIKI DIAGNOSTYKI PRAWDZIWEJ REANIMACJI BOTA ===');
+    console.log('isReaching:', diagC.resReal.isReaching);
+    console.log('reachBlend:', diagC.resReal.reachBlend);
+    console.log('vx:', diagC.resReal.vx);
+    console.log('armFrontSwing:', diagC.resReal.armFrontSwing);
+    console.log('armBackSwing:', diagC.resReal.armBackSwing);
+    console.log('isCrawling:', diagC.resReal.isCrawling);
+    console.log('riseTimer:', diagC.resReal.riseTimer);
+    console.log('PELNY OBIEKT REANIMACJI:', JSON.stringify(diagC.resReal, null, 2));
 
   } finally {
     if (browser) await browser.close();

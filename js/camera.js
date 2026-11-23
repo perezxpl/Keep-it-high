@@ -391,7 +391,8 @@ export function updateCamera(player, ball, options = {}) {
   // Pozwala kamerze rozpoznać, kiedy gracz stoi wysoko (np. na wieży w Arenie 3 lub górnych pomostach)
   const groundFloor = getCameraGroundY();
   const baseFloorY = isArena4 ? 1040 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
-  const target = player || ball;
+  const focusEntity = (typeof window !== 'undefined' && window._cameraFocusTarget) ? window._cameraFocusTarget : player;
+  const target = focusEntity || ball;
   const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 1040 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 1040 : groundFloor - 50));
   const playerFootY = rawTargetY + (target && target.h ? target.h : 70);
   const altitude = Math.max(0, baseFloorY - playerFootY);
@@ -611,9 +612,9 @@ export function updateCamera(player, ball, options = {}) {
 
   // ZABEZPIECZENIE CELU KAMERY (Target Player Box):
   // Punkt docelowy kamery (targetCamX, targetCamY) NIGDY nie może zbliżyć postaci bardziej niż bezpieczny margines
-  if (player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
-    const pX = player.x + (player.w ? player.w / 2 : 12);
-    const pY = player.y + (player.h ? player.h / 2 : 35);
+  if (focusEntity && !focusEntity.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
+    const pX = focusEntity.x + (focusEntity.w ? focusEntity.w / 2 : 12);
+    const pY = focusEntity.y + (focusEntity.h ? focusEntity.h / 2 : 35);
     const safeMarginX = Math.max(80, viewWidth * 0.18);
     // Bezpieczny prześwit od krawędzi ekranu
     if (isArena5) {
@@ -679,9 +680,9 @@ export function updateCamera(player, ball, options = {}) {
   // postać nigdy nie przekroczy bezwzględnej granicy bezpieczeństwa ekranu.
   // W Arenie 5 gracz może swobodnie latać po 20 segmentach wieży – kamera podąża za nim
   // =========================================================================
-  if (player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
-    const pX = player.x + (player.w ? player.w / 2 : 12);
-    const pY = player.y + (player.h ? player.h / 2 : 35);
+  if (focusEntity && !focusEntity.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
+    const pX = focusEntity.x + (focusEntity.w ? focusEntity.w / 2 : 12);
+    const pY = focusEntity.y + (focusEntity.h ? focusEntity.h / 2 : 35);
     const hardPadX = Math.max(60, viewWidth * 0.10);
     const hardPadTop = Math.max(isMobile ? 50 : 60, viewHeight * 0.16);
     const hardPadBottom = Math.max(60, viewHeight * 0.12);
