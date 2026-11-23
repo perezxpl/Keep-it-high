@@ -166,11 +166,16 @@ export function createUndeadVisuals(baseVisuals = {}) {
 
   return {
     ...v,
-    // Martwicza, ziemisto-oliwkowa podgniła skóra (necrotic cadaverous skin)
-    skinLight: '#a3b89f',
-    skinMid: '#788f75',
-    skinDark: '#3f533c',
-    skinBack: '#546751',
+    // Martwicza, blada trupia skora (jasny, widoczny kontrast na ciemnych tlach)
+    skinLight: '#d8ead2',
+    skinMid:   '#b6ceb0',
+    skinBack:  '#8ea888',
+    skinDark:  '#556b52',
+
+    // Zdjecie rekawic i poszarpane krotkie rekawy odslaniajace blade przedramiona
+    hasTacticalGloves: false,
+    torsoStyle: 'short_sleeve',
+    sleeveLengthMult: 0.72,
 
     // Cechy fizjonomiczne nieumarłego
     isZombieVisuals: true,

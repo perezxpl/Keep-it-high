@@ -514,7 +514,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.isZombie) {
     // Aktywny, polujący zombie: zgarbiony tułów, powłóczący krok, luźne ramiona z daleka
     const fDir = (p.facing >= 0 ? 1 : -1);
-    p.torsoTilt = 0.10 * fDir;
+    p.torsoTilt = 0.08 * fDir;
     p.headPitch = 0.15;
     const walkAnim = p.walkAnim || 0;
     const isMoving = speed > 0.4;
@@ -1346,7 +1346,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const fLeanDir = (p.facing >= 0 ? 1 : -1);
   if (p.isZombie && !p.isDead && !p.isCrawling && (p.riseTimer || 0) <= 0) {
-    pose.torsoTilt = (0.10 + 0.36 * zReach) * fLeanDir;
+    pose.torsoTilt = (0.08 + 0.20 * zReach) * fLeanDir;
   }
 
   const cosTorsoT = Math.cos(pose.torsoTilt);
@@ -1373,16 +1373,16 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const animTime = (p.walkAnim || 0) * 2.8 + (typeof performance !== 'undefined' ? performance.now() * 0.003 : 0);
     const swayFront = Math.sin(animTime);
     const swayBack  = Math.sin(animTime + Math.PI * 0.72);
-    const pitch = p.reachAngle || 0;
+    const clampedPitch = Math.max(-0.45, Math.min(0.45, p.reachAngle || 0));
     const windup = (p.biteWindupTimer && p.biteWindupTimer > 0) ? Math.min(1.0, p.biteWindupTimer / 0.36) * 0.20 : 0;
     const lunge = (p.attackAnim && p.attackAnim > 0) ? Math.sin((p.attackAnim / 0.35) * Math.PI) * 0.22 : 0;
 
-    // Ręce mocno wyciągnięte do przodu z dramatycznym ruchem chwytającym
-    const targetFrontSwing = 1.64 - pitch + windup + lunge + swayFront * 0.22;
-    const targetBackSwing  = 1.48 - pitch + windup + lunge + swayBack * 0.22;
-    // Łokcie niemal wyprostowane z lekkim zgięciem i szponami
-    const targetFrontElbow = 0.12 + swayFront * 0.12 + (windup * 0.15) - (lunge * 0.10);
-    const targetBackElbow  = 0.20 + swayBack * 0.12 + (windup * 0.15) - (lunge * 0.10);
+    // Ręce wyciągnięte wyraźnie poziomo przed klatką piersiową z dramatycznym ruchem chwytającym
+    const targetFrontSwing = 1.56 - clampedPitch + windup * 0.14 + lunge * 0.16 + swayFront * 0.14;
+    const targetBackSwing  = 1.42 - clampedPitch + windup * 0.12 + lunge * 0.16 + swayBack * 0.14;
+    // Niemal wyprostowane, lekko sztywne przedramiona
+    const targetFrontElbow = 0.08 + swayFront * 0.08;
+    const targetBackElbow  = 0.14 + swayBack * 0.08;
 
     if (isRightLimbForeground) {
       pose.armFrontSwing = lerp(pose.armFrontSwing, targetFrontSwing, zReach);
@@ -1433,10 +1433,14 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   // KOŃCZYNY W TLE
+  const zArmExtra = (p.isZombie && !p.isDead && !p.isCrawling) ? (zReach * 1.5) : 0;
+  const effUpperArmLen = (p.upperArmLen || 14) + zArmExtra;
+  const effForearmLen = (p.forearmLen || 13) + zArmExtra;
+
   if (isRightLimbForeground) {
     if (!isArmBackDismembered) {
       if (!p.isReloading) {
-        renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+        renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
       }
     } else {
       drawLimbStump(ctx, shLeftX, shLeftY, pose.armBackSwing, 'arm', currentFacingDir, v, false);
@@ -1450,7 +1454,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else {
     if (!isArmFrontDismembered) {
       if (!p.isReloading) {
-        renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+        renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
       }
     } else {
       drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, false);
@@ -2087,7 +2091,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Jeśli gracz przeładowuje broń, lewe ramię manipulujące magazynkiem / bębenkiem pracuje z przodu torsu:
     if (p.isReloading && !isArmBackDismembered) {
-      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
     }
 
     // Broń trzymana w prawej ręce PRZED prawą nogą
@@ -2095,7 +2099,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Prawe ramię na wierzchu (dłoń obejmuje chwyt broni)
     if (!isArmFrontDismembered) {
-      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
+      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, effUpperArmLen, effForearmLen, p);
     } else {
       drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, true);
     }
@@ -2103,7 +2107,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     // 2. PATRZENIE W LEWO:
     // Prawe ramię trzymające broń z przodu torsu podczas przeładowania:
     if (p.isReloading && !isArmFrontDismembered) {
-      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
     }
 
     // Broń w prawej dłoni w tle znajduje się ZA pierwszoplanową lewą nogą
@@ -2118,7 +2122,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Lewe ramię na pierwszym planie
     if (!isArmBackDismembered) {
-      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
+      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColFront, null, true, v, effUpperArmLen, effForearmLen, p);
     } else {
       drawLimbStump(ctx, shLeftX, shLeftY, pose.armBackSwing, 'arm', currentFacingDir, v, true);
     }

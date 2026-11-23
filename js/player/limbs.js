@@ -629,7 +629,8 @@ export function drawHeadWoundsAway(ctx, dmgRatio) {
 export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v, playerRef = null) {
   const handScale = (isFront ? 1.0 : 0.88) * (isSculpted ? Math.max(1.0, muscle * 0.95) : muscle);
   const hX = foreLen - 0.4;
-  const useGloves = v.hasTacticalGloves !== false;
+  const isZombieHand = Boolean((playerRef && playerRef.isZombie) || (v && v.isZombieVisuals));
+  const useGloves = !isZombieHand && (v.hasTacticalGloves !== false);
   const gloveCol0 = v.gloveColor || '#18181b';
   const gloveCol1 = '#27272a';
   const gloveCol2 = '#3f3f46';
@@ -659,8 +660,8 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
   const palmBottom = 2.2 * handScale;
 
   let palmFill;
-  if (v && v.isZombieVisuals) {
-    palmFill = useGloves ? gloveCol0 : (v.skinMid || '#4a5d4e');
+  if (isZombieHand) {
+    palmFill = isFront ? (v.skinMid || '#b6ceb0') : (v.skinBack || '#8ea888');
   } else {
     const palmGrad = ctx.createLinearGradient(hX, palmTop, hX + palmLen, palmBottom);
     if (useGloves) {
@@ -762,15 +763,16 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
   ctx.fillRect(hX + palmLen * 0.8, -0.8, 1.4, 0.6);
 
   // Krew na szponach i dłoniach zombie (wyszarpane szpony w pozycji sięgania ku ofierze)
-  if (v.isZombieVisuals) {
-    const clawReachExtra = isReachingZombie ? (Math.min(1.0, playerRef.reachBlend) * 1.4) : 0;
-    ctx.fillStyle = '#7f1d1d';
+  if (isZombieHand) {
+    const clawReachExtra = isReachingZombie ? (Math.min(1.0, playerRef.reachBlend) * 1.6) : 0;
+    const clawR = (2.4 + (isReachingZombie ? playerRef.reachBlend * 0.6 : 0)) * handScale;
+    ctx.fillStyle = '#b91c1c';
     ctx.beginPath();
-    ctx.arc(hX + palmLen + 0.6 + clawReachExtra, 0.4, (2.0 + (isReachingZombie ? playerRef.reachBlend * 0.4 : 0)) * handScale, 0, Math.PI * 2);
+    ctx.arc(hX + palmLen + 0.6 + clawReachExtra, 0.4, clawR, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#ef4444';
     ctx.beginPath();
-    ctx.arc(hX + palmLen + 1.0 + clawReachExtra, 0.2, (1.0 + (isReachingZombie ? playerRef.reachBlend * 0.3 : 0)) * handScale, 0, Math.PI * 2);
+    ctx.arc(hX + palmLen + 1.2 + clawReachExtra, 0.2, clawR * 0.65, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -816,7 +818,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   ctx.rotate(armDir);
 
   const isSleevelessArm = isSleeveless(v.torsoStyle) || (Boolean(v.sleeveless) && !v.torsoStyle);
-  const isLong = !isSleevelessArm && isLongSleeve(v.torsoStyle);
+  const isLong = !isZombie && !isSleevelessArm && isLongSleeve(v.torsoStyle);
   const camoType = getCamoType(v.torsoStyle);
   const pal = getTorsoPalette(v.torsoColor || upperCol || v.armColorFront);
 
@@ -827,7 +829,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   const deltoidW = armHalfH * (isSculpted ? 1.48 : 1.32);
   const deltoidLen = upperLen * (isSculpted ? 0.48 : 0.42);
-  const deltoidColor = isFront ? v.skinMid : v.skinBack;
+  const deltoidColor = isFront ? (v.skinMid || '#b6ceb0') : (v.skinBack || '#8ea888');
 
   // 1. Odsłonięty bark i biceps (rysowane pod rękawem, aby mankiet krótkiego rękawa czysto przykrywał skórę)
   if (!isLong) {
@@ -853,7 +855,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
     let bicepFill;
     if (isZombie) {
-      bicepFill = v.skinMid || '#4a5d4e';
+      bicepFill = isFront ? (v.skinMid || '#b6ceb0') : (v.skinBack || '#8ea888');
     } else {
       const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
       if (isFront) {
@@ -1107,12 +1109,12 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   } else {
     ctx.beginPath();
     ctx.arc(0, 0, elbowR * 0.8, 0, Math.PI * 2);
-    ctx.fillStyle = isFront ? v.skinMid : v.skinBack;
+    ctx.fillStyle = isFront ? (v.skinMid || '#b6ceb0') : (v.skinBack || '#8ea888');
     ctx.fill();
 
     let forearmFill;
     if (isZombie) {
-      forearmFill = v.skinMid || '#4a5d4e';
+      forearmFill = isFront ? (v.skinMid || '#b6ceb0') : (v.skinBack || '#8ea888');
     } else {
       const forearmGrad = ctx.createLinearGradient(0, -elbowR * 1.4, 0, elbowR * 1.4);
       if (isFront) {
@@ -1143,6 +1145,16 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.closePath();
     ctx.fillStyle = forearmFill;
     ctx.fill();
+
+    if (isZombie) {
+      // Pojedyncza, lekka linia obrysu/blasku (rim light) wzdluz gornej krawedzi przedramienia zombie
+      ctx.strokeStyle = isFront ? '#d8ead2' : '#a7c0a1';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(0, -elbowR * 0.75);
+      ctx.lineTo(foreLen * 0.78, -wristR * 0.95);
+      ctx.stroke();
+    }
   }
 
   if (isSculpted) {

@@ -89,8 +89,8 @@ function drawZombieOverlay(ctx, z, floorY) {
     ctx.restore();
   }
 
-  // Diagnostyka na żywo nad głową aktywnego zombie (?perf=1 lub ?zdbg=1 w URL)
-  const isZdbg = typeof window !== 'undefined' && window.location && (window.location.search.includes('perf=1') || window.location.search.includes('zdbg=1'));
+  // Diagnostyka na żywo nad głową aktywnego zombie (?zdbg=1 w URL)
+  const isZdbg = typeof window !== 'undefined' && window.location && window.location.search.includes('zdbg=1');
   if (isZdbg) {
     ctx.save();
     ctx.font = 'bold 10px monospace';
@@ -98,8 +98,8 @@ function drawZombieOverlay(ctx, z, floorY) {
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 2.5;
     ctx.fillStyle = '#facc15';
-    const tag = `v504 R:${(z.reachBlend || 0).toFixed(1)} vx:${(z.vx || 0).toFixed(1)} A:${(z.pose?.armFrontSwing || 0).toFixed(2)}/${(z.pose?.armBackSwing || 0).toFixed(2)}`;
-    const textY = (z.hp < z.maxHp && z.hp > 0) ? (z.y - 16) : (z.y - 10);
+    const tag = `v505 R:${(z.reachBlend || 0).toFixed(1)} vx:${(z.vx || 0).toFixed(1)} A:${(z.pose?.armFrontSwing || 0).toFixed(2)}/${(z.pose?.armBackSwing || 0).toFixed(2)}`;
+    const textY = z.y - 26;
     ctx.strokeText(tag, cx, textY);
     ctx.fillText(tag, cx, textY);
     ctx.restore();
