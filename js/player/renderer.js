@@ -294,7 +294,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const localVisualsChanged = isLocalOrCreator && (p._lastLocalVisuals !== localPlayerCustomVisuals);
 
   if (p.isZombie) {
-    if (p.isCrawling && !p.isDead) {
+    if (p.isCrawling) {
       p.w = 34;
       p.h = 26;
       p.pelvisY = 0;
@@ -370,13 +370,17 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ? (p.onGround && !p.isJumping)
     : (!p.isJumping && (p.y >= (GROUND_Y - colH - 2) || (typeof p.currentGroundY === 'number' && Math.abs(p.y + colH - p.currentGroundY) < 6)));
   const standingY = p.isZombie
-    ? (p.groundY || ((typeof GROUND_Y === 'number' && GROUND_Y < 1500) ? GROUND_Y : (p.y + (p.isCrawling ? (p.h || 26) : 70))))
+    ? (p.onGround
+        ? (p.groundY || ((typeof GROUND_Y === 'number' && GROUND_Y < 1500) ? GROUND_Y : (p.y + (p.isCrawling ? (p.h || 26) : 70))))
+        : (p.y + (p.isCrawling ? (p.h || 26) : 70)))
     : ((isGrounded && typeof p.currentGroundY === 'number') ? p.currentGroundY : (p.y + colH));
   const floorY = standingY;
   const plantFloorY = floorY - 3.5;
   let hipX = centerX;
   let hipY = (p.isZombie && !p.isDead && (!p.riseTimer || p.riseTimer <= 0))
-    ? (p.isCrawling ? (plantFloorY - 3.5) : (plantFloorY - 48.3))
+    ? (p.onGround
+        ? (p.isCrawling ? (plantFloorY - 3.5) : (plantFloorY - 48.3))
+        : (p.y + colH - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8)))
     : (p.y + colH - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8));
   if (p.isProne) {
     hipY = plantFloorY - 2.5; // Tors i miednica przylegają równolegle do podłoża (y = floorY - 6 px)
@@ -510,7 +514,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.isZombie) {
     // Aktywny, polujący zombie: zgarbiony tułów, powłóczący krok, luźne ramiona z daleka
     const fDir = (p.facing >= 0 ? 1 : -1);
-    p.torsoTilt = 0.14 * fDir;
+    p.torsoTilt = 0.10 * fDir;
     p.headPitch = 0.15;
     const walkAnim = p.walkAnim || 0;
     const isMoving = speed > 0.4;
@@ -526,9 +530,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFootBackAnkle = (isMoving && stride < 0 ? 0.25 * fDir : 0);
 
     const walkSwing = isMoving ? Math.sin(walkAnim) * 0.32 : Math.sin((typeof performance !== 'undefined' ? performance.now() * 0.003 : 0)) * 0.06;
-    rawFrontSwing = 0.22 + walkSwing;
+    rawFrontSwing = 0.08 + walkSwing;
     rawFrontElbow = 0.36 + Math.max(0, walkSwing) * 0.18;
-    rawBackSwing  = 0.12 - walkSwing;
+    rawBackSwing  = -0.05 - walkSwing;
     rawBackElbow  = 0.32 + Math.max(0, -walkSwing) * 0.18;
   } else if (p.isIntro) {
     const choreo = getFreestyleChoreography(p.juggleTimer, hipX, hipY, floorY, p.facing, 8);
@@ -1342,7 +1346,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const fLeanDir = (p.facing >= 0 ? 1 : -1);
   if (p.isZombie && !p.isDead && !p.isCrawling && (p.riseTimer || 0) <= 0) {
-    pose.torsoTilt = (0.14 + 0.30 * zReach) * fLeanDir;
+    pose.torsoTilt = (0.10 + 0.36 * zReach) * fLeanDir;
   }
 
   const cosTorsoT = Math.cos(pose.torsoTilt);
@@ -1373,12 +1377,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const windup = (p.biteWindupTimer && p.biteWindupTimer > 0) ? Math.min(1.0, p.biteWindupTimer / 0.36) * 0.20 : 0;
     const lunge = (p.attackAnim && p.attackAnim > 0) ? Math.sin((p.attackAnim / 0.35) * Math.PI) * 0.22 : 0;
 
-    // Ręce wyciągnięte poziomo przed siebie (~85-95 st) w stronę ofiary
-    const targetFrontSwing = 1.57 - pitch + windup + lunge + swayFront * 0.14;
-    const targetBackSwing  = 1.52 - pitch + windup + lunge + swayBack * 0.14;
-    // Łokcie lekko zgięte (~12-22 st) ze szponami skierowanymi lekko ku górze
-    const targetFrontElbow = 0.22 + swayFront * 0.10 + (windup * 0.12) - (lunge * 0.10);
-    const targetBackElbow  = 0.28 + swayBack * 0.10 + (windup * 0.12) - (lunge * 0.10);
+    // Ręce mocno wyciągnięte do przodu z dramatycznym ruchem chwytającym
+    const targetFrontSwing = 1.64 - pitch + windup + lunge + swayFront * 0.22;
+    const targetBackSwing  = 1.48 - pitch + windup + lunge + swayBack * 0.22;
+    // Łokcie niemal wyprostowane z lekkim zgięciem i szponami
+    const targetFrontElbow = 0.12 + swayFront * 0.12 + (windup * 0.15) - (lunge * 0.10);
+    const targetBackElbow  = 0.20 + swayBack * 0.12 + (windup * 0.15) - (lunge * 0.10);
 
     if (isRightLimbForeground) {
       pose.armFrontSwing = lerp(pose.armFrontSwing, targetFrontSwing, zReach);

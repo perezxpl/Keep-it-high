@@ -1145,6 +1145,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
     const zx = z.x + z.w * 0.5;
     const zy = z.y + z.h * 0.5;
     let desiredVx = 0;
+    z._target = nearestTarget;
 
     if (nearestTarget) {
       const tx = nearestTarget.x + (nearestTarget.w || 24) * 0.5;
@@ -1184,8 +1185,8 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         }
       } else {
         const isTargetAlive = !nearestTarget.isDead;
-        const inAggroRange = isTargetAlive && Math.abs(dx) < (ZOMBIE_CONFIG.AGGRO_RANGE_X || 340) && Math.abs(dy) < (ZOMBIE_CONFIG.AGGRO_RANGE_Y || 160);
-        const isOutOfRange = !isTargetAlive || Math.abs(dx) > 400 || Math.abs(dy) > 210;
+        const inAggroRange = isTargetAlive && Math.abs(dx) < (ZOMBIE_CONFIG.AGGRO_RANGE_X || 280) && Math.abs(dy) < (ZOMBIE_CONFIG.AGGRO_RANGE_Y || 150);
+        const isOutOfRange = !isTargetAlive || Math.abs(dx) > 340 || Math.abs(dy) > 190;
 
         if (inAggroRange) {
           z.isReaching = true;
@@ -1201,8 +1202,8 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.reachAngle = Math.max(-0.65, Math.min(0.65, rawPitch));
 
         const reachFactor = z.reachBlend || 0;
-        const baseSpd = ZOMBIE_CONFIG.SPEED || 1.25;
-        const aggroSpd = ZOMBIE_CONFIG.AGGRO_SPEED || 2.45;
+        const baseSpd = ZOMBIE_CONFIG.SPEED || 1.05;
+        const aggroSpd = ZOMBIE_CONFIG.AGGRO_SPEED || 3.15;
         const moveSpeed = baseSpd + (aggroSpd - baseSpd) * reachFactor;
 
         if (z.hitStunTimer <= 0) {
@@ -1381,7 +1382,10 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.keys.left = desiredVx < -0.05;
         z.keys.right = desiredVx > 0.05;
       }
-      if (Math.abs(desiredVx) > 0.05) z.facing = desiredVx > 0 ? 1 : -1;
+      if (Math.abs(desiredVx) > 0.05) {
+        z.facing = desiredVx > 0 ? 1 : -1;
+        z.yaw = (z.facing < 0 ? Math.PI : 0);
+      }
     }
 
     // Wypadkowa prędkość pozioma: intencja ruchu + odrzut kinetyczny + separacja stada

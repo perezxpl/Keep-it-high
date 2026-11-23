@@ -1392,6 +1392,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       aimTargetX = ball.x + (ball.vx * 3);
       aimTargetY = ball.y + (ball.vy * 3);
     }
+  } else if (targetEnemy) {
     if (canEngageTarget) {
       const isLyingZombie = !!(targetEnemy.isZombie && (targetEnemy.isDead || (targetEnemy.riseTimer && targetEnemy.riseTimer > 0.4)));
       const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);

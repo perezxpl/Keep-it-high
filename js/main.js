@@ -1302,7 +1302,7 @@ function draw() {
     drawBall(ctx);
   }
 
-  drawBurningEffects(ctx, [player, ...activeBots, ...activeRemotePlayers], isDeathmatch ? null : ball);
+  drawBurningEffects(ctx, [player, ...activeBots, ...activeRemotePlayers, ...(typeof getActiveZombies === 'function' ? getActiveZombies() : [])], isDeathmatch ? null : ball);
 
   const devMenuEl = document.getElementById('dev-menu');
   const modalEl = document.getElementById('mp-modal') || mpModal;

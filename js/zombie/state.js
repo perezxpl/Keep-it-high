@@ -9,10 +9,10 @@ import { CLASSES } from '../classes/index.js';
 export const STORAGE_KEY_ZOMBIE_MODE = 'kih_zombie_mode_v2';
 
 export const ZOMBIE_CONFIG = {
-  SPEED: 1.25,              // Spokojne człapanie z daleka
-  AGGRO_SPEED: 2.45,        // Wyraźne przyspieszenie (zryw ~2x szybszy) w pobliżu ofiary
-  AGGRO_RANGE_X: 340,       // Zasięg wykrycia i wyciągnięcia rąk (px)
-  AGGRO_RANGE_Y: 160,
+  SPEED: 1.05,              // Wyraźnie powolne człapanie z daleka
+  AGGRO_SPEED: 3.15,        // 3x szybszy, agresywny zryw ku ofierze (wyraźnie zauważalne przyspieszenie!)
+  AGGRO_RANGE_X: 280,       // Zasięg uruchomienia zrywu i wyciągnięcia rąk (mniejszy niż połowa ekranu, żeby gracz widział sam moment reakcji!)
+  AGGRO_RANGE_Y: 150,
   MAX_HP: 100,              // Wytrzymałość zombie
   BITE_RANGE: 36,           // Poprzedni ogólny zasięg (pozostawiony dla kompatybilności)
   BITE_TRIGGER_RANGE: 34,   // Dystans rozpoczęcia zamachu
