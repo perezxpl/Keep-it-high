@@ -127,6 +127,36 @@ export const WEAPONS = {
     reloadTime: WEAPON_CONFIG?.FLAMETHROWER?.reloadTime ?? 2.6,
     reloadDuration: Math.round((WEAPON_CONFIG?.FLAMETHROWER?.reloadTime ?? 2.6) * 60)
   },
+  MINIGUN: {
+    id: 'MINIGUN',
+    name: 'M134 MINIGUN',
+    fullName: 'Ciezki Karabin Maszynowy M134 Vulcan',
+    category: 'PRIMARY',
+    auto: true,
+    fireRate: 3,            // ~20 strzalow / s przy 60 FPS
+    damage: 12,             // 12 dmg na pocisk (potezna fala ognia)
+    bulletSpeed: 28,        // Pocisk 7.62x51mm
+    spread: 0.085,          // Umiarkowany rozrzut stozkowy
+    crouchSpreadMult: 0.65, // Lepsze skupienie w przysiadzie
+    recoil: 0.45,           // Lekki odrzut wizualny
+    crouchRecoilMult: 0.40,
+    muzzleRise: 0.018,      // Maly podrzut lufy na pojedynczy strzal
+    kickbackDistance: 1.6,  // Delikatne cofniecie broni
+    ballPush: 0.22,         // Wyrazne spychanie pilki
+    bodyPush: 0.045,        // Spowolnienie/odpychanie trafionego wroga
+    ragdollPushMult: 1.35,  // Solidny impuls na zwloki
+    pellets: 1,
+    bulletColor: '#facc15',
+    gravity: 0.038,         // Płaska balistyka karabinowa
+    drag: 0.995,
+    maxPierces: 0,
+    isMinigun: true,
+    magSize: WEAPON_CONFIG?.MINIGUN?.magSize ?? 150,
+    currentAmmo: WEAPON_CONFIG?.MINIGUN?.currentAmmo ?? 150,
+    reserveAmmo: WEAPON_CONFIG?.MINIGUN?.reserveAmmo ?? 300,
+    reloadTime: WEAPON_CONFIG?.MINIGUN?.reloadTime ?? 3.5,
+    reloadDuration: Math.round((WEAPON_CONFIG?.MINIGUN?.reloadTime ?? 3.5) * 60)
+  },
   GLOCK: {
     id: 'GLOCK',
     name: 'Glock 17',
@@ -469,6 +499,10 @@ export function getWeaponLevelAimY(shooter) {
     return rightShoulderY + (weapon.id === 'KNIFE' ? 2.0 : 0.0) + crouchDropY;
   }
 
+  if (weapon.id === 'MINIGUN') {
+    return hipY - 4.0 + crouchDropY;
+  }
+
   // Broń długa opierana o dołek strzelecki barku (Shoulder Pocket)
   const shoulderPocketY = rightShoulderY - (isPistol ? 0.5 : 2.2) + braceOffsetY;
   return shoulderPocketY;
@@ -512,6 +546,20 @@ export const WEAPON_GRIP_CONFIGS = {
     barrelLen: 31.00,
     barrelOffsetY: -1.00,
     stockLen: 12.50
+  },
+  MINIGUN: {
+    rearGripX: 0.00,
+    walkRearGripX: 0.00,
+    rearGripY: 0.00,
+    foreGripX: 17.50,
+    walkForeGripX: 17.50,
+    foreGripY: -7.00,
+    walkForeGripY: -7.00,
+    angleOffset: 0.000,
+    walkAngleOffset: 0.000,
+    barrelLen: 48.50,
+    barrelOffsetY: 2.00,
+    stockLen: 0.00
   },
   KNIFE: { rearGripX: 0.00, rearGripY: 0.00, foreGripX: 6.50, foreGripY: 7.40, angleOffset: 0.785, barrelLen: 19.50, stockLen: 0.00 },
   MACHETE: { rearGripX: 0.00, walkRearGripX: 2.90, rearGripY: 0.00, foreGripX: 10.40, foreGripY: -0.90, angleOffset: -0.454, walkAngleOffset: -0.689, barrelLen: 33.60, stockLen: 0.00 },
@@ -626,6 +674,7 @@ export function getWeaponHoldTransform(p) {
   const isSniper = (weapon.id === 'SNIPER');
   const isRpg = (weapon.id === 'RPG7');
   const isFlamethrower = (weapon.id === 'FLAMETHROWER');
+  const isMinigun = (weapon.id === 'MINIGUN');
   const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
   const isTwoHandedHandgun = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || (!weapon.isMelee && Math.abs((gripCfg.foreGripX || 0) - (gripCfg.rearGripX || 0)) < 4.0));
   const isKnife = (weapon.id === 'KNIFE');
@@ -794,6 +843,13 @@ export function getWeaponHoldTransform(p) {
     handTargetY = rightShoulderY + pistolEffDy + crouchDropY;
     directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
     looseAimAngle = pistolEffAngle;
+  } else if (isMinigun) {
+    loosePivotX = hipX + 2.0 * charFacing;
+    loosePivotY = hipY - 4.0 + headBobOffset + crouchDropY;
+    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    if (directAngle < -Math.PI / 2) directAngle = -Math.PI / 2;
+    else if (directAngle > Math.PI / 2) directAngle = Math.PI / 2;
+    looseAimAngle = Math.max(-0.96, Math.min(0.78, directAngle));
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 7.6 : 5.2)) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.0 : 9.5)) + headBobOffset + crouchDropY;
@@ -924,6 +980,25 @@ export function getWeaponHoldTransform(p) {
       shoulderPivotX = aimHandX;
       shoulderPivotY = aimHandY;
     }
+  } else if (isMinigun) {
+    // Chainsaw Hip Grip (M134 Vulcan):
+    // Kąt celowania ściśle ograniczony do zakresu od -55° (-0.96 rad) do +45° (+0.78 rad)
+    const aimOriginX = hipX + 3.0 * charFacing;
+    const aimOriginY = hipY - 4.0 + braceOffsetY;
+    let rawAngle = Math.atan2(aimY - aimOriginY, (aimX - aimOriginX) * charFacing);
+    if (rawAngle < -Math.PI / 2) rawAngle = -Math.PI / 2;
+    else if (rawAngle > Math.PI / 2) rawAngle = Math.PI / 2;
+    const clampedAngle = Math.max(-0.96, Math.min(0.78, rawAngle));
+    shoulderAimAngle = clampedAngle - muzzleRise;
+
+    // Biomechaniczne ułożenie chwytu biodrowego z kompensacją przy celowaniu w dół
+    const downPitch = Math.max(0, shoulderAimAngle);
+    const upPitch = Math.max(0, -shoulderAimAngle);
+    const pivotShiftX = (1.5 - downPitch * 2.8 + upPitch * 1.0) * charFacing;
+    const pivotShiftY = (hipY - 4.0) - downPitch * 4.8 + upPitch * 1.5 + braceOffsetY;
+
+    shoulderPivotX = hipX + pivotShiftX;
+    shoulderPivotY = pivotShiftY;
   } else {
     if (weapon.id === 'SAWED_OFF' && isReloading) {
       // W trakcie przeładowania obrzyn trzymany jest w strefie roboczej klatki piersiowej (Workspace Retention)
@@ -1363,6 +1438,37 @@ export function getWeaponHoldTransform(p) {
         leftHandLocalX = lerp(19.7, foreGripDistX, s);
         leftHandLocalY = lerp(-0.6, foreGripDistY, s);
       }
+    } else if (weapon.id === 'MINIGUN') {
+      // -------------------------------------------------------------
+      // M134 MINIGUN RELOAD ANIMATION (AMMO BELT & CHUTE FEED)
+      // -------------------------------------------------------------
+      if (u < 0.25) {
+        // Faza 1: Sięgnięcie lewą ręką ku dolnemu podajnikowi taśmy
+        const t = u / 0.25;
+        leftHandLocalX = lerp(foreGripDistX, 10.0, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 12.0, ease(t));
+      } else if (u < 0.55) {
+        // Faza 2: Sięgnięcie do zasobnika amunicyjnego przy biodrze
+        const t = (u - 0.25) / 0.30;
+        leftHandLocalX = lerp(10.0, -3.5, ease(t));
+        leftHandLocalY = lerp(12.0, 16.0, ease(t));
+        if (t > 0.5) reloadAngleOffset = -0.12 * Math.sin((t - 0.5) / 0.5 * Math.PI);
+      } else if (u < 0.82) {
+        // Faza 3: Wprowadzenie nowej taśmy amunicji do komory podajnika
+        const t = (u - 0.55) / 0.27;
+        leftHandLocalX = lerp(-3.5, 10.0, ease(t));
+        leftHandLocalY = lerp(16.0, 11.0, ease(t));
+        if (t > 0.8) {
+          const snapT = (t - 0.8) / 0.2;
+          reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.08;
+          reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 1.2;
+        }
+      } else {
+        // Faza 4: Powrót ręki na górny pałąk piły (chainsaw handle)
+        const t = (u - 0.82) / 0.18;
+        leftHandLocalX = lerp(10.0, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(11.0, foreGripDistY, ease(t));
+      }
     } else {
       // -------------------------------------------------------------
       // AK-47 RELOAD ANIMATION (ROCK & LOCK + CHARGING HANDLE)
@@ -1684,6 +1790,11 @@ export function getWeaponHoldTransform(p) {
       const proneForwardReach = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER') ? 13.5 : (isKnife ? 13.0 : 15.0);
       firePivotX = rightShoulderX + Math.cos(fireAngle) * proneForwardReach * charFacing - Math.cos(fireAngle) * kickback * 0.5 * charFacing + reloadPivotShiftX;
       firePivotY = rightShoulderY + Math.sin(fireAngle) * proneForwardReach - Math.sin(fireAngle) * kickback * 0.5 + reloadPivotShiftY;
+    } else if (isMinigun) {
+      // Minigun w leżeniu (Ground Rest)
+      const proneForwardReach = 11.5;
+      firePivotX = rightShoulderX + Math.cos(fireAngle) * proneForwardReach * charFacing - Math.cos(fireAngle) * kickback * 0.5 * charFacing + reloadPivotShiftX;
+      firePivotY = rightShoulderY + Math.sin(fireAngle) * proneForwardReach + 3.0 - Math.sin(fireAngle) * kickback * 0.5 + reloadPivotShiftY;
     } else {
       // Broń długa (karabinki, strzelby, snajperka, RPG): kolba oparta stabilnie o dołek strzelecki barku
       const stockButtX = rightShoulderX + 1.2 * charFacing;
@@ -1820,6 +1931,10 @@ export function getWeaponHoldTransform(p) {
     isTwoHandedHandgun: !!isTwoHandedHandgun,
     straightArms: !!(isTwoHandedHandgun && !p.isProne && w > 0.40 && !isReloading)
   };
+}
+
+if (typeof window !== 'undefined') {
+  window.getWeaponHoldTransform = getWeaponHoldTransform;
 }
 
 /**

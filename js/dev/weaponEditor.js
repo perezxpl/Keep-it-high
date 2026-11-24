@@ -14,6 +14,8 @@ export const WEAPON_EDITOR_LIST = [
   { id: 'AK47', label: 'AK-47', category: 'GŁÓWNA' },
   { id: 'SHOTGUN', label: 'SPAS-12', category: 'GŁÓWNA' },
   { id: 'SNIPER', label: 'Barrett .50', category: 'GŁÓWNA' },
+  { id: 'FLAMETHROWER', label: 'Miotacz Ognia', category: 'GŁÓWNA' },
+  { id: 'MINIGUN', label: 'M134 Minigun', category: 'GŁÓWNA' },
   { id: 'GLOCK', label: 'Glock 17', category: 'BOCZNA' },
   { id: 'REVOLVER', label: 'Magnum .44', category: 'BOCZNA' },
   { id: 'SAWED_OFF', label: 'Obrzyn 12G', category: 'BOCZNA' },

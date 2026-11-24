@@ -258,6 +258,33 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
       return true;
     }
 
+    case 'weapon_minigun': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.16);
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 215 * p, freqEnd: 55 * p, duration: 0.075, gain: gain * 0.95 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.09, gain: gain * 1.10, filterType: 'bandpass', freqStart: 1650 * p, freqEnd: 420 * p, Q: 0.9 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.03, gain: gain * 0.85, filterType: 'highpass', freqStart: 2600 * p, freqEnd: 1800 * p, Q: 0.7 });
+      scheduleTone(ctx, out, { startTime: now + 0.015, type: 'square', freqStart: 1100 * p, freqEnd: 650 * p, duration: 0.025, gain: gain * 0.18, filterType: 'bandpass', filterFreq: 1400 });
+      return true;
+    }
+
+    case 'minigun_spin': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.35);
+      // Rozkrecajacy sie silnik elektryczny i obracajace sie lufy (wznoszacy pisk turbiny)
+      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 180 * p, freqEnd: 640 * p, duration: 0.32, gain: gain * 0.45, attack: 0.05, filterType: 'lowpass', filterFreq: 1800 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 240 * p, freqEnd: 820 * p, duration: 0.34, gain: gain * 0.35, attack: 0.04 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.30, gain: gain * 0.28, attack: 0.05, filterType: 'bandpass', freqStart: 450 * p, freqEnd: 1200 * p, Q: 2.5 });
+      return true;
+    }
+
+    case 'minigun_spindown': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.42);
+      // Wyhamowujacy silnik i bezwladnosc luf (opadajacy gwizd)
+      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 620 * p, freqEnd: 140 * p, duration: 0.40, gain: gain * 0.40, filterType: 'lowpass', filterFreq: 1400 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 780 * p, freqEnd: 180 * p, duration: 0.38, gain: gain * 0.30 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.36, gain: gain * 0.25, filterType: 'bandpass', freqStart: 1100 * p, freqEnd: 320 * p, Q: 2.0 });
+      return true;
+    }
+
     case 'weapon_pump': {
       const { now, out } = createVoiceStage(ctx, destNode, pan, 0.18);
       // Dwa szybkie klikniecia czolenka "chk-chk"

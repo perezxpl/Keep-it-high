@@ -18,7 +18,7 @@
 
 import { getWeaponPartSprite, getWeaponSpritePivot, drawWeaponBloodOverlay } from '../weapons/renderer.js';
 
-export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER', 'FLAMETHROWER'];
+export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER', 'FLAMETHROWER', 'MINIGUN'];
 export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7'];
 export const MELEE_WEAPON_IDS = ['KNIFE', 'MACHETE', 'AXE'];
 
@@ -389,6 +389,24 @@ function drawPrimaryWeaponSprite(ctx, weaponId, scaleMult = 1.0) {
       ctx.fillRect(-12.0, -2.5, 24.0, 5.0);
       ctx.fillStyle = '#ea580c';
       ctx.fillRect(-6.0, 2.5, 12.0, 6.0);
+    }
+  } else if (weaponId === 'MINIGUN') {
+    const imgMinigun = getWeaponPartSprite('MINIGUN');
+    if (imgMinigun && imgMinigun.complete && imgMinigun.naturalWidth > 0) {
+      const s = 0.20 * scaleMult;
+      const pivotSpriteX = 124.0;
+      const pivotSpriteY = 74.0;
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+      // Rysujemy klatkę (0, 0) - stan zimny
+      ctx.drawImage(imgMinigun, 0, 0, 256, 128, 0, 0, 256, 128);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-12.0, -3.0, 24.0, 6.0);
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(12.0, -2.0, 12.0, 4.0);
     }
   }
 }

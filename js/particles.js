@@ -65,6 +65,17 @@ export const CASING_CONFIGS = {
     bounces: 3,
     type: 'REVOLVER'
   },
+  MINIGUN: {
+    width: 4.5,
+    height: 2.0,
+    color: '#FACC15',    // lśniący mosiądz 7.62x51mm
+    rimColor: '#CA8A04',
+    hasRim: true,
+    speedMin: 180,
+    speedMax: 280,
+    bounces: 3,
+    type: 'MINIGUN'
+  },
   DEFAULT: {
     width: 4,
     height: 2,
@@ -271,13 +282,15 @@ export function findPlatformLandingY(x, prevY, currentY, groundY = 500, obstacle
 export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 1, inheritVx = 0, inheritVy = 0) {
   const normType = String(weaponType || 'AK47').toUpperCase();
   const cfg = CASING_CONFIGS[normType] ||
+    (normType.includes('MINIGUN') ? CASING_CONFIGS.MINIGUN :
     (normType.includes('REVOLVER') ? CASING_CONFIGS.REVOLVER :
     (normType.includes('GLOCK') ? CASING_CONFIGS.GLOCK :
     (normType.includes('SHOTGUN') ? CASING_CONFIGS.SHOTGUN :
-    (normType.includes('SNIPER') ? CASING_CONFIGS.SNIPER : CASING_CONFIGS.AK47))));
+    (normType.includes('SNIPER') ? CASING_CONFIGS.SNIPER : CASING_CONFIGS.AK47)))));
 
-  // Kąt wyrzutu: w tył i do góry względem kierunku celowania (aimAngle + Math.PI + losowy rozrzut +/- 0.3 rad)
-  const upwardTilt = (facing >= 0 ? 0.42 : -0.42);
+  const isMinigun = normType.includes('MINIGUN');
+  // Kąt wyrzutu: w tył i do góry dla karabinków, a dla Miniguna w dół i w tył z dolnego okna wyrzutowego
+  const upwardTilt = isMinigun ? (facing >= 0 ? 1.25 : -1.25) : (facing >= 0 ? 0.42 : -0.42);
   const spread = (Math.random() - 0.5) * 0.30;
   const ejectAngle = aimAngle + Math.PI + upwardTilt + spread;
 
@@ -286,8 +299,8 @@ export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 
   let vx = Math.cos(ejectAngle) * speed + inheritVx * 12;
   let vy = Math.sin(ejectAngle) * speed + inheritVy * 12;
 
-  // Dodatkowy impuls do góry, aby łuska ładnie podskoczyła nad broń
-  if (vy > -40) {
+  // Dodatkowy impuls do góry dla broni wyrzucających łuski ku górze
+  if (!isMinigun && vy > -40) {
     vy = -Math.abs(vy) - 40;
   }
 

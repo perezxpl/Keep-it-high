@@ -1,0 +1,1271 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 384" width="1024" height="384">
+  <defs>
+    <style>
+      rect, path, circle, line { shape-rendering: geometricPrecision; }
+    </style>
+  </defs>
+  <!-- Cell col=0 row=0 (offset: 0, 0) -->
+  <g transform="translate(0, 0)">
+    <clipPath id="cell-clip-0-0"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-0-0)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="83.5" y="102.4" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="84.8" y="103.4" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="90.5" y="109.3" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="91.8" y="110.3" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="97.5" y="110.7" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="98.8" y="111.7" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="104.5" y="105.9" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="105.8" y="106.9" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 0 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-0-0" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="70%" stop-color="#475569"/>
+        <stop offset="100%" stop-color="#64748b"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-1.00 -->
+      <rect x="124" y="71.90" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="71.50" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.50 -->
+      <rect x="124" y="62.37" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="61.97" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.50 -->
+      <rect x="124" y="81.43" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="81.03" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.50 -->
+      <rect x="124" y="81.43" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="82.23" x2="242" y2="82.23" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="81.03" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.50 -->
+      <rect x="124" y="62.37" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="63.17" x2="242" y2="63.17" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="61.97" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=1.00 -->
+      <rect x="124" y="71.90" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="72.70" x2="242" y2="72.70" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="71.50" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="74.00" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="83.96" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="64.04" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="74.00" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="83.96" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="64.04" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="74.00" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="83.96" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="64.04" r="1.1" fill="#94a3b8"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=1 row=0 (offset: 256, 0) -->
+  <g transform="translate(256, 0)">
+    <clipPath id="cell-clip-1-0"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-1-0)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="85.3" y="104.5" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="86.5" y="105.5" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="92.3" y="110.3" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="93.5" y="111.3" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="99.3" y="110.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="100.5" y="111.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="106.3" y="103.9" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="107.5" y="104.9" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 15 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-1-0" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="70%" stop-color="#475569"/>
+        <stop offset="100%" stop-color="#64748b"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-0.97 -->
+      <rect x="124" y="69.05" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="68.65" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.71 -->
+      <rect x="124" y="79.68" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="79.28" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.26 -->
+      <rect x="124" y="61.27" width="120" height="4.20" rx="1.0" fill="#475569" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="62.07" x2="242" y2="62.07" stroke="#94a3b8" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="60.87" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.26 -->
+      <rect x="124" y="82.53" width="120" height="4.20" rx="1.0" fill="#475569" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="83.33" x2="242" y2="83.33" stroke="#94a3b8" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="82.13" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.71 -->
+      <rect x="124" y="64.12" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="64.92" x2="242" y2="64.92" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="63.72" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.97 -->
+      <rect x="124" y="74.75" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="75.55" x2="242" y2="75.55" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="74.35" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="76.98" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="85.11" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="65.87" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="76.98" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="85.11" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="65.87" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="76.98" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="85.11" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="65.87" r="1.1" fill="#94a3b8"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=2 row=0 (offset: 512, 0) -->
+  <g transform="translate(512, 0)">
+    <clipPath id="cell-clip-2-0"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-2-0)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="87.0" y="106.4" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="88.3" y="107.4" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="94.0" y="110.8" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="95.3" y="111.8" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="101.0" y="109.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="102.3" y="110.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="108.0" y="101.8" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="109.3" y="102.8" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 30 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-2-0" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="70%" stop-color="#475569"/>
+        <stop offset="100%" stop-color="#64748b"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-0.87 -->
+      <rect x="124" y="66.40" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="66.00" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.87 -->
+      <rect x="124" y="77.40" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="77.00" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.00 -->
+      <rect x="124" y="60.90" width="120" height="4.20" rx="1.0" fill="#475569" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="61.70" x2="242" y2="61.70" stroke="#94a3b8" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="60.50" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.00 -->
+      <rect x="124" y="82.90" width="120" height="4.20" rx="1.0" fill="#475569" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="83.70" x2="242" y2="83.70" stroke="#94a3b8" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="82.50" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.87 -->
+      <rect x="124" y="77.40" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="78.20" x2="242" y2="78.20" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="77.00" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.87 -->
+      <rect x="124" y="66.40" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="67.20" x2="242" y2="67.20" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="66.00" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="79.75" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="85.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="62.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="68.25" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="79.75" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="85.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="62.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="68.25" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="79.75" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="85.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="62.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="68.25" r="1.1" fill="#94a3b8"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=3 row=0 (offset: 768, 0) -->
+  <g transform="translate(768, 0)">
+    <clipPath id="cell-clip-3-0"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-3-0)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="88.8" y="108.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="90.0" y="109.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="95.8" y="111.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="97.0" y="112.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="102.8" y="107.6" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="104.0" y="108.6" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 45 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-3-0" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="70%" stop-color="#475569"/>
+        <stop offset="100%" stop-color="#64748b"/>
+      </linearGradient>
+      <!-- Barrel k=2 z=-0.97 -->
+      <rect x="124" y="74.75" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="74.35" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=3 z=-0.71 -->
+      <rect x="124" y="64.12" width="120" height="4.20" rx="1.0" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+      <rect x="241" y="63.72" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=-0.26 -->
+      <rect x="124" y="82.53" width="120" height="4.20" rx="1.0" fill="#475569" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="83.33" x2="242" y2="83.33" stroke="#94a3b8" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="82.13" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=0.26 -->
+      <rect x="124" y="61.27" width="120" height="4.20" rx="1.0" fill="#475569" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="62.07" x2="242" y2="62.07" stroke="#94a3b8" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="60.87" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.71 -->
+      <rect x="124" y="79.68" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="80.48" x2="242" y2="80.48" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="79.28" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.97 -->
+      <rect x="124" y="69.05" width="120" height="4.20" rx="1.0" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="126" y1="69.85" x2="242" y2="69.85" stroke="#cbd5e1" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="68.65" width="3" height="5.00" rx="0.6" fill="#334155" stroke="#1e293b" stroke-width="0.6"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="82.13" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="62.89" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="71.02" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="82.13" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="62.89" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="71.02" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="82.13" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="62.89" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="71.02" r="1.1" fill="#94a3b8"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=0 row=1 (offset: 0, 128) -->
+  <g transform="translate(0, 128)">
+    <clipPath id="cell-clip-0-1"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-0-1)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="83.5" y="102.4" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="84.8" y="103.4" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="90.5" y="109.3" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="91.8" y="110.3" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="97.5" y="110.7" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="98.8" y="111.7" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="104.5" y="105.9" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="105.8" y="106.9" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 0 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-0-1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="55%" stop-color="#475569"/>
+        <stop offset="78%" stop-color="#b45309"/>
+        <stop offset="92%" stop-color="#f59e0b"/>
+        <stop offset="100%" stop-color="#fde047"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-1.00 -->
+      <rect x="124" y="71.90" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="71.50" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.50 -->
+      <rect x="124" y="62.37" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="61.97" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.50 -->
+      <rect x="124" y="81.43" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="81.03" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.50 -->
+      <rect x="124" y="81.43" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="82.23" x2="242" y2="82.23" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="81.03" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.50 -->
+      <rect x="124" y="62.37" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="63.17" x2="242" y2="63.17" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="61.97" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=1.00 -->
+      <rect x="124" y="71.90" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="72.70" x2="242" y2="72.70" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="71.50" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <line x1="198" y1="71" x2="244" y2="71" stroke="#fbbf24" stroke-width="1.2" opacity="0.35"/>
+      <line x1="198" y1="77" x2="244" y2="77" stroke="#fbbf24" stroke-width="1.2" opacity="0.35"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="74.00" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="83.96" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="64.04" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="74.00" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="83.96" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="64.04" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="74.00" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="83.96" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="64.04" r="1.1" fill="#94a3b8"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=1 row=1 (offset: 256, 128) -->
+  <g transform="translate(256, 128)">
+    <clipPath id="cell-clip-1-1"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-1-1)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="85.3" y="104.5" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="86.5" y="105.5" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="92.3" y="110.3" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="93.5" y="111.3" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="99.3" y="110.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="100.5" y="111.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="106.3" y="103.9" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="107.5" y="104.9" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 15 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-1-1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="55%" stop-color="#475569"/>
+        <stop offset="78%" stop-color="#b45309"/>
+        <stop offset="92%" stop-color="#f59e0b"/>
+        <stop offset="100%" stop-color="#fde047"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-0.97 -->
+      <rect x="124" y="69.05" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="68.65" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.71 -->
+      <rect x="124" y="79.68" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="79.28" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.26 -->
+      <rect x="124" y="61.27" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="62.07" x2="242" y2="62.07" stroke="#fde047" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="60.87" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.26 -->
+      <rect x="124" y="82.53" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="83.33" x2="242" y2="83.33" stroke="#fde047" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="82.13" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.71 -->
+      <rect x="124" y="64.12" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="64.92" x2="242" y2="64.92" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="63.72" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.97 -->
+      <rect x="124" y="74.75" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="75.55" x2="242" y2="75.55" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="74.35" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <line x1="198" y1="71" x2="244" y2="71" stroke="#fbbf24" stroke-width="1.2" opacity="0.35"/>
+      <line x1="198" y1="77" x2="244" y2="77" stroke="#fbbf24" stroke-width="1.2" opacity="0.35"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="76.98" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="85.11" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="65.87" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="76.98" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="85.11" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="65.87" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="76.98" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="85.11" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="65.87" r="1.1" fill="#94a3b8"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=2 row=1 (offset: 512, 128) -->
+  <g transform="translate(512, 128)">
+    <clipPath id="cell-clip-2-1"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-2-1)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="87.0" y="106.4" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="88.3" y="107.4" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="94.0" y="110.8" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="95.3" y="111.8" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="101.0" y="109.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="102.3" y="110.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="108.0" y="101.8" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="109.3" y="102.8" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 30 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-2-1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="55%" stop-color="#475569"/>
+        <stop offset="78%" stop-color="#b45309"/>
+        <stop offset="92%" stop-color="#f59e0b"/>
+        <stop offset="100%" stop-color="#fde047"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-0.87 -->
+      <rect x="124" y="66.40" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="66.00" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.87 -->
+      <rect x="124" y="77.40" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="77.00" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.00 -->
+      <rect x="124" y="60.90" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="61.70" x2="242" y2="61.70" stroke="#fde047" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="60.50" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.00 -->
+      <rect x="124" y="82.90" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="83.70" x2="242" y2="83.70" stroke="#fde047" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="82.50" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.87 -->
+      <rect x="124" y="77.40" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="78.20" x2="242" y2="78.20" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="77.00" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.87 -->
+      <rect x="124" y="66.40" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="67.20" x2="242" y2="67.20" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="66.00" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <line x1="198" y1="71" x2="244" y2="71" stroke="#fbbf24" stroke-width="1.2" opacity="0.35"/>
+      <line x1="198" y1="77" x2="244" y2="77" stroke="#fbbf24" stroke-width="1.2" opacity="0.35"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="79.75" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="85.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="62.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="68.25" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="79.75" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="85.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="62.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="68.25" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="79.75" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="85.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="62.50" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="68.25" r="1.1" fill="#94a3b8"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=3 row=1 (offset: 768, 128) -->
+  <g transform="translate(768, 128)">
+    <clipPath id="cell-clip-3-1"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-3-1)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="88.8" y="108.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="90.0" y="109.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="95.8" y="111.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="97.0" y="112.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="102.8" y="107.6" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="104.0" y="108.6" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 45 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-3-1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="55%" stop-color="#475569"/>
+        <stop offset="78%" stop-color="#b45309"/>
+        <stop offset="92%" stop-color="#f59e0b"/>
+        <stop offset="100%" stop-color="#fde047"/>
+      </linearGradient>
+      <!-- Barrel k=2 z=-0.97 -->
+      <rect x="124" y="74.75" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="74.35" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=3 z=-0.71 -->
+      <rect x="124" y="64.12" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-1)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="63.72" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=-0.26 -->
+      <rect x="124" y="82.53" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="83.33" x2="242" y2="83.33" stroke="#fde047" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="82.13" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=0.26 -->
+      <rect x="124" y="61.27" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="62.07" x2="242" y2="62.07" stroke="#fde047" stroke-width="0.9" opacity="0.45"/>
+      <rect x="241" y="60.87" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.71 -->
+      <rect x="124" y="79.68" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="80.48" x2="242" y2="80.48" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="79.28" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.97 -->
+      <rect x="124" y="69.05" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-1)" stroke="#0f172a" stroke-width="0.8"/>
+      <line x1="126" y1="69.85" x2="242" y2="69.85" stroke="#fde047" stroke-width="0.9" opacity="0.75"/>
+      <rect x="241" y="68.65" width="3" height="5.00" rx="0.6" fill="#f59e0b" stroke="#0f172a" stroke-width="0.6"/>
+      <line x1="198" y1="71" x2="244" y2="71" stroke="#fbbf24" stroke-width="1.2" opacity="0.35"/>
+      <line x1="198" y1="77" x2="244" y2="77" stroke="#fbbf24" stroke-width="1.2" opacity="0.35"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="82.13" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="62.89" r="1.1" fill="#94a3b8"/>
+      <circle cx="158" cy="71.02" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="82.13" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="62.89" r="1.1" fill="#94a3b8"/>
+      <circle cx="200" cy="71.02" r="1.1" fill="#94a3b8"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="82.13" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="62.89" r="1.1" fill="#94a3b8"/>
+      <circle cx="236" cy="71.02" r="1.1" fill="#94a3b8"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#1e293b" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=0 row=2 (offset: 0, 256) -->
+  <g transform="translate(0, 256)">
+    <clipPath id="cell-clip-0-2"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-0-2)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="83.5" y="102.4" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="84.8" y="103.4" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="90.5" y="109.3" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="91.8" y="110.3" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="97.5" y="110.7" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="98.8" y="111.7" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="104.5" y="105.9" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="105.8" y="106.9" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 0 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-0-2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="35%" stop-color="#7f1d1d"/>
+        <stop offset="60%" stop-color="#dc2626"/>
+        <stop offset="82%" stop-color="#ea580c"/>
+        <stop offset="95%" stop-color="#facc15"/>
+        <stop offset="100%" stop-color="#fef08a"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-1.00 -->
+      <rect x="124" y="71.90" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="71.50" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.50 -->
+      <rect x="124" y="62.37" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="61.97" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.50 -->
+      <rect x="124" y="81.43" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="81.03" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.50 -->
+      <rect x="124" y="81.43" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="82.23" x2="242" y2="82.23" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="81.03" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.50 -->
+      <rect x="124" y="62.37" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="63.17" x2="242" y2="63.17" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="61.97" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=1.00 -->
+      <rect x="124" y="71.90" width="120" height="4.20" rx="1.0" fill="url(#bgrad-0-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="72.70" x2="242" y2="72.70" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="71.50" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <line x1="175" y1="69" x2="245" y2="69" stroke="#f97316" stroke-width="2.2" opacity="0.45"/>
+      <line x1="170" y1="74" x2="245" y2="74" stroke="#fde047" stroke-width="2.0" opacity="0.65"/>
+      <line x1="175" y1="79" x2="245" y2="79" stroke="#f97316" stroke-width="2.2" opacity="0.45"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="74.00" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="83.96" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="64.04" r="1.1" fill="#fde047"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="74.00" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="83.96" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="64.04" r="1.1" fill="#fde047"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="74.00" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="83.96" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="64.04" r="1.1" fill="#fde047"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#f97316" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=1 row=2 (offset: 256, 256) -->
+  <g transform="translate(256, 256)">
+    <clipPath id="cell-clip-1-2"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-1-2)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="85.3" y="104.5" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="86.5" y="105.5" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="92.3" y="110.3" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="93.5" y="111.3" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="99.3" y="110.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="100.5" y="111.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="106.3" y="103.9" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="107.5" y="104.9" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 15 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-1-2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="35%" stop-color="#7f1d1d"/>
+        <stop offset="60%" stop-color="#dc2626"/>
+        <stop offset="82%" stop-color="#ea580c"/>
+        <stop offset="95%" stop-color="#facc15"/>
+        <stop offset="100%" stop-color="#fef08a"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-0.97 -->
+      <rect x="124" y="69.05" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="68.65" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.71 -->
+      <rect x="124" y="79.68" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="79.28" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.26 -->
+      <rect x="124" y="61.27" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="62.07" x2="242" y2="62.07" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="60.87" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.26 -->
+      <rect x="124" y="82.53" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="83.33" x2="242" y2="83.33" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="82.13" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.71 -->
+      <rect x="124" y="64.12" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="64.92" x2="242" y2="64.92" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="63.72" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.97 -->
+      <rect x="124" y="74.75" width="120" height="4.20" rx="1.0" fill="url(#bgrad-1-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="75.55" x2="242" y2="75.55" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="74.35" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <line x1="175" y1="69" x2="245" y2="69" stroke="#f97316" stroke-width="2.2" opacity="0.45"/>
+      <line x1="170" y1="74" x2="245" y2="74" stroke="#fde047" stroke-width="2.0" opacity="0.65"/>
+      <line x1="175" y1="79" x2="245" y2="79" stroke="#f97316" stroke-width="2.2" opacity="0.45"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="76.98" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="85.11" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="65.87" r="1.1" fill="#fde047"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="76.98" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="85.11" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="65.87" r="1.1" fill="#fde047"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="76.98" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="85.11" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="65.87" r="1.1" fill="#fde047"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#f97316" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=2 row=2 (offset: 512, 256) -->
+  <g transform="translate(512, 256)">
+    <clipPath id="cell-clip-2-2"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-2-2)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="87.0" y="106.4" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="88.3" y="107.4" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="94.0" y="110.8" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="95.3" y="111.8" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="101.0" y="109.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="102.3" y="110.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="108.0" y="101.8" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="109.3" y="102.8" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 30 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-2-2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="35%" stop-color="#7f1d1d"/>
+        <stop offset="60%" stop-color="#dc2626"/>
+        <stop offset="82%" stop-color="#ea580c"/>
+        <stop offset="95%" stop-color="#facc15"/>
+        <stop offset="100%" stop-color="#fef08a"/>
+      </linearGradient>
+      <!-- Barrel k=3 z=-0.87 -->
+      <rect x="124" y="66.40" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="66.00" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=2 z=-0.87 -->
+      <rect x="124" y="77.40" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="77.00" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=-0.00 -->
+      <rect x="124" y="60.90" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="61.70" x2="242" y2="61.70" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="60.50" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=0.00 -->
+      <rect x="124" y="82.90" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="83.70" x2="242" y2="83.70" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="82.50" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.87 -->
+      <rect x="124" y="77.40" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="78.20" x2="242" y2="78.20" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="77.00" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.87 -->
+      <rect x="124" y="66.40" width="120" height="4.20" rx="1.0" fill="url(#bgrad-2-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="67.20" x2="242" y2="67.20" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="66.00" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <line x1="175" y1="69" x2="245" y2="69" stroke="#f97316" stroke-width="2.2" opacity="0.45"/>
+      <line x1="170" y1="74" x2="245" y2="74" stroke="#fde047" stroke-width="2.0" opacity="0.65"/>
+      <line x1="175" y1="79" x2="245" y2="79" stroke="#f97316" stroke-width="2.2" opacity="0.45"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="79.75" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="85.50" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="62.50" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="68.25" r="1.1" fill="#fde047"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="79.75" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="85.50" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="62.50" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="68.25" r="1.1" fill="#fde047"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="79.75" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="85.50" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="62.50" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="68.25" r="1.1" fill="#fde047"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#f97316" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+  <!-- Cell col=3 row=2 (offset: 768, 256) -->
+  <g transform="translate(768, 256)">
+    <clipPath id="cell-clip-3-2"><rect x="0" y="0" width="256" height="128"/></clipPath>
+    <g clip-path="url(#cell-clip-3-2)">
+      <!-- Ammo Feed Chute and Linked Brass Belt -->
+      <path d="M 84 92 L 114 92 L 112 100 L 86 100 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="88.8" y="108.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="90.0" y="109.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="95.8" y="111.0" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="97.0" y="112.0" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <rect x="102.8" y="107.6" width="4.8" height="6.5" rx="1.5" fill="#d97706" stroke="#78350f" stroke-width="0.8"/>
+      <rect x="104.0" y="108.6" width="2.2" height="4.5" fill="#fde047" opacity="0.6"/>
+      <!-- Main Receiver & Electric Motor Housing -->
+      <rect x="64" y="74" width="36" height="19" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="66" y="76" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="82" width="32" height="4" fill="#1e293b"/>
+      <rect x="66" y="88" width="32" height="3" fill="#1e293b"/>
+      <circle cx="100" cy="83" r="3.5" fill="#334155" stroke="#0f172a" stroke-width="0.8"/>
+      <path d="M 62 56 L 122 56 L 125 62 L 125 88 L 62 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1.2"/>
+      <rect x="66" y="58" width="54" height="6" fill="#334155" opacity="0.7"/>
+      <line x1="72" y1="66" x2="116" y2="66" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="65.5" x2="116" y2="65.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="70" x2="116" y2="70" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="69.5" x2="116" y2="69.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="74" x2="116" y2="74" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="73.5" x2="116" y2="73.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="78" x2="116" y2="78" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="77.5" x2="116" y2="77.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <line x1="72" y1="82" x2="116" y2="82" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="72" y1="81.5" x2="116" y2="81.5" stroke="#475569" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M 122 54 L 128 54 L 128 92 L 122 92 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <rect x="123" y="56" width="3" height="34" fill="#475569"/>
+      <!-- Rear D-Grip / Spade Trigger Handle -->
+      <path d="M 58 63 L 64 63 L 64 69 L 58 69 Z" fill="#334155" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M 58 58 C 46 58 44 61 44 66 C 44 71 46 74 58 74" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+      <rect x="50" y="59" width="4.5" height="14" rx="2.2" fill="#090d16" stroke="#334155" stroke-width="1"/>
+      <line x1="50" y1="62" x2="54.5" y2="62" stroke="#475569" stroke-width="0.8"/>
+      <line x1="50" y1="66" x2="54.5" y2="66" stroke="#facc15" stroke-width="1"/> <!-- Trigger button at 66 -->
+      <line x1="50" y1="70" x2="54.5" y2="70" stroke="#475569" stroke-width="0.8"/>
+      <!-- Top Chainsaw Handle Bar -->
+      <path d="M 98 56 L 102 56 L 108 39 L 103 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <path d="M 126 56 L 131 56 L 140 39 L 135 39 Z" fill="#1e293b" stroke="#0f172a" stroke-width="1"/>
+      <rect x="101" y="35" width="41" height="6.5" rx="3.2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <rect x="113" y="34.5" width="18" height="7.5" rx="2.5" fill="#18181b" stroke="#3f3f46" stroke-width="0.8"/>
+      <line x1="116" y1="35" x2="116" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="119" y1="35" x2="119" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="122" y1="35" x2="122" y2="41.5" stroke="#71717a" stroke-width="1"/> <!-- Center marker -->
+      <line x1="125" y1="35" x2="125" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <line x1="128" y1="35" x2="128" y2="41.5" stroke="#52525b" stroke-width="0.8"/>
+      <!-- 6 Rotating Barrels (theta = 45 deg) -->
+      <rect x="124" y="72.5" width="118" height="3" fill="#1e293b" stroke="#0f172a" stroke-width="0.6"/>
+      <linearGradient id="bgrad-3-2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="35%" stop-color="#7f1d1d"/>
+        <stop offset="60%" stop-color="#dc2626"/>
+        <stop offset="82%" stop-color="#ea580c"/>
+        <stop offset="95%" stop-color="#facc15"/>
+        <stop offset="100%" stop-color="#fef08a"/>
+      </linearGradient>
+      <!-- Barrel k=2 z=-0.97 -->
+      <rect x="124" y="74.75" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="74.35" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=3 z=-0.71 -->
+      <rect x="124" y="64.12" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-2)" stroke="#450a0a" stroke-width="0.8"/>
+      <rect x="241" y="63.72" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#450a0a" stroke-width="0.6"/>
+      <!-- Barrel k=1 z=-0.26 -->
+      <rect x="124" y="82.53" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="83.33" x2="242" y2="83.33" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="82.13" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=4 z=0.26 -->
+      <rect x="124" y="61.27" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="62.07" x2="242" y2="62.07" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="60.87" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=0 z=0.71 -->
+      <rect x="124" y="79.68" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="80.48" x2="242" y2="80.48" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="79.28" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <!-- Barrel k=5 z=0.97 -->
+      <rect x="124" y="69.05" width="120" height="4.20" rx="1.0" fill="url(#bgrad-3-2)" stroke="#7c2d12" stroke-width="0.8"/>
+      <line x1="126" y1="69.85" x2="242" y2="69.85" stroke="#fef08a" stroke-width="0.9" opacity="0.85"/>
+      <rect x="241" y="68.65" width="3" height="5.00" rx="0.6" fill="#fef08a" stroke="#7c2d12" stroke-width="0.6"/>
+      <line x1="175" y1="69" x2="245" y2="69" stroke="#f97316" stroke-width="2.2" opacity="0.45"/>
+      <line x1="170" y1="74" x2="245" y2="74" stroke="#fde047" stroke-width="2.0" opacity="0.65"/>
+      <line x1="175" y1="79" x2="245" y2="79" stroke="#f97316" stroke-width="2.2" opacity="0.45"/>
+      <!-- Stabilizer Clamp at x=158 -->
+      <rect x="155.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="157" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="158" cy="82.13" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="62.89" r="1.1" fill="#fde047"/>
+      <circle cx="158" cy="71.02" r="1.1" fill="#fde047"/>
+      <!-- Stabilizer Clamp at x=200 -->
+      <rect x="197.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="199" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="200" cy="82.13" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="62.89" r="1.1" fill="#fde047"/>
+      <circle cx="200" cy="71.02" r="1.1" fill="#fde047"/>
+      <!-- Stabilizer Clamp at x=236 -->
+      <rect x="233.5" y="60.5" width="5" height="27" rx="1.8" fill="#7f1d1d" stroke="#ea580c" stroke-width="1"/>
+      <rect x="235" y="62" width="2" height="24" fill="#475569" opacity="0.6"/>
+      <circle cx="236" cy="82.13" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="62.89" r="1.1" fill="#fde047"/>
+      <circle cx="236" cy="71.02" r="1.1" fill="#fde047"/>
+      <rect x="244" y="63" width="2" height="22" rx="1" fill="#f97316" stroke="#0f172a" stroke-width="0.8"/>
+    </g>
+  </g>
+</svg>

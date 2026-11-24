@@ -119,6 +119,7 @@ const WEAPON_PARTS_PATHS = {
   FLAMETHROWER: './assets/weapons/flamethrower.png?v=v487_flamethrower_modular_reload',
   FLAMETHROWER_BODY: './assets/weapons/flamethrower_body.png?v=v487_flamethrower_modular_reload',
   FLAMETHROWER_CANISTER: './assets/weapons/flamethrower_canister.png?v=v487_flamethrower_modular_reload',
+  MINIGUN: './assets/weapons/minigun_spritesheet.svg?v=v511_minigun_rotary_spritesheet_and_audio',
   KNIFE: './assets/weapons/knife.png?v=v256_modular_melee_weapons',
   MACHETE: './assets/weapons/machete.png?v=v256_modular_melee_weapons',
   AXE: './assets/weapons/axe.png?v=v256_modular_melee_weapons'
@@ -166,6 +167,49 @@ export function drawWeaponSprite(ctx, sprite, dx = 0, dy = 0) {
 }
 
 export function getWeaponPartSprite(partId) {
+  if (partId === 'MINIGUN') {
+    if (_partMipCache[partId]) return _partMipCache[partId];
+    if (!_partSpriteCache[partId]) {
+      const p = WEAPON_PARTS_PATHS[partId];
+      if (!p) return null;
+      const img = new Image();
+      img.src = p;
+      img.onload = () => {
+        try {
+          if (typeof document !== 'undefined') {
+            const oc = document.createElement('canvas');
+            oc.width = 1024;
+            oc.height = 384;
+            const octx = oc.getContext('2d');
+            octx.drawImage(img, 0, 0);
+            oc.complete = true;
+            oc.naturalWidth = 1024;
+            oc.naturalHeight = 384;
+            _partMipCache[partId] = oc;
+          }
+        } catch (_) {}
+      };
+      _partSpriteCache[partId] = img;
+    }
+    const raw = _partSpriteCache[partId];
+    if (raw && raw.complete && raw.naturalWidth > 0 && !_partMipCache[partId]) {
+      try {
+        if (typeof document !== 'undefined') {
+          const oc = document.createElement('canvas');
+          oc.width = 1024;
+          oc.height = 384;
+          const octx = oc.getContext('2d');
+          octx.drawImage(raw, 0, 0);
+          oc.complete = true;
+          oc.naturalWidth = 1024;
+          oc.naturalHeight = 384;
+          _partMipCache[partId] = oc;
+          return oc;
+        }
+      } catch (_) {}
+    }
+    return _partMipCache[partId] || raw;
+  }
   if (_partMipCache[partId]) return _partMipCache[partId];
   if (_partSpriteCache[partId]) {
     const img = _partSpriteCache[partId];
@@ -221,6 +265,11 @@ export const WEAPON_SPRITE_PIVOTS = {
     x: 480.0,
     walkX: 240.0,
     y: 160.0
+  },
+  MINIGUN: {
+    x: 52.0,
+    walkX: 52.0,
+    y: 66.0
   },
   KNIFE: { x: 243.5, y: 67.0 },
   MACHETE: { x: 296.5, walkX: 47.5, y: 38.0 },
@@ -1512,6 +1561,47 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
       ctx.fillRect(6, 2, 12, 6);
       ctx.fillStyle = '#f97316';
       ctx.fillRect(28, -2, 4, 4);
+    }
+  } else if (weapon.id === 'MINIGUN') {
+    // -------------------------------------------------------------
+    // M134 VULCAN ROTARY MINIGUN (6 ROTATING BARRELS & HEAT STATES)
+    // -------------------------------------------------------------
+    const imgMinigun = getWeaponPartSprite('MINIGUN');
+    if (imgMinigun && imgMinigun.complete && imgMinigun.naturalWidth > 0) {
+      const s = 0.25; // Skala 0.25 pod geometrie sylwetki 70 px
+      const pvt = getWeaponSpritePivot('MINIGUN', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
+
+      // Wybor klatki obrotu (0..3) i wiersza rozgrzania (0..2)
+      const phase = (typeof p.minigunBarrelPhase === 'number') ? p.minigunBarrelPhase : 0;
+      const col = Math.floor(Math.abs(phase)) % 4;
+      const heat = (typeof p.minigunHeat === 'number') ? p.minigunHeat : 0;
+      const row = (heat > 0.72) ? 2 : ((heat > 0.35) ? 1 : 0);
+
+      const srcX = col * 256;
+      const srcY = row * 128;
+      const srcW = 256;
+      const srcH = 128;
+
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+      ctx.drawImage(imgMinigun, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+      ctx.restore();
+
+      // Blysk wylotowy na lufach (246, 74)
+      if (p.muzzleFlashTimer > 0) {
+        const bLen = (typeof hold.barrelLen === 'number') ? hold.barrelLen : 48.5;
+        const bOffY = (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : 2.0;
+        drawMuzzleFlash(ctx, bLen, bOffY, 13, false);
+      }
+    } else {
+      // Rezerwowy podglad proceduralny
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-2, -3, 30, 8);
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(28, -2, 20, 6);
     }
   } else if (weapon.id === 'KNIFE') {
     // -------------------------------------------------------------

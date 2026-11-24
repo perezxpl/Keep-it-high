@@ -8,7 +8,7 @@ import { triggerStrikerAirDash, triggerStrikerGroundDash } from './classes/strik
 import { triggerEnforcerBlastJump, triggerEnforcerGroundSlam } from './classes/enforcer.js';
 import { evaluateBotUnstuck } from './botNavigation.js';
 import { START_X, CONFIG } from './config.js';
-import { shootWeapon } from './weapons.js';
+import { shootWeapon, updateWeaponState } from './weapons.js';
 import { WEAPONS } from './weapons/transform.js';
 import { spawnJetpackSparks } from './world.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
@@ -722,6 +722,7 @@ export function isBotVisibleToPlayer(botTarget, margin = 24) {
  */
 export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget = bot, allCombatants = null) {
   if (!botTarget || !botTarget.active) return;
+  updateWeaponState(botTarget);
   const bKeys = botTarget.botKeys || botKeys;
 
   const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
@@ -1493,6 +1494,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
             }
           } else if (botTarget.currentWeapon?.id === 'FLAMETHROWER' || botTarget.currentWeapon?.isFlamethrower) {
             if (distToEnemy < 260 && botTarget.shootCooldown <= 0) {
+              shootWeapon(botTarget, botTarget.currentWeapon);
+            }
+          } else if (botTarget.currentWeapon?.id === 'MINIGUN') {
+            botTarget.isShooting = true;
+            if (distToEnemy < 380 && botTarget.shootCooldown <= 0) {
               shootWeapon(botTarget, botTarget.currentWeapon);
             }
           }

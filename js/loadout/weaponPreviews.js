@@ -92,6 +92,7 @@ const WEAPON_SPRITE_PATHS = {
   SAWED_OFF: './assets/weapons/sawed_off.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   RPG7: './assets/weapons/rpg7.png?v=v330_rpg7_rocket_launcher_secondary',
   FLAMETHROWER: './assets/weapons/flamethrower.png?v=v444_flamethrower',
+  MINIGUN: './assets/weapons/minigun_spritesheet.svg?v=v511_minigun_rotary_spritesheet_and_audio',
   KNIFE: './assets/weapons/knife.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   MACHETE: './assets/weapons/machete.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
   AXE: './assets/weapons/axe.png?v=v252_fix_picker_weapons_narrowing_and_card_height',
@@ -111,6 +112,23 @@ export function getWeaponSprite(weaponId) {
 
   const img = new Image();
   img.src = path;
+  if (weaponId === 'MINIGUN') {
+    img.onload = () => {
+      try {
+        if (typeof document !== 'undefined') {
+          const oc = document.createElement('canvas');
+          oc.width = 1024;
+          oc.height = 384;
+          const octx = oc.getContext('2d');
+          octx.drawImage(img, 0, 0);
+          oc.complete = true;
+          oc.naturalWidth = 1024;
+          oc.naturalHeight = 384;
+          _spriteCache[weaponId] = oc;
+        }
+      } catch (_) {}
+    };
+  }
   _spriteCache[weaponId] = img;
   return img;
 }
@@ -201,10 +219,13 @@ export function drawWeaponPreview(canvas, weaponId) {
 
       const maxW = w * maxWFactor;
       const maxH = h * maxHFactor;
+      const isMinigun = (weaponId === 'MINIGUN');
+      const natW = isMinigun ? 256 : sprite.naturalWidth;
+      const natH = isMinigun ? 128 : sprite.naturalHeight;
       // Ścisłe zachowanie proporcji (uniform aspect ratio - scaleX === scaleY)
-      const scale = Math.min(maxW / sprite.naturalWidth, maxH / sprite.naturalHeight);
-      const drawW = Math.round(sprite.naturalWidth * scale);
-      const drawH = Math.round(sprite.naturalHeight * scale);
+      const scale = Math.min(maxW / natW, maxH / natH);
+      const drawW = Math.round(natW * scale);
+      const drawH = Math.round(natH * scale);
       const dx = Math.round((w - drawW) * 0.50);
       const dy = Math.round((h - drawH) * 0.50);
 
@@ -212,7 +233,11 @@ export function drawWeaponPreview(canvas, weaponId) {
       ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
       ctx.shadowBlur = 10;
       ctx.shadowOffsetY = 3;
-      ctx.drawImage(sprite, dx, dy, drawW, drawH);
+      if (isMinigun) {
+        ctx.drawImage(sprite, 0, 0, 256, 128, dx, dy, drawW, drawH);
+      } else {
+        ctx.drawImage(sprite, dx, dy, drawW, drawH);
+      }
       ctx.restore();
     } else if (!sprite.complete && !sprite._hasError) {
       if (!canvas._loadingSprites) canvas._loadingSprites = new Set();

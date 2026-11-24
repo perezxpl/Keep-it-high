@@ -1,63 +1,72 @@
 ========================================================================
 RAPORT WYDAJNOŚCI MOBILNEJ // KEEP-IT-HIGH (PERF BLACKBOX)
 ========================================================================
-Data testu: 24.11.2026, 08:29:12
+Data testu: 24.11.2026, 13:58:05
 Urządzenie / Przeglądarka: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36
 Ekran CSS: 1280 x 720 px | DPR: 1
 Rozdzielczość Canvasu: 1280 x 720 px
 Aktywna arena: ARENA_3
-Przetworzonych klatek: 645
-Bieżący uśredniony FPS: 58 | 1% Low: 55 FPS
-Średni czas wykonania JS: 6.2 ms
+Przetworzonych klatek: 1025
+Bieżący uśredniony FPS: 57 | 1% Low: 55 FPS
+Średni czas wykonania JS: 7.9 ms
 Średni czas GPU Wait / VSync Stall: 0.0 ms
-Liczba zarejestrowanych zacięć (<38 FPS): 4
+Liczba zarejestrowanych zacięć (<38 FPS): 5
 
 ------------------------------------------------------------------------
 ZAREJESTROWANE ZACIĘCIA KLATEK (DELTA >= 26 ms, SORTOWANE WG POWAGI):
 ------------------------------------------------------------------------
 
-[#1] Czas: 3.1s rundy | Delta: 2789.9ms (0.4 FPS) | JS Exec: 12.9ms | GPU Wait: 2742.4ms
-     Współrzędne: Kamera (1250, 292), Gracz (611, 1128, HP: 100)
-     Podział JS: update=2.5ms, bg=0.1ms, fg=0.7ms, players=5.5ms, fx=1.3ms, hud=2.8ms
-     Podział FX: obst=0.1ms, part=0ms, decal=0ms, bul=0ms, proj=0.1ms, jet=0ms, gore=0ms, pick=0ms, haz=0.1ms, zomb=0ms, misc=0.1ms, light=0.1ms, vig=0.8ms
-     Obiekty: pociski=0, iskry=0, dziury=0, krew_cząstki=0, plamy_krwi=0, beczki=4, kałuże_kwasu=0, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
-              gibs=0, hełmy_złom=0, bronie_gleba=0, światła=0, łuski=0
-              odłamki=0, rozbryzgi_wody=0, drzazgi=0, boty_w_kadrze=3
-     Stan Areny: Pylony: L=OK, R=OK | Zniszczone belki: most=0/24, rampy=0/20
+[#1] Czas: 12.7s rundy | Delta: 290.3ms (3.4 FPS) | JS Exec: 9.7ms | GPU Wait: 250.2ms
+     Współrzędne: Kamera (1250, 292), Gracz (600, 1128, HP: 91)
+     Podział JS: update=1.9ms, bg=0.3ms, fg=0.9ms, players=5.3ms, fx=0.3ms, hud=1ms
+     Podział FX: obst=0ms, part=0ms, decal=0ms, bul=0.1ms, proj=0.1ms, jet=0.1ms, gore=0ms, pick=0ms, haz=0ms, zomb=0ms, misc=0ms, light=0ms, vig=0ms
+     Obiekty: pociski=9, iskry=13, dziury=4, krew_cząstki=40, plamy_krwi=0, beczki=2, kałuże_kwasu=0, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
+              gibs=0, hełmy_złom=0, bronie_gleba=0, światła=2, łuski=23
+              odłamki=6, rozbryzgi_wody=0, drzazgi=6, boty_w_kadrze=3
+     Stan Areny: Pylony: L=BROKEN, R=BROKEN | Zniszczone belki: most=24/24, rampy=9/20
 
-[#2] Czas: 3.6s rundy | Delta: 503.1ms (2 FPS) | JS Exec: 9.8ms | GPU Wait: 469.4ms
-     Współrzędne: Kamera (1250, 292), Gracz (611, 1128, HP: 100)
-     Podział JS: update=1.7ms, bg=0.3ms, fg=0.7ms, players=3.4ms, fx=0.9ms, hud=2.8ms
-     Podział FX: obst=0ms, part=0ms, decal=0ms, bul=0ms, proj=0ms, jet=0ms, gore=0ms, pick=0ms, haz=0.1ms, zomb=0ms, misc=0.1ms, light=0ms, vig=0.7ms
-     Obiekty: pociski=0, iskry=0, dziury=0, krew_cząstki=0, plamy_krwi=0, beczki=4, kałuże_kwasu=0, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
-              gibs=0, hełmy_złom=0, bronie_gleba=0, światła=0, łuski=0
-              odłamki=0, rozbryzgi_wody=0, drzazgi=0, boty_w_kadrze=3
-     Stan Areny: Pylony: L=OK, R=OK | Zniszczone belki: most=0/24, rampy=0/20
-
-[#3] Czas: 14.5s rundy | Delta: 339.5ms (2.9 FPS) | JS Exec: 7.1ms | GPU Wait: 314.2ms
-     Współrzędne: Kamera (1250, 292), Gracz (611, 1128, HP: 100)
-     Podział JS: update=2.5ms, bg=0.2ms, fg=0.7ms, players=2ms, fx=1.1ms, hud=0.6ms
-     Podział FX: obst=0.1ms, part=0ms, decal=0ms, bul=0ms, proj=0ms, jet=0ms, gore=0ms, pick=0ms, haz=0.1ms, zomb=0ms, misc=0ms, light=0ms, vig=0.9ms
-     Obiekty: pociski=0, iskry=0, dziury=1, krew_cząstki=39, plamy_krwi=10, beczki=4, kałuże_kwasu=0, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
-              gibs=1, hełmy_złom=0, bronie_gleba=1, światła=0, łuski=16
-              odłamki=12, rozbryzgi_wody=8, drzazgi=11, boty_w_kadrze=2
+[#2] Czas: 6.1s rundy | Delta: 263.8ms (3.8 FPS) | JS Exec: 10.4ms | GPU Wait: 237ms
+     Współrzędne: Kamera (1250, 292), Gracz (600, 1128, HP: 91)
+     Podział JS: update=2.7ms, bg=0.1ms, fg=1.3ms, players=4.6ms, fx=0.6ms, hud=1.1ms
+     Podział FX: obst=0ms, part=0.1ms, decal=0ms, bul=0ms, proj=0.2ms, jet=0.1ms, gore=0ms, pick=0ms, haz=0.1ms, zomb=0ms, misc=0ms, light=0ms, vig=0.1ms
+     Obiekty: pociski=2, iskry=21, dziury=0, krew_cząstki=0, plamy_krwi=0, beczki=4, kałuże_kwasu=1, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
+              gibs=0, hełmy_złom=0, bronie_gleba=0, światła=1, łuski=10
+              odłamki=12, rozbryzgi_wody=0, drzazgi=28, boty_w_kadrze=4
      Stan Areny: Pylony: L=BROKEN, R=BROKEN | Zniszczone belki: most=24/24, rampy=0/20
 
-[#4] Czas: 8.8s rundy | Delta: 161.4ms (6.2 FPS) | JS Exec: 21ms | GPU Wait: 134.5ms
-     Współrzędne: Kamera (1250, 292), Gracz (611, 1128, HP: 100)
-     Podział JS: update=2.5ms, bg=0.1ms, fg=8.5ms, players=6.7ms, fx=1.7ms, hud=1.5ms
-     Podział FX: obst=0ms, part=0ms, decal=0ms, bul=0.2ms, proj=0.1ms, jet=0.1ms, gore=0ms, pick=0ms, haz=0ms, zomb=0ms, misc=0.1ms, light=0ms, vig=1.2ms
-     Obiekty: pociski=3, iskry=19, dziury=0, krew_cząstki=0, plamy_krwi=0, beczki=4, kałuże_kwasu=0, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
-              gibs=0, hełmy_złom=0, bronie_gleba=0, światła=1, łuski=13
-              odłamki=0, rozbryzgi_wody=21, drzazgi=33, boty_w_kadrze=5
-     Stan Areny: Pylony: L=BROKEN, R=BROKEN | Zniszczone belki: most=24/24, rampy=0/20
+[#3] Czas: 6.6s rundy | Delta: 156.9ms (6.4 FPS) | JS Exec: 9.5ms | GPU Wait: 131.7ms
+     Współrzędne: Kamera (1250, 292), Gracz (600, 1128, HP: 91)
+     Podział JS: update=3.2ms, bg=0.3ms, fg=0.9ms, players=3.7ms, fx=0.7ms, hud=0.7ms
+     Podział FX: obst=0ms, part=0ms, decal=0ms, bul=0.1ms, proj=0.5ms, jet=0ms, gore=0.1ms, pick=0ms, haz=0ms, zomb=0ms, misc=0ms, light=0ms, vig=0ms
+     Obiekty: pociski=1, iskry=5, dziury=0, krew_cząstki=0, plamy_krwi=0, beczki=3, kałuże_kwasu=1, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
+              gibs=0, hełmy_złom=0, bronie_gleba=0, światła=1, łuski=11
+              odłamki=4, rozbryzgi_wody=0, drzazgi=40, boty_w_kadrze=5
+     Stan Areny: Pylony: L=BROKEN, R=BROKEN | Zniszczone belki: most=24/24, rampy=7/20
+
+[#4] Czas: 3.6s rundy | Delta: 142.9ms (7 FPS) | JS Exec: 9ms | GPU Wait: 118.7ms
+     Współrzędne: Kamera (1250, 292), Gracz (600, 1128, HP: 91)
+     Podział JS: update=2.3ms, bg=0.3ms, fg=0.9ms, players=4.3ms, fx=0.6ms, hud=0.6ms
+     Podział FX: obst=0ms, part=0ms, decal=0ms, bul=0.3ms, proj=0.1ms, jet=0ms, gore=0ms, pick=0ms, haz=0ms, zomb=0ms, misc=0ms, light=0.2ms, vig=0ms
+     Obiekty: pociski=2, iskry=7, dziury=0, krew_cząstki=0, plamy_krwi=0, beczki=4, kałuże_kwasu=1, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
+              gibs=0, hełmy_złom=0, bronie_gleba=0, światła=1, łuski=2
+              odłamki=8, rozbryzgi_wody=3, drzazgi=40, boty_w_kadrze=3
+     Stan Areny: Pylony: L=BROKEN, R=BROKEN | Zniszczone belki: most=22/24, rampy=0/20
+
+[#5] Czas: 18.2s rundy | Delta: 137.1ms (7.3 FPS) | JS Exec: 8.4ms | GPU Wait: 111.5ms
+     Współrzędne: Kamera (1250, 292), Gracz (600, 1128, HP: 91)
+     Podział JS: update=2.8ms, bg=0.2ms, fg=1.1ms, players=3ms, fx=0.4ms, hud=0.9ms
+     Podział FX: obst=0ms, part=0ms, decal=0ms, bul=0.2ms, proj=0.1ms, jet=0ms, gore=0.1ms, pick=0ms, haz=0ms, zomb=0ms, misc=0ms, light=0ms, vig=0ms
+     Obiekty: pociski=3, iskry=5, dziury=12, krew_cząstki=17, plamy_krwi=30, beczki=0, kałuże_kwasu=1, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
+              gibs=0, hełmy_złom=0, bronie_gleba=1, światła=0, łuski=25
+              odłamki=6, rozbryzgi_wody=22, drzazgi=40, boty_w_kadrze=1
+     Stan Areny: Pylony: L=BROKEN, R=BROKEN | Zniszczone belki: most=24/24, rampy=9/20
 
 ------------------------------------------------------------------------
 BIEŻĄCY STAN PODSYSTEMÓW (OSTATNIA PRÓBKA):
 ------------------------------------------------------------------------
-Podział JS: update=2.6ms, bg=0ms, fg=0.7ms, players=1.8ms, fx=1.1ms, hud=0.6ms
-Podział FX: obst=0.1ms, part=0ms, decal=0ms, bul=0.1ms, proj=0.1ms, jet=0ms, gore=0.1ms, pick=0ms, haz=0ms, zomb=0ms, misc=0ms, light=0ms, vig=0.7ms
-Obiekty: pociski=3, iskry=9, krew_cząstki=34, plamy_krwi=14, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
+Podział JS: update=2.2ms, bg=0.1ms, fg=1.3ms, players=2.7ms, fx=1.6ms, hud=0.8ms
+Podział FX: obst=0ms, part=0ms, decal=0.1ms, bul=0ms, proj=0.1ms, jet=0.1ms, gore=0ms, pick=0.1ms, haz=0ms, zomb=0ms, misc=0ms, light=0ms, vig=1.2ms
+Obiekty: pociski=4, iskry=7, krew_cząstki=40, plamy_krwi=20, zombie_aktywne=0, zombie_zwłoki=0, gruz=0
 
 ========================================================================
 KONIEC RAPORTU

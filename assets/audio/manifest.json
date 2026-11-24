@@ -46,6 +46,13 @@
       "volume": 0.92,
       "pitchJitter": 0.03
     },
+    "weapon_minigun": {
+      "src": ["weapon_ak47_1.wav", "weapon_ak47_2.wav"],
+      "volume": 0.88,
+      "pitchJitter": 0.04
+    },
+    "minigun_spin": null,
+    "minigun_spindown": null,
     "weapon_melee_swing": {
       "src": ["melee_swing_1.wav", "melee_swing_2.wav", "melee_swing_3.wav"],
       "volume": 0.70,

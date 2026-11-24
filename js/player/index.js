@@ -541,6 +541,13 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     targetTopSpeed = jogMax;
   }
 
+  // Spowolnienie ruchu od ciężaru M134 Minigun (zwłaszcza przy rozkręconych lufach i prowadzeniu ognia)
+  if (player.currentWeapon?.id === 'MINIGUN' && !player.isHolstered) {
+    const spinSlowdown = (player.minigunSpin || 0) * 0.35;
+    const baseHeavySlowdown = 0.15;
+    targetTopSpeed *= Math.max(0.40, 1.0 - (baseHeavySlowdown + spinSlowdown));
+  }
+
   const curSpeedPre = Math.abs(player.vx);
   if (player.isJumpCharging && curSpeedPre < 0.8) {
     targetTopSpeed *= (1.0 - player.jumpChargePower * 0.55);

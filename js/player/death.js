@@ -519,7 +519,8 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
         REVOLVER: { currentAmmo: 6, reserveAmmo: 36, reloadTime: 2.2 },
         SAWED_OFF: { currentAmmo: 2, reserveAmmo: 18, reloadTime: 1.8 },
         RPG7: { currentAmmo: 1, reserveAmmo: 3, reloadTime: 2.6 },
-        FLAMETHROWER: { currentAmmo: 100, reserveAmmo: 200, reloadTime: 2.6 }
+        FLAMETHROWER: { currentAmmo: 100, reserveAmmo: 200, reloadTime: 2.6 },
+        MINIGUN: { currentAmmo: 150, reserveAmmo: 300, reloadTime: 3.5 }
       };
       for (const [wepId, def] of Object.entries(wepDefaults)) {
         if (!player.ammo[wepId]) {

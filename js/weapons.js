@@ -637,6 +637,13 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     return true;
   }
 
+  // Weryfikacja rozkręcenia luf dla Miniguna
+  if (weapon.id === 'MINIGUN') {
+    if (!shooter.isRemote && (shooter.minigunSpin || 0) < 0.72) {
+      return false; // Lufy jeszcze się rozkręcają, brak strzału i brak zużycia amunicji
+    }
+  }
+
   // Weryfikacja amunicji dla gracza lokalnego
   if (!shooter.isRemote && !shooter.isBot) {
     const ammo = getWeaponAmmo(shooter, weapon);
@@ -685,6 +692,15 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 36);
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = Math.min(0.35, (shooter.muzzleRise || 0) + weapon.muzzleRise);
+  } else if (weapon.id === 'MINIGUN') {
+    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 16);
+    shooter.weaponKickback = weapon.kickbackDistance;
+    shooter.muzzleRise = Math.min(0.12, (shooter.muzzleRise || 0) + weapon.muzzleRise);
+    shooter.minigunHeat = Math.min(1.0, (shooter.minigunHeat || 0) + 0.015);
+    if (shooter.isRemote) {
+      shooter.minigunSpin = 1.0;
+      shooter.minigunBarrelPhase = ((shooter.minigunBarrelPhase || 0) + 0.65) % 4;
+    }
   } else {
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 26);
     shooter.weaponKickback = weapon.kickbackDistance;
@@ -900,13 +916,20 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
   if (shooter && overrideX === undefined) {
     const hold = getWeaponHoldTransform(shooter);
-    const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : (weapon.id === 'GLOCK' ? 5 : 10)));
-    breechX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
-    breechY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
+    if (weapon.id === 'MINIGUN') {
+      const bDistX = 10.75;
+      const bDistY = 7.0;
+      breechX = hold.pivotX + (Math.cos(hold.angle) * bDistX - Math.sin(hold.angle) * bDistY) * charFacing;
+      breechY = hold.pivotY + (Math.sin(hold.angle) * bDistX + Math.cos(hold.angle) * bDistY);
+    } else {
+      const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : (weapon.id === 'GLOCK' ? 5 : 10)));
+      breechX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
+      breechY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
+    }
   } else {
-    const backDist = (weapon.id === 'SHOTGUN' ? 18 : (weapon.id === 'SNIPER' ? 26 : (weapon.id === 'GLOCK' ? 7 : 22)));
+    const backDist = (weapon.id === 'SHOTGUN' ? 18 : (weapon.id === 'SNIPER' ? 26 : (weapon.id === 'GLOCK' ? 7 : (weapon.id === 'MINIGUN' ? 36 : 22))));
     breechX = muzzleX - Math.cos(theta) * backDist;
-    breechY = muzzleY - Math.sin(theta) * backDist - 1.5;
+    breechY = muzzleY - Math.sin(theta) * backDist + (weapon.id === 'MINIGUN' ? 5.0 : -1.5);
   }
 
   // Wyrzut łuski z zamka przy strzale (nie dotyczy rewolweru ani obrzyna łamanego, gdzie łuski pozostają w komorach!)
@@ -924,6 +947,47 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
  */
 export function updateWeaponState(p) {
   if (!p) return;
+
+  // -------------------------------------------------------------
+  // M134 MINIGUN ROTARY MECHANICS (SPIN-UP, SPIN-DOWN, HEAT)
+  // -------------------------------------------------------------
+  if (p.minigunSpin === undefined) p.minigunSpin = 0;
+  if (p.minigunBarrelPhase === undefined) p.minigunBarrelPhase = 0;
+  if (p.minigunHeat === undefined) p.minigunHeat = 0;
+
+  const isMinigunEquipped = p.currentWeapon && p.currentWeapon.id === 'MINIGUN';
+  const isHoldingTrigger = isMinigunEquipped && !!p.isShooting && !p.isDead && !p.isHolstered && (p.staggerTimer <= 0) && !(p.staggerRecoveryTimer > 0);
+
+  const dt = 1 / 60;
+  if (isHoldingTrigger) {
+    const prevSpin = p.minigunSpin;
+    p.minigunSpin = Math.min(1.0, p.minigunSpin + dt * 3.1);
+    if (prevSpin < 0.20 && p.minigunSpin >= 0.20) {
+      playSound('minigun_spin', {
+        x: p.x + (p.w || 24) * 0.5,
+        y: p.y + (p.h || 70) * 0.5
+      });
+    }
+  } else {
+    const prevSpin = p.minigunSpin;
+    if (p.minigunSpin > 0) {
+      p.minigunSpin = Math.max(0, p.minigunSpin - dt * 1.4);
+      if (prevSpin >= 0.40 && p.minigunSpin < 0.40) {
+        playSound('minigun_spindown', {
+          x: p.x + (p.w || 24) * 0.5,
+          y: p.y + (p.h || 70) * 0.5
+        });
+      }
+    }
+  }
+
+  if (p.minigunSpin > 0.001) {
+    p.minigunBarrelPhase = (p.minigunBarrelPhase + p.minigunSpin * 0.65) % 4;
+  }
+
+  if (p.minigunHeat > 0) {
+    p.minigunHeat = Math.max(0, p.minigunHeat - 0.008);
+  }
 
   if (p.weaponKickback > 0.05) {
     p.weaponKickback *= 0.65;

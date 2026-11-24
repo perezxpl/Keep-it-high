@@ -196,6 +196,12 @@ export const WEAPON_CONFIG = {
     reserveAmmo: 200,
     reloadTime: 2.6
   },
+  MINIGUN: {
+    magSize: 150,
+    currentAmmo: 150,
+    reserveAmmo: 300,
+    reloadTime: 3.5
+  },
   KNIFE: {
     magSize: 0,
     currentAmmo: 0,

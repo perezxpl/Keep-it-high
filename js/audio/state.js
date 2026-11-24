@@ -21,7 +21,8 @@ export const WEAPON_FIRE_SOUND_MAP = {
   REVOLVER: 'weapon_revolver',
   SAWED_OFF: 'weapon_sawed_off',
   RPG7: 'weapon_rpg7',
-  FLAMETHROWER: 'weapon_flamethrower'
+  FLAMETHROWER: 'weapon_flamethrower',
+  MINIGUN: 'weapon_minigun'
 };
 
 /**
@@ -39,6 +40,9 @@ export const SOUND_CATALOG = {
   weapon_sawed_off: { bus: 'sfx', volume: 0.68, pitchJitter: 0.03, cooldownMs: 90, spatial: true, maxDistance: 1800 },
   weapon_rpg7: { bus: 'sfx', volume: 0.72, pitchJitter: 0.03, cooldownMs: 140, spatial: true, maxDistance: 2050 },
   weapon_flamethrower: { bus: 'sfx', volume: 0.70, pitchJitter: 0.03, cooldownMs: 70, spatial: true, maxDistance: 1650 },
+  weapon_minigun: { bus: 'sfx', volume: 0.58, pitchJitter: 0.04, cooldownMs: 35, spatial: true, maxDistance: 1950 },
+  minigun_spin: { bus: 'sfx', volume: 0.36, pitchJitter: 0.02, cooldownMs: 80, spatial: true, maxDistance: 1400 },
+  minigun_spindown: { bus: 'sfx', volume: 0.32, pitchJitter: 0.02, cooldownMs: 120, spatial: true, maxDistance: 1300 },
   weapon_melee_swing: { bus: 'sfx', volume: 0.22, pitchJitter: 0.05, cooldownMs: 65, spatial: true, maxDistance: 850 },
   weapon_melee_hit: { bus: 'sfx', volume: 0.56, pitchJitter: 0.04, cooldownMs: 60, spatial: true, maxDistance: 1100 },
   weapon_dry_fire: { bus: 'sfx', volume: 0.44, pitchJitter: 0.03, cooldownMs: 100, spatial: true, maxDistance: 750 },

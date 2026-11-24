@@ -41,7 +41,7 @@ export function getStoredLoadout() {
     const rawSlots = Array.isArray(parsed?.pocket1?.slots) ? parsed.pocket1.slots : fallback.pocket1.slots;
     
     // Ścisła walidacja ról bojowych slotów:
-    const validSlot0 = ['AK47', 'SHOTGUN', 'SNIPER', 'FLAMETHROWER'];
+    const validSlot0 = ['AK47', 'SHOTGUN', 'SNIPER', 'FLAMETHROWER', 'MINIGUN'];
     const validSlot1 = ['GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7'];
     const validSlot2 = ['KNIFE', 'MACHETE', 'AXE'];
 

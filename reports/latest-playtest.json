@@ -1,23 +1,23 @@
 {
-  "timestamp": "2026-11-24T07:29:12.538Z",
+  "timestamp": "2026-11-24T12:58:05.917Z",
   "stats": {
-    "frameCount": 644,
-    "analyzedFrames": 584,
-    "durationSeconds": 15.4,
-    "avgFps": 59.4,
-    "avgFrameTimeMs": 16.83,
+    "frameCount": 1024,
+    "analyzedFrames": 964,
+    "durationSeconds": 20.4,
+    "avgFps": 59.5,
+    "avgFrameTimeMs": 16.8,
     "onePercentLowFps": 55.2,
     "p99FrameTimeMs": 18.1,
-    "maxFrameTimeMs": 26.9,
-    "maxDtMs": 18.3,
-    "avgDrawCalls": 999,
-    "maxDrawCalls": 1256,
+    "maxFrameTimeMs": 20.2,
+    "maxDtMs": 20.7,
+    "avgDrawCalls": 1170,
+    "maxDrawCalls": 1546,
     "drawCallsBreakdown": {
-      "fill": 358,
-      "stroke": 537,
-      "drawImage": 104,
-      "arc": 178,
-      "quadraticCurveTo": 574,
+      "fill": 446,
+      "stroke": 613,
+      "drawImage": 110,
+      "arc": 266,
+      "quadraticCurveTo": 573,
       "clip": 0
     }
   },
@@ -28,8 +28,259 @@
     "surfaceJitters": 0,
     "blockStateDesyncs": 0,
     "frameStutters": 0,
-    "highDrawCalls": 0
+    "highDrawCalls": 10
   },
-  "anomaliesCount": 0,
-  "anomalies": []
+  "anomaliesCount": 10,
+  "anomalies": [
+    {
+      "id": 1,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::18",
+      "firstFrame": 540,
+      "lastFrame": 566,
+      "firstTimeMs": 14423.5,
+      "lastTimeMs": 14873.400000095367,
+      "count": 27,
+      "title": "Przekroczony limit Draw Calls: 1297 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 566: totalDrawCalls=1427 (fill=597, stroke=731, drawImage=99, arc=432, quadraticCurveTo=658). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1427,
+        "breakdown": {
+          "fill": 597,
+          "stroke": 731,
+          "drawImage": 99,
+          "arc": 432,
+          "quadraticCurveTo": 658,
+          "clip": 0,
+          "totalDrawCalls": 1427
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 2,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::22",
+      "firstFrame": 684,
+      "lastFrame": 689,
+      "firstTimeMs": 17337.599999904633,
+      "lastTimeMs": 17424.799999713898,
+      "count": 6,
+      "title": "Przekroczony limit Draw Calls: 1364 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 689: totalDrawCalls=1369 (fill=550, stroke=708, drawImage=111, arc=382, quadraticCurveTo=665). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1369,
+        "breakdown": {
+          "fill": 550,
+          "stroke": 708,
+          "drawImage": 111,
+          "arc": 382,
+          "quadraticCurveTo": 665,
+          "clip": 0,
+          "totalDrawCalls": 1369
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 3,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::23",
+      "firstFrame": 690,
+      "lastFrame": 700,
+      "firstTimeMs": 17441.699999809265,
+      "lastTimeMs": 17620.599999904633,
+      "count": 11,
+      "title": "Przekroczony limit Draw Calls: 1367 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 700: totalDrawCalls=1370 (fill=546, stroke=712, drawImage=112, arc=373, quadraticCurveTo=665). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1370,
+        "breakdown": {
+          "fill": 546,
+          "stroke": 712,
+          "drawImage": 112,
+          "arc": 373,
+          "quadraticCurveTo": 665,
+          "clip": 0,
+          "totalDrawCalls": 1370
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 4,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::28",
+      "firstFrame": 843,
+      "lastFrame": 869,
+      "firstTimeMs": 20145.099999904633,
+      "lastTimeMs": 20606.299999713898,
+      "count": 27,
+      "title": "Przekroczony limit Draw Calls: 1301 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 869: totalDrawCalls=1305 (fill=550, stroke=639, drawImage=116, arc=391, quadraticCurveTo=549). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1305,
+        "breakdown": {
+          "fill": 550,
+          "stroke": 639,
+          "drawImage": 116,
+          "arc": 391,
+          "quadraticCurveTo": 549,
+          "clip": 0,
+          "totalDrawCalls": 1305
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 5,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::29",
+      "firstFrame": 870,
+      "lastFrame": 883,
+      "firstTimeMs": 20625,
+      "lastTimeMs": 20975.900000095367,
+      "count": 14,
+      "title": "Przekroczony limit Draw Calls: 1300 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 883: totalDrawCalls=1282 (fill=532, stroke=634, drawImage=116, arc=365, quadraticCurveTo=548). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1282,
+        "breakdown": {
+          "fill": 532,
+          "stroke": 634,
+          "drawImage": 116,
+          "arc": 365,
+          "quadraticCurveTo": 548,
+          "clip": 0,
+          "totalDrawCalls": 1282
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 6,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::30",
+      "firstFrame": 929,
+      "lastFrame": 929,
+      "firstTimeMs": 21784.299999713898,
+      "lastTimeMs": 21784.299999713898,
+      "count": 1,
+      "title": "Przekroczony limit Draw Calls: 1291 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 929: totalDrawCalls=1291 (fill=531, stroke=641, drawImage=119, arc=347, quadraticCurveTo=498). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1291,
+        "breakdown": {
+          "fill": 531,
+          "stroke": 641,
+          "drawImage": 119,
+          "arc": 347,
+          "quadraticCurveTo": 498,
+          "clip": 0,
+          "totalDrawCalls": 1291
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 7,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::31",
+      "firstFrame": 930,
+      "lastFrame": 959,
+      "firstTimeMs": 21800.900000095367,
+      "lastTimeMs": 22302.900000095367,
+      "count": 25,
+      "title": "Przekroczony limit Draw Calls: 1290 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 959: totalDrawCalls=1369 (fill=595, stroke=674, drawImage=100, arc=430, quadraticCurveTo=498). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1369,
+        "breakdown": {
+          "fill": 595,
+          "stroke": 674,
+          "drawImage": 100,
+          "arc": 430,
+          "quadraticCurveTo": 498,
+          "clip": 0,
+          "totalDrawCalls": 1369
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 8,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::32",
+      "firstFrame": 960,
+      "lastFrame": 989,
+      "firstTimeMs": 22319.400000095367,
+      "lastTimeMs": 22824.699999809265,
+      "count": 30,
+      "title": "Przekroczony limit Draw Calls: 1371 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 989: totalDrawCalls=1419 (fill=637, stroke=682, drawImage=100, arc=501, quadraticCurveTo=498). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1419,
+        "breakdown": {
+          "fill": 637,
+          "stroke": 682,
+          "drawImage": 100,
+          "arc": 501,
+          "quadraticCurveTo": 498,
+          "clip": 0,
+          "totalDrawCalls": 1419
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 9,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::33",
+      "firstFrame": 990,
+      "lastFrame": 1019,
+      "firstTimeMs": 22843.099999904633,
+      "lastTimeMs": 23353.099999904633,
+      "count": 30,
+      "title": "Przekroczony limit Draw Calls: 1418 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 1019: totalDrawCalls=1299 (fill=559, stroke=638, drawImage=102, arc=418, quadraticCurveTo=532). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1299,
+        "breakdown": {
+          "fill": 559,
+          "stroke": 638,
+          "drawImage": 102,
+          "arc": 418,
+          "quadraticCurveTo": 532,
+          "clip": 0,
+          "totalDrawCalls": 1299
+        },
+        "arena": "ARENA_3"
+      }
+    },
+    {
+      "id": 10,
+      "type": "HIGH_DRAW_CALLS",
+      "key": "HIGH_DRAW_CALLS::34",
+      "firstFrame": 1020,
+      "lastFrame": 1024,
+      "firstTimeMs": 23367.5,
+      "lastTimeMs": 23442.799999713898,
+      "count": 5,
+      "title": "Przekroczony limit Draw Calls: 1300 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 1024: totalDrawCalls=1303 (fill=563, stroke=638, drawImage=102, arc=424, quadraticCurveTo=532). Arena: ARENA_3.",
+      "metadata": {
+        "totalCalls": 1303,
+        "breakdown": {
+          "fill": 563,
+          "stroke": 638,
+          "drawImage": 102,
+          "arc": 424,
+          "quadraticCurveTo": 532,
+          "clip": 0,
+          "totalDrawCalls": 1303
+        },
+        "arena": "ARENA_3"
+      }
+    }
+  ]
 }

@@ -195,7 +195,10 @@ if (typeof window !== 'undefined') {
 
 export let devZoomLevel = null; // null = dynamiczny zoom gry, liczba = stały zoom DEV
 export function setDevZoom(val) {
-  devZoomLevel = val !== null ? Math.max(0.35, Math.min(2.5, val)) : null;
+  devZoomLevel = val !== null ? Math.max(0.35, Math.min(3.5, val)) : null;
+}
+if (typeof window !== 'undefined') {
+  window.setDevZoom = setDevZoom;
 }
 
 export function triggerScreenShake(intensity) {

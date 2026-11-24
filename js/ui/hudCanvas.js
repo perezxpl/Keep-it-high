@@ -1035,6 +1035,28 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     ctx.lineTo(11.5, 2.5);
     ctx.closePath();
     ctx.fill();
+  } else if (type === 'MINIGUN') {
+    // 1. Zespół 6 obracających się luf
+    ctx.fillRect(1, -2.2, 14, 4.4);
+    // Pierścienie zaciskowe luf
+    ctx.fillRect(5, -2.6, 1.2, 5.2);
+    ctx.fillRect(10, -2.6, 1.2, 5.2);
+    ctx.fillRect(14, -2.6, 1.0, 5.2);
+    // 2. Komora silnika i rotor
+    ctx.fillRect(-7, -3.2, 9, 6.4);
+    // 3. Górny uchwyt chainsaw handle
+    ctx.beginPath();
+    ctx.moveTo(-3, -3.2);
+    ctx.lineTo(-3, -5.5);
+    ctx.lineTo(2, -5.5);
+    ctx.lineTo(2, -3.2);
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = isSelected ? 'rgba(255, 255, 255, 0.76)' : 'rgba(255, 255, 255, 0.45)';
+    ctx.stroke();
+    // 4. Tylny uchwyt spade grip
+    ctx.fillRect(-10, -2.0, 3.2, 4.0);
+    // 5. Dolny podajnik taśmy amunicyjnej
+    ctx.fillRect(-4, 3.2, 5.0, 3.0);
   } else if (type === 'KNIFE') {
     ctx.fillRect(-6, -1.0, 5, 2.0);
     ctx.fillRect(-1.5, -3.0, 1.2, 6.0);

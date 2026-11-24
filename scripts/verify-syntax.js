@@ -182,7 +182,7 @@ try {
   const transformPathNorm = path.resolve(jsDir, 'weapons/transform.js').toLowerCase();
   const transformMod = evalModules.get(transformPathNorm);
   if (transformMod && transformMod.namespace && typeof transformMod.namespace.getWeaponHoldTransform === 'function') {
-    const allWepIds = ['AK47', 'SHOTGUN', 'SNIPER', 'GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7', 'KNIFE', 'MACHETE', 'AXE'];
+    const allWepIds = ['AK47', 'SHOTGUN', 'SNIPER', 'GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7', 'MINIGUN', 'KNIFE', 'MACHETE', 'AXE'];
     for (const wepId of allWepIds) {
       for (const moving of [false, true]) {
         for (const attacking of [false, true]) {
@@ -212,7 +212,7 @@ try {
   const weaponRendererPathNorm = path.resolve(jsDir, 'weapons/renderer.js').toLowerCase();
   const weaponRendererMod = evalModules.get(weaponRendererPathNorm);
   if (weaponRendererMod && weaponRendererMod.namespace && typeof weaponRendererMod.namespace.drawHeldWeapon === 'function') {
-    const allWepIds = ['AK47', 'SHOTGUN', 'SNIPER', 'GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7', 'KNIFE', 'MACHETE', 'AXE'];
+    const allWepIds = ['AK47', 'SHOTGUN', 'SNIPER', 'GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7', 'MINIGUN', 'KNIFE', 'MACHETE', 'AXE'];
     for (const wepId of allWepIds) {
       weaponRendererMod.namespace.drawHeldWeapon(mockContext, {
         currentWeapon: { id: wepId },

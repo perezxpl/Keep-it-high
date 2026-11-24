@@ -74,6 +74,21 @@ export const ARMORY_CATALOG = {
         reload: '2.6s',
         stats: { dmgBar: 88, rpmBar: 95, magBar: 90, relBar: 60 },
         desc: 'Miotacz ciekłego napalmu. Wyrzuca opadający łuk ognia z grawitacją i tworzy płonące plamy rozlane na powierzchniach.'
+      },
+      {
+        id: 'MINIGUN',
+        name: 'M134 MINIGUN',
+        fullName: 'Ciężki Karabin Maszynowy M134 Vulcan',
+        category: 'GŁÓWNA',
+        caliber: '7.62x51MM ROTARY',
+        typeLabel: 'OBROTOWY CIĘŻKI KM',
+        dmg: 75,
+        rpm: 1200,
+        mag: 150,
+        reserve: 300,
+        reload: '3.5s',
+        stats: { dmgBar: 75, rpmBar: 100, magBar: 98, relBar: 35 },
+        desc: '6-lufowy obrotowy karabin maszynowy z biodra. Wymaga rozkręcenia luf, ale oferuje bezkonkurencyjną szybkostrzelność i siłę ognia.'
       }
     ],
     slot1: [
@@ -476,6 +491,12 @@ export function closeArmory() {
     _closeCallback = null;
     cb();
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.openArmory = openArmory;
+  window.closeArmory = closeArmory;
+  window.openSlotPicker = openSlotPicker;
 }
 
 /**
