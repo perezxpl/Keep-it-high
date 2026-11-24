@@ -3,7 +3,7 @@
 // =============================================================================
 
 export const AUDIO_CONFIG = {
-  MANIFEST_URL: './assets/audio/manifest.json?v=v512_minigun_authentic_audio',
+  MANIFEST_URL: './assets/audio/manifest.json?v=v513_minigun_deep_seamless_loop',
   DEFAULT_BASE_PATH: './assets/audio/',
   ENABLE_GAMEPLAY_SYNTH: false,
   ENABLE_UI_SYNTH_FALLBACK: true,
@@ -41,6 +41,7 @@ export const SOUND_CATALOG = {
   weapon_rpg7: { bus: 'sfx', volume: 0.72, pitchJitter: 0.03, cooldownMs: 140, spatial: true, maxDistance: 2050 },
   weapon_flamethrower: { bus: 'sfx', volume: 0.70, pitchJitter: 0.03, cooldownMs: 70, spatial: true, maxDistance: 1650 },
   weapon_minigun: { bus: 'sfx', volume: 0.62, pitchJitter: 0.035, cooldownMs: 25, spatial: true, maxDistance: 1950 },
+  minigun_loop: { bus: 'sfx', volume: 0.88, pitchJitter: 0.0, cooldownMs: 0, spatial: true, maxDistance: 1950, loop: true },
   minigun_spin: { bus: 'sfx', volume: 0.36, pitchJitter: 0.02, cooldownMs: 80, spatial: true, maxDistance: 1400 },
   minigun_spindown: { bus: 'sfx', volume: 0.32, pitchJitter: 0.02, cooldownMs: 120, spatial: true, maxDistance: 1300 },
   weapon_melee_swing: { bus: 'sfx', volume: 0.22, pitchJitter: 0.05, cooldownMs: 65, spatial: true, maxDistance: 850 },
@@ -133,7 +134,8 @@ export const audioState = {
   loadingUrls: new Map(),
   failedUrls: new Set(),
 
-  // Aktywne głosy ciągłe (np. jetpack) i wykrywanie krawędzi stanów postaci
+  // Aktywne głosy ciągłe (np. jetpack, minigun) i wykrywanie krawędzi stanów postaci
   jetpackVoices: new Map(),
+  minigunVoices: new Map(),
   entityTrackers: new WeakMap()
 };

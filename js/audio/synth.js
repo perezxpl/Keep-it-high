@@ -259,34 +259,33 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
     }
 
     case 'weapon_minigun': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.12);
-      // 1. Zwarty, pneumatyczny thud komory gazowej (szybki spadek 175Hz -> 48Hz, 0.045s)
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 175 * p, freqEnd: 48 * p, duration: 0.045, gain: gain * 1.20 });
-      // 2. Agresywny szum rozrywanego powietrza (supersonic rip / buzzsaw tear)
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.038, gain: gain * 1.25, filterType: 'bandpass', freqStart: 2700 * p, freqEnd: 1650 * p, Q: 1.8 });
-      // 3. Metaliczny trzask zamka wielolufowego i rolek krzywkowych (cam roller click)
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.016, gain: gain * 0.90, filterType: 'highpass', freqStart: 3400 * p, freqEnd: 2200 * p, Q: 1.1 });
-      scheduleTone(ctx, out, { startTime: now + 0.005, type: 'square', freqStart: 1650 * p, freqEnd: 580 * p, duration: 0.018, gain: gain * 0.28, filterType: 'bandpass', filterFreq: 1800 });
-      // 4. Harmoniczna pisku silnika elektrycznego 24V DC napedzajacego rotor (640Hz)
-      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 640 * p, freqEnd: 620 * p, duration: 0.035, gain: gain * 0.24 });
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.14);
+      // 1. Gleboki, masywny sub-bass sweep (95Hz -> 36Hz, 0.06s)
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 95 * p, freqEnd: 36 * p, duration: 0.06, gain: gain * 1.35 });
+      // 2. Niski thud komory zamkowej rotora (180Hz -> 75Hz)
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 180 * p, freqEnd: 75 * p, duration: 0.045, gain: gain * 0.85 });
+      // 3. Ciemny szum rozrywanego powietrza (supersonic rip / buzzsaw tear 520Hz)
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.042, gain: gain * 1.10, filterType: 'bandpass', freqStart: 620 * p, freqEnd: 380 * p, Q: 1.4 });
+      // 4. Subtelny ton silnika elektrycznego (460Hz)
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 460 * p, freqEnd: 440 * p, duration: 0.038, gain: gain * 0.18 });
       return true;
     }
 
     case 'minigun_spin': {
       const { now, out } = createVoiceStage(ctx, destNode, pan, 0.35);
-      // Rozkrecajacy sie silnik elektryczny i obracajace sie lufy (wznoszacy pisk turbiny)
-      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 180 * p, freqEnd: 640 * p, duration: 0.32, gain: gain * 0.45, attack: 0.05, filterType: 'lowpass', filterFreq: 1800 });
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 240 * p, freqEnd: 820 * p, duration: 0.34, gain: gain * 0.35, attack: 0.04 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.30, gain: gain * 0.28, attack: 0.05, filterType: 'bandpass', freqStart: 450 * p, freqEnd: 1200 * p, Q: 2.5 });
+      // Rozkrecajacy sie silnik elektryczny i rotujace lufy (niski wznoszacy dzwiek silnika)
+      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 110 * p, freqEnd: 460 * p, duration: 0.32, gain: gain * 0.45, attack: 0.05, filterType: 'lowpass', filterFreq: 1200 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 180 * p, freqEnd: 540 * p, duration: 0.34, gain: gain * 0.35, attack: 0.04 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.30, gain: gain * 0.28, attack: 0.05, filterType: 'bandpass', freqStart: 320 * p, freqEnd: 850 * p, Q: 2.0 });
       return true;
     }
 
     case 'minigun_spindown': {
       const { now, out } = createVoiceStage(ctx, destNode, pan, 0.42);
-      // Wyhamowujacy silnik i bezwladnosc luf (opadajacy gwizd)
-      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 620 * p, freqEnd: 140 * p, duration: 0.40, gain: gain * 0.40, filterType: 'lowpass', filterFreq: 1400 });
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 780 * p, freqEnd: 180 * p, duration: 0.38, gain: gain * 0.30 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.36, gain: gain * 0.25, filterType: 'bandpass', freqStart: 1100 * p, freqEnd: 320 * p, Q: 2.0 });
+      // Wyhamowujacy silnik i bezwladnosc luf (niski opadajacy dzwiek silnika)
+      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 460 * p, freqEnd: 90 * p, duration: 0.40, gain: gain * 0.40, filterType: 'lowpass', filterFreq: 1100 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 540 * p, freqEnd: 120 * p, duration: 0.38, gain: gain * 0.30 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.36, gain: gain * 0.25, filterType: 'bandpass', freqStart: 850 * p, freqEnd: 240 * p, Q: 1.8 });
       return true;
     }
 
@@ -698,6 +697,116 @@ export function createSynthJetpackVoice(ctx, destNode) {
       try { filter.disconnect(); } catch (_) {}
       try { humFilter.disconnect(); } catch (_) {}
       try { humGain.disconnect(); } catch (_) {}
+      try { gainNode.disconnect(); } catch (_) {}
+      if (panner) {
+        try { panner.disconnect(); } catch (_) {}
+      }
+    }
+  };
+}
+
+/**
+ * Tworzy ciagly glos pracy i wystrzalow Miniguna M134 (synteza Web Audio dla ciaglego, niskiego ryku rotora).
+ */
+export function createSynthMinigunVoice(ctx, destNode) {
+  if (!ctx || !destNode) return null;
+  const now = ctx.currentTime;
+
+  // 1. Podwojny oscylator sub-bassowy (58Hz i 116Hz - gleboki, basowy wstrzas rotora)
+  const bassOsc1 = ctx.createOscillator();
+  bassOsc1.type = 'sawtooth';
+  bassOsc1.frequency.setValueAtTime(58, now);
+
+  const bassFilter1 = ctx.createBiquadFilter();
+  bassFilter1.type = 'lowpass';
+  bassFilter1.frequency.setValueAtTime(160, now);
+  bassFilter1.Q.setValueAtTime(1.4, now);
+
+  const bassGain1 = ctx.createGain();
+  bassGain1.gain.setValueAtTime(0.55, now);
+
+  const bassOsc2 = ctx.createOscillator();
+  bassOsc2.type = 'triangle';
+  bassOsc2.frequency.setValueAtTime(116, now);
+
+  const bassGain2 = ctx.createGain();
+  bassGain2.gain.setValueAtTime(0.35, now);
+
+  // 2. Silnik elektryczny i przekladnia rotora (460Hz)
+  const motorOsc = ctx.createOscillator();
+  motorOsc.type = 'sine';
+  motorOsc.frequency.setValueAtTime(460, now);
+
+  const motorGain = ctx.createGain();
+  motorGain.gain.setValueAtTime(0.08, now);
+
+  // 3. Ciagly szum rozrywanego powietrza (supersonic rip / buzzsaw tear)
+  const noiseSrc = ctx.createBufferSource();
+  noiseSrc.buffer = getNoiseBuffer(ctx);
+  noiseSrc.loop = true;
+
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.setValueAtTime(480, now);
+  noiseFilter.Q.setValueAtTime(1.2, now);
+
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.65, now);
+
+  // 4. Glowny wezel glosu i panner
+  const gainNode = ctx.createGain();
+  gainNode.gain.setValueAtTime(0.0001, now);
+
+  let panner = null;
+  if (typeof ctx.createStereoPanner === 'function') {
+    panner = ctx.createStereoPanner();
+    panner.pan.setValueAtTime(0, now);
+    gainNode.connect(panner);
+    panner.connect(destNode);
+  } else {
+    gainNode.connect(destNode);
+  }
+
+  // Polaczenia
+  bassOsc1.connect(bassFilter1);
+  bassFilter1.connect(bassGain1);
+  bassGain1.connect(gainNode);
+
+  bassOsc2.connect(bassGain2);
+  bassGain2.connect(gainNode);
+
+  motorOsc.connect(motorGain);
+  motorGain.connect(gainNode);
+
+  noiseSrc.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(gainNode);
+
+  // Uruchomienie zrodel
+  bassOsc1.start(now);
+  bassOsc2.start(now);
+  motorOsc.start(now);
+  noiseSrc.start(now);
+
+  return {
+    type: 'synth',
+    gainNode,
+    panner,
+    stop: () => {
+      try { bassOsc1.stop(); } catch (_) {}
+      try { bassOsc2.stop(); } catch (_) {}
+      try { motorOsc.stop(); } catch (_) {}
+      try { noiseSrc.stop(); } catch (_) {}
+      try { bassOsc1.disconnect(); } catch (_) {}
+      try { bassFilter1.disconnect(); } catch (_) {}
+      try { bassGain1.disconnect(); } catch (_) {}
+      try { bassOsc2.disconnect(); } catch (_) {}
+      try { bassGain2.disconnect(); } catch (_) {}
+      try { motorOsc.disconnect(); } catch (_) {}
+      try { motorGain.disconnect(); } catch (_) {}
+      try { noiseSrc.disconnect(); } catch (_) {}
+      try { noiseFilter.disconnect(); } catch (_) {}
+      try { noiseGain.disconnect(); } catch (_) {}
       try { gainNode.disconnect(); } catch (_) {}
       if (panner) {
         try { panner.disconnect(); } catch (_) {}

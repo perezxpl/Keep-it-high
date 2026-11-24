@@ -16,6 +16,7 @@ import {
   syncAudioSettings,
   setAudioGameState,
   stopAllJetpackVoices,
+  stopAllMinigunVoices,
   testSound,
   playUiClick,
   playUiHover,
@@ -37,6 +38,7 @@ export {
   syncAudioSettings,
   setAudioGameState,
   stopAllJetpackVoices,
+  stopAllMinigunVoices,
   testSound,
   loadAudioManifest,
   setCustomSoundOverride,
@@ -56,6 +58,7 @@ if (typeof window !== 'undefined') {
     list: () => Object.keys(SOUND_CATALOG),
     setOverride: (soundId, sourceSpec) => setCustomSoundOverride(soundId, sourceSpec),
     clearOverride: (soundId) => clearCustomSoundOverride(soundId),
-    reloadManifest: () => loadAudioManifest(true)
+    reloadManifest: () => loadAudioManifest(true),
+    getState: () => audioState
   };
 }

@@ -75,8 +75,13 @@ async function run() {
     const result = {
       hasAudioApi: !!window.KeepItHighAudio,
       soundTested: false,
+      loopTested: false,
       ctxState: null,
-      soundList: []
+      soundList: [],
+      hasMinigunInCatalog: false,
+      hasMinigunLoopInCatalog: false,
+      minigunVoiceActive: false,
+      minigunVoiceStopped: false
     };
 
     if (window.audioContext && window.audioContext.state === 'suspended') {
@@ -85,8 +90,47 @@ async function run() {
 
     if (window.KeepItHighAudio) {
       result.soundList = window.KeepItHighAudio.list();
+      result.hasMinigunInCatalog = result.soundList.includes('weapon_minigun');
+      result.hasMinigunLoopInCatalog = result.soundList.includes('minigun_loop');
       result.soundTested = window.KeepItHighAudio.test('weapon_minigun');
+      result.loopTested = window.KeepItHighAudio.test('minigun_loop');
       if (window.audioContext) result.ctxState = window.audioContext.state;
+
+      // Test gameplay loop with player
+      if (window.player && window.WEAPONS && window.WEAPONS.MINIGUN) {
+        window.player.currentWeapon = window.WEAPONS.MINIGUN;
+        window.player.minigunSpin = 1.0;
+        if (window.mouseState) window.mouseState.isDown = true;
+        window.player.isShooting = true;
+        if (!window.player.ammo) window.player.ammo = {};
+        if (!window.player.ammo.MINIGUN) window.player.ammo.MINIGUN = { currentAmmo: 150, reserveAmmo: 300, isReloading: false };
+
+        // Keep shooting active across frames
+        const shootInterval = setInterval(() => {
+          if (window.player) {
+            window.player.isShooting = true;
+            window.player.minigunSpin = 1.0;
+          }
+        }, 16);
+
+        // Let game update loop run for 200ms
+        await new Promise(r => setTimeout(r, 200));
+
+        const state = window.KeepItHighAudio.getState?.();
+        if (state && state.minigunVoices && state.minigunVoices.has(window.player)) {
+          result.minigunVoiceActive = true;
+        }
+
+        clearInterval(shootInterval);
+        // Release trigger
+        if (window.mouseState) window.mouseState.isDown = false;
+        window.player.isShooting = false;
+        await new Promise(r => setTimeout(r, 200));
+
+        if (state && state.minigunVoices && !state.minigunVoices.has(window.player)) {
+          result.minigunVoiceStopped = true;
+        }
+      }
     }
 
     return result;
@@ -97,11 +141,17 @@ async function run() {
   await browser.close();
   server.close();
 
-  if (!audioCheck.soundTested) {
-    console.error('Failed: weapon_minigun testSound returned false');
+  if (!audioCheck.soundTested || !audioCheck.loopTested) {
+    console.error('Failed: minigun sound tests failed');
+    process.exit(1);
+  } else if (!audioCheck.minigunVoiceActive) {
+    console.error('Failed: continuous minigun loop voice did not activate during firing');
+    process.exit(1);
+  } else if (!audioCheck.minigunVoiceStopped) {
+    console.error('Failed: continuous minigun loop voice did not stop after release');
     process.exit(1);
   } else {
-    console.log('SUCCESS: Minigun audio loaded and playable.');
+    console.log('SUCCESS: Minigun audio loaded, continuous loop voice active on fire and cleaned up on release.');
   }
 }
 

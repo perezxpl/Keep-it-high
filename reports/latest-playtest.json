@@ -1,23 +1,23 @@
 {
-  "timestamp": "2026-11-24T14:51:49.263Z",
+  "timestamp": "2026-11-24T15:16:10.060Z",
   "stats": {
-    "frameCount": 997,
-    "analyzedFrames": 937,
+    "frameCount": 1029,
+    "analyzedFrames": 969,
     "durationSeconds": 20.3,
-    "avgFps": 59.1,
-    "avgFrameTimeMs": 16.92,
-    "onePercentLowFps": 54.9,
-    "p99FrameTimeMs": 18.2,
-    "maxFrameTimeMs": 34.2,
-    "maxDtMs": 75,
-    "avgDrawCalls": 1046,
-    "maxDrawCalls": 1425,
+    "avgFps": 59.7,
+    "avgFrameTimeMs": 16.76,
+    "onePercentLowFps": 55.2,
+    "p99FrameTimeMs": 18.1,
+    "maxFrameTimeMs": 18.9,
+    "maxDtMs": 20.4,
+    "avgDrawCalls": 1035,
+    "maxDrawCalls": 1349,
     "drawCallsBreakdown": {
-      "fill": 389,
-      "stroke": 553,
-      "drawImage": 104,
-      "arc": 225,
-      "quadraticCurveTo": 493,
+      "fill": 354,
+      "stroke": 572,
+      "drawImage": 108,
+      "arc": 176,
+      "quadraticCurveTo": 547,
       "clip": 0
     }
   },
@@ -27,243 +27,30 @@
     "fallingBlockGlitches": 0,
     "surfaceJitters": 0,
     "blockStateDesyncs": 0,
-    "frameStutters": 4,
-    "highDrawCalls": 8
+    "frameStutters": 0,
+    "highDrawCalls": 3
   },
-  "anomaliesCount": 12,
+  "anomaliesCount": 3,
   "anomalies": [
     {
       "id": 1,
-      "type": "FRAME_STUTTER",
-      "key": "STUTTER::6",
-      "firstFrame": 90,
-      "lastFrame": 90,
-      "firstTimeMs": 6162.699999809265,
-      "lastTimeMs": 6162.699999809265,
-      "count": 1,
-      "title": "Przycięcie klatki: dt=75.0ms, exec=21.5ms",
-      "details": "Zarejestrowano spadek płynności w klatce 90 (dt=75.0ms, wykonanie=21.5ms > limit 28ms). Arena: ARENA_3, żywe postacie: 6, pociski: 0, cząsteczki: 0, krew: 0, opadające klocki: 0, wybuchy linii: 0.",
-      "metadata": {
-        "dtMs": 75,
-        "frameExecutionMs": 21.5,
-        "arena": "ARENA_3",
-        "aliveCombatants": 6,
-        "bulletsCount": 0,
-        "particlesCount": 0,
-        "fallingBlocksCount": 0,
-        "clearingRowsCount": 0
-      }
-    },
-    {
-      "id": 2,
-      "type": "FRAME_STUTTER",
-      "key": "STUTTER::14",
-      "firstFrame": 221,
-      "lastFrame": 221,
-      "firstTimeMs": 9043.400000095367,
-      "lastTimeMs": 9043.400000095367,
-      "count": 1,
-      "title": "Przycięcie klatki: dt=36.0ms, exec=11.6ms",
-      "details": "Zarejestrowano spadek płynności w klatce 221 (dt=36.0ms, wykonanie=11.6ms > limit 28ms). Arena: ARENA_3, żywe postacie: 6, pociski: 0, cząsteczki: 0, krew: 0, opadające klocki: 0, wybuchy linii: 0.",
-      "metadata": {
-        "dtMs": 36,
-        "frameExecutionMs": 11.599999904632568,
-        "arena": "ARENA_3",
-        "aliveCombatants": 6,
-        "bulletsCount": 0,
-        "particlesCount": 0,
-        "fallingBlocksCount": 0,
-        "clearingRowsCount": 0
-      }
-    },
-    {
-      "id": 3,
-      "type": "HIGH_DRAW_CALLS",
-      "key": "HIGH_DRAW_CALLS::8",
-      "firstFrame": 241,
-      "lastFrame": 261,
-      "firstTimeMs": 9652.199999809265,
-      "lastTimeMs": 10006.300000190735,
-      "count": 21,
-      "title": "Przekroczony limit Draw Calls: 1322 > 1275",
-      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 261: totalDrawCalls=1373 (fill=541, stroke=710, drawImage=122, arc=331, quadraticCurveTo=643). Arena: ARENA_3.",
-      "metadata": {
-        "totalCalls": 1373,
-        "breakdown": {
-          "fill": 541,
-          "stroke": 710,
-          "drawImage": 122,
-          "arc": 331,
-          "quadraticCurveTo": 643,
-          "clip": 0,
-          "totalDrawCalls": 1373
-        },
-        "arena": "ARENA_3"
-      }
-    },
-    {
-      "id": 4,
-      "type": "FRAME_STUTTER",
-      "key": "STUTTER::16",
-      "firstFrame": 242,
-      "lastFrame": 243,
-      "firstTimeMs": 9689.099999904633,
-      "lastTimeMs": 9698.5,
-      "count": 2,
-      "title": "Przycięcie klatki: dt=16.7ms, exec=34.2ms",
-      "details": "Zarejestrowano spadek płynności w klatce 243 (dt=35.1ms, wykonanie=8.2ms > limit 28ms). Arena: ARENA_3, żywe postacie: 5, pociski: 0, cząsteczki: 0, krew: 0, opadające klocki: 0, wybuchy linii: 0.",
-      "metadata": {
-        "dtMs": 35.100000000000364,
-        "frameExecutionMs": 8.199999809265137,
-        "arena": "ARENA_3",
-        "aliveCombatants": 5,
-        "bulletsCount": 0,
-        "particlesCount": 0,
-        "fallingBlocksCount": 0,
-        "clearingRowsCount": 0
-      }
-    },
-    {
-      "id": 5,
-      "type": "HIGH_DRAW_CALLS",
-      "key": "HIGH_DRAW_CALLS::12",
-      "firstFrame": 386,
-      "lastFrame": 386,
-      "firstTimeMs": 12188.099999904633,
-      "lastTimeMs": 12188.099999904633,
-      "count": 1,
-      "title": "Przekroczony limit Draw Calls: 1329 > 1275",
-      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 386: totalDrawCalls=1329 (fill=538, stroke=701, drawImage=90, arc=374, quadraticCurveTo=622). Arena: ARENA_3.",
-      "metadata": {
-        "totalCalls": 1329,
-        "breakdown": {
-          "fill": 538,
-          "stroke": 701,
-          "drawImage": 90,
-          "arc": 374,
-          "quadraticCurveTo": 622,
-          "clip": 0,
-          "totalDrawCalls": 1329
-        },
-        "arena": "ARENA_3"
-      }
-    },
-    {
-      "id": 6,
       "type": "HIGH_DRAW_CALLS",
       "key": "HIGH_DRAW_CALLS::13",
-      "firstFrame": 390,
-      "lastFrame": 398,
-      "firstTimeMs": 12256.099999904633,
-      "lastTimeMs": 12395.5,
-      "count": 5,
-      "title": "Przekroczony limit Draw Calls: 1278 > 1275",
-      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 398: totalDrawCalls=1276 (fill=533, stroke=634, drawImage=109, arc=367, quadraticCurveTo=532). Arena: ARENA_3.",
-      "metadata": {
-        "totalCalls": 1276,
-        "breakdown": {
-          "fill": 533,
-          "stroke": 634,
-          "drawImage": 109,
-          "arc": 367,
-          "quadraticCurveTo": 532,
-          "clip": 0,
-          "totalDrawCalls": 1276
-        },
-        "arena": "ARENA_3"
-      }
-    },
-    {
-      "id": 7,
-      "type": "FRAME_STUTTER",
-      "key": "STUTTER::34",
-      "firstFrame": 510,
-      "lastFrame": 510,
-      "firstTimeMs": 14890,
-      "lastTimeMs": 14890,
-      "count": 1,
-      "title": "Przycięcie klatki: dt=44.6ms, exec=9.7ms",
-      "details": "Zarejestrowano spadek płynności w klatce 510 (dt=44.6ms, wykonanie=9.7ms > limit 28ms). Arena: ARENA_3, żywe postacie: 5, pociski: 0, cząsteczki: 0, krew: 0, opadające klocki: 0, wybuchy linii: 0.",
-      "metadata": {
-        "dtMs": 44.600000000000364,
-        "frameExecutionMs": 9.699999809265137,
-        "arena": "ARENA_3",
-        "aliveCombatants": 5,
-        "bulletsCount": 0,
-        "particlesCount": 0,
-        "fallingBlocksCount": 0,
-        "clearingRowsCount": 0
-      }
-    },
-    {
-      "id": 8,
-      "type": "HIGH_DRAW_CALLS",
-      "key": "HIGH_DRAW_CALLS::18",
-      "firstFrame": 541,
-      "lastFrame": 569,
-      "firstTimeMs": 15427.699999809265,
-      "lastTimeMs": 15922.199999809265,
-      "count": 29,
-      "title": "Przekroczony limit Draw Calls: 1300 > 1275",
-      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 569: totalDrawCalls=1283 (fill=496, stroke=666, drawImage=121, arc=276, quadraticCurveTo=664). Arena: ARENA_3.",
-      "metadata": {
-        "totalCalls": 1283,
-        "breakdown": {
-          "fill": 496,
-          "stroke": 666,
-          "drawImage": 121,
-          "arc": 276,
-          "quadraticCurveTo": 664,
-          "clip": 0,
-          "totalDrawCalls": 1283
-        },
-        "arena": "ARENA_3"
-      }
-    },
-    {
-      "id": 9,
-      "type": "HIGH_DRAW_CALLS",
-      "key": "HIGH_DRAW_CALLS::19",
-      "firstFrame": 570,
-      "lastFrame": 599,
-      "firstTimeMs": 15939.800000190735,
-      "lastTimeMs": 16446.800000190735,
-      "count": 13,
-      "title": "Przekroczony limit Draw Calls: 1277 > 1275",
-      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 599: totalDrawCalls=1290 (fill=484, stroke=682, drawImage=124, arc=298, quadraticCurveTo=660). Arena: ARENA_3.",
-      "metadata": {
-        "totalCalls": 1290,
-        "breakdown": {
-          "fill": 484,
-          "stroke": 682,
-          "drawImage": 124,
-          "arc": 298,
-          "quadraticCurveTo": 660,
-          "clip": 0,
-          "totalDrawCalls": 1290
-        },
-        "arena": "ARENA_3"
-      }
-    },
-    {
-      "id": 10,
-      "type": "HIGH_DRAW_CALLS",
-      "key": "HIGH_DRAW_CALLS::20",
-      "firstFrame": 600,
-      "lastFrame": 619,
-      "firstTimeMs": 16467.099999904633,
-      "lastTimeMs": 16798.099999904633,
-      "count": 18,
-      "title": "Przekroczony limit Draw Calls: 1289 > 1275",
-      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 619: totalDrawCalls=1288 (fill=480, stroke=688, drawImage=120, arc=261, quadraticCurveTo=658). Arena: ARENA_3.",
+      "firstFrame": 413,
+      "lastFrame": 419,
+      "firstTimeMs": 12151.900000095367,
+      "lastTimeMs": 12257.199999809265,
+      "count": 7,
+      "title": "Przekroczony limit Draw Calls: 1291 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 419: totalDrawCalls=1288 (fill=470, stroke=696, drawImage=122, arc=334, quadraticCurveTo=656). Arena: ARENA_3.",
       "metadata": {
         "totalCalls": 1288,
         "breakdown": {
-          "fill": 480,
-          "stroke": 688,
-          "drawImage": 120,
-          "arc": 261,
-          "quadraticCurveTo": 658,
+          "fill": 470,
+          "stroke": 696,
+          "drawImage": 122,
+          "arc": 334,
+          "quadraticCurveTo": 656,
           "clip": 0,
           "totalDrawCalls": 1288
         },
@@ -271,51 +58,51 @@
       }
     },
     {
-      "id": 11,
+      "id": 2,
       "type": "HIGH_DRAW_CALLS",
-      "key": "HIGH_DRAW_CALLS::24",
-      "firstFrame": 742,
-      "lastFrame": 749,
-      "firstTimeMs": 18958.199999809265,
-      "lastTimeMs": 19081.400000095367,
-      "count": 8,
-      "title": "Przekroczony limit Draw Calls: 1336 > 1275",
-      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 749: totalDrawCalls=1343 (fill=549, stroke=698, drawImage=96, arc=335, quadraticCurveTo=635). Arena: ARENA_3.",
+      "key": "HIGH_DRAW_CALLS::14",
+      "firstFrame": 420,
+      "lastFrame": 443,
+      "firstTimeMs": 12276.699999809265,
+      "lastTimeMs": 12804.199999809265,
+      "count": 24,
+      "title": "Przekroczony limit Draw Calls: 1288 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 443: totalDrawCalls=1289 (fill=491, stroke=664, drawImage=134, arc=297, quadraticCurveTo=658). Arena: ARENA_3.",
       "metadata": {
-        "totalCalls": 1343,
+        "totalCalls": 1289,
         "breakdown": {
-          "fill": 549,
-          "stroke": 698,
-          "drawImage": 96,
-          "arc": 335,
-          "quadraticCurveTo": 635,
+          "fill": 491,
+          "stroke": 664,
+          "drawImage": 134,
+          "arc": 297,
+          "quadraticCurveTo": 658,
           "clip": 0,
-          "totalDrawCalls": 1343
+          "totalDrawCalls": 1289
         },
         "arena": "ARENA_3"
       }
     },
     {
-      "id": 12,
+      "id": 3,
       "type": "HIGH_DRAW_CALLS",
-      "key": "HIGH_DRAW_CALLS::25",
-      "firstFrame": 750,
-      "lastFrame": 766,
-      "firstTimeMs": 19098.199999809265,
-      "lastTimeMs": 19375.300000190735,
-      "count": 17,
-      "title": "Przekroczony limit Draw Calls: 1425 > 1275",
-      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 766: totalDrawCalls=1363 (fill=581, stroke=691, drawImage=91, arc=374, quadraticCurveTo=570). Arena: ARENA_3.",
+      "key": "HIGH_DRAW_CALLS::29",
+      "firstFrame": 880,
+      "lastFrame": 883,
+      "firstTimeMs": 20873.699999809265,
+      "lastTimeMs": 20925,
+      "count": 4,
+      "title": "Przekroczony limit Draw Calls: 1343 > 1275",
+      "details": "Zarejestrowano wysokie obciążenie Canvas 2D w klatce 883: totalDrawCalls=1347 (fill=522, stroke=717, drawImage=108, arc=284, quadraticCurveTo=659). Arena: ARENA_3.",
       "metadata": {
-        "totalCalls": 1363,
+        "totalCalls": 1347,
         "breakdown": {
-          "fill": 581,
-          "stroke": 691,
-          "drawImage": 91,
-          "arc": 374,
-          "quadraticCurveTo": 570,
+          "fill": 522,
+          "stroke": 717,
+          "drawImage": 108,
+          "arc": 284,
+          "quadraticCurveTo": 659,
           "clip": 0,
-          "totalDrawCalls": 1363
+          "totalDrawCalls": 1347
         },
         "arena": "ARENA_3"
       }

@@ -700,6 +700,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     if (shooter.isRemote) {
       shooter.minigunSpin = 1.0;
       shooter.minigunBarrelPhase = ((shooter.minigunBarrelPhase || 0) + 0.65) % 4;
+      shooter.remoteMinigunFireTimer = 8;
     }
   } else {
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 26);
@@ -724,7 +725,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
     const wallHit = checkRayObstacleCollision(muzzle.shoulderX, muzzle.shoulderY, muzzleX, muzzleY, effectiveGroundY, obstacles);
     if (wallHit) {
-      playWeaponFireSound(weapon.id, muzzleX, muzzleY);
+      playWeaponFireSound(weapon.id, muzzleX, muzzleY, { shooter });
       if (weapon.id === 'RPG7' || weapon.isRocket) {
         const hitAng = theta || Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
         const rocket = spawnRpgRocket(shooter, wallHit.x, wallHit.y, hitAng, weapon);
@@ -777,7 +778,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     }
   }
 
-  playWeaponFireSound(weapon.id, muzzleX, muzzleY);
+  playWeaponFireSound(weapon.id, muzzleX, muzzleY, { shooter });
 
   if (weapon.id === 'RPG7' || weapon.isRocket) {
     spawnRpgRocket(shooter, muzzleX, muzzleY, theta, weapon);

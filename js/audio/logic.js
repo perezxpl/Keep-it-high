@@ -9,7 +9,7 @@ import {
   getReadySampleForSound,
   playDecodedSample
 } from './samples.js';
-import { playSynthSound, createSynthJetpackVoice } from './synth.js';
+import { playSynthSound, createSynthJetpackVoice, createSynthMinigunVoice } from './synth.js';
 
 function applyGainLevels() {
   const ctx = audioState.ctx;
@@ -133,11 +133,21 @@ export function stopAllJetpackVoices() {
   }
 }
 
+export function stopAllMinigunVoices() {
+  for (const [entity, entry] of audioState.minigunVoices.entries()) {
+    try {
+      entry?.voice?.stop?.();
+    } catch (_) {}
+    audioState.minigunVoices.delete(entity);
+  }
+}
+
 export function setAudioGameState(newState) {
   const prevState = audioState.gameState;
   audioState.gameState = newState || 'MENU';
   if (prevState !== audioState.gameState && audioState.gameState !== 'PLAYING') {
     stopAllJetpackVoices();
+    stopAllMinigunVoices();
   }
 }
 
@@ -318,6 +328,11 @@ export function playSound(soundId, opts = {}) {
 }
 
 export function playWeaponFireSound(weaponId, x, y, opts = {}) {
+  // Dla Miniguna: jezeli ciagly glos petli (minigunVoices) jest juz aktywny dla strzelca,
+  // nie odtwarzaj osobnych, ucietych pojedynczych wystrzalow, aby dzwiek plynnie sie zlewal
+  if (weaponId === 'MINIGUN' && opts.shooter && audioState.minigunVoices.has(opts.shooter)) {
+    return true;
+  }
   const soundId = WEAPON_FIRE_SOUND_MAP[weaponId];
   if (!soundId) return false;
   return playSound(soundId, { ...opts, x, y });
@@ -477,6 +492,124 @@ function updateEntityJetpack(entity, isPlaying, dt) {
   }
 }
 
+function createMinigunVoice(ctx, destNode, pan, initialGain) {
+  const customSample = getReadySampleForSound('minigun_loop');
+  if (customSample) {
+    const sampleVoice = playDecodedSample({
+      buffer: customSample.buffer,
+      entry: customSample.entry,
+      ctx,
+      destNode,
+      gainValue: Math.max(0.0001, initialGain),
+      pitchJitter: 0,
+      pitchMultiplier: 1.0,
+      pan,
+      loop: true
+    });
+    if (sampleVoice) {
+      return {
+        type: 'sample',
+        gainNode: sampleVoice.gainNode,
+        panner: sampleVoice.panner,
+        entryVolume: customSample.entry?.volume ?? 1.0,
+        stop: () => {
+          try { sampleVoice.source.stop(); } catch (_) {}
+          try { sampleVoice.source.disconnect(); } catch (_) {}
+          try { sampleVoice.gainNode.disconnect(); } catch (_) {}
+          if (sampleVoice.panner) {
+            try { sampleVoice.panner.disconnect(); } catch (_) {}
+          }
+        }
+      };
+    }
+  }
+  return createSynthMinigunVoice(ctx, destNode);
+}
+
+function updateEntityMinigun(entity, isPlaying, dt) {
+  const isMinigun = entity.currentWeapon && entity.currentWeapon.id === 'MINIGUN';
+  const isRemoteFiring = (entity.remoteMinigunFireTimer || 0) > 0;
+  if (isRemoteFiring) {
+    entity.remoteMinigunFireTimer -= 1;
+  }
+
+  let hasAmmo = true;
+  if (!entity.isRemote && !entity.isBot) {
+    const ammo = entity.ammo ? entity.ammo.MINIGUN : null;
+    if (ammo && (ammo.currentAmmo <= 0 || ammo.isReloading)) {
+      hasAmmo = false;
+    }
+  }
+
+  const isTriggerActive = (entity.isShooting && (entity.minigunSpin || 0) >= 0.70) || isRemoteFiring;
+  const shouldPlay = isPlaying
+    && !audioState.muted
+    && !entity.isDead
+    && !entity.isHolstered
+    && (entity.staggerTimer || 0) <= 0
+    && isMinigun
+    && isTriggerActive
+    && hasAmmo
+    && audioState.hasUserGesture;
+
+  let record = audioState.minigunVoices.get(entity);
+
+  if (!shouldPlay) {
+    if (!record) return;
+    record.releaseTimer += dt;
+    const ctx = audioState.ctx;
+    if (ctx && record.voice?.gainNode) {
+      record.voice.gainNode.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.035);
+    }
+    if (record.releaseTimer >= 0.08) {
+      try { record.voice.stop(); } catch (_) {}
+      audioState.minigunVoices.delete(entity);
+    }
+    return;
+  }
+
+  const ctx = ensureAudioContext();
+  if (!ctx || ctx.state !== 'running' || !audioState.sfxGain) return;
+
+  const def = SOUND_CATALOG.minigun_loop || SOUND_CATALOG.weapon_minigun;
+  const ex = entity.x + (entity.w || 24) * 0.5;
+  const ey = entity.y + (entity.h || 70) * 0.5;
+  const spatial = computeSpatialAttenuation(ex, ey, def.maxDistance || 1950);
+
+  if (!spatial.audible) {
+    if (record) {
+      record.releaseTimer += dt;
+      record.voice.gainNode.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.035);
+      if (record.releaseTimer >= 0.08) {
+        try { record.voice.stop(); } catch (_) {}
+        audioState.minigunVoices.delete(entity);
+      }
+    }
+    return;
+  }
+
+  const isLocalEntity = (typeof window !== 'undefined' && window.player && entity === window.player);
+  const entityWeight = isLocalEntity ? 1.0 : 0.65;
+  const targetGain = (def.volume || 0.88) * spatial.gainScale * entityWeight;
+
+  if (!record) {
+    const voice = createMinigunVoice(ctx, audioState.sfxGain, spatial.pan, 0.0001);
+    if (!voice) return;
+    record = { voice, releaseTimer: 0 };
+    audioState.minigunVoices.set(entity, record);
+  }
+
+  record.releaseTimer = 0;
+  const now = ctx.currentTime;
+  const v = record.voice;
+  const effectiveGain = v.type === 'sample' ? (targetGain * (v.entryVolume || 1.0)) : targetGain;
+  v.gainNode.gain.setTargetAtTime(Math.max(0.0001, effectiveGain), now, 0.025);
+
+  if (v.panner && typeof v.panner.pan?.setTargetAtTime === 'function') {
+    v.panner.pan.setTargetAtTime(spatial.pan, now, 0.03);
+  }
+}
+
 function updateEntityTrackers(entity, isPlaying) {
   let tracker = audioState.entityTrackers.get(entity);
   const onGround = !!entity.onGround;
@@ -555,6 +688,7 @@ export function updateAudio(dt = 1 / 60, context = {}) {
   for (const entity of activeEntities) {
     updateEntityTrackers(entity, isPlaying);
     updateEntityJetpack(entity, isPlaying, dt);
+    updateEntityMinigun(entity, isPlaying, dt);
   }
 
   // Sprzatanie glosow jetpacka dla postaci usunietych z areny
@@ -562,6 +696,14 @@ export function updateAudio(dt = 1 / 60, context = {}) {
     if (!activeEntities.has(entity)) {
       try { record?.voice?.stop?.(); } catch (_) {}
       audioState.jetpackVoices.delete(entity);
+    }
+  }
+
+  // Sprzatanie glosow miniguna dla postaci usunietych z areny
+  for (const [entity, record] of audioState.minigunVoices.entries()) {
+    if (!activeEntities.has(entity)) {
+      try { record?.voice?.stop?.(); } catch (_) {}
+      audioState.minigunVoices.delete(entity);
     }
   }
 }
