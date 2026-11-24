@@ -119,7 +119,8 @@ try {
     createLinearGradient: () => mockGradient, createRadialGradient: () => mockGradient,
     ellipse: () => {}, rect: () => {}, roundRect: () => {}, quadraticCurveTo: () => {},
     strokeRect: () => {}, measureText: () => ({ width: 10 }), setLineDash: () => {},
-    fillText: () => {}, strokeText: () => {}, clip: () => {}, bezierCurveTo: () => {}
+    fillText: () => {}, strokeText: () => {}, clip: () => {}, bezierCurveTo: () => {},
+    createPattern: () => ({})
   };
   const mockElement = {
     style: {}, classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
@@ -294,6 +295,36 @@ try {
     a5Instance.onBulletHit({ x: 500, y: 800, damage: 50, vx: 10, vy: 0 });
     a5Instance.onExplosion(500, 800, 150);
     a5Instance.draw(mockContext, { x: 400, y: 600, zoom: 0.75, viewWidth: 1600, viewHeight: 900 });
+  }
+
+  // Smoke test Live Menu Showcase (start, update, draw, blokada XP, stop)
+  const showcasePathNorm = path.resolve(jsDir, 'menuShowcase.js').toLowerCase();
+  const showcaseMod = evalModules.get(showcasePathNorm);
+  if (showcaseMod && showcaseMod.namespace && typeof showcaseMod.namespace.startMenuShowcase === 'function') {
+    const { startMenuShowcase, updateMenuShowcase, drawMenuShowcase, stopMenuShowcase, menuShowcaseState } = showcaseMod.namespace;
+    startMenuShowcase();
+    if (globalThis.window.isMenuShowcase !== true) {
+      throw new Error('window.isMenuShowcase nie zostalo ustawione na true!');
+    }
+    const progPathNorm = path.resolve(jsDir, 'progression.js').toLowerCase();
+    const progMod = evalModules.get(progPathNorm);
+    const xpBefore = progMod.namespace.getPlayerXP();
+    progMod.namespace.addPlayerXP(100);
+    progMod.namespace.recordKill(1);
+    progMod.namespace.recordGoal(1);
+    progMod.namespace.recordMatchResult('WIN');
+    const xpAfter = progMod.namespace.getPlayerXP();
+    if (xpBefore !== xpAfter) {
+      throw new Error('XP zmienilo sie w trakcie showcase!');
+    }
+    for (let f = 0; f < 30; f++) {
+      updateMenuShowcase(1 / 60);
+    }
+    drawMenuShowcase(mockContext, { x: 1800, y: 950, zoom: 0.86, viewWidth: 1488, viewHeight: 837 });
+    stopMenuShowcase();
+    if (globalThis.window.isMenuShowcase !== false) {
+      throw new Error('stopMenuShowcase() nie ustawilo window.isMenuShowcase = false!');
+    }
   }
 
   console.log('Graf modulow wykonany poprawnie w V8 bez bledow TDZ/inicjalizacji (OK).');

@@ -67,7 +67,7 @@ import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, 
 import { updateHazards, drawHazards, initHazardsForArena, checkBarrelKickInteraction } from './hazards/index.js';
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
-import { initMenuFight, updateMenuFight, drawMenuFight, stopMenuFight } from './menuFight/index.js';
+import { initMenuShowcase, updateMenuShowcase, drawMenuShowcase, stopMenuShowcase } from './menuShowcase.js';
 import { initCallouts, resetCalloutMatchState, onPlayerDeathCallout, registerCalloutKill, updateCallouts, drawCallouts } from './callouts/index.js';
 import {
   editorState,
@@ -440,10 +440,10 @@ export function setGameState(newState) {
   gameState = newState;
   setAudioGameState(newState);
   resetInputState();
-  if (prevState === 'MENU' && newState !== 'MENU') {
-    stopMenuFight();
+  if (newState === 'ARENA_SELECT' || newState === 'PLAYING' || newState === 'CREATOR' || newState === 'ARMORY' || newState === 'CLASS_SELECT') {
+    stopMenuShowcase();
   } else if (newState === 'MENU') {
-    initMenuFight();
+    initMenuShowcase();
   }
   if (newState === 'PLAYING' && camera) {
     camera._initialized = false;
@@ -457,6 +457,8 @@ if (typeof window !== 'undefined') {
   window.setGameState = setGameState;
   window.GAME_STATE = GAME_STATE;
   window.ARENA_CONFIGS = ARENA_CONFIGS;
+  window.stopMenuShowcase = stopMenuShowcase;
+  window.initMenuShowcase = initMenuShowcase;
 }
 
 export function selectPlayerClass(targetClass) {
@@ -648,10 +650,10 @@ function update() {
   // Wyświetlenie menu taktycznego (PAUSED) ani wejście w ustawienia w trakcie meczu nie wstrzymuje fizyki, botów ani odliczania.
   const isSettingsInLiveMatch = ((GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'ARMORY') && (GAME_STATE.previous === 'PAUSED' || GAME_STATE.previous === 'PLAYING'));
 
-  if (GAME_STATE.current === 'MENU') {
+  if (GAME_STATE.current === 'MENU' || (GAME_STATE.current === 'SETTINGS' && !isSettingsInLiveMatch)) {
     mouseState.lmbDown = false;
     mouseState.rmbDown = false;
-    updateMenuFight(1 / 60);
+    updateMenuShowcase(1 / 60);
     return;
   }
 
@@ -1047,8 +1049,8 @@ function draw() {
   const isSettingsInLiveMatch = ((GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'ARMORY') && (GAME_STATE.previous === 'PAUSED' || GAME_STATE.previous === 'PLAYING'));
   const isGameLive = (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED' || GAME_STATE.current === 'CLASS_SELECT' || isSettingsInLiveMatch);
 
-  if (GAME_STATE.current === 'MENU') {
-    drawMenuFight(ctx, camera);
+  if (GAME_STATE.current === 'MENU' || (GAME_STATE.current === 'SETTINGS' && !isSettingsInLiveMatch)) {
+    drawMenuShowcase(ctx, camera);
     return;
   }
 

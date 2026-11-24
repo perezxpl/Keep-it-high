@@ -497,7 +497,9 @@ export function setBotCount(count, options = {}) {
     botEnabled = true;
     bot.active = true;
     try {
-      localStorage.setItem('kih_bot_enabled_v1', 'true');
+      if (!options.skipStorage) {
+        localStorage.setItem('kih_bot_enabled_v1', 'true');
+      }
     } catch (_) {}
   }
   let guardCount = 0;
@@ -688,6 +690,9 @@ export const BOT_DIFFICULTY_CONFIG = {
 };
 
 export function getBotDifficultyConfig(botTarget) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) {
+    return BOT_DIFFICULTY_CONFIG.hard;
+  }
   const d = botTarget?.difficulty || 'medium';
   return BOT_DIFFICULTY_CONFIG[d] || BOT_DIFFICULTY_CONFIG.medium;
 }
@@ -699,6 +704,7 @@ export function getBotDifficultyConfig(botTarget) {
  * Zgodnie z zasada fair play boty nie moga atakowac gracza z ukrycia / zza krawedzi ekranu.
  */
 export function isBotVisibleToPlayer(botTarget, margin = 24) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return true;
   if (!camera || typeof camera.x !== 'number' || typeof camera.y !== 'number') return true;
   if (!botTarget || typeof botTarget.x !== 'number' || typeof botTarget.y !== 'number') return false;
   const zoom = (typeof camera.zoom === 'number' && camera.zoom > 0) ? camera.zoom : 1;
@@ -742,7 +748,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // Podczas odliczania przedmeczowego (Lockdown 3s) bot stoi w pozycji gotowości i nie atakuje
-  if (deathmatchState && deathmatchState.active && deathmatchState.matchPhase === 'COUNTDOWN') {
+  if (!window?.isMenuShowcase && deathmatchState && deathmatchState.active && deathmatchState.matchPhase === 'COUNTDOWN') {
     bKeys.left = false;
     bKeys.right = false;
     bKeys.up = false;
@@ -928,8 +934,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // Taktyczny rzut granatem odłamkowym (Arena 2 i 3)
+  const isShowcase = (typeof window !== 'undefined' && window.isMenuShowcase);
   const isTargetingHuman = targetEnemy ? (!targetEnemy.isBot || targetEnemy === humanPlayer) : false;
-  const canEngageTarget = targetEnemy ? (!isTargetingHuman || isBotVisibleToPlayer(botTarget)) : false;
+  const canEngageTarget = targetEnemy ? (isShowcase || !isTargetingHuman || isBotVisibleToPlayer(botTarget)) : false;
 
   if (!isA1 && targetEnemy && !targetEnemy.isDead && (botTarget.grenadeCooldown <= 0)) {
     if (canEngageTarget && distToEnemy >= 230 && distToEnemy <= 520 && botTarget.decisionTimer <= 1) {
@@ -1499,6 +1506,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
           } else if (botTarget.currentWeapon?.id === 'MINIGUN') {
             botTarget.isShooting = true;
             if (distToEnemy < 380 && botTarget.shootCooldown <= 0) {
+              shootWeapon(botTarget, botTarget.currentWeapon);
+            }
+          } else {
+            if (botTarget.shootCooldown <= 0) {
               shootWeapon(botTarget, botTarget.currentWeapon);
             }
           }

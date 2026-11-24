@@ -229,6 +229,10 @@ export function playSound(soundId, opts = {}) {
   const def = SOUND_CATALOG[soundId];
   if (!def) return false;
 
+  if (typeof window !== 'undefined' && window.isMenuShowcase && !soundId.startsWith('ui_')) {
+    return false;
+  }
+
   if (audioState.muted) return false;
   if (!def.allowInAnyState && !opts.force && audioState.gameState !== 'PLAYING') {
     return false;

@@ -135,11 +135,9 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/callouts/renderer.js` — renderowanie kompaktowych asymetrycznych dymków blisko miejsca eliminacji w przestrzeni świata (`worldToScreen`) z ogonkiem kierunkowym i dynamicznie pochylonymi wyrazami (zero `shadowBlur`, zero emoji).
 - `js/callouts/index.js` — główny punkt wejścia i eksport modułu medali bojowych.
 
-### Demonstracyjna Walka w Tle Menu (`js/menuFight/`)
-- `js/menuFight/state.js` — stan sesji menu (`menuFightState`), 3 dedykowane boty bojowe (`menuBots`: SGT. STRIKER, COL. ENFORCER, CYBER REAPER) z unikalnym uzbrojeniem (AK-47, RPG-7, Nano-Saber), punkty respawnu (`MENU_SPAWN_POINTS`) i fabryka instancji.
-- `js/menuFight/logic.js` — pętla fizyki i podkręconej sztucznej inteligencji (`updateMenuFight`): ciągły ogień zaporowy, naloty rakietowe, zrywy jetpacka, odbijanie kul Nano-Saberem, brak przestojów na amunicję i błyskawiczny respawn po 1.5s.
-- `js/menuFight/renderer.js` — kinowy potok renderowania tła menu (`drawMenuFight`): czysty kadr bez HUD-a, bez pasków zdrowia, bez nicków i bez colliderów, z pełnymi animacjami postaci, smugami pocisków, dymem, łuskami, krwią i rozbłyskami przy stałych 60 FPS (zero `ctx.shadowBlur`).
-- `js/menuFight/index.js` — główny punkt wejścia i eksport modułu walki demonstracyjnej.
+### Żywy Zwiastun w Tle Menu — Live Menu Showcase (`js/menuShowcase.js`, `js/menuFight/`)
+- `js/menuShowcase.js` — dedykowany moduł reżyserii tła menu: globalna flaga `window.isMenuShowcase`, cykliczna rotacja po 5 arenach co 8–10s, hot-drop 6 botów w centrum i na platformach z miksem klas (Raptor, Striker, Enforcer), pre-symulacja (pre-warm 45 klatek), agresja bot vs bot, reżyserska kamera akcji (`lerp ~0.04`, zoom `0.86`) oraz taktyczny efekt przejścia (Tactical Feed Cut ~0.55s) z dyskretnym wskaźnikiem LIVE FEED.
+- `js/menuFight/index.js` — warstwa kompatybilności wstecznej re-eksportująca API do `js/menuShowcase.js`.
 
 ### System Audio i Hybrydowe Efekty Dźwiękowe (`js/audio/`, `assets/audio/`)
 - `js/audio/state.js` — konfiguracja (`AUDIO_CONFIG`), mapa dźwięków broni (`WEAPON_FIRE_SOUND_MAP`), katalog wszystkich ID (`SOUND_CATALOG`) oraz współdzielony stan miksera (`audioState`).

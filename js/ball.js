@@ -280,15 +280,20 @@ export function checkGoalTrigger(ballObj, groundY) {
     }
 
     if (isInsideGoal) {
-      if (scoringTeam === 'CYAN') {
-        arenaScore.cyan++;
-        recordGoal();
-      } else {
-        arenaScore.orange++;
-      }
+      const isShowcase = (typeof window !== 'undefined' && window.isMenuShowcase === true);
+      if (!isShowcase) {
+        if (scoringTeam === 'CYAN') {
+          arenaScore.cyan++;
+          recordGoal();
+        } else {
+          arenaScore.orange++;
+        }
 
-      triggerScreenShake(16);
-      triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800');
+        triggerScreenShake(16);
+        triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800');
+      } else {
+        triggerScreenShake(3);
+      }
 
       ballObj.goalAnimation = {
         active: true,
@@ -334,6 +339,15 @@ export function updateBall(GROUND_Y) {
 
     if (ball.goalAnimation.timer <= 0) {
       ball.goalAnimation.active = false;
+      if (typeof window !== 'undefined' && window.isMenuShowcase === true) {
+        ball.x = 1800;
+        ball.y = (activeArenaId === 'ARENA_1') ? 700 : (GROUND_Y - 220);
+        ball.vx = (Math.random() - 0.5) * 4;
+        ball.vy = -4;
+        ball.goalAnimation.scale = 1.0;
+        ball.goalAnimation.alpha = 1.0;
+        return;
+      }
       resetArena();
 
       const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');

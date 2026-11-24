@@ -203,13 +203,13 @@ if (typeof window !== 'undefined') {
 
 export function triggerScreenShake(intensity) {
   if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings && window.uiManager.settings.screenShake === false) return;
-  if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU')) return;
+  if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU' || window.isMenuShowcase)) return;
   camera.shakeIntensity = Math.min(26, Math.max(camera.shakeIntensity, intensity));
 }
 
 export function shakeImpulse(intensity = 14, duration = 0.15) {
   if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings && window.uiManager.settings.screenShake === false) return;
-  if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU')) return;
+  if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU' || window.isMenuShowcase)) return;
   camera.shakeIntensity = Math.min(32, Math.max(camera.shakeIntensity || 0, intensity));
   camera.shakeDecay = (typeof duration === 'number' && duration <= 0.25) ? 0.72 : 0.85;
 }
@@ -218,7 +218,7 @@ camera.shakeImpulse = shakeImpulse;
 Object.defineProperty(camera, 'shake', {
   get() { return this.shakeIntensity || 0; },
   set(val) {
-    if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU')) {
+    if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU' || window.isMenuShowcase)) {
       this.shakeIntensity = 0;
       this.shakeX = 0;
       this.shakeY = 0;

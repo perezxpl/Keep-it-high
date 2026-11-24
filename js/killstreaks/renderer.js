@@ -278,6 +278,7 @@ export function drawKillstreakWorld(ctx, camera, combatants, player) {
  * @param {object} player
  */
 export function drawKillstreakHUD(ctx, canvas, player) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return;
   if (!player) return;
 
   const { W, H } = getScreenSize(canvas);

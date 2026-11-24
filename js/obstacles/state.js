@@ -706,7 +706,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ARENA_PLATFORMS.push(...currentArena.platforms);
     }
 
-    if (typeof window !== 'undefined' && window.camera) {
+    if (typeof window !== 'undefined' && window.camera && !window.isMenuShowcase) {
       window.camera.x = 0;
       window.camera.targetX = 0;
       const cW = (typeof window.innerWidth === 'number') ? window.innerWidth : 1920;

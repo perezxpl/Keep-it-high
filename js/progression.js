@@ -312,6 +312,7 @@ export function setRankUpCallback(fn) {
 }
 
 export function notifyXpGained(text, amount, color) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return;
   if (typeof _xpNotificationCallback === 'function') {
     _xpNotificationCallback(text, amount, color);
   }
@@ -323,6 +324,7 @@ export function getPlayerXP() {
 }
 
 export function addPlayerXP(amount) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return getPlayerXP();
   const delta = parseInt(amount, 10);
   if (!Number.isFinite(delta) || Number.isNaN(delta)) return getPlayerXP();
   const current = getPlayerXP();
@@ -410,6 +412,7 @@ export function savePlayerStats(stats) {
 }
 
 export function recordMatchResult(result) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return getPlayerStats();
   const stats = getPlayerStats();
   stats.matchesPlayed = (stats.matchesPlayed || 0) + 1;
   if (result === 'WIN') {
@@ -422,6 +425,7 @@ export function recordMatchResult(result) {
 }
 
 export function recordKill(amount = 1) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return getPlayerStats();
   const stats = getPlayerStats();
   const count = Math.max(1, parseInt(amount, 10) || 1);
   stats.kills = (stats.kills || 0) + count;
@@ -433,6 +437,7 @@ export function recordKill(amount = 1) {
 }
 
 export function recordDeath(amount = 1) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return getPlayerStats();
   const stats = getPlayerStats();
   stats.deaths = (stats.deaths || 0) + Math.max(1, parseInt(amount, 10) || 1);
   savePlayerStats(stats);
@@ -440,6 +445,7 @@ export function recordDeath(amount = 1) {
 }
 
 export function recordGoal(amount = 1) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return getPlayerStats();
   const stats = getPlayerStats();
   const count = Math.max(1, parseInt(amount, 10) || 1);
   stats.goalsScored = (stats.goalsScored || 0) + count;

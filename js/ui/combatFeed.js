@@ -93,6 +93,7 @@ export function triggerCombatFeedEvent({
   text = '',
   subtext = ''
 } = {}) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return;
   const kInfo = resolveEntity(killer, killerName, killerTeam);
   const vInfo = resolveEntity(victim, victimName, victimTeam);
 
@@ -180,6 +181,7 @@ export function updateCombatFeed(dt) {
 }
 
 export function drawCombatFeedBanner(ctx, W, H, isMobile) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return;
   if (!combatFeedState.active || combatFeedState.timer <= 0) return;
 
   const timer = combatFeedState.timer;

@@ -29,6 +29,11 @@ let _dmSyncTimer = 0;
  * Inicjalizacja sesji Deathmatch przy wejściu na Arenę 2
  */
 export function initDeathmatch(player, botOrBots, remotePlayer) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) {
+    deathmatchState.active = false;
+    deathmatchState.matchPhase = DEATHMATCH_PHASES.ACTIVE;
+    return;
+  }
   deathmatchState.active = true;
   const isMulti = (remotePlayer && remotePlayer.active);
   if (isMulti && mpMatchConfig) {
@@ -276,6 +281,7 @@ export function updateLeaderboard() {
  * Główna pętla logiki Deathmatch wywoływana w każdej klatce gry
  */
 export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return;
   if (!deathmatchState.active) return;
 
   // Odliczanie po zakończeniu meczu (podium)
@@ -584,6 +590,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
  * Finał meczu: wyłonienie zwycięzców, przyznanie nagród XP i uruchomienie ekranu podium
  */
 export function finishDeathmatch(reason = 'TIME_LIMIT') {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return;
   if (deathmatchState.matchEnded) return;
 
   deathmatchState.matchEnded = true;

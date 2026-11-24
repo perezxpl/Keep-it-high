@@ -148,6 +148,7 @@ export function resetMatchWinState() {
  * Rysuje stopień wojskowy i pasek XP w lewym górnym rogu HUD
  */
 export function drawRankHUD(ctx, x, y, width, isMobile) {
+  if (typeof window !== 'undefined' && window.isMenuShowcase) return;
   const currentXp = getPlayerXP();
   const rank = getCurrentRank(currentXp);
   const nextRank = getNextRank(currentXp);

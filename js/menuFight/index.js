@@ -1,26 +1,12 @@
 // =========================================================================
-// MENUFIGHT/INDEX.JS - GŁÓWNY PUNKT WEJŚCIA MODUŁU WALKI W TLE MENU
+// MENUFIGHT/INDEX.JS - WARSTWA KOMPATYBILNOŚCI WSTECZNEJ DLA MENUSHOWCASE
 // =========================================================================
 
 export {
-  menuFightState,
-  menuBots,
-  createMenuBotInstance,
-  resetMenuBot,
-  MENU_SPAWN_POINTS,
-  ARENA_ROTATION,
-  ARENA_METADATA,
-  ARENA_SPAWN_POINTS
-} from './state.js';
-
-export {
-  isMenuFightActive,
-  initMenuFight,
-  updateMenuFight,
-  stopMenuFight,
-  updateMenuSectorTag
-} from './logic.js';
-
-export {
-  drawMenuFight
-} from './renderer.js';
+  menuShowcaseState as menuFightState,
+  isMenuShowcaseActive as isMenuFightActive,
+  initMenuShowcase as initMenuFight,
+  updateMenuShowcase as updateMenuFight,
+  stopMenuShowcase as stopMenuFight,
+  drawMenuShowcase as drawMenuFight
+} from '../menuShowcase.js';
