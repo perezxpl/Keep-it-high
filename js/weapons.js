@@ -921,8 +921,8 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   if (shooter && overrideX === undefined) {
     const hold = getWeaponHoldTransform(shooter);
     if (weapon.id === 'MINIGUN') {
-      const bDistX = 10.75;
-      const bDistY = 7.0;
+      const bDistX = 14.37;
+      const bDistY = 5.46;
       breechX = hold.pivotX + (Math.cos(hold.angle) * bDistX - Math.sin(hold.angle) * bDistY) * charFacing;
       breechY = hold.pivotY + (Math.sin(hold.angle) * bDistX + Math.cos(hold.angle) * bDistY);
     } else {

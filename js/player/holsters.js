@@ -16,7 +16,7 @@
 //    albo w locie po rzucie toporkiem)!
 // =========================================================================
 
-import { getWeaponPartSprite, getWeaponSpritePivot, drawWeaponBloodOverlay } from '../weapons/renderer.js';
+import { getWeaponPartSprite, getWeaponSpritePivot, drawWeaponBloodOverlay, drawMinigunModularSprite } from '../weapons/renderer.js';
 
 export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER', 'FLAMETHROWER', 'MINIGUN'];
 export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7'];
@@ -173,7 +173,7 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
       ctx.rotate(-Math.PI * 0.5);
       // fDir zapewnia, że magazynek i chwyt przylegają do stelaża jetpacka
       ctx.scale(1, fDir);
-      drawPrimaryWeaponSprite(ctx, primaryId, 0.86);
+      drawPrimaryWeaponSprite(ctx, primaryId, 0.86, p);
       ctx.restore();
     }
   } else {
@@ -243,6 +243,35 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
     ctx.scale(1, fDir);
     drawRpg7BackSprite(ctx, 0.88, p);
     ctx.restore();
+  }
+
+  // Taktyczny zasobnik amunicji 7.62mm (Ammo Drum Pack) na dolnej czesci plecow dla Miniguna M134
+  const hasMinigunEquip = (primaryId === 'MINIGUN') || (p.currentWeapon && p.currentWeapon.id === 'MINIGUN');
+  if (hasMinigunEquip && !p.isDead) {
+    const packW = 6.6;
+    const packH = 10.0;
+    const packX = -fDir * (waistHalfW + 0.4) - (fDir > 0 ? packW : 0);
+    const packY = -11.2;
+
+    ctx.fillStyle = '#364126'; // Oliwkowy metal zasobnika NATO
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 0.9;
+    ctx.fillRect(packX, packY, packW, packH);
+    ctx.strokeRect(packX, packY, packW, packH);
+
+    // Wzmocnienia boczne i pasek ostrzegawczy kalibru
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(packX, packY + 1.2, packW, 1.6);
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(packX + 0.8, packY + 3.8, packW - 1.6, 1.1);
+
+    // Okienko podgladu tasmy mosieznej w dolnej czesci zasobnika
+    ctx.fillStyle = '#09090b';
+    ctx.fillRect(packX + 1.1, packY + 5.9, packW - 2.2, 2.8);
+    ctx.fillStyle = '#d97706';
+    ctx.fillRect(packX + 1.5, packY + 6.4, packW - 3.0, 0.9);
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(packX + 1.5, packY + 7.5, packW - 3.0, 0.7);
   }
 
   ctx.restore();
@@ -391,19 +420,8 @@ function drawPrimaryWeaponSprite(ctx, weaponId, scaleMult = 1.0, player = null) 
       ctx.fillRect(-6.0, 2.5, 12.0, 6.0);
     }
   } else if (weaponId === 'MINIGUN') {
-    const imgMinigun = getWeaponPartSprite('MINIGUN');
-    if (imgMinigun && imgMinigun.complete && imgMinigun.naturalWidth > 0) {
-      const s = 0.20 * scaleMult;
-      const pivotSpriteX = 124.0;
-      const pivotSpriteY = 74.0;
-      ctx.save();
-      ctx.scale(s, s);
-      ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      const heat = (player && typeof player.minigunHeat === 'number') ? player.minigunHeat : 0;
-      const row = (heat > 0.72) ? 2 : ((heat > 0.35) ? 1 : 0);
-      ctx.drawImage(imgMinigun, 0, row * 128, 256, 128, 0, 0, 256, 128);
-      ctx.restore();
-    } else {
+    const drawn = drawMinigunModularSprite(ctx, player, (53.0 / 1261) * 0.88 * scaleMult, 580.0, 234.0, 0);
+    if (!drawn) {
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(-12.0, -3.0, 24.0, 6.0);
       ctx.fillStyle = '#475569';

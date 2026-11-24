@@ -120,7 +120,9 @@ const WEAPON_PARTS_PATHS = {
   FLAMETHROWER: './assets/weapons/flamethrower.png?v=v487_flamethrower_modular_reload',
   FLAMETHROWER_BODY: './assets/weapons/flamethrower_body.png?v=v487_flamethrower_modular_reload',
   FLAMETHROWER_CANISTER: './assets/weapons/flamethrower_canister.png?v=v487_flamethrower_modular_reload',
-  MINIGUN: './assets/weapons/minigun_spritesheet.svg?v=v511_minigun_rotary_spritesheet_and_audio',
+  MINIGUN: './assets/weapons/minigun.png?v=v515_minigun_hd_sprite_and_ammo_belt',
+  MINIGUN_BODY: './assets/weapons/minigun_body.png?v=v515_minigun_hd_sprite_and_ammo_belt',
+  MINIGUN_BARRELS: './assets/weapons/minigun_barrels_sheet.png?v=v515_minigun_hd_sprite_and_ammo_belt',
   KNIFE: './assets/weapons/knife.png?v=v256_modular_melee_weapons',
   MACHETE: './assets/weapons/machete.png?v=v256_modular_melee_weapons',
   AXE: './assets/weapons/axe.png?v=v256_modular_melee_weapons'
@@ -168,53 +170,11 @@ export function drawWeaponSprite(ctx, sprite, dx = 0, dy = 0) {
 }
 
 export function getWeaponPartSprite(partId) {
-  if (partId === 'MINIGUN') {
-    if (_partMipCache[partId]) return _partMipCache[partId];
-    if (!_partSpriteCache[partId]) {
-      const p = WEAPON_PARTS_PATHS[partId];
-      if (!p) return null;
-      const img = new Image();
-      img.src = p;
-      img.onload = () => {
-        try {
-          if (typeof document !== 'undefined') {
-            const oc = document.createElement('canvas');
-            oc.width = 1024;
-            oc.height = 384;
-            const octx = oc.getContext('2d');
-            octx.drawImage(img, 0, 0);
-            oc.complete = true;
-            oc.naturalWidth = 1024;
-            oc.naturalHeight = 384;
-            _partMipCache[partId] = oc;
-          }
-        } catch (_) {}
-      };
-      _partSpriteCache[partId] = img;
-    }
-    const raw = _partSpriteCache[partId];
-    if (raw && raw.complete && raw.naturalWidth > 0 && !_partMipCache[partId]) {
-      try {
-        if (typeof document !== 'undefined') {
-          const oc = document.createElement('canvas');
-          oc.width = 1024;
-          oc.height = 384;
-          const octx = oc.getContext('2d');
-          octx.drawImage(raw, 0, 0);
-          oc.complete = true;
-          oc.naturalWidth = 1024;
-          oc.naturalHeight = 384;
-          _partMipCache[partId] = oc;
-          return oc;
-        }
-      } catch (_) {}
-    }
-    return _partMipCache[partId] || raw;
-  }
-  if (_partMipCache[partId]) return _partMipCache[partId];
+  const skipMip = (partId === 'MINIGUN_BARRELS');
+  if (!skipMip && _partMipCache[partId]) return _partMipCache[partId];
   if (_partSpriteCache[partId]) {
     const img = _partSpriteCache[partId];
-    if (img.complete && img.naturalWidth > 0) {
+    if (!skipMip && img.complete && img.naturalWidth > 0) {
       const mip = createWeaponMipmap(img);
       if (mip && mip._isMip) {
         _partMipCache[partId] = mip;
@@ -227,14 +187,16 @@ export function getWeaponPartSprite(partId) {
   if (!p) return null;
   const img = new Image();
   img.src = p;
-  img.onload = () => {
-    try {
-      const mip = createWeaponMipmap(img);
-      if (mip && mip._isMip) {
-        _partMipCache[partId] = mip;
-      }
-    } catch (_) {}
-  };
+  if (!skipMip) {
+    img.onload = () => {
+      try {
+        const mip = createWeaponMipmap(img);
+        if (mip && mip._isMip) {
+          _partMipCache[partId] = mip;
+        }
+      } catch (_) {}
+    };
+  }
   _partSpriteCache[partId] = img;
   return img;
 }
@@ -268,9 +230,9 @@ export const WEAPON_SPRITE_PIVOTS = {
     y: 160.0
   },
   MINIGUN: {
-    x: 52.0,
-    walkX: 52.0,
-    y: 66.0
+    x: 72.0,
+    walkX: 72.0,
+    y: 76.0
   },
   KNIFE: { x: 243.5, y: 67.0 },
   MACHETE: { x: 296.5, walkX: 47.5, y: 38.0 },
@@ -615,6 +577,166 @@ export function drawMeleeSlashTrail(ctx, p) {
 }
 
 /**
+ * Rysuje modularny korpus i 6 obrotowych luf Miniguna M134 HD wraz z plynnie przechodzacym zarzeniem termicznym
+ */
+export function drawMinigunModularSprite(ctx, p, s, pivotSpriteX, pivotSpriteY, barrelPhase = 0) {
+  const imgBody = getWeaponPartSprite('MINIGUN_BODY');
+  const imgBarrels = getWeaponPartSprite('MINIGUN_BARRELS');
+  if (!imgBody || !imgBody.complete || imgBody.naturalWidth <= 0) {
+    return false;
+  }
+
+  const col = Math.floor(Math.abs(barrelPhase || 0)) % 4;
+  const heat = (p && typeof p.minigunHeat === 'number') ? Math.max(0, Math.min(1, p.minigunHeat)) : 0;
+
+  ctx.save();
+  ctx.scale(s, s);
+  ctx.translate(-pivotSpriteX, -pivotSpriteY);
+
+  // 1. Warstwa obrotowego bloku 6 luf (694x152 na komorke, offset wzgledem minigun_body: 569, 159)
+  if (imgBarrels && imgBarrels.complete && imgBarrels.naturalWidth > 0) {
+    const cellW = 694;
+    const cellH = 152;
+    const srcX = col * cellW;
+    const bx = 569;
+    const by = 159;
+
+    if (heat <= 0.06) {
+      ctx.drawImage(imgBarrels, srcX, 0, cellW, cellH, bx, by, cellW, cellH);
+    } else if (heat < 0.48) {
+      ctx.drawImage(imgBarrels, srcX, 0, cellW, cellH, bx, by, cellW, cellH);
+      const warmAlpha = Math.min(1, (heat - 0.06) / 0.34);
+      const prevAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = prevAlpha * warmAlpha;
+      ctx.drawImage(imgBarrels, srcX, cellH, cellW, cellH, bx, by, cellW, cellH);
+      ctx.globalAlpha = prevAlpha;
+    } else if (heat < 0.85) {
+      ctx.drawImage(imgBarrels, srcX, cellH, cellW, cellH, bx, by, cellW, cellH);
+      const hotAlpha = Math.min(1, (heat - 0.48) / 0.32);
+      const prevAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = prevAlpha * hotAlpha;
+      ctx.drawImage(imgBarrels, srcX, cellH * 2, cellW, cellH, bx, by, cellW, cellH);
+      ctx.globalAlpha = prevAlpha;
+    } else {
+      ctx.drawImage(imgBarrels, srcX, cellH * 2, cellW, cellH, bx, by, cellW, cellH);
+    }
+  }
+
+  // 2. Korpus silnika, D-grip, gorna raczka chainsaw i podajnik na wierzchu nasady luf
+  drawWeaponSprite(ctx, imgBody, 0, 0);
+  ctx.restore();
+  return true;
+}
+
+/**
+ * Rysuje dynamiczny, przewijany pas amunicji 7.62mm laczacy plecak/zasobnik z podajnikiem Miniguna
+ */
+function drawMinigunAmmoBelt(ctx, p, hold, hWeight) {
+  if (!ctx || !p || !hold || typeof hold.hipX !== 'number') return;
+
+  const charFacing = hold.charFacing || 1;
+  const cosT = Math.cos(hold.torsoTilt || 0);
+  const sinT = Math.sin(hold.torsoTilt || 0);
+
+  // Wylot zasobnika amunicji przy dolnej czesci plecow / pasa
+  const packLocalX = -charFacing * 6.5;
+  const packLocalY = -2.5;
+  const startX = hold.hipX + (packLocalX * cosT - packLocalY * sinT);
+  const startY = hold.hipY + (packLocalX * sinT + packLocalY * cosT);
+
+  // Punkt wejscia do metalowego podajnika Miniguna
+  const chuteLocalX = (typeof hold.chuteOffsetX === 'number') ? hold.chuteOffsetX : 14.71;
+  const chuteLocalY = (typeof hold.chuteOffsetY === 'number') ? hold.chuteOffsetY : 10.63;
+  const effAngle = (hWeight > 0.01) ? (hold.angle + hWeight * 0.35) : hold.angle;
+  const cosA = Math.cos(effAngle);
+  const sinA = Math.sin(effAngle);
+  const endX = hold.pivotX + (cosA * chuteLocalX - sinA * chuteLocalY) * charFacing;
+  const endY = hold.pivotY + (sinA * chuteLocalX + cosA * chuteLocalY) + (hWeight > 0.01 ? hWeight * 14 : 0);
+
+  const chord = Math.hypot(endX - startX, endY - startY);
+  if (chord < 3) return;
+
+  const vxSway = Math.max(-5, Math.min(5, (p.vx || 0) * 0.55));
+  const vySag = Math.min(4.5, Math.abs(p.vy || 0) * 0.25);
+  const recoilJitter = (p.muzzleFlashTimer > 0) ? ((Math.random() - 0.5) * 1.1) : 0;
+  const ctrlX = (startX + endX) * 0.5 - vxSway + recoilJitter;
+  const ctrlY = Math.max(startY, endY) + 9.5 + vySag;
+
+  const wepAmmo = (p.ammo && p.ammo.MINIGUN) ? p.ammo.MINIGUN : null;
+  const hasRounds = !wepAmmo || wepAmmo.currentAmmo > 0;
+
+  ctx.save();
+  if (hWeight > 0.01) {
+    ctx.globalAlpha = Math.max(0, 1.0 - hWeight);
+  }
+
+  // 1. Elastyczna stalowa szyna / ogniwa lancuchowe M13
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 3.6;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  // 2. Przesuwajace sie mosiezne naboje 7.62x51mm wzdluz krzywej Beziera
+  if (hasRounds) {
+    const numLinks = Math.max(7, Math.min(14, Math.round(chord / 2.4)));
+    const scroll = ((p.minigunBarrelPhase || 0) * 0.25) % 1.0;
+
+    for (let i = 0; i < numLinks; i++) {
+      const t = (i + scroll) / numLinks;
+      if (t < 0.04 || t > 0.96) continue;
+
+      const inv = 1 - t;
+      const bx = inv * inv * startX + 2 * inv * t * ctrlX + t * t * endX;
+      const by = inv * inv * startY + 2 * inv * t * ctrlY + t * t * endY;
+
+      const dxdt = 2 * inv * (ctrlX - startX) + 2 * t * (endX - ctrlX);
+      const dydt = 2 * inv * (ctrlY - startY) + 2 * t * (endY - ctrlY);
+      const tLen = Math.hypot(dxdt, dydt) || 1;
+      const tx = dxdt / tLen;
+      const ty = dydt / tLen;
+
+      // Wektor prostopadly do tasmy skierowany w przod / na zewnatrz krzywej
+      const nx = -ty * charFacing;
+      const ny = tx * charFacing;
+      const ang = Math.atan2(ny, nx);
+
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(ang);
+
+      // Mosiezna luska
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(-2.1, -0.75, 2.7, 1.5);
+      // Blysk mosiadzu
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(-1.8, -0.65, 2.0, 0.5);
+      // Miedziany ostry pocisk
+      ctx.fillStyle = '#c2410c';
+      ctx.beginPath();
+      ctx.moveTo(0.6, -0.65);
+      ctx.lineTo(2.3, 0);
+      ctx.lineTo(0.6, 0.65);
+      ctx.closePath();
+      ctx.fill();
+      // Ciemna obejma ogniwa M13
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-1.1, -0.95, 1.2, 1.9);
+
+      ctx.restore();
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
  * Renderowanie broni w rękach strzelca
  */
 export function drawHeldWeapon(ctx, p, cachedHold = null) {
@@ -629,6 +751,10 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
 
   const hold = cachedHold || getWeaponHoldTransform(p);
   const weapon = p.currentWeapon;
+
+  if (weapon.id === 'MINIGUN') {
+    drawMinigunAmmoBelt(ctx, p, hold, hWeight);
+  }
 
   ctx.save();
   if (hWeight > 0.01) {
@@ -1565,56 +1691,26 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
     }
   } else if (weapon.id === 'MINIGUN') {
     // -------------------------------------------------------------
-    // M134 VULCAN ROTARY MINIGUN (6 ROTATING BARRELS & HEAT STATES)
+    // M134 VULCAN ROTARY MINIGUN (HD MODULAR BODY, 6 ROTATING BARRELS & HEAT)
     // -------------------------------------------------------------
-    const imgMinigun = getWeaponPartSprite('MINIGUN');
-    if (imgMinigun && imgMinigun.complete && imgMinigun.naturalWidth > 0) {
-      const s = 0.25; // Skala 0.25 pod geometrie sylwetki 70 px
-      const pvt = getWeaponSpritePivot('MINIGUN', hold.weight);
-      const pivotSpriteX = pvt.x;
-      const pivotSpriteY = pvt.y;
+    const pvt = getWeaponSpritePivot('MINIGUN', hold.weight);
+    const drawn = drawMinigunModularSprite(
+      ctx,
+      p,
+      53.0 / 1261,
+      pvt.x,
+      pvt.y,
+      (typeof p.minigunBarrelPhase === 'number') ? p.minigunBarrelPhase : 0
+    );
 
-      // Wybor klatki obrotu (0..3) i plynne przejscie miedzy stanami rozgrzania (0..2)
-      const phase = (typeof p.minigunBarrelPhase === 'number') ? p.minigunBarrelPhase : 0;
-      const col = Math.floor(Math.abs(phase)) % 4;
-      const heat = Math.max(0, Math.min(1, (typeof p.minigunHeat === 'number') ? p.minigunHeat : 0));
-
-      const srcX = col * 256;
-      const srcW = 256;
-      const srcH = 128;
-
-      ctx.save();
-      ctx.scale(s, s);
-      ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      if (heat <= 0.06) {
-        ctx.drawImage(imgMinigun, srcX, 0, srcW, srcH, 0, 0, srcW, srcH);
-      } else if (heat < 0.48) {
-        ctx.drawImage(imgMinigun, srcX, 0, srcW, srcH, 0, 0, srcW, srcH);
-        const warmAlpha = Math.min(1, (heat - 0.06) / 0.34);
-        const prevAlpha = ctx.globalAlpha;
-        ctx.globalAlpha = prevAlpha * warmAlpha;
-        ctx.drawImage(imgMinigun, srcX, 128, srcW, srcH, 0, 0, srcW, srcH);
-        ctx.globalAlpha = prevAlpha;
-      } else if (heat < 0.85) {
-        ctx.drawImage(imgMinigun, srcX, 128, srcW, srcH, 0, 0, srcW, srcH);
-        const hotAlpha = Math.min(1, (heat - 0.48) / 0.32);
-        const prevAlpha = ctx.globalAlpha;
-        ctx.globalAlpha = prevAlpha * hotAlpha;
-        ctx.drawImage(imgMinigun, srcX, 256, srcW, srcH, 0, 0, srcW, srcH);
-        ctx.globalAlpha = prevAlpha;
-      } else {
-        ctx.drawImage(imgMinigun, srcX, 256, srcW, srcH, 0, 0, srcW, srcH);
-      }
-      ctx.restore();
-
-      // Blysk wylotowy na lufach (246, 74)
+    if (drawn) {
       if (p.muzzleFlashTimer > 0) {
-        const bLen = (typeof hold.barrelLen === 'number') ? hold.barrelLen : 48.5;
-        const bOffY = (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : 2.0;
-        drawMuzzleFlash(ctx, bLen, bOffY, 13, false);
+        const bLen = (typeof hold.barrelLen === 'number') ? hold.barrelLen : 50.0;
+        const bOffY = (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : 6.66;
+        drawMuzzleFlash(ctx, bLen, bOffY, 14, false);
       }
     } else {
-      // Rezerwowy podglad proceduralny
+      // Rezerwowy podglad proceduralny podczas ładowania PNG
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(-2, -3, 30, 8);
       ctx.fillStyle = '#475569';
