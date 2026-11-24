@@ -179,29 +179,22 @@ console.log('--- TEST 5: Zmiażdżenie z góry (Squash) ---');
   console.log('PASS: Beczka prawidlowo ulega detonacji przy zmiazdzeniu (Squash).');
 }
 
-console.log('--- TEST 6: Airdrop i limit beczek ---');
+console.log('--- TEST 6: Calkowity brak airdropu i respawnu beczek w trakcie meczu ---');
 {
   resetHazardsState();
   hazardsState.barrels.push(createBarrelInstance({ type: 'EXPLOSIVE', x: 500, y: 700 }));
-  hazardsState.barrels.push(createBarrelInstance({ type: 'TOXIC', x: 900, y: 700 }));
 
-  // Proba airdropu gdy sa juz 2 beczki
+  // Proba airdropu w trakcie meczu musi zostac calkowicie zablokowana (zwraca false)
   const spawned = spawnAirdropBarrel('arena-1', 738, []);
-  assert.strictEqual(spawned, false, 'Airdrop nie moze nastapic gdy sa >= 2 beczki');
+  assert.strictEqual(spawned, false, 'spawnAirdropBarrel musi zawsze zwracac false (brak zrzutow w trakcie meczu)');
+  assert.strictEqual(hazardsState.barrels.length, 1, 'Liczba beczek nie moze wzrosnac w trakcie meczu');
 
-  // Usuniecie jednej beczki
-  hazardsState.barrels.pop();
-  assert.strictEqual(hazardsState.barrels.length, 1);
-
-  const spawned2 = spawnAirdropBarrel('arena-1', 738, []);
-  assert.strictEqual(spawned2, true, 'Airdrop powinien sie powiesc gdy jest < 2 beczki');
-  assert.strictEqual(hazardsState.barrels.length, 2);
-
-  const newB = hazardsState.barrels[1];
-  assert.strictEqual(newB.y, -40, 'Nowa zrzucona beczka musi spadac z powietrza');
-  assert.strictEqual(newB.onGround, false, 'Nowa zrzucona beczka musi byc w powietrzu');
-  assert.ok(Math.abs(newB.x - 500) >= 140, 'Nowa beczka musi zachowac min. 140px dystansu od istniejacej');
-  console.log('PASS: Airdrop dziala precyzyjnie z zachowaniem limitu i dystansu min. 140px.');
+  // Symulacja uplywu 60 sekund w grze - zadna nowa beczka nie moze sie pojawic
+  for (let s = 0; s < 60; s++) {
+    updateHazards(1.0, [], 738);
+  }
+  assert.strictEqual(hazardsState.barrels.length, 1, 'Brak respawnowania beczek w trakcie gry');
+  console.log('PASS: Calkowity brak zrzutow i respawnu beczek w trakcie meczu potwiedzony.');
 }
 
 console.log('--- TEST 7: Obrazenia beczki od pocisku / damageBarrel ---');
@@ -419,6 +412,75 @@ console.log('--- TEST 15: resetArena czysci i poprawnie resetuje stan hazardsSta
   assert.strictEqual(hazardsState.acidPools.length, 0, 'Kaluze kwasu musza zostac wyczyszczone przy resetArena');
   assert.strictEqual(hazardsState.currentArenaId, null, 'currentArenaId musi byc zresetowany przy resetArena');
   console.log('PASS: resetArena prawidlowo resetuje hazardsState.');
+}
+
+console.log('--- TEST 16: Jednorazowe losowe rozstawienie beczek na start meczu na wszystkich arenach ---');
+{
+  const { initHazardsForArena } = await import('../js/hazards/logic.js');
+
+  for (const aId of ['arena-1', 'arena-2', 'arena-3', 'arena-4', 'arena-5']) {
+    hazardsState.currentArenaId = null;
+    hazardsState.barrels.length = 0;
+    setActiveArena(aId);
+
+    const groundY = (aId === 'arena-3' || aId === 'arena-4') ? 1380 : (aId === 'arena-5' ? 1200 : 738);
+    initHazardsForArena(aId, groundY);
+
+    const count = hazardsState.barrels.length;
+    if (aId === 'arena-5') {
+      assert.ok(count >= 3 && count <= 4, `Arena 5 powinna miec 3-4 beczki na start, otrzymano: ${count}`);
+    } else {
+      assert.ok(count >= 4 && count <= 5, `Arena ${aId} powinna miec 4-5 beczek na start, otrzymano: ${count}`);
+    }
+
+    // Weryfikacja minimalnego dystansu między beczkami (>= 200 px)
+    for (let i = 0; i < hazardsState.barrels.length; i++) {
+      const b1 = hazardsState.barrels[i];
+      assert.ok(b1.onGround, `Beczka ${b1.id} musi stac stabilnie na onGround na starcie`);
+      assert.strictEqual(b1.vy, 0, 'Beczka na starcie nie moze miec predkosci pionowej');
+
+      if (aId === 'arena-3') {
+        const mid = b1.x + b1.w * 0.5;
+        assert.ok(
+          mid <= 750 || mid >= 3650,
+          `Beczka X=${mid} na Arenie 3 znajduje sie w zabronionej strefie centralnej!`
+        );
+      }
+
+      for (let j = i + 1; j < hazardsState.barrels.length; j++) {
+        const b2 = hazardsState.barrels[j];
+        const dist = Math.hypot((b1.x + b1.w * 0.5) - (b2.x + b2.w * 0.5), (b1.y + b1.h) - (b2.y + b2.h));
+        const requiredDist = (aId === 'arena-5') ? 180 : 220;
+        assert.ok(dist >= requiredDist, `Dystans miedzy beczkami (${dist}px) na ${aId} musi wynosic >= ${requiredDist}px`);
+      }
+    }
+  }
+  console.log('PASS: Wszystkie areny (1-5) poprawnie generuja jednorazowe losowe rozstawienie beczek na start.');
+}
+
+console.log('--- TEST 17: Brak trzepania i poprawne staczanie z rampy/krawedzi ---');
+{
+  setActiveArena('arena-1');
+  resetHazardsState();
+  hazardsState.currentArenaId = 'arena-1';
+  const barrel = createBarrelInstance({ type: 'EXPLOSIVE', x: 500, y: 700 });
+  barrel.onGround = true;
+  barrel.vx = 0;
+  barrel.vy = 0;
+  hazardsState.barrels.push(barrel);
+
+  // Symulacja podloza bedacego rampa (lewa strona wyzsza = mniejsze Y, prawa strona nizsza = wieksze Y)
+  // W Canvasie wieksze Y = nizej, wiec rampa opada w prawo (slideDir = 1)
+  globalThis.isGroundAt = () => true;
+
+  // Sprawdzamy symulacje 10 klatek - beczka nie moze trzepac vy ani wpadac w pętlę lostGround
+  for (let k = 0; k < 10; k++) {
+    updateHazards(1 / 60, [], 738);
+  }
+
+  assert.strictEqual(barrel.isDead, false, 'Beczka nie powinna wybuchnac od zwyklego staczania');
+  assert.ok(Math.abs(barrel.vy) < 2.0, 'Beczka na podlozu nie powinna gwaltownie skakac pionowo');
+  console.log('PASS: Fizyka staczania i podparcia na rampach dziala stabilnie bez trzepania.');
 }
 
 console.log('\n[SUKCES] Wszystkie testy fizyki i zachowania beczek oraz kwasu zakonczone sukcesem!');

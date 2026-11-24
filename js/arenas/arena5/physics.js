@@ -620,29 +620,6 @@ function onCraneBlockImpact(combatants) {
       });
     }
   }
-
-  // Szansa (~22%) na pojawienie się beczki na dachu nowo wylądowanego klocka suwnicy (maks. 2 aktywne w Arenie 5)
-  if (Array.isArray(window.hazardsBarrels) && window.hazardsBarrels.length < 2 && Math.random() < 0.22) {
-    if (typeof window.createBarrelInstance === 'function' && Array.isArray(crane.shapeCells) && crane.shapeCells.length > 0) {
-      // Znajdź najwyższy kafelek figury (najwyższe rowRel)
-      const topCell = [...crane.shapeCells].sort((a, b) => b.rowRel - a.rowRel)[0];
-      if (topCell) {
-        const topWorldCol = crane.col + topCell.colRel;
-        const topWorldRow = crane.targetLandingRow + topCell.rowRel;
-        const barrelX = getGridX(topWorldCol) + CELL_SIZE * 0.5 - 13;
-        const barrelY = getGridY(topWorldRow) - 38;
-        if (barrelX >= 0 && barrelX <= ARENA_WIDTH - 26) {
-          const barrelType = Math.random() < 0.7 ? 'EXPLOSIVE' : 'TOXIC';
-          window.hazardsBarrels.push(window.createBarrelInstance({
-            type: barrelType,
-            x: barrelX,
-            y: barrelY,
-            id: `a5_barrel_${Date.now()}`
-          }));
-        }
-      }
-    }
-  }
 }
 
 /**

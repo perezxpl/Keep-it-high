@@ -124,7 +124,7 @@ export const ARENA_BARREL_SPAWNS = {
 export const hazardsState = {
   barrels: [],
   acidPools: [],
-  airdropTimer: 28.0,
+  airdropTimer: 0,
   currentArenaId: null
 };
 
@@ -175,5 +175,5 @@ if (typeof window !== 'undefined') {
 export function resetHazardsState() {
   hazardsState.barrels.length = 0;
   hazardsState.acidPools.length = 0;
-  hazardsState.airdropTimer = 28.0;
+  hazardsState.airdropTimer = 0;
 }

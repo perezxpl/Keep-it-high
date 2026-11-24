@@ -148,7 +148,7 @@ export function getBarrelSurfaceY(x, y, baseGroundY, arenaKeyOverride = null) {
           }
         }
 
-        if (y <= topY + 6 && topY < floor) {
+        if (y <= topY + 18 && topY < floor) {
           floor = topY;
         }
       }
@@ -160,7 +160,7 @@ export function getBarrelSurfaceY(x, y, baseGroundY, arenaKeyOverride = null) {
       if (!obs || obs.destroyed || obs.isDestroyed || obs.intact === false || obs.solid === false || obs.isPlatform === false || (obs.hp !== undefined && obs.hp <= 0)) continue;
       const topY = obs.y !== undefined ? obs.y : (baseGroundY - obs.relY);
       if (x >= obs.x - 2 && x <= obs.x + obs.w + 2) {
-        if (y <= topY + 6 && topY < floor) {
+        if (y <= topY + 18 && topY < floor) {
           floor = topY;
         }
       }
@@ -181,7 +181,11 @@ export function getBarrelSurfaceY(x, y, baseGroundY, arenaKeyOverride = null) {
  */
 export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
   const normArena = String(arenaId || '').toLowerCase().replace(/_/g, '-');
+  const isA1 = (normArena === 'arena-1' || normArena === 'cyber-stadium');
+  const isA2 = (normArena === 'arena-2' || normArena === 'refinery');
   const isA3 = (normArena === 'arena-3' || normArena === 'arena-foundry');
+  const isA4 = (normArena === 'arena-4' || normArena === 'obsidian-caldera');
+  const isA5 = (normArena === 'arena-5' || normArena === 'prefab-tower');
 
   // 1. Twarda blokada strefy centralnej Areny 3 (rampy podejściowe, pale, pylony, most i rzeka)
   if (isA3) {
@@ -193,10 +197,11 @@ export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
     }
   }
 
-  const halfW = BARREL_CONFIG.WIDTH * 0.5; // 13px
-  const xLeft = midX - halfW;
+  // Zapas na krawędzie: 18 px (szerokość beczki 26px, zapas 18px gwarantuje stabilne oparcie)
+  const edgeSpan = 18;
+  const xLeft = midX - edgeSpan;
   const xCenter = midX;
-  const xRight = midX + halfW;
+  const xRight = midX + edgeSpan;
 
   const yLeft = getBarrelSurfaceY(xLeft, testY, groundY, arenaId);
   const yCenter = getBarrelSurfaceY(xCenter, testY, groundY, arenaId);
@@ -207,20 +212,30 @@ export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
     return null;
   }
 
-  // Woda / kratery / przepaść
+  // Odrzucanie stref śmiertelnych i niestabilnych
+  if (isA2 && (yCenter >= 1400 || yLeft >= 1400 || yRight >= 1400)) {
+    return null;
+  }
   if (isA3 && (yCenter >= 1260 || yLeft >= 1260 || yRight >= 1260)) {
     return null;
   }
+  if (isA4 && (yCenter >= 1340 || yLeft >= 1340 || yRight >= 1340)) {
+    return null;
+  }
+  if (isA5 && (yCenter >= 1250 || yLeft >= 1250 || yRight >= 1250)) {
+    return null;
+  }
 
-  // 3. Weryfikacja płaskiego podłoża pod całą szerokością beczki (max 6px różnicy wysokości)
-  if (Math.abs(yLeft - yRight) > 6 || Math.abs(yCenter - yLeft) > 6 || Math.abs(yCenter - yRight) > 6) {
+  // 3. Weryfikacja płaskiego podłoża pod całą szerokością beczki (max 5px różnicy wysokości)
+  if (Math.abs(yLeft - yRight) > 5 || Math.abs(yCenter - yLeft) > 5 || Math.abs(yCenter - yRight) > 5) {
     return null;
   }
 
   // 4. Weryfikacja braku zniszczenia i zakazanych typów na platformie
-  const platformList = (typeof window !== 'undefined' && window.arena5State?.platforms)
-    ? [...ARENA_PLATFORMS, ...window.arena5State.platforms]
-    : ARENA_PLATFORMS;
+  const a5Plats = (typeof window !== 'undefined' && window.arena5State?.platforms)
+    ? window.arena5State.platforms
+    : null;
+  const platformList = a5Plats ? [...ARENA_PLATFORMS, ...a5Plats] : ARENA_PLATFORMS;
 
   if (Array.isArray(platformList)) {
     for (const plat of platformList) {
@@ -232,10 +247,10 @@ export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
             return null;
           }
         }
-        if (plat.isStilt || plat.isRope || plat.isDecorative || plat.type === 'stilt' || plat.type === 'rope') {
+        if (plat.isFalling || plat.isStilt || plat.isDecorative || plat.isRope || plat.type === 'stilt' || plat.type === 'rope') {
           return null;
         }
-        if (isA3 && (plat.isRampBlock || plat.isBridgeBlock)) {
+        if (isA3 && (plat.isRampBlock || plat.isBridgeBlock || plat.isCanopyBlock || plat.id?.includes('bridge') || plat.id?.includes('ramp') || plat.id?.includes('pylon'))) {
           return null;
         }
       }
@@ -325,7 +340,7 @@ export function getAcidPoolSupportBounds(centerX, surfaceY, maxRadius, groundY, 
     let prevY = surfaceY;
     let curLeft = centerX;
     for (let x = centerX - step; x >= centerX - maxRadius - 16; x -= step) {
-      const sampleY = Math.min(surfaceY, prevY) - 50;
+      const sampleY = Math.min(surfaceY, prevY) - 12;
       const yVal = getBarrelSurfaceY(x, sampleY, groundY, arenaKey);
       const inRiver = (arenaKey === 'arena-3' && yVal >= 1280);
       const inLava = (arenaKey === 'arena-4' && yVal >= 1390);
@@ -341,7 +356,7 @@ export function getAcidPoolSupportBounds(centerX, surfaceY, maxRadius, groundY, 
     prevY = surfaceY;
     let curRight = centerX;
     for (let x = centerX + step; x <= centerX + maxRadius + 16; x += step) {
-      const sampleY = Math.min(surfaceY, prevY) - 50;
+      const sampleY = Math.min(surfaceY, prevY) - 12;
       const yVal = getBarrelSurfaceY(x, sampleY, groundY, arenaKey);
       const inRiver = (arenaKey === 'arena-3' && yVal >= 1280);
       const inLava = (arenaKey === 'arena-4' && yVal >= 1390);
@@ -377,7 +392,7 @@ export function fitAcidPoolToTerrain(pool, groundY, arenaKey) {
   pool.baseRadius = maxR;
 
   // Sprawdzamy najpierw czy grunt pod kałużą się obniżył (np. wycięty krater lub zapadnięcie platformy)
-  const centerFloor = getBarrelSurfaceY(pool.x, pool.y - 50, groundY, arenaKey);
+  const centerFloor = getBarrelSurfaceY(pool.x, pool.y - 12, groundY, arenaKey);
   if (centerFloor !== Infinity && centerFloor > pool.y + 4) {
     pool.y = centerFloor;
   }
@@ -403,7 +418,7 @@ export function fitAcidPoolToTerrain(pool, groundY, arenaKey) {
   const xMid = pool.x;
   const xRight = pool.x + pool.radius;
 
-  const sampleY = pool.y - 50;
+  const sampleY = pool.y - 12;
   const yLeft = getBarrelSurfaceY(xLeft, sampleY, groundY, arenaKey);
   const yMid = getBarrelSurfaceY(xMid, sampleY, groundY, arenaKey);
   const yRight = getBarrelSurfaceY(xRight, sampleY, groundY, arenaKey);
@@ -449,11 +464,17 @@ export function resolveBarrelWallCollisions(b, groundY, combatants = []) {
   for (let i = 0; i < platformList.length; i++) {
     const plat = platformList[i];
     if (!plat || plat.destroyed || plat.isDestroyed || plat.intact === false || plat.solid === false || (plat.hp !== undefined && plat.hp <= 0)) continue;
-    if (plat.isDropThrough || plat.dropThrough || plat.type === 'catwalk' || plat.isSlope) continue;
+    if (plat.isDropThrough || plat.dropThrough || plat.type === 'catwalk' || plat.isSlope || plat.oneWay === true) continue;
+    if (plat.isFalling || plat.isStilt || plat.isDecorative || plat.isRope || plat.type === 'stilt' || plat.type === 'rope' || plat.isRampBlock || plat.isBridgeBlock) continue;
+    if (plat.type === 'metal_ramp_left' || plat.type === 'metal_ramp_right' || plat.isRamp) continue;
+
+    const curArenaKey = (typeof getActiveArena === 'function') ? getActiveArena()?.id : null;
+    const isA3 = (curArenaKey === 'arena-3' || curArenaKey === 'arena-foundry');
+    if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
 
     const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
     const platThick = plat.thickness || plat.h || (plat.isMonolith ? 470 : 30);
-    if (platThick < 16 && !plat.isWall && !plat.isMonolith) continue;
+    if (platThick <= 16 && !plat.isWall && !plat.isMonolith) continue;
 
     const bottomY = topY + platThick;
 
@@ -580,6 +601,8 @@ export function resolveBarrelWallCollisions(b, groundY, combatants = []) {
 
 /**
  * Inicjalizuje beczki dla aktywnej areny
+ * Na początku każdego meczu/rundy jednorazowo generuje losowe rozstawienie 4–5 beczek
+ * (na Arenie 5: 3–4 sztuki). Całkowity brak okresowych zrzutów z powietrza w trakcie meczu.
  */
 export function initHazardsForArena(arenaId, groundY = 800) {
   if (!arenaId) return;
@@ -589,30 +612,98 @@ export function initHazardsForArena(arenaId, groundY = 800) {
   hazardsState.currentArenaId = normalizedId;
   hazardsState.barrels.length = 0;
   hazardsState.acidPools.length = 0;
-  hazardsState.airdropTimer = 25.0 + Math.random() * 5.0;
+  hazardsState.airdropTimer = 0;
 
-  const spawns = ARENA_BARREL_SPAWNS[normalizedId] || ARENA_BARREL_SPAWNS[arenaId];
-  if (Array.isArray(spawns)) {
-    for (const sp of spawns) {
-      const spawnMidX = sp.x + BARREL_CONFIG.WIDTH * 0.5;
-      const surfaceY = getValidBarrelSpawnSurfaceY(spawnMidX, sp.y + BARREL_CONFIG.HEIGHT, groundY, normalizedId);
-      if (surfaceY === null || surfaceY === Infinity || surfaceY > 1320) continue;
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const isA1 = (normalizedId === 'arena-1' || normalizedId === 'cyber-stadium');
+  const isA2 = (normalizedId === 'arena-2' || normalizedId === 'refinery');
+  const isA3 = (normalizedId === 'arena-3' || normalizedId === 'arena-foundry');
+  const isA4 = (normalizedId === 'arena-4' || normalizedId === 'obsidian-caldera');
+  const isA5 = (normalizedId === 'arena-5' || normalizedId === 'prefab-tower');
 
-      let tooClose = false;
-      for (const b of hazardsState.barrels) {
-        if (Math.hypot((b.x + b.w * 0.5) - spawnMidX, (b.y + b.h) - surfaceY) < 140) {
-          tooClose = true;
-          break;
+  const targetCount = isA5
+    ? (3 + (Math.random() < 0.5 ? 1 : 0))
+    : (4 + (Math.random() < 0.5 ? 1 : 0));
+
+  let minX, maxX;
+  if (isA5) {
+    const a5St = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+    const sLeft = a5St?.shaftLeft ?? 0;
+    const sRight = a5St?.shaftRight ?? 1000;
+    minX = sLeft + 80;
+    maxX = sRight - 80;
+  } else {
+    minX = (curArena?.bounds?.minX ?? 0) + 180;
+    maxX = (curArena?.bounds?.maxX ?? curArena?.width ?? 3800) - 180;
+  }
+
+  const spawns = curArena?.spawns || [];
+
+  for (let attempt = 0; attempt < 250 && hazardsState.barrels.length < targetCount; attempt++) {
+    const candX = minX + Math.random() * (maxX - minX);
+
+    // Próbkowanie z różnych wysokości areny: górne platformy, średnie pomosty oraz podłoże
+    let testY;
+    if (isA5) {
+      testY = (Math.random() < 0.5 ? 400 : 900);
+    } else if (isA4) {
+      testY = Math.random() < 0.35 ? 180 : (Math.random() < 0.70 ? 550 : 850);
+    } else {
+      testY = Math.random() < 0.5 ? 200 : (groundY - 220);
+    }
+
+    const surfaceY = getValidBarrelSpawnSurfaceY(candX, testY, groundY, normalizedId);
+    if (surfaceY === null || surfaceY === Infinity || surfaceY > 1320) continue;
+
+    // 1. Dystans min 220px do innych aktywnych beczek (na Arenie 5 z racji szerokości szybu: 180px)
+    const minDist = isA5 ? 180 : 220;
+    let tooClose = false;
+    for (const b of hazardsState.barrels) {
+      if (Math.hypot((b.x + b.w * 0.5) - candX, (b.y + b.h) - surfaceY) < minDist) {
+        tooClose = true;
+        break;
+      }
+    }
+    if (tooClose) continue;
+
+    // 2. Dystans min 85px od punktów spawnu graczy (brak spawnu w ciele postaci)
+    if (Array.isArray(spawns)) {
+      for (const sp of spawns) {
+        if (!sp) continue;
+        const sx = sp.x !== undefined ? sp.x : (Array.isArray(sp) ? sp[0] : null);
+        const sy = sp.y !== undefined ? sp.y : (Array.isArray(sp) ? sp[1] : null);
+        if (typeof sx === 'number' && typeof sy === 'number') {
+          if (Math.hypot(sx - candX, sy - surfaceY) < 85) {
+            tooClose = true;
+            break;
+          }
         }
       }
-      if (tooClose) continue;
-
-      const inst = createBarrelInstance(sp);
-      inst.x = spawnMidX - inst.w * 0.5;
-      inst.y = surfaceY - inst.h;
-      inst.onGround = true;
-      hazardsState.barrels.push(inst);
     }
+    if (tooClose) continue;
+
+    // 3. Typ beczki:
+    let barrelType = 'EXPLOSIVE';
+    if (isA2) {
+      barrelType = Math.random() < 0.50 ? 'TOXIC' : 'EXPLOSIVE';
+    } else {
+      const roll = Math.random();
+      barrelType = roll < 0.60 ? 'EXPLOSIVE' : (roll < 0.85 ? 'TOXIC' : 'ORDNANCE');
+    }
+
+    const inst = createBarrelInstance({
+      type: barrelType,
+      x: candX - BARREL_CONFIG.WIDTH * 0.5,
+      y: surfaceY - BARREL_CONFIG.HEIGHT,
+      id: `barrel_${normalizedId}_${hazardsState.barrels.length}_${Math.floor(Math.random() * 10000)}`
+    });
+
+    inst.x = candX - inst.w * 0.5;
+    inst.y = surfaceY - inst.h;
+    inst.onGround = true;
+    inst.vx = 0;
+    inst.vy = 0;
+    hazardsState.barrels.push(inst);
   }
 }
 
@@ -905,18 +996,28 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       const curMinSurfaceY = Math.min(surfaceLeftY, surfaceMidY, surfaceRightY);
       const curMaxSurfaceY = Math.max(surfaceLeftY, surfaceMidY, surfaceRightY);
 
-      const lostGround = (
+      // Na pochyłej rampie różnica wysokości obu krawędzi wynosi 3-22 px, ale obie strony mają oparcie
+      const isRampSlope = (surfaceLeftY !== Infinity && surfaceRightY !== Infinity && Math.abs(surfaceLeftY - surfaceRightY) > 3 && Math.abs(surfaceLeftY - surfaceRightY) <= 22 && Math.abs(surfaceMidY - feetY) <= 8);
+
+      const lostGround = !isRampSlope && (
         surfaceLeftY === Infinity ||
         surfaceMidY === Infinity ||
         surfaceRightY === Infinity ||
-        curMinSurfaceY > feetY + 4 ||
-        (curMaxSurfaceY - curMinSurfaceY > 12)
+        curMinSurfaceY > feetY + 6 ||
+        (curMaxSurfaceY - curMinSurfaceY > 16)
       );
 
       if (lostGround) {
         // Podłoże zapadło się w krater, platforma runęła lub krawędź odpadła: natychmiastowe spadanie!
         b.onGround = false;
         b.vy = Math.max(b.vy, 1.0);
+      } else if (isRampSlope) {
+        // Płynne staczanie się po rampie w dół stoku (większe Y w Canvasie = niżej)
+        const slopeDir = (surfaceLeftY > surfaceRightY) ? -1 : 1;
+        b.vx += slopeDir * 0.35;
+        b.rotVel += slopeDir * 0.02;
+        b.y = surfaceMidY - b.h;
+        b.vy = 0;
       } else if (surfaceMidY < feetY - 4) {
         // Teren się podniósł
         b.y = surfaceMidY - b.h;
@@ -950,9 +1051,10 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       continue;
     }
 
-    // Lądowanie na podłożu i platformach
+    // Lądowanie na podłożu i platformach: aktualny środek po przemieszczeniu
+    const curMidX = b.x + b.w * 0.5;
     const newFeetY = b.y + b.h;
-    const newSurfaceY = getBarrelSurfaceY(midX, newFeetY, groundY);
+    const newSurfaceY = getBarrelSurfaceY(curMidX, newFeetY, groundY);
 
     if (newSurfaceY !== Infinity && newFeetY >= newSurfaceY - 1 && b.vy >= 0) {
       if (b.vy > 3.0) {
@@ -960,18 +1062,30 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
         b.vy = -b.vy * BARREL_CONFIG.BOUNCE_RESTITUTION;
         b.vx *= 0.85;
         b.rotVel *= 0.6;
-        spawnRicochetSparks(midX, newSurfaceY, (Math.random() - 0.5) * 3, -1, 3);
+        spawnRicochetSparks(curMidX, newSurfaceY, (Math.random() - 0.5) * 3, -1, 3);
       } else {
         const checkL = getBarrelSurfaceY(b.x + 3, newFeetY, groundY);
         const checkR = getBarrelSurfaceY(b.x + b.w - 3, newFeetY, groundY);
-        if (checkL !== Infinity && checkR !== Infinity && Math.abs(checkL - checkR) <= 12) {
+        if (checkL !== Infinity && checkR !== Infinity && Math.abs(checkL - checkR) <= 8) {
+          // Płaska powierzchnia platformy / terenu
+          b.y = newSurfaceY - b.h;
+          b.vy = 0;
+          b.onGround = true;
+        } else if (checkL !== Infinity && checkR !== Infinity && Math.abs(checkL - checkR) <= 22) {
+          // Pochyła rampa z podparciem obu stron: płynne staczanie się w dół stoku
+          const slideDir = (checkL > checkR) ? -1 : 1;
+          b.vx += slideDir * 0.55;
+          b.rotVel += slideDir * 0.03;
           b.y = newSurfaceY - b.h;
           b.vy = 0;
           b.onGround = true;
         } else {
-          // Połowa beczki wisi w powietrzu na krawędzi - zsuwanie się grawitacyjne
-          b.vx += (checkL > checkR ? 0.8 : -0.8);
+          // Krawędź przepaści / brak podparcia z jednej strony - zsuwanie grawitacyjne z krawędzi
+          const slideDir = (checkL === Infinity || checkL > checkR) ? -1 : 1;
+          b.vx += slideDir * 0.55;
+          b.rotVel += slideDir * 0.03;
           b.y = newSurfaceY - b.h;
+          b.vy = 0;
         }
       }
     } else if (newSurfaceY !== Infinity && b.onGround && Math.abs(newFeetY - newSurfaceY) <= 8 && b.vy >= 0) {
@@ -1187,99 +1301,14 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     hazardsState.barrels.shift();
   }
 
-  // -------------------------------------------------------------------------
-  // 3. OKRESOWY ZRZUT NOWEJ BECZKI (AIRDROP CO 25-30S TYLKO GDY < 2 BECZKI NA MAPIE)
-  // -------------------------------------------------------------------------
-  if (arenaId !== 'arena-5') {
-    hazardsState.airdropTimer = (hazardsState.airdropTimer || 28.0) - dt;
-    if (hazardsState.airdropTimer <= 0) {
-      hazardsState.airdropTimer = 25.0 + Math.random() * 5.0;
-      if (hazardsState.barrels.length < 2) {
-        spawnAirdropBarrel(arenaId, groundY, combatants);
-      }
-    }
-  }
 }
 
 /**
- * Spawnuje pojedynczą beczkę zrzucaną z powietrza (Airdrop)
- * Wywoływane rzadko (co 25-30s), wyłącznie gdy na mapie jest < 2 aktywne beczki.
+ * Zrzut z powietrza (Airdrop) w trakcie meczu wyłączony - beczki rozstawiane są wyłącznie
+ * jednorazowo przy starcie meczu/rundy w initHazardsForArena.
+ * Funkcja zachowana jako kompatybilna atrapa zwracająca false.
  */
 export function spawnAirdropBarrel(arenaId, groundY = 800, combatants = []) {
-  if (hazardsState.barrels.length >= 2) return false;
-
-  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const minX = (curArena?.bounds?.minX ?? 0) + 200;
-  const maxX = (curArena?.bounds?.maxX ?? 3800) - 200;
-  const isA2 = (arenaId === 'arena-2');
-  const isA3 = (arenaId === 'arena-3');
-  const isA4 = (arenaId === 'arena-4');
-  const isA5 = (arenaId === 'arena-5');
-
-  if (isA5) return false;
-
-  const randTypeRoll = Math.random();
-  const barrelType = randTypeRoll < 0.60 ? 'EXPLOSIVE' : (randTypeRoll < 0.85 ? 'TOXIC' : 'ORDNANCE');
-
-  for (let attempt = 0; attempt < 25; attempt++) {
-    let candX = 0;
-    if (isA3) {
-      // Na Arenie 3 twardy zakaz spawnowania w strefie ramp, pali, pylonów, mostu i rzeki (X: 750..3650)
-      // Beczki mogą pojawiać się wyłącznie na stałym, płaskim gruncie lewym (X: 240..720) i prawym (X: 3680..4160)
-      const leftBank = Math.random() < 0.5;
-      candX = leftBank
-        ? (240 + Math.random() * (720 - 240))
-        : (3680 + Math.random() * (4160 - 3680));
-    } else {
-      candX = minX + Math.random() * (maxX - minX);
-    }
-
-    const surfaceY = getValidBarrelSpawnSurfaceY(candX, 300, groundY, arenaId);
-    if (surfaceY === null || surfaceY === Infinity || surfaceY > 1300) continue;
-    if (isA2 && surfaceY >= 1420) continue;
-    if (isA3 && surfaceY >= 1260) continue;
-    if (isA4 && surfaceY >= 1350) continue;
-
-    // 1. Dystans min 140px do innych aktywnych beczek
-    let tooClose = false;
-    for (const b of hazardsState.barrels) {
-      if (!b || b.isDead) continue;
-      const bMidX = b.x + b.w * 0.5;
-      if (Math.abs(bMidX - candX) < 140) {
-        tooClose = true;
-        break;
-      }
-    }
-    if (tooClose) continue;
-
-    // 2. Dystans min 90px do gracza i botów
-    for (const c of combatants) {
-      if (!c) continue;
-      const cx = c.x + (c.w || 24) * 0.5;
-      const cy = c.y + (c.h || 70) * 0.5;
-      if (Math.hypot(cx - candX, cy - surfaceY) < 90) {
-        tooClose = true;
-        break;
-      }
-    }
-    if (tooClose) continue;
-
-    // Pomyślny zrzut: nowa beczka spada z powietrza (Airdrop) z grawitacją
-    const newBarrel = createBarrelInstance({
-      type: barrelType,
-      x: candX - BARREL_CONFIG.WIDTH * 0.5,
-      y: -40,
-      id: `barrel_airdrop_${Date.now()}_${Math.floor(Math.random() * 1000)}`
-    });
-    newBarrel.onGround = false;
-    newBarrel.vx = (Math.random() - 0.5) * 0.6;
-    newBarrel.vy = 2.0;
-    hazardsState.barrels.push(newBarrel);
-
-    playSound('weapon_empty', { x: candX, y: 100 });
-    return true;
-  }
-
   return false;
 }
 
