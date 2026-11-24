@@ -239,7 +239,9 @@ export function playSound(soundId, opts = {}) {
   }
 
   const nowMs = getNowMs();
-  const minSoundCooldown = soundId.startsWith('hit_') ? 55 : (soundId.startsWith('weapon_') ? 45 : 0);
+  const minSoundCooldown = soundId.startsWith('hit_')
+    ? 55
+    : (soundId === 'weapon_minigun' ? 25 : (soundId.startsWith('weapon_') ? 45 : 0));
   const cooldownMs = opts.cooldownMs !== undefined ? opts.cooldownMs : Math.max(def.cooldownMs || 0, minSoundCooldown);
   if (cooldownMs > 0) {
     const lastMs = audioState.lastPlayedAt.get(soundId) || 0;

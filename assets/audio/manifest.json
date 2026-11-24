@@ -47,9 +47,9 @@
       "pitchJitter": 0.03
     },
     "weapon_minigun": {
-      "src": ["weapon_ak47_1.wav", "weapon_ak47_2.wav"],
-      "volume": 0.88,
-      "pitchJitter": 0.04
+      "src": ["weapon_minigun_1.wav", "weapon_minigun_2.wav"],
+      "volume": 0.94,
+      "pitchJitter": 0.035
     },
     "minigun_spin": null,
     "minigun_spindown": null,

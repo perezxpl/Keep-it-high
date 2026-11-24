@@ -259,11 +259,16 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
     }
 
     case 'weapon_minigun': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.16);
-      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 215 * p, freqEnd: 55 * p, duration: 0.075, gain: gain * 0.95 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.09, gain: gain * 1.10, filterType: 'bandpass', freqStart: 1650 * p, freqEnd: 420 * p, Q: 0.9 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.03, gain: gain * 0.85, filterType: 'highpass', freqStart: 2600 * p, freqEnd: 1800 * p, Q: 0.7 });
-      scheduleTone(ctx, out, { startTime: now + 0.015, type: 'square', freqStart: 1100 * p, freqEnd: 650 * p, duration: 0.025, gain: gain * 0.18, filterType: 'bandpass', filterFreq: 1400 });
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.12);
+      // 1. Zwarty, pneumatyczny thud komory gazowej (szybki spadek 175Hz -> 48Hz, 0.045s)
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 175 * p, freqEnd: 48 * p, duration: 0.045, gain: gain * 1.20 });
+      // 2. Agresywny szum rozrywanego powietrza (supersonic rip / buzzsaw tear)
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.038, gain: gain * 1.25, filterType: 'bandpass', freqStart: 2700 * p, freqEnd: 1650 * p, Q: 1.8 });
+      // 3. Metaliczny trzask zamka wielolufowego i rolek krzywkowych (cam roller click)
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.016, gain: gain * 0.90, filterType: 'highpass', freqStart: 3400 * p, freqEnd: 2200 * p, Q: 1.1 });
+      scheduleTone(ctx, out, { startTime: now + 0.005, type: 'square', freqStart: 1650 * p, freqEnd: 580 * p, duration: 0.018, gain: gain * 0.28, filterType: 'bandpass', filterFreq: 1800 });
+      // 4. Harmoniczna pisku silnika elektrycznego 24V DC napedzajacego rotor (640Hz)
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 640 * p, freqEnd: 620 * p, duration: 0.035, gain: gain * 0.24 });
       return true;
     }
 
