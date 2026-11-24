@@ -380,32 +380,33 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
     // TRAFIENIA, PANCERZ I RYKOSZETY
     // =========================================================================
     case 'hit_flesh': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.11);
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 190 * p, freqEnd: 62 * p, duration: 0.07, gain: gain * 0.95 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.075, gain: gain * 0.75, filterType: 'lowpass', freqStart: 1200 * p, freqEnd: 320 });
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.13);
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 170 * p, freqEnd: 56 * p, duration: 0.06, gain: gain * 0.95 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.055, gain: gain * 0.85, filterType: 'bandpass', freqStart: 1350 * p, freqEnd: 650 * p, Q: 1.4 });
       return true;
     }
 
     case 'hit_headshot': {
       const { now, out } = createVoiceStage(ctx, destNode, pan, 0.16);
-      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 320 * p, freqEnd: 85 * p, duration: 0.085, gain: gain * 1.05 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.11, gain: gain * 1.1, filterType: 'bandpass', freqStart: 2900 * p, freqEnd: 880 * p, Q: 1.2 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 270 * p, freqEnd: 68 * p, duration: 0.065, gain: gain * 0.85 });
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 1120 * p, freqEnd: 980 * p, duration: 0.11, gain: gain * 0.55 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.065, gain: gain * 1.0, filterType: 'bandpass', freqStart: 1850 * p, freqEnd: 900 * p, Q: 1.5 });
       return true;
     }
 
     case 'hit_armor': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.14);
-      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 240 * p, freqEnd: 78 * p, duration: 0.065, gain: gain * 0.8 });
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 940 * p, freqEnd: 720 * p, duration: 0.09, gain: gain * 0.45 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.06, gain: gain * 0.65, filterType: 'bandpass', freqStart: 2100 * p, freqEnd: 950, Q: 2.0 });
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.13);
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 210 * p, freqEnd: 74 * p, duration: 0.06, gain: gain * 0.78 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 440 * p, freqEnd: 420 * p, duration: 0.065, gain: gain * 0.42 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.05, gain: gain * 0.78, filterType: 'bandpass', freqStart: 1550 * p, freqEnd: 720 * p, Q: 1.8 });
       return true;
     }
 
     case 'hit_helmet_break': {
       const { now, out } = createVoiceStage(ctx, destNode, pan, 0.24);
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 1850 * p, freqEnd: 1320 * p, duration: 0.18, gain: gain * 0.62 });
-      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 2740 * p, freqEnd: 2100 * p, duration: 0.14, gain: gain * 0.42 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.08, gain: gain * 0.85, filterType: 'bandpass', freqStart: 3100, freqEnd: 1200, Q: 1.6 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 1240 * p, freqEnd: 1000 * p, duration: 0.16, gain: gain * 0.58 });
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 1920 * p, freqEnd: 1540 * p, duration: 0.14, gain: gain * 0.40 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.09, gain: gain * 0.90, filterType: 'bandpass', freqStart: 2200, freqEnd: 1050, Q: 1.5 });
       return true;
     }
 
@@ -436,18 +437,20 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
     }
 
     case 'enforcer_piston_jump': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.34);
-      // Pneumatyczny syk zaworu + ciezki wyrzut tlokowy
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 120 * p, freqEnd: 36, duration: 0.22, gain: gain * 1.15 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.26, gain: gain * 0.95, filterType: 'highpass', freqStart: 2200, freqEnd: 650, Q: 1.4, attack: 0.004 });
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.29);
+      // Mechaniczny stuk silownika + ciezki wyrzut hydrauliczno-pneumatyczny + cieply wydech
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 340 * p, freqEnd: 160 * p, duration: 0.045, gain: gain * 0.55 });
+      scheduleTone(ctx, out, { startTime: now + 0.02, type: 'triangle', freqStart: 575 * p, freqEnd: 290 * p, duration: 0.04, gain: gain * 0.38 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 145 * p, freqEnd: 36, duration: 0.22, gain: gain * 1.15 });
+      scheduleNoise(ctx, out, { startTime: now + 0.005, duration: 0.22, gain: gain * 0.85, filterType: 'bandpass', freqStart: 1180 * p, freqEnd: 260, Q: 1.25, attack: 0.006 });
       return true;
     }
 
     case 'enforcer_ground_slam': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.48);
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 98 * p, freqEnd: 24, duration: 0.36, gain: gain * 1.3 });
-      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 75 * p, freqEnd: 28, duration: 0.24, gain: gain * 0.8 });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.36, gain: gain * 1.15, filterType: 'lowpass', freqStart: 1150, freqEnd: 120, Q: 0.8 });
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.45);
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 110 * p, freqEnd: 25, duration: 0.36, gain: gain * 1.3 });
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 220 * p, freqEnd: 52, duration: 0.18, gain: gain * 0.72, filterType: 'lowpass', filterFreq: 680 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.34, gain: gain * 1.05, filterType: 'lowpass', freqStart: 780, freqEnd: 110, Q: 0.85 });
       return true;
     }
 

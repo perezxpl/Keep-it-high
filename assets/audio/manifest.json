@@ -112,22 +112,23 @@
       "pitchJitter": 0.04
     },
     "hit_flesh": {
-      "src": ["hit_flesh_1.ogg", "hit_flesh_2.ogg", "hit_flesh_3.ogg"],
-      "volume": 0.90,
+      "src": ["hit_flesh_1.wav", "hit_flesh_2.wav", "hit_flesh_3.wav"],
+      "volume": 0.85,
       "pitchJitter": 0.05
     },
     "hit_headshot": {
       "src": "hit_headshot.wav",
-      "volume": 1.00
+      "volume": 0.92,
+      "pitchJitter": 0.03
     },
     "hit_armor": {
-      "src": ["hit_armor_1.ogg", "hit_armor_2.ogg", "hit_armor_3.ogg"],
-      "volume": 0.92,
+      "src": ["hit_armor_1.wav", "hit_armor_2.wav", "hit_armor_3.wav"],
+      "volume": 0.86,
       "pitchJitter": 0.04
     },
     "hit_helmet_break": {
-      "src": ["hit_helmet_break_1.wav", "hit_helmet_break_2.ogg"],
-      "volume": 0.92
+      "src": ["hit_helmet_break_1.wav", "hit_helmet_break_2.wav"],
+      "volume": 0.90
     },
     "hit_shield": {
       "src": ["hit_shield_1.ogg", "hit_shield_2.ogg"],
@@ -147,12 +148,14 @@
       "volume": 0.90
     },
     "enforcer_piston_jump": {
-      "src": "enforcer_piston_jump.wav",
-      "volume": 0.90
+      "src": ["enforcer_piston_jump.wav", "enforcer_piston_jump_2.wav"],
+      "volume": 0.92,
+      "pitchJitter": 0.03
     },
     "enforcer_ground_slam": {
-      "src": ["enforcer_ground_slam_1.ogg", "enforcer_ground_slam_2.ogg"],
-      "volume": 0.95
+      "src": ["enforcer_ground_slam_1.wav", "enforcer_ground_slam_2.wav"],
+      "volume": 0.95,
+      "pitchJitter": 0.04
     },
     "player_jump": {
       "src": "player_jump.ogg",
