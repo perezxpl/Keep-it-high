@@ -136,11 +136,11 @@ export const WEAPONS = {
     fireRate: 3,            // ~20 strzalow / s przy 60 FPS
     damage: 12,             // 12 dmg na pocisk (potezna fala ognia)
     bulletSpeed: 28,        // Pocisk 7.62x51mm
-    spread: 0.085,          // Umiarkowany rozrzut stozkowy
+    spread: 0.022,          // Zwarta smuga ognia w osi luf
     crouchSpreadMult: 0.65, // Lepsze skupienie w przysiadzie
     recoil: 0.45,           // Lekki odrzut wizualny
     crouchRecoilMult: 0.40,
-    muzzleRise: 0.018,      // Maly podrzut lufy na pojedynczy strzal
+    muzzleRise: 0.008,      // Subtelna wibracja luf bez znoszenia celowania
     kickbackDistance: 1.6,  // Delikatne cofniecie broni
     ballPush: 0.22,         // Wyrazne spychanie pilki
     bodyPush: 0.045,        // Spowolnienie/odpychanie trafionego wroga
@@ -662,6 +662,48 @@ export const MELEE_CONFIGS = {
 };
 
 /**
+ * Oblicza pełny kąt celowania 360 st. oraz ergonomiczny punkt obrotu chwytu dla Miniguna M134.
+ */
+function computeMinigunAimAndPivot(hipX, hipY, aimX, aimY, charFacing, baseOffsetY, barrelOffsetY, muzzleRise = 0) {
+  const originY = hipY - 4.0 + baseOffsetY;
+  const dx0 = (aimX - hipX) * charFacing;
+  const dy0 = aimY - originY;
+  let baseAngle = Math.atan2(dy0, dx0);
+  if (baseAngle < -Math.PI / 2) baseAngle = Math.max(-1.68, baseAngle);
+  else if (baseAngle > Math.PI / 2) baseAngle = Math.min(1.68, baseAngle);
+
+  const down0 = Math.max(0, Math.min(1.6, baseAngle));
+  const up0 = Math.max(0, Math.min(1.6, -baseAngle));
+  const pivotX0 = hipX + (1.5 - down0 * 1.2 + up0 * 4.5) * charFacing;
+  const pivotY0 = originY - down0 * 8.2 + up0 * 1.5;
+
+  const dist0 = Math.hypot(dx0, dy0);
+  let aimAngle = baseAngle;
+  if (dist0 > 30) {
+    const dx1 = (aimX - pivotX0) * charFacing;
+    const dy1 = aimY - pivotY0;
+    const dist1 = Math.hypot(dx1, dy1);
+    let refinedAngle = Math.atan2(dy1, dx1);
+    if (dist1 > 20 && barrelOffsetY) {
+      const parallax = Math.max(-0.35, Math.min(0.35, barrelOffsetY / dist1));
+      refinedAngle -= Math.asin(parallax);
+    }
+    if (refinedAngle < -Math.PI / 2) refinedAngle = Math.max(-1.68, refinedAngle);
+    else if (refinedAngle > Math.PI / 2) refinedAngle = Math.min(1.68, refinedAngle);
+    const blend = Math.min(1.0, (dist0 - 30) / 35);
+    aimAngle = lerpAngle(baseAngle, refinedAngle, blend);
+  }
+
+  const finalAngle = aimAngle - muzzleRise;
+  const downF = Math.max(0, Math.min(1.6, finalAngle));
+  const upF = Math.max(0, Math.min(1.6, -finalAngle));
+  const pivotX = hipX + (1.5 - downF * 1.2 + upF * 4.5) * charFacing;
+  const pivotY = originY - downF * 8.2 + upF * 1.5;
+
+  return { angle: finalAngle, pivotX, pivotY, directAngle: baseAngle };
+}
+
+/**
  * Wyliczenie transformacji broni i wektorów podparcia dłoni dla praworęcznego strzelca
  */
 export function getWeaponHoldTransform(p) {
@@ -844,12 +886,11 @@ export function getWeaponHoldTransform(p) {
     directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
     looseAimAngle = pistolEffAngle;
   } else if (isMinigun) {
-    loosePivotX = hipX + 2.0 * charFacing;
-    loosePivotY = hipY - 4.0 + headBobOffset + crouchDropY;
-    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
-    if (directAngle < -Math.PI / 2) directAngle = -Math.PI / 2;
-    else if (directAngle > Math.PI / 2) directAngle = Math.PI / 2;
-    looseAimAngle = Math.max(-0.96, Math.min(0.78, directAngle));
+    const mgPose = computeMinigunAimAndPivot(hipX, hipY, aimX, aimY, charFacing, headBobOffset + crouchDropY, gripCfg.barrelOffsetY, 0);
+    loosePivotX = mgPose.pivotX;
+    loosePivotY = mgPose.pivotY;
+    directAngle = mgPose.directAngle;
+    looseAimAngle = mgPose.angle;
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 7.6 : 5.2)) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.0 : 9.5)) + headBobOffset + crouchDropY;
@@ -981,24 +1022,11 @@ export function getWeaponHoldTransform(p) {
       shoulderPivotY = aimHandY;
     }
   } else if (isMinigun) {
-    // Chainsaw Hip Grip (M134 Vulcan):
-    // Kąt celowania ściśle ograniczony do zakresu od -55° (-0.96 rad) do +45° (+0.78 rad)
-    const aimOriginX = hipX + 3.0 * charFacing;
-    const aimOriginY = hipY - 4.0 + braceOffsetY;
-    let rawAngle = Math.atan2(aimY - aimOriginY, (aimX - aimOriginX) * charFacing);
-    if (rawAngle < -Math.PI / 2) rawAngle = -Math.PI / 2;
-    else if (rawAngle > Math.PI / 2) rawAngle = Math.PI / 2;
-    const clampedAngle = Math.max(-0.96, Math.min(0.78, rawAngle));
-    shoulderAimAngle = clampedAngle - muzzleRise;
-
-    // Biomechaniczne ułożenie chwytu biodrowego z kompensacją przy celowaniu w dół
-    const downPitch = Math.max(0, shoulderAimAngle);
-    const upPitch = Math.max(0, -shoulderAimAngle);
-    const pivotShiftX = (1.5 - downPitch * 2.8 + upPitch * 1.0) * charFacing;
-    const pivotShiftY = (hipY - 4.0) - downPitch * 4.8 + upPitch * 1.5 + braceOffsetY;
-
-    shoulderPivotX = hipX + pivotShiftX;
-    shoulderPivotY = pivotShiftY;
+    // Pelny zakres celowania 360 st. z ergonomicznym chwytem M134 Vulcan i kompensacja paralaksy luf
+    const mgPose = computeMinigunAimAndPivot(hipX, hipY, aimX, aimY, charFacing, braceOffsetY, gripCfg.barrelOffsetY, muzzleRise);
+    shoulderAimAngle = mgPose.angle;
+    shoulderPivotX = mgPose.pivotX;
+    shoulderPivotY = mgPose.pivotY;
   } else {
     if (weapon.id === 'SAWED_OFF' && isReloading) {
       // W trakcie przeładowania obrzyn trzymany jest w strefie roboczej klatki piersiowej (Workspace Retention)

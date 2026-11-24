@@ -31,7 +31,7 @@ import { spawnRpgRocket } from './weapons/rocket.js';
 import { spawnFlamethrowerStream, spawnSurfaceFire, updateFlamethrower } from './weapons/flamethrower.js';
 import { playSound, playWeaponFireSound } from './audio/index.js';
 import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
-import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRenderer.js';
+import { updateBulletVisuals, spawnImpactVisuals, spawnBarrelSmoke } from './weapons/bulletRenderer.js';
 import { isEnforcerPoiseActive } from './classes/enforcer.js';
 import { triggerCombatFeedBanner } from './ui/combatFeed.js';
 
@@ -64,6 +64,7 @@ import {
 } from './weapons/transform.js';
 import {
   drawBullets,
+  drawBarrelSmoke,
   drawSniperLaserSight,
   drawHeldWeapon,
   drawMeleeSlashTrail,
@@ -88,6 +89,7 @@ export {
   reloadWeapon,
   cancelReload,
   drawBullets,
+  drawBarrelSmoke,
   drawSniperLaserSight,
   drawHeldWeapon,
   drawMeleeSlashTrail,
@@ -695,8 +697,9 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   } else if (weapon.id === 'MINIGUN') {
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 16);
     shooter.weaponKickback = weapon.kickbackDistance;
-    shooter.muzzleRise = Math.min(0.12, (shooter.muzzleRise || 0) + weapon.muzzleRise);
-    shooter.minigunHeat = Math.min(1.0, (shooter.minigunHeat || 0) + 0.015);
+    shooter.muzzleRise = Math.min(0.045, (shooter.muzzleRise || 0) + weapon.muzzleRise);
+    shooter.minigunHeat = Math.min(1.0, (shooter.minigunHeat || 0) + 0.024);
+    shooter.minigunCoolingDelayTimer = 8;
     if (shooter.isRemote) {
       shooter.minigunSpin = 1.0;
       shooter.minigunBarrelPhase = ((shooter.minigunBarrelPhase || 0) + 0.65) % 4;
@@ -986,8 +989,42 @@ export function updateWeaponState(p) {
     p.minigunBarrelPhase = (p.minigunBarrelPhase + p.minigunSpin * 0.65) % 4;
   }
 
-  if (p.minigunHeat > 0) {
-    p.minigunHeat = Math.max(0, p.minigunHeat - 0.008);
+  if (p.minigunCoolingDelayTimer > 0) {
+    p.minigunCoolingDelayTimer--;
+  } else if (p.minigunHeat > 0) {
+    p.minigunHeat = Math.max(0, p.minigunHeat - 0.0032);
+  }
+
+  // Ulatujacy dym z nagrzanych luf po zakonczeniu strzelania (lub podczas wyhamowywania/przeladowania)
+  const ammoMinigun = (p.ammo && p.ammo.MINIGUN) ? p.ammo.MINIGUN : null;
+  const isActivelyShootingMinigun = isHoldingTrigger
+    && p.minigunSpin >= 0.72
+    && (!ammoMinigun || (!ammoMinigun.isReloading && ammoMinigun.currentAmmo > 0));
+
+  if (
+    isMinigunEquipped &&
+    p.minigunHeat > 0.08 &&
+    !isActivelyShootingMinigun &&
+    !p.isDead &&
+    !p.isHolstered &&
+    !(p.throwAnim && p.throwAnim.active)
+  ) {
+    p._minigunSmokeAcc = (p._minigunSmokeAcc || 0) + (0.09 + p.minigunHeat * 0.42);
+    if (p._minigunSmokeAcc >= 1.0) {
+      p._minigunSmokeAcc -= 1.0;
+      const hold = getWeaponHoldTransform(p);
+      if (hold) {
+        const distOnBarrel = 33.0 + Math.random() * 15.5;
+        const radialOffset = (hold.barrelOffsetY || 2.0) + (Math.random() - 0.5) * 3.8;
+        const cosA = Math.cos(hold.angle);
+        const sinA = Math.sin(hold.angle);
+        const smokeX = hold.pivotX + (cosA * distOnBarrel - sinA * radialOffset) * hold.charFacing;
+        const smokeY = hold.pivotY + (sinA * distOnBarrel + cosA * radialOffset);
+        spawnBarrelSmoke(smokeX, smokeY, p.minigunHeat, (p.vx || 0) * 0.10);
+      }
+    }
+  } else {
+    p._minigunSmokeAcc = 0;
   }
 
   if (p.weaponKickback > 0.05) {

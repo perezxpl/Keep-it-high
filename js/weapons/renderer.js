@@ -8,7 +8,7 @@ import {
   getWeaponHoldTransform,
   getMuzzlePosition
 } from './transform.js';
-import { drawBullets } from './bulletRenderer.js';
+import { drawBullets, drawBarrelSmoke } from './bulletRenderer.js';
 import {
   drawPilotFlame,
   drawFlamethrowerStreams,
@@ -18,6 +18,7 @@ import {
 
 export {
   drawBullets,
+  drawBarrelSmoke,
   drawPilotFlame,
   drawFlamethrowerStreams,
   drawSurfaceFires,
@@ -1573,21 +1574,37 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
       const pivotSpriteX = pvt.x;
       const pivotSpriteY = pvt.y;
 
-      // Wybor klatki obrotu (0..3) i wiersza rozgrzania (0..2)
+      // Wybor klatki obrotu (0..3) i plynne przejscie miedzy stanami rozgrzania (0..2)
       const phase = (typeof p.minigunBarrelPhase === 'number') ? p.minigunBarrelPhase : 0;
       const col = Math.floor(Math.abs(phase)) % 4;
-      const heat = (typeof p.minigunHeat === 'number') ? p.minigunHeat : 0;
-      const row = (heat > 0.72) ? 2 : ((heat > 0.35) ? 1 : 0);
+      const heat = Math.max(0, Math.min(1, (typeof p.minigunHeat === 'number') ? p.minigunHeat : 0));
 
       const srcX = col * 256;
-      const srcY = row * 128;
       const srcW = 256;
       const srcH = 128;
 
       ctx.save();
       ctx.scale(s, s);
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      ctx.drawImage(imgMinigun, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+      if (heat <= 0.06) {
+        ctx.drawImage(imgMinigun, srcX, 0, srcW, srcH, 0, 0, srcW, srcH);
+      } else if (heat < 0.48) {
+        ctx.drawImage(imgMinigun, srcX, 0, srcW, srcH, 0, 0, srcW, srcH);
+        const warmAlpha = Math.min(1, (heat - 0.06) / 0.34);
+        const prevAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = prevAlpha * warmAlpha;
+        ctx.drawImage(imgMinigun, srcX, 128, srcW, srcH, 0, 0, srcW, srcH);
+        ctx.globalAlpha = prevAlpha;
+      } else if (heat < 0.85) {
+        ctx.drawImage(imgMinigun, srcX, 128, srcW, srcH, 0, 0, srcW, srcH);
+        const hotAlpha = Math.min(1, (heat - 0.48) / 0.32);
+        const prevAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = prevAlpha * hotAlpha;
+        ctx.drawImage(imgMinigun, srcX, 256, srcW, srcH, 0, 0, srcW, srcH);
+        ctx.globalAlpha = prevAlpha;
+      } else {
+        ctx.drawImage(imgMinigun, srcX, 256, srcW, srcH, 0, 0, srcW, srcH);
+      }
       ctx.restore();
 
       // Blysk wylotowy na lufach (246, 74)

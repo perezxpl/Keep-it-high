@@ -11,7 +11,7 @@ import { drawGround } from '../world/terrain.js';
 import { drawObstacles } from '../obstacles.js';
 import { drawParticles, drawJetpackParticles } from '../world/state.js';
 import { drawBloodDecals, drawGore } from '../world/gore.js';
-import { drawBullets, drawBurningEffects } from '../weapons.js';
+import { drawBullets, drawBarrelSmoke, drawBurningEffects } from '../weapons.js';
 import { drawProjectiles } from '../projectiles.js';
 import { drawPlayer } from '../player/renderer.js';
 import { drawShockwaves, drawLighting, drawCinematicVignette } from '../lighting/index.js';
@@ -70,8 +70,9 @@ function renderLiveArenaScene(ctx, camera) {
     }
   }
 
-  // Efekty płonących postaci w tle menu
+  // Efekty płonących postaci w tle menu oraz dymu luf
   drawBurningEffects(ctx, menuBots, null);
+  drawBarrelSmoke(ctx);
 
   // 7. Cząsteczki krwi w locie, łuski i ogień jetpacka
   drawGore(ctx);

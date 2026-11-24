@@ -39,7 +39,7 @@ import {
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses, isBotEnabled, setBotEnabled, getBotDifficulty, setBotDifficulty, getBotCount, setBotCount } from './bot.js';
 import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHazardName } from './ui/combatFeed.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState, drawBurningEffects } from './weapons.js';
+import { WEAPONS, updateBullets, drawBullets, drawBarrelSmoke, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState, drawBurningEffects } from './weapons.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
   remotePlayer, networkState, initNetwork, sendPlayerState, sendBallState, sendShootEvent,
@@ -1304,6 +1304,7 @@ function draw() {
   }
 
   drawBurningEffects(ctx, [player, ...activeBots, ...activeRemotePlayers, ...(typeof getActiveZombies === 'function' ? getActiveZombies() : [])], isDeathmatch ? null : ball);
+  drawBarrelSmoke(ctx);
 
   const devMenuEl = document.getElementById('dev-menu');
   const modalEl = document.getElementById('mp-modal') || mpModal;

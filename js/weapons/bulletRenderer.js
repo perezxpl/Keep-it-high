@@ -100,6 +100,22 @@ export const BALLISTIC_PROFILES = {
     smokeColor: 'rgba(203, 213, 225, ',
     impactSparks: 4
   },
+  MINIGUN: {
+    name: 'M134 Vulcan (7.62x51mm Rotary)',
+    tracerLengthMult: 0.90,
+    glowWidth: 2.2,
+    glowColor: 'rgba(250, 204, 21, 0.24)',
+    bodyWidth: 1.4,
+    bodyGradient: ['#facc15', '#ea580c'],
+    coreWidth: 0.85,
+    coreColor: '#ffffff',
+    tipRadius: 1.1,
+    tipColor: '#ffffff',
+    holeRadius: 2.3,
+    smokeChance: 0.18,
+    smokeColor: 'rgba(203, 213, 225, ',
+    impactSparks: 5
+  },
   SNIPER: {
     name: 'Barrett .50 BMG Anti-Material',
     tracerLengthMult: 1.65,
@@ -188,11 +204,58 @@ function initBulletHoleCanvases() {
   }
 }
 
-// Pule cząstek w locie (Tracer Smoke & Mach Condensation Rings)
+// Pule cząstek w locie (Tracer Smoke, Mach Condensation Rings & Barrel Heat Smoke)
 const machRings = [];
 const tracerVaporPuffs = [];
+const barrelSmokePuffs = [];
 const MAX_MACH_RINGS = 16;
 const MAX_VAPOR_PUFFS = 20;
+const MAX_BARREL_SMOKE_PUFFS = 48;
+
+let barrelSmokeCanvas = null;
+
+function initBarrelSmokeCanvas() {
+  if (barrelSmokeCanvas || typeof document === 'undefined') return;
+  const size = 32;
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const sctx = c.getContext('2d');
+  const half = size / 2;
+  const grad = sctx.createRadialGradient(half, half, 1, half, half, half);
+  grad.addColorStop(0.0, 'rgba(226, 232, 240, 0.55)');
+  grad.addColorStop(0.42, 'rgba(203, 213, 225, 0.28)');
+  grad.addColorStop(0.75, 'rgba(148, 163, 184, 0.10)');
+  grad.addColorStop(1.0, 'rgba(148, 163, 184, 0)');
+  sctx.fillStyle = grad;
+  sctx.fillRect(0, 0, size, size);
+  barrelSmokeCanvas = c;
+}
+
+/**
+ * Dodaje ulatujący obłoczek dymu termicznego z rozgrzanych luf broni (np. M134 Minigun)
+ */
+export function spawnBarrelSmoke(x, y, heat = 0.5, inheritVx = 0) {
+  if (barrelSmokePuffs.length >= MAX_BARREL_SMOKE_PUFFS) {
+    barrelSmokePuffs.shift();
+  }
+  const hClamp = Math.max(0.1, Math.min(1.0, heat));
+  const maxLife = 0.75 + Math.random() * 0.55 + hClamp * 0.35;
+  barrelSmokePuffs.push({
+    x: x + (Math.random() - 0.5) * 2.5,
+    y: y + (Math.random() - 0.5) * 2.5,
+    vx: inheritVx + (Math.random() - 0.5) * 0.32,
+    vy: -(0.50 + Math.random() * 0.42 + hClamp * 0.28),
+    radius: 2.2 + Math.random() * 1.4,
+    maxRadius: 7.5 + Math.random() * 4.8 + hClamp * 3.0,
+    seed: Math.random() * Math.PI * 2,
+    age: 0,
+    life: maxLife,
+    maxLife,
+    baseAlpha: 0.26 + hClamp * 0.34,
+    alpha: 0
+  });
+}
 
 /**
  * Zwraca konfigurację balistyczną dla danego identyfikatora broni
@@ -344,6 +407,26 @@ export function updateBulletVisuals(bulletsList, dt = 1 / 60) {
     }
   }
 
+  // 3b. Aktualizacja ulatującego dymu z nagrzanych luf
+  for (let i = barrelSmokePuffs.length - 1; i >= 0; i--) {
+    const s = barrelSmokePuffs[i];
+    s.age += dt;
+    s.life -= dt;
+    if (s.life <= 0) {
+      barrelSmokePuffs.splice(i, 1);
+      continue;
+    }
+    const progress = Math.min(1, s.age / (s.maxLife || 1));
+    s.vx *= 0.97;
+    s.vy = Math.max(-1.6, s.vy - 0.45 * dt);
+    s.x += s.vx + Math.sin(s.age * 5.2 + s.seed) * 0.24;
+    s.y += s.vy;
+    s.radius += (s.maxRadius - s.radius) * Math.min(1, dt * 3.8);
+    const fadeIn = Math.min(1.0, progress / 0.12);
+    const fadeOut = Math.pow(1.0 - progress, 1.35);
+    s.alpha = Math.max(0, s.baseAlpha * fadeIn * fadeOut);
+  }
+
   // 4. Aktualizacja dziur po kulach (wygaszanie najstarszych)
   for (let i = bulletHoles.length - 1; i >= 0; i--) {
     const h = bulletHoles[i];
@@ -477,6 +560,44 @@ function drawTracerSmoke(ctx, minX, maxX, minY, maxY) {
     ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+/**
+ * Rysuje ulatujące smugi dymu z rozgrzanych luf broni (po zakończeniu ognia)
+ */
+export function drawBarrelSmoke(ctx) {
+  if (!ctx || barrelSmokePuffs.length === 0) return;
+  initBarrelSmokeCanvas();
+
+  const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920;
+  const camH = typeof getCanvasLogicalHeight === 'function' ? getCanvasLogicalHeight() : 1080;
+  const zoom = camera && camera.zoom ? camera.zoom : 1;
+  const viewW = camera.viewWidth || (camW / zoom);
+  const viewH = camera.viewHeight || (camH / zoom);
+  const margin = 80;
+  const minX = camera.x - margin;
+  const maxX = camera.x + viewW + margin;
+  const minY = camera.y - margin;
+  const maxY = camera.y + viewH + margin;
+
+  ctx.save();
+  for (let i = 0; i < barrelSmokePuffs.length; i++) {
+    const s = barrelSmokePuffs[i];
+    if (s.alpha <= 0.015) continue;
+    if (s.x < minX || s.x > maxX || s.y < minY || s.y > maxY) continue;
+
+    ctx.globalAlpha = s.alpha;
+    const r = s.radius;
+    if (barrelSmokeCanvas) {
+      ctx.drawImage(barrelSmokeCanvas, s.x - r, s.y - r, r * 2, r * 2);
+    } else {
+      ctx.fillStyle = 'rgba(203, 213, 225, 0.45)';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 /**

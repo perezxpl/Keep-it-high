@@ -219,7 +219,7 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
       ctx.translate(mountX, mountY);
       ctx.rotate(slingAng);
       ctx.scale(1, fDir);
-      drawPrimaryWeaponSprite(ctx, primaryId, 0.88);
+      drawPrimaryWeaponSprite(ctx, primaryId, 0.88, p);
       ctx.restore();
     }
   }
@@ -278,7 +278,7 @@ function drawRpg7BackSprite(ctx, scaleMult = 1.0, player = null) {
  * Wewnętrzna procedura renderowania sprite'a broni głównej na plecach.
  * Oś broni: +X wskazuje kierunek lufy, -X kierunek kolby.
  */
-function drawPrimaryWeaponSprite(ctx, weaponId, scaleMult = 1.0) {
+function drawPrimaryWeaponSprite(ctx, weaponId, scaleMult = 1.0, player = null) {
   if (weaponId === 'AK47') {
     const imgBody = getWeaponPartSprite('AK47_BODY');
     const imgMag = getWeaponPartSprite('AK47_MAG');
@@ -399,8 +399,9 @@ function drawPrimaryWeaponSprite(ctx, weaponId, scaleMult = 1.0) {
       ctx.save();
       ctx.scale(s, s);
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      // Rysujemy klatkę (0, 0) - stan zimny
-      ctx.drawImage(imgMinigun, 0, 0, 256, 128, 0, 0, 256, 128);
+      const heat = (player && typeof player.minigunHeat === 'number') ? player.minigunHeat : 0;
+      const row = (heat > 0.72) ? 2 : ((heat > 0.35) ? 1 : 0);
+      ctx.drawImage(imgMinigun, 0, row * 128, 256, 128, 0, 0, 256, 128);
       ctx.restore();
     } else {
       ctx.fillStyle = '#1e293b';

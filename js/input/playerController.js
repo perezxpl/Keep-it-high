@@ -30,11 +30,15 @@ export function triggerPlayerShoot(p, wep) {
   if (wep && wep.id === 'AXE' && p.axeThrown && !p.isRemote) {
     return;
   }
+  if (wep && wep.id === 'MINIGUN' && !p.isBot && !p.isRemote && !p.isSliding && !p.kickMode && typeof p.aimX === 'number' && !isNaN(p.aimX)) {
+    const centerX = p.x + (p.w || 24) * 0.5;
+    p.facing = (p.aimX < centerX) ? -1 : 1;
+  }
   const muzzle = getMuzzlePosition(p, wep);
   const targetAimX = (typeof p.aimX === 'number' && !isNaN(p.aimX)) ? p.aimX : muzzle.aimX;
   const targetAimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : muzzle.aimY;
   let shootAngle = Math.atan2(targetAimY - muzzle.muzzleY, targetAimX - muzzle.muzzleX);
-  if (p.isProne && typeof muzzle.barrelAngle === 'number') {
+  if ((p.isProne || (wep && wep.id === 'MINIGUN')) && typeof muzzle.barrelAngle === 'number') {
     shootAngle = muzzle.barrelAngle;
   }
   p.aimAngle = shootAngle;
