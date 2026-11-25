@@ -14,6 +14,7 @@ import {
   LOWER_CAVERN_FLOOR, LOWER_CAVERN_SHELVES, getLowerCavernCeilingY
 } from '../world.js';
 import { clearExplosionParticles } from '../particles.js';
+import { calculateArena5Zoom, getCanvasLogicalWidth, getCanvasLogicalHeight, isMobileDevice } from '../camera.js';
 
 var _arenaResetCallbacks = [];
 export function registerArenaResetCallback(cb) {
@@ -385,6 +386,11 @@ onArenaChange((newArena) => {
     activeArenaId = 'ARENA_1';
   }
   setActiveArenaId(activeArenaId);
+  if (typeof window !== 'undefined' && window.camera && !window.isMenuShowcase) {
+    window.camera._initialized = false;
+    window.camera.aimZoomFactor = 0;
+    window.camera.aimZoomHoldFrames = 0;
+  }
 
   ARENA_PLATFORMS.length = 0;
   if (newArena && Array.isArray(newArena.platforms)) {
@@ -621,6 +627,11 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     activeArenaId = 'ARENA_1';
   }
   setActiveArenaId(activeArenaId);
+  if (typeof window !== 'undefined' && window.camera && !window.isMenuShowcase) {
+    window.camera._initialized = false;
+    window.camera.aimZoomFactor = 0;
+    window.camera.aimZoomHoldFrames = 0;
+  }
   const gravMult = (typeof currentArena?.gravityMultiplier === 'number') ? currentArena.gravityMultiplier : 1.0;
   CONFIG.GRAVITY = 0.38 * gravMult;
   if (playerObj) {
@@ -707,17 +718,18 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
 
     if (typeof window !== 'undefined' && window.camera && !window.isMenuShowcase) {
-      window.camera.x = 0;
-      window.camera.targetX = 0;
-      const cW = (typeof window.innerWidth === 'number') ? window.innerWidth : 1920;
-      const cH = (typeof window.innerHeight === 'number') ? window.innerHeight : 1080;
-      const a5Z = cW / 1600;
+      const cW = getCanvasLogicalWidth();
+      const cH = getCanvasLogicalHeight();
+      const a5Z = calculateArena5Zoom(cW, cH, isMobileDevice());
+      const vW = cW / a5Z;
+      const vH = cH / a5Z;
       window.camera.zoom = a5Z;
       window.camera.targetZoom = a5Z;
       window.camera.minZoom = a5Z;
-      const vH = cH / a5Z;
-      window.camera.viewWidth = 1600;
+      window.camera.viewWidth = vW;
       window.camera.viewHeight = vH;
+      window.camera.x = vW > 1600 ? (1600 - vW) * 0.5 : 0;
+      window.camera.targetX = window.camera.x;
       window.camera.y = 1200 - vH;
       window.camera.targetY = 1200 - vH;
     }

@@ -171,7 +171,8 @@ function drawShaftWalls(ctx, camera) {
 
   // Lewa ściana: wypełnia wszystko od dalekiego brzegu po lewej aż do SHAFT_LEFT
   ctx.fillStyle = '#1e293b';
-  ctx.fillRect(camera.x - 3000, topY, 3000 + SHAFT_LEFT, h);
+  const leftWallStart = Math.min(camera.x - 100, SHAFT_LEFT - 3000);
+  ctx.fillRect(leftWallStart, topY, SHAFT_LEFT - leftWallStart, h);
 
   // Prawa ściana: wypełnia wszystko od SHAFT_RIGHT aż do dalekiego brzegu po prawej
   ctx.fillRect(SHAFT_RIGHT, topY, 3000 + (camera.viewWidth || 1600), h);

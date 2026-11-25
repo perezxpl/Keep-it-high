@@ -66,7 +66,9 @@ import {
   camera, 
   getCanvasLogicalWidth, 
   getCanvasLogicalHeight, 
-  setCameraArenaId 
+  setCameraArenaId,
+  calculateMenuShowcaseZoom,
+  clampCamera
 } from './camera.js';
 import { updateArena2 } from './arenas/arena2/state.js';
 import { updateArena3 } from './arenas/arena3.js';
@@ -363,7 +365,7 @@ export function updateStationaryCamera(arenaId) {
   const config = SHOWCASE_ARENA_CONFIG[arenaId] || SHOWCASE_ARENA_CONFIG.ARENA_1;
   const canvasWidth = (typeof getCanvasLogicalWidth === 'function') ? getCanvasLogicalWidth() : 1920;
   const canvasHeight = (typeof getCanvasLogicalHeight === 'function') ? getCanvasLogicalHeight() : 1080;
-  const targetZoom = config.zoom || 0.86;
+  const targetZoom = calculateMenuShowcaseZoom(canvasWidth, canvasHeight, arenaId, config);
 
   camera.zoom = targetZoom;
   camera.targetZoom = targetZoom;
@@ -374,7 +376,7 @@ export function updateStationaryCamera(arenaId) {
   camera.viewWidth = viewWidth;
   camera.viewHeight = viewHeight;
 
-  // Całkowity bezruch: stała, nieruchoma pozycja wycentrowana na arenie
+  // Całkowity bezruch: stała, nieruchoma pozycja wycentrowana na arenie i przycięta do jej granic
   const stationaryX = config.centerX - viewWidth * 0.5;
   const stationaryY = config.centerY - viewHeight * 0.55;
 
@@ -382,6 +384,7 @@ export function updateStationaryCamera(arenaId) {
   camera.y = stationaryY;
   camera.targetX = stationaryX;
   camera.targetY = stationaryY;
+  clampCamera(camera);
 
   // Całkowite wyzerowanie wstrząsów kamery w menu showcase, aby UI nie drgało
   camera.shakeIntensity = 0;

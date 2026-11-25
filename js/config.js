@@ -38,7 +38,9 @@ export const CONFIG = {
   CAMERA_AIM_MOBILE_MAX_LEAD_X: 340,
   CAMERA_AIM_MOBILE_MAX_LEAD_Y: 140,
   CAMERA_SNIPER_ZOOM_MULT: 0.88,
-  CAMERA_SNIPER_LEAD_MULT: 1.40
+  CAMERA_SNIPER_LEAD_MULT: 1.40,
+  CAMERA_SMALL_SCREEN_AIM_ZOOM_OUT: 0.15,
+  CAMERA_AIM_ZOOM_HOLD_FRAMES: 24
 };
 
 // =========================================================================

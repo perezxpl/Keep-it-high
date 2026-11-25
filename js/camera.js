@@ -5,18 +5,17 @@
 
 import { CONFIG, ARENA_LEFT as CFG_ARENA_LEFT, ARENA_RIGHT as CFG_ARENA_RIGHT, isTouchDevice } from './config.js';
 import { killstreakState } from './killstreaks/state.js';
-import { arena5State, CELL_SIZE as A5_CELL_SIZE } from './arenas/arena5/state.js';
+import { arena5State } from './arenas/arena5/state.js';
 
 let _cameraCanvas = null;
 let _cameraGroundY = null;
 let _cameraArenaId = 'ARENA_1';
-
 let _cachedIsMobile = null;
 
 export function isMobileDevice(forceRefresh = false) {
   if (typeof window === 'undefined') return false;
   if (_cachedIsMobile !== null && !forceRefresh) return _cachedIsMobile;
-  
+
   if (window.location && (new URLSearchParams(window.location.search).has('mobile') || new URLSearchParams(window.location.search).has('touch'))) {
     _cachedIsMobile = true;
     return true;
@@ -49,52 +48,274 @@ if (typeof window !== 'undefined' && window.location) {
   } catch (_) {}
 }
 
+// =========================================================================
+// UNIFIED ARENA CAMERA PROFILES (JEDNO ŹRÓDŁO PRAWDY DLA 5 AREN)
+// =========================================================================
+const ARENA5_ALIASES = new Set([
+  'ARENA_5', 'ARENA-5', '5', 'PREFAB_TOWER', 'PREFABRYKATOR',
+  'PREFABRYKATOR_ORBITALNY', 'SEKTOR_05'
+]);
+
+const ARENA4_ALIASES = new Set([
+  'ARENA_4', 'ARENA-4', '4', 'OBSIDIAN_CALDERA', 'CALDERA', 'OBSIDIAN',
+  'KRATER', 'WULKAN', 'MAGMA', 'USS_TITAN', 'TITAN', 'LOTNISKOWIEC',
+  'AIRCRAFT_CARRIER', 'CARRIER', 'OIL_RIG_TYPHOON', 'TYPHOON', 'TYFON',
+  'OIL_RIG', 'RIG', 'RIG_08', 'OFFSHORE_RIG', 'PLATFORMA_WIERTNICZA',
+  'PLATFORMA_MORSKA', 'PLATFORMA', 'ARMORED_TRAIN', 'TRAIN', 'POCIAG',
+  'POCIĄG', 'PEDZACY_POCIAG', 'PĘDZĄCY_POCIĄG', 'SPACE_STATION', 'SPACE',
+  'ARES', 'ARES_STATION', 'ARES_ORBITAL_STATION', 'STACJA_ARES', 'STACJA_ORBITALNA_ARES'
+]);
+
+const ARENA3_ALIASES = new Set([
+  'ARENA_3', 'ARENA-3', '3', 'ARENA_FOUNDRY', 'FOUNDRY',
+  'AERO_REFINERY', 'AERO_RAFINERIA', 'AERO', 'SKY_DISTRICT',
+  'PODNIEBNY_DYSTRYKT', 'JUNGLE', 'JUNGLE_ARENA', 'DZUNGLA', 'MILITARNA_DZUNGLA'
+]);
+
+const ARENA2_ALIASES = new Set([
+  'ARENA_2', 'ARENA-2', '2', 'ARENA_2_PANDORA', 'ARENA_2_SECTOR_X',
+  'SECTOR_X', 'SEKTOR_X', 'PANDORA', 'HALLELUJAH', 'CYBER_STADIUM'
+]);
+
+export function normalizeCameraArenaKey(arenaId) {
+  const key = String(arenaId || 'ARENA_1').trim().toUpperCase();
+  if (ARENA5_ALIASES.has(key)) return 'ARENA_5';
+  if (ARENA4_ALIASES.has(key)) return 'ARENA_4';
+  if (ARENA3_ALIASES.has(key)) return 'ARENA_3';
+  if (ARENA2_ALIASES.has(key)) return 'ARENA_2';
+  return 'ARENA_1';
+}
+
+export function getArenaCameraProfile(arenaId = getCameraArenaId()) {
+  const key = normalizeCameraArenaKey(arenaId);
+  const groundFloor = getCameraGroundY();
+
+  if (key === 'ARENA_5') {
+    return {
+      key: 'ARENA_5',
+      minX: 0,
+      maxX: 1600,
+      width: 1600,
+      minY: -100000,
+      maxY: 2000,
+      height: 2000,
+      baseFloorY: 1200,
+      isVerticalTower: true,
+      hardBottomY: null,
+      lockTopZero: false,
+      minZoomHeightLimit: null,
+      elevAnchorDeltaPC: 0.15,
+      elevAnchorDeltaMobile: 0.15,
+      safeMarginTopRatio: 0.20,
+      safeMarginBottomRatio: 0.16,
+      safeMarginBottomMin: 70,
+      getMinCamY: () => -100000,
+      getMaxCamY: (viewHeight, _gf, a5FloorY) => (typeof a5FloorY === 'number' ? a5FloorY : 1200) - viewHeight,
+      getMenuTarget: (isMobile) => ({
+        centerX: 800,
+        targetBottomY: isMobile ? 1290 : 1270,
+        targetWorldHeight: isMobile ? 1040 : 1100,
+        targetWorldWidth: isMobile ? 1550 : 1600
+      })
+    };
+  }
+
+  if (key === 'ARENA_4') {
+    return {
+      key: 'ARENA_4',
+      minX: 0,
+      maxX: 3800,
+      width: 3800,
+      minY: 0,
+      maxY: 1500,
+      height: 1500,
+      baseFloorY: 1040,
+      isVerticalTower: false,
+      hardBottomY: 1500,
+      lockTopZero: true,
+      minZoomHeightLimit: 1500,
+      elevAnchorDeltaPC: 0.20,
+      elevAnchorDeltaMobile: 0.22,
+      safeMarginTopRatio: 0.18,
+      safeMarginBottomRatio: 0.16,
+      safeMarginBottomMin: 65,
+      getMinCamY: () => 0,
+      getMaxCamY: (viewHeight) => Math.max(0, 1500 - viewHeight),
+      getMenuTarget: (isMobile) => ({
+        centerX: 1600,
+        targetBottomY: isMobile ? 1420 : 1400,
+        targetWorldHeight: isMobile ? 1160 : 1220,
+        targetWorldWidth: isMobile ? 2150 : 2260
+      })
+    };
+  }
+
+  if (key === 'ARENA_3') {
+    return {
+      key: 'ARENA_3',
+      minX: 0,
+      maxX: 4400,
+      width: 4400,
+      minY: 0,
+      maxY: 1400,
+      height: 1400,
+      baseFloorY: 1200,
+      isVerticalTower: false,
+      hardBottomY: 1400,
+      lockTopZero: false,
+      minZoomHeightLimit: 1850,
+      elevAnchorDeltaPC: 0.23,
+      elevAnchorDeltaMobile: 0.25,
+      safeMarginTopRatio: 0.20,
+      safeMarginBottomRatio: 0.18,
+      safeMarginBottomMin: 75,
+      getMinCamY: (viewHeight) => Math.min(-320, 1400 - viewHeight),
+      getMaxCamY: (viewHeight) => 1400 - viewHeight,
+      getMenuTarget: (isMobile) => ({
+        centerX: 2180,
+        targetBottomY: isMobile ? 1380 : 1340,
+        targetWorldHeight: isMobile ? 1160 : 1200,
+        targetWorldWidth: isMobile ? 2200 : 2280
+      })
+    };
+  }
+
+  if (key === 'ARENA_2') {
+    return {
+      key: 'ARENA_2',
+      minX: 0,
+      maxX: 4000,
+      width: 4000,
+      minY: 0,
+      maxY: 1600,
+      height: 1600,
+      baseFloorY: 1150,
+      isVerticalTower: false,
+      hardBottomY: 1600,
+      lockTopZero: true,
+      minZoomHeightLimit: 1720,
+      elevAnchorDeltaPC: 0.23,
+      elevAnchorDeltaMobile: 0.25,
+      safeMarginTopRatio: 0.20,
+      safeMarginBottomRatio: 0.18,
+      safeMarginBottomMin: 75,
+      getMinCamY: () => 0,
+      getMaxCamY: (viewHeight) => Math.max(0, 1600 - viewHeight),
+      getMenuTarget: (isMobile) => ({
+        centerX: 2000,
+        targetBottomY: isMobile ? 1515 : 1485,
+        targetWorldHeight: isMobile ? 1220 : 1270.588,
+        targetWorldWidth: isMobile ? 2200 : 2260
+      })
+    };
+  }
+
+  // ARENA_1 (Neonowe Miasto)
+  return {
+    key: 'ARENA_1',
+    minX: CFG_ARENA_LEFT,
+    maxX: CFG_ARENA_RIGHT,
+    width: CFG_ARENA_RIGHT - CFG_ARENA_LEFT,
+    minY: 0,
+    maxY: 1300,
+    height: 1300,
+    baseFloorY: groundFloor,
+    isVerticalTower: false,
+    hardBottomY: null,
+    lockTopZero: false,
+    minZoomHeightLimit: null,
+    elevAnchorDeltaPC: 0.23,
+    elevAnchorDeltaMobile: 0.25,
+    safeMarginTopRatio: 0.20,
+    safeMarginBottomRatio: 0.18,
+    safeMarginBottomMin: 75,
+    getMinCamY: (viewHeight, gf) => Math.min(-360, (typeof gf === 'number' ? gf : groundFloor) - viewHeight * 0.72),
+    getMaxCamY: (viewHeight, gf) => Math.max(-360, (typeof gf === 'number' ? gf : groundFloor) - viewHeight * 0.72),
+    getMenuTarget: (isMobile) => ({
+      centerX: 1800,
+      targetBottomY: isMobile ? 1180 : 1150,
+      targetWorldHeight: isMobile ? 1050 : 1120,
+      targetWorldWidth: isMobile ? 2100 : 2260
+    })
+  };
+}
+
+export function calculateArena5Zoom(canvasWidth, canvasHeight, isMobile = isMobileDevice()) {
+  const w = canvasWidth || 1920;
+  const h = canvasHeight || 1080;
+  const widthFillZoom = w / 1600;
+  if (isMobile) {
+    return Math.round(Math.max(0.35, Math.min(1.8, widthFillZoom)) * 1000) / 1000;
+  }
+  // Na bardzo szerokich monitorach (21:9 / 32:9) pilnujemy min. ~900px wysokości szybu w pionie
+  const minVerticalViewCap = h / 900;
+  const zoom = Math.max(0.35, Math.min(1.8, Math.min(widthFillZoom, minVerticalViewCap)));
+  return Math.round(zoom * 1000) / 1000;
+}
+
+export function computeArenaMinZoom(profile, canvasWidth, canvasHeight, isMobile = isMobileDevice()) {
+  const w = canvasWidth || 1920;
+  const h = canvasHeight || 1080;
+  if (!profile) return w / (CFG_ARENA_RIGHT - CFG_ARENA_LEFT);
+  if (profile.isVerticalTower) {
+    return calculateArena5Zoom(w, h, isMobile);
+  }
+  const minZoomX = w / profile.width;
+  const minZoomY = (typeof profile.minZoomHeightLimit === 'number' && profile.minZoomHeightLimit > 0)
+    ? (h / profile.minZoomHeightLimit)
+    : 0;
+  return Math.max(minZoomX, minZoomY);
+}
+
 /**
- * Dynamicznie oblicza optymalny bazowy zoom kamery dopasowany do rozmiaru i rozdzielczości ekranu:
- * - Smartfony w poziomie (np. 6.8", wysokość logiczna <= 520px): dokładnie 0.50
- * - Monitor PC 27" Full HD (1920x1080): dokładnie 0.75 (widok ~2560px w świecie, cała mapa nie jest odsłonięta)
- * - Monitor PC 1440p (2560x1440) / 4K / Ultrawide: proporcjonalnie przeskalowany (1.0x przy 1440p, 1.5x przy 4K),
- *   aby widoczne pole bitwy w świecie pozostało stałe (~2560px)
- * - Laptopy / tablety (720p - 900p): płynne, ergonomiczne dopasowanie w zakresie 0.60 - 0.72
+ * Dynamicznie oblicza optymalny bazowy zoom kamery dopasowany do rozmiaru, proporcji ekranu oraz areny.
  */
-export function calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile) {
+export function calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile, arenaId = null) {
   const w = canvasWidth || (typeof window !== 'undefined' ? window.innerWidth : 1920);
   const h = canvasHeight || (typeof window !== 'undefined' ? window.innerHeight : 1080);
+  const profile = arenaId ? getArenaCameraProfile(arenaId) : null;
 
-  // 1. Smartfony w orientacji poziomej (wysokość logiczna typowego telefonu: 360 - 520 px)
-  if (isMobile && h <= 520) {
-    return 0.50;
+  if (profile && profile.isVerticalTower) {
+    return calculateArena5Zoom(w, h, isMobile);
   }
 
-  // 2. Tablety dotykowe (iPady / tablety o wysokości 520 - 900 px)
+  let baseZoom;
   if (isMobile) {
-    const t = Math.max(0, Math.min(1, (h - 420) / 400));
-    return Math.round((0.50 + t * 0.14) * 100) / 100; // 0.50 -> 0.64
-  }
-
-  // 3. Ekrany Desktop / PC / Laptopy:
-  // Złoty standard: Monitor 27" 1080p -> zoom dokładnie 0.75
-  // Widok referencyjny w świecie: szerokość 1920 / 0.75 = 2560 px, wysokość 1080 / 0.75 = 1440 px
-  let zoomByHeight;
-  if (h >= 1000) {
-    // Ekrany 1080p, 1440p (QHD), 4K (UHD):
-    // 1080p -> 0.75, 1440p -> 1.00, 4K -> 1.50
-    zoomByHeight = 0.75 * (h / 1080);
+    // Proporcjonalne dopasowanie dla smartfonów (16:9..20:9) i tabletów (4:3..16:10)
+    const minDim = Math.min(w, h);
+    const t = Math.max(0, Math.min(1, (minDim - 380) / 380));
+    const targetWorldW = 1660 + t * 440; // 1660 -> 2100
+    const targetWorldH = 780 + t * 520;  // 780 -> 1300
+    const zoomByAspect = Math.min(w / targetWorldW, h / targetWorldH);
+    const minReadable = (w < h) ? 0.36 : 0.45;
+    baseZoom = Math.max(minReadable, Math.min(0.66, zoomByAspect));
   } else {
-    // Mniejsze ekrany laptopów (720p - 900p):
-    // Płynna interpolacja od 0.64 (dla 720p) do 0.75 (dla 1080p),
-    // by postacie były duże i czytelne, a zarazem widok nie ujawniał całej mapy.
-    const t = Math.max(0, Math.min(1, (h - 680) / 360));
-    zoomByHeight = 0.64 + t * 0.11;
+    // Złoty standard 16:9: 1920x1080 -> 0.75 (2560 x 1440 px w świecie)
+    const zoomRefW = w / 2560;
+    const zoomRefH = h / 1440;
+    const rawZoom = Math.min(zoomRefW, zoomRefH);
+
+    let zoomByViewport;
+    if (rawZoom >= 0.75) {
+      zoomByViewport = rawZoom;
+    } else {
+      // Mniejsze okna PC, laptopy 720p i proporcje 4:3: płynne przejście z ochroną czytelności postaci
+      const blended = 0.30 + (rawZoom / 0.75) * (0.75 - 0.30);
+      zoomByViewport = Math.max(0.46, blended);
+    }
+
+    // Ochrona przed zbyt szerokim polem widzenia na monitorach Ultrawide (21:9 / 32:9)
+    const maxAllowedWorldWidth = 2720;
+    const zoomByWidthCap = w / maxAllowedWorldWidth;
+    baseZoom = Math.max(zoomByViewport, zoomByWidthCap);
   }
 
-  // Ochrona przed zbyt szerokim polem widzenia na monitorach Ultrawide (21:9 / 32:9):
-  // Widok w poziomie (viewWidth = canvasWidth / zoom) NIE MOŻE przekroczyć 2560 px
-  const maxAllowedWorldWidth = 2560;
-  const zoomByWidth = w / maxAllowedWorldWidth;
+  if (profile) {
+    const arenaMinZoom = computeArenaMinZoom(profile, w, h, isMobile);
+    baseZoom = Math.max(arenaMinZoom, baseZoom);
+  }
 
-  const finalZoom = Math.max(zoomByHeight, zoomByWidth);
-  return Math.round(finalZoom * 100) / 100;
+  return Math.round(baseZoom * 1000) / 1000;
 }
 
 const initialCanvasW = typeof window !== 'undefined' ? window.innerWidth : 1920;
@@ -160,7 +381,9 @@ export const camera = {
   mouseScreenX: null,
   mouseScreenY: null,
   aimLeadX: 0,
-  aimLeadY: 0
+  aimLeadY: 0,
+  aimZoomFactor: 0,
+  aimZoomHoldFrames: 0
 };
 
 if (typeof window !== 'undefined') {
@@ -258,17 +481,11 @@ if (typeof window !== 'undefined') {
   }, { passive: true });
 }
 
-/**
- * Logiczna szerokość canvasa w przestrzeni CSS (z uwzględnieniem DPR)
- */
 export function getCanvasLogicalWidth() {
   if (_cachedLogicalWidth <= 0) updateCanvasDimensionsCache();
   return _cachedLogicalWidth;
 }
 
-/**
- * Logiczna wysokość canvasa w przestrzeni CSS (z uwzględnieniem DPR)
- */
 export function getCanvasLogicalHeight() {
   if (_cachedLogicalHeight <= 0) updateCanvasDimensionsCache();
   return _cachedLogicalHeight;
@@ -278,21 +495,13 @@ export function getCanvasLogicalHeight() {
  * 1. Pobranie dokładnych współrzędnych granic areny (World Bounds)
  */
 export function getArenaBounds() {
-  const arenaId = getCameraArenaId();
-  const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
-  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'OBSIDIAN_CALDERA' || arenaId === 'CALDERA' || arenaId === 'OBSIDIAN' || arenaId === 'KRATER' || arenaId === 'USS_TITAN' || arenaId === 'TITAN' || arenaId === 'LOTNISKOWIEC' || arenaId === 'OIL_RIG_TYPHOON' || arenaId === 'TYPHOON' || arenaId === 'TYFON' || arenaId === 'OIL_RIG' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
-  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
-  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
-  const minX = isArena5 ? 0 : ((isArena4 || isArena3 || isArena2) ? 0 : CFG_ARENA_LEFT);
-  const maxX = isArena5 ? 1600 : (isArena4 ? 3800 : (isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT)));
-  const groundFloor = getCameraGroundY();
-
+  const profile = getArenaCameraProfile(getCameraArenaId());
   return {
-    minX,
-    maxX,
-    arenaWidth: maxX - minX,
-    minY: isArena5 ? -100000 : 0,
-    maxY: isArena5 ? 2000 : (isArena4 ? 1500 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)))
+    minX: profile.minX,
+    maxX: profile.maxX,
+    arenaWidth: profile.width,
+    minY: profile.minY,
+    maxY: profile.maxY
   };
 }
 
@@ -313,53 +522,95 @@ export const world = {
   }
 };
 
+function clampHorizontalCamera(cam, arenaLeft, arenaRight, viewWidth, isVerticalTower) {
+  const arenaWidth = arenaRight - arenaLeft;
+  if (viewWidth < arenaWidth && !isVerticalTower) {
+    cam.x = Math.max(arenaLeft, Math.min(cam.x, arenaRight - viewWidth));
+    cam.targetX = Math.max(arenaLeft, Math.min(cam.targetX, arenaRight - viewWidth));
+  } else if (viewWidth >= arenaWidth) {
+    const centeredX = (arenaLeft + arenaRight - viewWidth) * 0.5;
+    cam.x = centeredX;
+    cam.targetX = centeredX;
+  } else {
+    cam.x = arenaLeft;
+    cam.targetX = arenaLeft;
+  }
+}
+
 /**
  * Twarde, natychmiastowe obcięcie współrzędnych kamery w granicach areny
  */
 export function clampCamera(cam = camera) {
-  const bounds = (typeof world !== 'undefined' && world && world.bounds) ? world.bounds : getArenaBounds();
-  const ARENA_LEFT = (bounds && typeof bounds.minX === 'number') ? bounds.minX : CFG_ARENA_LEFT;
-  const ARENA_RIGHT = (bounds && typeof bounds.maxX === 'number') ? bounds.maxX : CFG_ARENA_RIGHT;
-  const arenaWidth = ARENA_RIGHT - ARENA_LEFT;
-
+  const profile = getArenaCameraProfile(getCameraArenaId());
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
-  const minZoom = canvasWidth / arenaWidth;
+  const isMobile = isMobileDevice();
+  const minZoom = computeArenaMinZoom(profile, canvasWidth, canvasHeight, isMobile);
 
   if (cam.zoom < minZoom) cam.zoom = minZoom;
   if (cam.targetZoom < minZoom) cam.targetZoom = minZoom;
+  cam.minZoom = minZoom;
 
   const viewWidth = canvasWidth / cam.zoom;
   const viewHeight = canvasHeight / cam.zoom;
   cam.viewWidth = viewWidth;
   cam.viewHeight = viewHeight;
 
-  if (viewWidth < arenaWidth) {
-    cam.x = Math.max(ARENA_LEFT, Math.min(cam.x, ARENA_RIGHT - viewWidth));
-    cam.targetX = Math.max(ARENA_LEFT, Math.min(cam.targetX, ARENA_RIGHT - viewWidth));
-  } else {
-    cam.x = ARENA_LEFT;
-    cam.targetX = ARENA_LEFT;
-  }
+  clampHorizontalCamera(cam, profile.minX, profile.maxX, viewWidth, profile.isVerticalTower);
 
-  const arenaId = getCameraArenaId();
-  const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
-  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'OBSIDIAN_CALDERA' || arenaId === 'CALDERA' || arenaId === 'OBSIDIAN' || arenaId === 'KRATER' || arenaId === 'USS_TITAN' || arenaId === 'TITAN' || arenaId === 'LOTNISKOWIEC' || arenaId === 'OIL_RIG_TYPHOON' || arenaId === 'TYPHOON' || arenaId === 'TYFON' || arenaId === 'OIL_RIG' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
-  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
-  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
-  const a5MinCam = (arena5State && typeof arena5State.minCameraY === 'number') ? arena5State.minCameraY : (typeof window !== 'undefined' ? window.arena5State?.minCameraY : null);
-  const minCamY = isArena5 ? -100000 : 0;
-  const maxCamY = isArena5
-    ? ((a5MinCam !== null && typeof a5MinCam === 'number')
-      ? a5MinCam
-      : (1200 - viewHeight))
-    : (isArena4
-      ? Math.max(0, 1480 - viewHeight)
-      : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)))));
+  const a5FloorY = (arena5State && typeof arena5State.currentFloorY === 'number')
+    ? arena5State.currentFloorY
+    : (typeof window !== 'undefined' ? (window.arena5State?.currentFloorY ?? 1200) : 1200);
+  const a5MinCam = (arena5State && typeof arena5State.minCameraY === 'number')
+    ? arena5State.minCameraY
+    : (typeof window !== 'undefined' ? window.arena5State?.minCameraY : null);
+
+  let minCamY = profile.getMinCamY(viewHeight, groundFloor);
+  const maxCamY = (profile.isVerticalTower && a5MinCam !== null && typeof a5MinCam === 'number')
+    ? a5MinCam
+    : profile.getMaxCamY(viewHeight, groundFloor, a5FloorY);
+  if (maxCamY < minCamY) minCamY = maxCamY;
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));
+}
+
+function computeSmallScreenFactor(canvasWidth, canvasHeight, baseZoom, isMobile) {
+  if (isMobile) {
+    return canvasHeight <= 650 ? 1.0 : 0.75;
+  }
+  const baseViewW = canvasWidth / Math.max(0.25, baseZoom);
+  const baseViewH = canvasHeight / Math.max(0.25, baseZoom);
+  const wShort = Math.max(0, Math.min(1, (2400 - baseViewW) / 800));
+  const hShort = Math.max(0, Math.min(1, (1320 - baseViewH) / 500));
+  const physSmall = Math.max(0, Math.min(1, (1360 - canvasWidth) / 460));
+  return Math.max(wShort, hShort, physSmall);
+}
+
+function getScreenNormalizedMouse(canvasWidth, canvasHeight) {
+  let rawMouseX = (typeof camera.mouseScreenX === 'number') ? camera.mouseScreenX : mouseScreenPos.x;
+  let rawMouseY = (typeof camera.mouseScreenY === 'number') ? camera.mouseScreenY : mouseScreenPos.y;
+
+  const c = getCameraCanvas();
+  if (c && typeof c.getBoundingClientRect === 'function') {
+    const rect = c.getBoundingClientRect();
+    rawMouseX -= rect.left;
+    rawMouseY -= rect.top;
+  }
+
+  const screenCenterX = canvasWidth * 0.5;
+  const screenCenterY = canvasHeight * 0.5;
+  if (screenCenterX <= 0 || screenCenterY <= 0) {
+    return { filteredX: 0, filteredY: 0 };
+  }
+
+  const normX = Math.max(-1, Math.min(1, (rawMouseX - screenCenterX) / screenCenterX));
+  const normY = Math.max(-1, Math.min(1, (rawMouseY - screenCenterY) / screenCenterY));
+  const deadzone = 0.08;
+  const filteredX = Math.abs(normX) > deadzone ? (normX - Math.sign(normX) * deadzone) / (1 - deadzone) : 0;
+  const filteredY = Math.abs(normY) > deadzone ? (normY - Math.sign(normY) * deadzone) / (1 - deadzone) : 0;
+  return { filteredX, filteredY };
 }
 
 /**
@@ -371,37 +622,31 @@ export function updateCamera(player, ball, options = {}) {
     return;
   }
 
-  // 1. Dokładne współrzędne pionowych granic areny:
-  const bounds = (typeof world !== 'undefined' && world && world.bounds) ? world.bounds : getArenaBounds();
-  const ARENA_LEFT = (bounds && typeof bounds.minX === 'number') ? bounds.minX : CFG_ARENA_LEFT;
-  const ARENA_RIGHT = (bounds && typeof bounds.maxX === 'number') ? bounds.maxX : CFG_ARENA_RIGHT;
-  const arenaWidth = ARENA_RIGHT - ARENA_LEFT;
+  const profile = getArenaCameraProfile(getCameraArenaId());
+  const ARENA_LEFT = profile.minX;
+  const ARENA_RIGHT = profile.maxX;
+  const arenaWidth = profile.width;
 
-  // 2. Blokada zoomu (kamera nie może widzieć więcej niż szerokość areny):
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
-  let minZoom = canvasWidth / arenaWidth;
-  const arenaId = getCameraArenaId();
-  const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
-  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'OBSIDIAN_CALDERA' || arenaId === 'CALDERA' || arenaId === 'OBSIDIAN' || arenaId === 'KRATER' || arenaId === 'USS_TITAN' || arenaId === 'TITAN' || arenaId === 'LOTNISKOWIEC' || arenaId === 'OIL_RIG_TYPHOON' || arenaId === 'TYPHOON' || arenaId === 'TYFON' || arenaId === 'OIL_RIG' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
-  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
-  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
   const isMobile = isMobileDevice();
+  const minZoom = computeArenaMinZoom(profile, canvasWidth, canvasHeight, isMobile);
 
-  const isSniperActive = !player?.isHolstered && (player?.currentWeapon?.id === 'SNIPER');
+  const curWeapon = player?.currentWeapon || null;
+  const isSniperActive = !player?.isHolstered && (curWeapon?.id === 'SNIPER');
+  const isNonThrownMelee = !player?.isHolstered && !!(curWeapon?.isMelee && curWeapon.id !== 'AXE');
+  const disableAimLead = !!(options && options.disableAimLead);
 
-  // Wyliczenie wysokości gracza nad głównym poziomem gruntu (Altitude & Smoothed Elevation Factor):
-  // Pozwala kamerze rozpoznać, kiedy gracz stoi wysoko (np. na wieży w Arenie 3 lub górnych pomostach)
+  // Wyliczenie wysokości gracza nad głównym poziomem gruntu (Altitude & Smoothed Elevation Factor)
   const groundFloor = getCameraGroundY();
-  const baseFloorY = isArena4 ? 1040 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
+  const baseFloorY = profile.baseFloorY;
   const focusEntity = (typeof window !== 'undefined' && window._cameraFocusTarget) ? window._cameraFocusTarget : player;
   const target = focusEntity || ball;
-  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 1040 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 1040 : groundFloor - 50));
+  const fallbackY = profile.key === 'ARENA_2' ? 910 : (profile.key === 'ARENA_4' ? 1040 : groundFloor - 50);
+  const rawTargetY = target ? (target.y !== undefined ? target.y : fallbackY) : fallbackY;
   const playerFootY = rawTargetY + (target && target.h ? target.h : 70);
   const altitude = Math.max(0, baseFloorY - playerFootY);
 
-  // Martwa strefa 140px gwarantuje, że zwykłe podskoki na ziemi nie zmieniają zoomu ani kotwicy.
-  // Pełne maksimum (1.0) osiągane przy ~700px nad gruntem (wieże strażnicze i korony drzew w Arenie 3).
   const rawElevationFactor = Math.max(0, Math.min(1, (altitude - 140) / 560));
   if (typeof camera.elevationFactor !== 'number' || !camera._initialized) {
     camera.elevationFactor = rawElevationFactor;
@@ -410,54 +655,80 @@ export function updateCamera(player, ball, options = {}) {
   }
   const elev = camera.elevationFactor;
 
+  const optimalBaseZoom = calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile, profile.key);
+  const smallScreenFactor = computeSmallScreenFactor(canvasWidth, canvasHeight, optimalBaseZoom, isMobile);
+
+  // Pomiar aktywności celowania (dotyk / pad / mysz) pod wyprzedzenie oraz lekkie oddalenie na małych ekranach
+  const rs = (typeof window !== 'undefined' && window.rightStick) ? window.rightStick : null;
+  const gp = (typeof window !== 'undefined' && window.gamepadState && window.gamepadState.connected) ? window.gamepadState : null;
+  const hasActiveTouchStick = !!(rs && rs.active && typeof rs.power === 'number' && rs.power > 0.05);
+  const hasActiveGamepadStick = !!(gp && gp.rightStick && gp.rightStick.magnitude > 0.18);
+  const mouseMetrics = (!isMobile && !hasActiveGamepadStick) ? getScreenNormalizedMouse(canvasWidth, canvasHeight) : null;
+
+  let rawAimZoom = 0;
+  if (CONFIG.CAMERA_AIM_LEAD_ENABLED !== false && !disableAimLead && player && !player.isDead && !isNonThrownMelee && smallScreenFactor > 0) {
+    if (hasActiveTouchStick) {
+      rawAimZoom = Math.max(0, Math.min(1, (rs.power - 0.15) / 0.70));
+    } else if (hasActiveGamepadStick) {
+      rawAimZoom = Math.max(0, Math.min(1, (gp.rightStick.magnitude - 0.20) / 0.70));
+    } else if (mouseMetrics) {
+      const distNorm = Math.min(1, Math.hypot(mouseMetrics.filteredX, mouseMetrics.filteredY));
+      if (player.isAiming || player.isShooting) {
+        rawAimZoom = Math.max(0.55, distNorm);
+      } else if (distNorm > 0.28) {
+        rawAimZoom = Math.min(1, (distNorm - 0.28) / 0.62);
+      }
+    }
+  }
+
+  // Asymetryczne wygładzanie + krótkie podtrzymanie (eliminuje pompowanie kamery przy seriach strzałów)
+  if (typeof camera.aimZoomFactor !== 'number' || !camera._initialized) {
+    camera.aimZoomFactor = rawAimZoom;
+    camera.aimZoomHoldFrames = rawAimZoom > 0.05 ? (CONFIG.CAMERA_AIM_ZOOM_HOLD_FRAMES || 24) : 0;
+  } else if (rawAimZoom > 0.05) {
+    camera.aimZoomHoldFrames = CONFIG.CAMERA_AIM_ZOOM_HOLD_FRAMES || 24;
+    camera.aimZoomFactor += (rawAimZoom - camera.aimZoomFactor) * 0.09;
+  } else if (camera.aimZoomHoldFrames > 0) {
+    camera.aimZoomHoldFrames--;
+  } else {
+    camera.aimZoomFactor += (0 - camera.aimZoomFactor) * 0.035;
+  }
+
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
-  } else if (isArena5) {
-    // Arena 5 (Prefabrykator Orbitalny): szerokość areny do końca ekranów!
-    // Blokujemy zoom tak, aby szerokość areny (1600px) dokładnie wypełniała widoczną szerokość ekranu
-    const a5Zoom = canvasWidth / arenaWidth;
-    camera.targetZoom = a5Zoom;
-    minZoom = a5Zoom;
+  } else if (profile.isVerticalTower) {
+    camera.targetZoom = minZoom;
   } else if (killstreakState && killstreakState.mortarTargeting) {
-    // Tryb celowania nalotu artylerii: szeroki, taktyczny satelitarny rzut oka na mapę
-    const optimalBaseZoom = calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile);
     const tacticalOverviewMult = isMobile ? 0.74 : 0.80;
     camera.targetZoom = Math.max(minZoom, optimalBaseZoom * tacticalOverviewMult);
   } else {
-    // Dynamicznie dopasowany bazowy zoom gry dla aktualnego ekranu/urządzenia:
-    // - Telefon 6.8": 0.50
-    // - Monitor PC 27" 1080p: 0.75
-    // - Monitor PC 1440p / 4K / Ultrawide: proporcjonalnie przeskalowany, by widok w świecie wynosił ~2560px
-    // - Laptopy / tablety: płynne dopasowanie 0.60 - 0.72
-    const optimalBaseZoom = calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile);
+    const maxAimOut = (typeof CONFIG.CAMERA_SMALL_SCREEN_AIM_ZOOM_OUT === 'number' ? CONFIG.CAMERA_SMALL_SCREEN_AIM_ZOOM_OUT : 0.15) * smallScreenFactor;
+    const aimOut = camera.aimZoomFactor * maxAimOut;
+    const elevOut = elev * (isMobile ? 0.25 : 0.10);
+    const maxCombinedOut = isMobile ? 0.28 : 0.22;
+    const combinedTacticalOut = Math.min(maxCombinedOut, elevOut + aimOut * (1.0 - elevOut * 0.55));
+    const tacticalMult = 1.0 - combinedTacticalOut;
 
-    let defaultGameZoom;
-    if (isMobile) {
-      const elevationZoomMult = 1.0 - (elev * 0.25); // Na szczycie wieży płynne taktyczne oddalenie (np. z 0.50 do ~0.375)
-      const mobileSniperHighMult = (isSniperActive && elev > 0.15) ? (1.0 - elev * 0.06) : 1.0;
-      defaultGameZoom = Math.max(minZoom, optimalBaseZoom * elevationZoomMult * mobileSniperHighMult);
-    } else {
-      // Na PC: subtelne taktyczne oddalenie na wieżach oraz tryb snajperski
-      const elevationZoomMult = 1.0 - (elev * 0.10);
-      defaultGameZoom = Math.max(minZoom, optimalBaseZoom * elevationZoomMult);
-
-      if (isSniperActive) {
-        const sniperZoomMult = CONFIG.CAMERA_SNIPER_ZOOM_MULT || 0.88;
-        defaultGameZoom = Math.max(minZoom, defaultGameZoom * sniperZoomMult);
+    let sniperMult = 1.0;
+    if (isSniperActive) {
+      if (isMobile) {
+        sniperMult = (elev > 0.15 || camera.aimZoomFactor > 0.25) ? 0.94 : 1.0;
+      } else {
+        sniperMult = CONFIG.CAMERA_SNIPER_ZOOM_MULT || 0.88;
       }
     }
 
-    camera.targetZoom = defaultGameZoom;
+    const readabilityFloor = isMobile ? 0.35 : 0.38;
+    const desiredZoom = optimalBaseZoom * tacticalMult * sniperMult;
+    camera.targetZoom = Math.max(minZoom, Math.max(readabilityFloor, desiredZoom));
   }
 
   camera.zoom += (camera.targetZoom - camera.zoom) * (camera.smoothZoom || 0.04);
-
   if (camera.zoom < minZoom) {
     camera.zoom = minZoom;
   }
   camera.minZoom = minZoom;
 
-  // 3. Twarde ograniczenie pozycji X (Strict Clamping):
   const viewWidth = canvasWidth / camera.zoom;
   const viewHeight = canvasHeight / camera.zoom;
   camera.viewWidth = viewWidth;
@@ -466,19 +737,25 @@ export function updateCamera(player, ball, options = {}) {
   // Dynamiczne wyprzedzenie celowania (Soldat-style Aim Look-Ahead)
   let aimLeadX = 0;
   let aimLeadY = 0;
-  const disableAimLead = !!(options && options.disableAimLead);
 
   if (CONFIG.CAMERA_AIM_LEAD_ENABLED !== false && !disableAimLead && player && !player.isDead) {
-    if (isMobile) {
-      // --- TRYB MOBILNY (Dotyk / Wirtualny Prawy Drążek) ---
-      const rs = (typeof window !== 'undefined' && window.rightStick) ? window.rightStick : null;
-      if (rs && rs.active && typeof rs.power === 'number' && rs.power > 0.05) {
-        // Zbalansowane wyprzedzenie: wyraźny look-ahead, ale postać zawsze pozostaje czytelnie w kadrze
+    if (hasActiveGamepadStick) {
+      const rx = gp.rightStick.x || 0;
+      const ry = gp.rightStick.y || 0;
+      const mag = gp.rightStick.magnitude || 0;
+      const ratioX = isSniperActive ? 0.24 : 0.18;
+      const maxLeadX = Math.min(viewWidth * ratioX, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_X || 340) * (isSniperActive ? 1.35 : 1.0));
+      const downwardRatio = 0.15 + (elev * 0.17);
+      const downwardMaxPx = ((CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 140) + (elev * 190)) * (isSniperActive ? 1.25 : 1.0);
+      const maxLeadY = ry < 0
+        ? Math.min(viewHeight * 0.10, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 120))
+        : Math.min(viewHeight * downwardRatio, downwardMaxPx);
+      aimLeadX = rx * mag * maxLeadX;
+      aimLeadY = ry * mag * maxLeadY;
+    } else if (isMobile) {
+      if (hasActiveTouchStick) {
         const mobileRatioX = isSniperActive ? 0.26 : 0.20;
         const maxLeadX = Math.min(viewWidth * mobileRatioX, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_X || 340) * (isSniperActive ? 1.35 : 1.0));
-
-        // Punkt 2: Odblokowanie głębszego spojrzenia w dół z wysokości (High-Ground Downward Aim)
-        // Na ziemi: 15% w dół (max 150px). Na wieży (elev -> 1): aż do 34% w dół (max 360-450px).
         const axisY = rs.axisY || 0;
         const downwardRatio = 0.15 + (elev * 0.19);
         const downwardMaxPx = ((CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 150) + (elev * 210)) * (isSniperActive ? 1.25 : 1.0);
@@ -489,47 +766,21 @@ export function updateCamera(player, ball, options = {}) {
         aimLeadX = (rs.axisX || 0) * rs.power * maxLeadX;
         aimLeadY = axisY * rs.power * maxLeadY;
       } else {
-        // Gdy prawy drążek nie jest aktywnie wychylony: łagodny bias zwrotu postaci
         const facingDir = (typeof player.facing === 'number') ? player.facing : 1;
         aimLeadX = facingDir * 40;
         aimLeadY = 0;
       }
-    } else {
-      // --- TRYB PC (Mysz / Celownik ekranowy) ---
-      let rawMouseX = (typeof camera.mouseScreenX === 'number') ? camera.mouseScreenX : mouseScreenPos.x;
-      let rawMouseY = (typeof camera.mouseScreenY === 'number') ? camera.mouseScreenY : mouseScreenPos.y;
+    } else if (mouseMetrics) {
+      const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.40) : 1.0;
+      const maxLeadX = (CONFIG.CAMERA_AIM_MAX_LEAD_X || 180) * leadMult;
+      const downwardRatioPC = 0.15 + (elev * 0.14);
+      const downwardMaxPxPC = ((CONFIG.CAMERA_AIM_MAX_LEAD_Y || 135) + (elev * 160)) * leadMult;
+      const maxLeadY = mouseMetrics.filteredY < 0
+        ? Math.min(viewHeight * 0.10, (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 95) * leadMult)
+        : Math.min(viewHeight * downwardRatioPC, downwardMaxPxPC);
 
-      const c = getCameraCanvas();
-      if (c && typeof c.getBoundingClientRect === 'function') {
-        const rect = c.getBoundingClientRect();
-        rawMouseX -= rect.left;
-        rawMouseY -= rect.top;
-      }
-
-      const screenCenterX = canvasWidth * 0.5;
-      const screenCenterY = canvasHeight * 0.5;
-
-      if (screenCenterX > 0 && screenCenterY > 0) {
-        const normX = Math.max(-1, Math.min(1, (rawMouseX - screenCenterX) / screenCenterX));
-        const normY = Math.max(-1, Math.min(1, (rawMouseY - screenCenterY) / screenCenterY));
-
-        // Martwa strefa (deadzone 8%), aby drobne ruchy w centrum ekranu nie powodowały drżenia kadru
-        const deadzone = 0.08;
-        const filteredX = Math.abs(normX) > deadzone ? (normX - Math.sign(normX) * deadzone) / (1 - deadzone) : 0;
-        const filteredY = Math.abs(normY) > deadzone ? (normY - Math.sign(normY) * deadzone) / (1 - deadzone) : 0;
-
-        const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.40) : 1.0;
-        const maxLeadX = (CONFIG.CAMERA_AIM_MAX_LEAD_X || 180) * leadMult;
-
-        const downwardRatioPC = 0.15 + (elev * 0.14);
-        const downwardMaxPxPC = ((CONFIG.CAMERA_AIM_MAX_LEAD_Y || 135) + (elev * 160)) * leadMult;
-        const maxLeadY = filteredY < 0
-          ? Math.min(viewHeight * 0.10, (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 95) * leadMult)
-          : Math.min(viewHeight * downwardRatioPC, downwardMaxPxPC);
-
-        aimLeadX = filteredX * maxLeadX;
-        aimLeadY = filteredY * maxLeadY;
-      }
+      aimLeadX = mouseMetrics.filteredX * maxLeadX;
+      aimLeadY = mouseMetrics.filteredY * maxLeadY;
     }
   }
 
@@ -538,8 +789,7 @@ export function updateCamera(player, ball, options = {}) {
 
   const targetX = target ? (target.x + (target.w ? target.w / 2 : 0)) : (camera.x + viewWidth / 2);
   const targetVx = (target && typeof target.vx === 'number') ? target.vx : 0;
-  
-  // Zabezpieczone wyprzedzenie prędkości (max 65px w świecie)
+
   const maxVelLead = 65;
   const rawVelLead = targetVx * (isMobile ? 3.5 : 4.5);
   const lookAhead = Math.max(-maxVelLead, Math.min(maxVelLead, rawVelLead));
@@ -553,94 +803,54 @@ export function updateCamera(player, ball, options = {}) {
     if (viewWidth < arenaWidth) {
       targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
     } else {
-      targetCamX = ARENA_LEFT;
+      targetCamX = (ARENA_LEFT + ARENA_RIGHT - viewWidth) * 0.5;
     }
-  } else if (isArena5) {
-    targetCamX = ARENA_LEFT;
-  } else if (viewWidth < arenaWidth) {
+  } else if (profile.isVerticalTower || viewWidth >= arenaWidth) {
+    targetCamX = (viewWidth >= arenaWidth) ? (ARENA_LEFT + ARENA_RIGHT - viewWidth) * 0.5 : ARENA_LEFT;
+  } else {
     targetCamX = (targetX + lookAhead + aimLeadX) - (viewWidth / 2);
     targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
-  } else {
-    targetCamX = ARENA_LEFT;
   }
 
-  // Punkt 1: Dynamiczna kotwica wysokościowa (Altitude-Based Vertical Framing)
-  // Na ziemi (elev = 0): kotwica 0.65 (postać na dole ekranu, 65% kadru pokazuje górę).
-  // Na wieży / wysokości (elev -> 1): kotwica zachowuje bezpieczny margines 0.40 na telefonie (0.42 na PC),
-  // dzięki czemu postać gracza nie jest spychana pod sufit i pozostaje w pełni widoczna!
+  // Dynamiczna kotwica wysokościowa (Altitude-Based Vertical Framing)
   const targetY = rawTargetY;
-  // W Arenie 4 (Platforma Wiertnicza // Tyfon): główny pokład stacji znajduje się na wysokości 65% ekranu,
-  // co eksponuje ruchomą suwnicę, wieżę wiertniczą i sztormowe niebo
-  const verticalAnchor = isArena5
-    ? (isMobile ? 0.72 : 0.70)
-    : (isArena4
-      ? 0.65
-      : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23))));
+  const elevDelta = isMobile ? profile.elevAnchorDeltaMobile : profile.elevAnchorDeltaPC;
+  const verticalAnchor = 0.65 - (elev * elevDelta);
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
-
-  // W Arenie 5: rosnąca wieża o oknie do 20 segmentów.
-  // Gracz może swobodnie podlecieć wyżej na szczyt wieży i zlecieć w dół do bieżącej podłogi.
-  if (isArena5) {
-    const a5 = arena5State || (typeof window !== 'undefined' ? window.arena5State : null);
-    const currentFloorY = (a5 && typeof a5.currentFloorY === 'number') ? a5.currentFloorY : 1200;
-    // Dolna granica kamery: dolna krawędź ekranu opiera się na bieżącej podłodze wieży (currentFloorY)
-    const floorCamY = currentFloorY - viewHeight;
-
-    // Kamera płynnie podąża za graczem w pionie (w górę na szczyt i w dół do podłogi)
-    const pCenterY = (player && !player.isDead) ? (player.y + (player.h ? player.h / 2 : 35)) : targetY;
-    const playerTargetCamY = (pCenterY + aimLeadY) - (viewHeight * 0.55);
-
-    // Gracz może lecieć w górę tak wysoko jak chce, a w dół kamera zatrzymuje się na podłodze
-    targetCamY = Math.min(floorCamY, playerTargetCamY);
-    targetCamY = Math.max(-100000, targetCamY);
-  }
 
   const a5FloorY = (arena5State && typeof arena5State.currentFloorY === 'number')
     ? arena5State.currentFloorY
-    : (typeof window !== 'undefined' ? (window.arena5State?.currentFloorY || 1200) : 1200);
-  const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
-  const subterraneanBottom = isArena5 ? 2000 : (isArena4 ? 1480 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)));
-  const maxCamY = isArena5
-    ? (a5FloorY - viewHeight)
-    : (isArena4
-      ? Math.max(minCamY, 1480 - (viewHeight * 0.60))
-      : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)))));
+    : (typeof window !== 'undefined' ? (window.arena5State?.currentFloorY ?? 1200) : 1200);
+
+  if (profile.isVerticalTower) {
+    const floorCamY = a5FloorY - viewHeight;
+    const pCenterY = (player && !player.isDead) ? (player.y + (player.h ? player.h / 2 : 35)) : targetY;
+    const playerTargetCamY = (pCenterY + aimLeadY) - (viewHeight * 0.55);
+    targetCamY = Math.max(-100000, Math.min(floorCamY, playerTargetCamY));
+  }
+
+  let minCamY = profile.getMinCamY(viewHeight, groundFloor);
+  const maxCamY = profile.getMaxCamY(viewHeight, groundFloor, a5FloorY);
+  if (maxCamY < minCamY) minCamY = maxCamY;
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   if (killstreakState && killstreakState.mortarTargeting) {
-    // Podczas nalotu: kadr obejmuje podłoże i przestrzeń powietrzną
     targetCamY = baseFloorY - (viewHeight * 0.70);
     targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
   }
 
-  // ZABEZPIECZENIE CELU KAMERY (Target Player Box):
-  // Punkt docelowy kamery (targetCamX, targetCamY) NIGDY nie może zbliżyć postaci bardziej niż bezpieczny margines
+  // ZABEZPIECZENIE CELU KAMERY (Target Player Box)
   if (focusEntity && !focusEntity.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
-    const pX = focusEntity.x + (focusEntity.w ? focusEntity.w / 2 : 12);
     const pY = focusEntity.y + (focusEntity.h ? focusEntity.h / 2 : 35);
-    const safeMarginX = Math.max(80, viewWidth * 0.18);
-    // Bezpieczny prześwit od krawędzi ekranu
-    if (isArena5) {
-      const safeMarginBottom = Math.max(70, viewHeight * 0.16);
-      const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * 0.20);
-      targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
-      targetCamX = ARENA_LEFT;
-    } else if (isArena4) {
-      const safeMarginBottom = Math.max(65, viewHeight * 0.16);
-      const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * 0.18);
-      targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
+    const topMarginRatio = profile.isVerticalTower ? profile.safeMarginTopRatio : (profile.safeMarginTopRatio - (elev * 0.04));
+    const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * topMarginRatio);
+    const safeMarginBottom = Math.max(profile.safeMarginBottomMin, viewHeight * profile.safeMarginBottomRatio);
+
+    targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
+    if (profile.isVerticalTower || viewWidth >= arenaWidth) {
+      targetCamX = (viewWidth >= arenaWidth) ? (ARENA_LEFT + ARENA_RIGHT - viewWidth) * 0.5 : ARENA_LEFT;
     } else {
-      const topMarginRatio = 0.20 - (elev * 0.04);
-      const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * topMarginRatio);
-      const safeMarginBottom = Math.max(75, viewHeight * 0.18);
-
-      targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
-    }
-
-    if (viewWidth < arenaWidth && !isArena5) {
       targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
-    } else {
-      targetCamX = ARENA_LEFT;
     }
     targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
   }
@@ -659,7 +869,7 @@ export function updateCamera(player, ball, options = {}) {
     camera.shakeY = 0;
   }
 
-  // 4. Interpolacja pozycji (Lerp):
+  // Interpolacja pozycji (Lerp)
   const baseLerpSpeed = (killstreakState && killstreakState.mortarTargeting)
     ? 0.12
     : (CONFIG.CAMERA_SMOOTH_SPEED || camera.lerpSpeed || camera.smoothSpeed || 0.08);
@@ -677,12 +887,7 @@ export function updateCamera(player, ball, options = {}) {
     camera.y += (targetCamY - camera.y) * lerpSpeed;
   }
 
-  // =========================================================================
-  // 5. ŻELAZNA GWARANCJA: Gracz FIZYCZNIE ZAWSZE w kadrze (Hard Player Boundary)
-  // Nawet przy gwałtownym przyspieszeniu, odrzucie czy zrywach jetpacka,
-  // postać nigdy nie przekroczy bezwzględnej granicy bezpieczeństwa ekranu.
-  // W Arenie 5 gracz może swobodnie latać po 20 segmentach wieży – kamera podąża za nim
-  // =========================================================================
+  // ŻELAZNA GWARANCJA: Gracz FIZYCZNIE ZAWSZE w kadrze (Hard Player Boundary)
   if (focusEntity && !focusEntity.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
     const pX = focusEntity.x + (focusEntity.w ? focusEntity.w / 2 : 12);
     const pY = focusEntity.y + (focusEntity.h ? focusEntity.h / 2 : 35);
@@ -690,12 +895,12 @@ export function updateCamera(player, ball, options = {}) {
     const hardPadTop = Math.max(isMobile ? 50 : 60, viewHeight * 0.16);
     const hardPadBottom = Math.max(60, viewHeight * 0.12);
 
-    if (isArena5) {
-      camera.x = ARENA_LEFT;
+    if (profile.isVerticalTower) {
+      camera.x = (viewWidth >= arenaWidth) ? (ARENA_LEFT + ARENA_RIGHT - viewWidth) * 0.5 : ARENA_LEFT;
       if (pY < camera.y + hardPadTop) {
         camera.y = pY - hardPadTop;
       } else if (pY > camera.y + viewHeight - hardPadBottom) {
-        const floorCamY = ((arena5State?.currentFloorY) || 1200) - viewHeight;
+        const floorCamY = a5FloorY - viewHeight;
         camera.y = Math.min(floorCamY, pY - viewHeight + hardPadBottom);
       }
     } else {
@@ -713,18 +918,13 @@ export function updateCamera(player, ball, options = {}) {
     }
   }
 
-  // Opcjonalne ręczne wymuszenie pozycji kamery w parametrach URL (?camX=...&camY=...)
   if (_hasCustomCamUrl) {
     if (_cachedCamX !== null) camera.x = _cachedCamX;
     if (_cachedCamY !== null) camera.y = _cachedCamY;
   }
 
-  // Ograniczenie wykonaj ZAWSZE na samym końcu, po wyliczeniu wygładzenia:
-  if (viewWidth < arenaWidth) {
-    camera.x = Math.max(ARENA_LEFT, Math.min(camera.x, ARENA_RIGHT - viewWidth));
-  } else {
-    camera.x = ARENA_LEFT;
-  }
+  // Końcowy clamping w granicach areny
+  clampHorizontalCamera(camera, ARENA_LEFT, ARENA_RIGHT, viewWidth, profile.isVerticalTower);
   camera.y = Math.max(minCamY, Math.min(camera.y, maxCamY));
 }
 
@@ -743,9 +943,6 @@ export function restoreCameraTransform(ctx) {
   ctx.restore();
 }
 
-/**
- * Konwersja współrzędnych świata na piksele ekranu
- */
 export function worldToScreen(worldX, worldY, cam = camera) {
   const sx = cam.shakeX || 0;
   const sy = cam.shakeY || 0;
@@ -755,9 +952,6 @@ export function worldToScreen(worldX, worldY, cam = camera) {
   };
 }
 
-/**
- * Konwersja pikseli ekranu na współrzędne świata
- */
 export function screenToWorld(screenX, screenY, cam = camera) {
   const sx = cam.shakeX || 0;
   const sy = cam.shakeY || 0;
@@ -768,75 +962,73 @@ export function screenToWorld(screenX, screenY, cam = camera) {
 }
 
 /**
- * Sztywna, statyczna kamera zablokowana na centrum aktywnej areny (Arena 2, Arena 3, Arena 4) w menu głównym.
- * Dynamicznie dopasowuje rozdzielczość i zoom do urządzeń mobilnych (smartfony w poziomie)
- * oraz monitorów PC, gwarantując idealne kadrowanie centralnych platform i strefy walki botów.
+ * Oblicza spójny zoom dla statycznego kadru Live Menu Showcase dopasowany do areny i proporcji ekranu.
+ */
+export function calculateMenuShowcaseZoom(canvasWidth, canvasHeight, arenaId, showcaseConfig = null) {
+  const w = canvasWidth || getCanvasLogicalWidth();
+  const h = canvasHeight || getCanvasLogicalHeight();
+  const isMobile = isMobileDevice();
+  const profile = getArenaCameraProfile(arenaId);
+
+  const targetW = isMobile ? 1680 : (profile.isVerticalTower ? 1600 : 2100);
+  const targetH = isMobile ? 840 : (profile.isVerticalTower ? 1050 : 1180);
+  const preferredZoom = (showcaseConfig && typeof showcaseConfig.zoom === 'number') ? showcaseConfig.zoom : 0.86;
+  const aspectZoom = Math.min(w / targetW, h / targetH);
+
+  // Na 1080p zachowuje filmowy zoom (~0.86), na mniejszych/szerszych ekranach proporcjonalnie dopasowuje kadr
+  const blendedZoom = isMobile
+    ? aspectZoom
+    : Math.min(preferredZoom * (h / 1080), aspectZoom * 1.06);
+
+  const minBoundZoom = profile.isVerticalTower
+    ? calculateArena5Zoom(w, h, isMobile)
+    : computeArenaMinZoom(profile, w, h, isMobile);
+
+  return Math.round(Math.max(minBoundZoom, Math.min(1.8, Math.max(0.42, blendedZoom))) * 1000) / 1000;
+}
+
+/**
+ * Sztywna, statyczna kamera zablokowana na centrum aktywnej areny w menu głównym.
  */
 export function updateMenuCamera() {
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
   const isMobile = isMobileDevice();
-  const arenaId = getCameraArenaId();
+  const profile = getArenaCameraProfile(getCameraArenaId());
+  const menuTarget = profile.getMenuTarget(isMobile);
 
-  const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER' || arenaId === 'SEKTOR_05' || arenaId === 'PREFABRYKATOR');
-  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3' || arenaId === 'JUNGLE');
-
-  let centerX = 2000;
-  let targetBottomY = isMobile ? 1515 : 1485;
-  let targetWorldHeight = isMobile ? 1220 : 1270.588;
-  let targetWorldWidth = isMobile ? 2200 : 2260;
-  let arenaW = 4000;
-  let arenaH = 1600;
-
-  if (isArena3) {
-    centerX = 2180;
-    targetBottomY = isMobile ? 1380 : 1340;
-    targetWorldHeight = isMobile ? 1160 : 1200;
-    targetWorldWidth = isMobile ? 2200 : 2280;
-    arenaW = 4400;
-    arenaH = 1400;
-  } else if (isArena5) {
-    centerX = 800;
-    targetBottomY = isMobile ? 1290 : 1270;
-    targetWorldHeight = isMobile ? 1040 : 1100;
-    targetWorldWidth = isMobile ? 1550 : 1600;
-    arenaW = 1600;
-    arenaH = 2000;
-  }
-
-  const zoomByHeight = canvasHeight / targetWorldHeight;
-  const zoomByWidth = canvasWidth / targetWorldWidth;
-
+  const zoomByHeight = canvasHeight / menuTarget.targetWorldHeight;
+  const zoomByWidth = canvasWidth / menuTarget.targetWorldWidth;
   let zoom = Math.min(zoomByHeight, zoomByWidth);
 
-  // Zabezpieczenie przed przekroczeniem granic areny
-  const minZoomForArenaBounds = Math.max(canvasWidth / arenaW, canvasHeight / arenaH);
+  const minZoomForArenaBounds = computeArenaMinZoom(profile, canvasWidth, canvasHeight, isMobile);
   zoom = Math.max(minZoomForArenaBounds, Math.min(1.8, zoom));
   zoom = Math.round(zoom * 1000) / 1000;
 
   camera.zoom = zoom;
   camera.targetZoom = zoom;
-  camera.minZoom = zoom;
+  camera.minZoom = minZoomForArenaBounds;
 
   const viewWidth = canvasWidth / zoom;
   const viewHeight = canvasHeight / zoom;
   camera.viewWidth = viewWidth;
   camera.viewHeight = viewHeight;
 
-  camera.x = centerX - viewWidth * 0.5;
-  camera.y = targetBottomY - viewHeight;
+  camera.x = menuTarget.centerX - viewWidth * 0.5;
+  camera.y = menuTarget.targetBottomY - viewHeight;
 
-  if (camera.y < 0) {
-    camera.y = 0;
-  }
+  clampHorizontalCamera(camera, profile.minX, profile.maxX, viewWidth, profile.isVerticalTower);
+
+  const groundFloor = getCameraGroundY();
+  let minCamY = profile.getMinCamY(viewHeight, groundFloor);
+  const maxCamY = profile.getMaxCamY(viewHeight, groundFloor, 1200);
+  if (maxCamY < minCamY) minCamY = maxCamY;
+  camera.y = Math.max(minCamY, Math.min(camera.y, maxCamY));
 
   camera.targetX = camera.x;
   camera.targetY = camera.y;
-
   camera.shakeIntensity = 0;
   camera.shakeDecay = 0;
   camera.shakeX = 0;
   camera.shakeY = 0;
 }
-
-
