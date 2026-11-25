@@ -95,12 +95,6 @@ export function setPerfMonitorEnabled(val) {
   if (perfState.enabled === nextVal) return;
   perfState.enabled = nextVal;
 
-  if (typeof window !== 'undefined' && window.localStorage) {
-    try {
-      window.localStorage.setItem('mobile_perf_monitor', nextVal ? '1' : '0');
-    } catch (_) {}
-  }
-
   syncCopyButtonVisibility();
 
   if (typeof window !== 'undefined' && typeof window.syncDevPerfButtonUI === 'function') {
@@ -125,7 +119,8 @@ export function notifyRoundStart() {
 }
 
 /**
- * Inicjalizacja automatycznej aktywacji z URL (?perf=1 / ?debug=1) lub localStorage
+ * Inicjalizacja automatycznej aktywacji wyłącznie z parametrów URL (?perf=1 / ?debug=1 / ?aiTest=1).
+ * Domyślnie licznik FPS i przycisk kopiowania logów są ukryte i włączane w panelu DEV.
  */
 export function initMobilePerfMonitor() {
   if (typeof window === 'undefined') return;
@@ -135,8 +130,8 @@ export function initMobilePerfMonitor() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('perf') === '1' || params.get('debug') === '1' || params.get('aiTest') === '1') {
       shouldEnable = true;
-    } else if (window.localStorage && window.localStorage.getItem('mobile_perf_monitor') === '1') {
-      shouldEnable = true;
+    } else if (window.localStorage) {
+      window.localStorage.removeItem('mobile_perf_monitor');
     }
   } catch (_) {}
 
@@ -535,21 +530,20 @@ export function initMobilePerfCopyButton() {
 
     btn.style.cssText = [
       'position: fixed',
-      'top: 6px',
-      'left: 50%',
-      'transform: translateX(-50%)',
+      'top: 92px',
+      'left: 10px',
       'z-index: 999999',
-      'min-width: 140px',
-      'min-height: 38px',
-      'padding: 6px 14px',
+      'min-width: 120px',
+      'min-height: 30px',
+      'padding: 4px 10px',
       'background: rgba(15, 23, 42, 0.88)',
       'color: #38bdf8',
-      'border: 1.8px solid #0284c7',
-      'border-radius: 8px',
+      'border: 1.5px solid #0284c7',
+      'border-radius: 6px',
       'font-family: monospace',
-      'font-size: 12px',
+      'font-size: 11px',
       'font-weight: 700',
-      'letter-spacing: 0.5px',
+      'letter-spacing: 0.4px',
       'box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 10px rgba(56, 189, 248, 0.35)',
       'cursor: pointer',
       'user-select: none',
@@ -578,12 +572,14 @@ export function initMobilePerfCopyButton() {
 }
 
 /**
- * Synchronizuje widoczność przycisku kopiowania
+ * Synchronizuje widoczność przycisku kopiowania (tylko gdy PERF jest włączony i trwa rozgrywka)
  */
-function syncCopyButtonVisibility() {
+export function syncCopyButtonVisibility(gameStateOverride = null) {
   const btn = perfState.copyBtnEl || (typeof document !== 'undefined' && document.getElementById('perf-copy-btn'));
   if (!btn) return;
-  btn.style.display = perfState.enabled ? 'block' : 'none';
+  const curState = gameStateOverride || (typeof window !== 'undefined' && window.GAME_STATE ? window.GAME_STATE.current : null);
+  const inMatch = !curState || curState === 'PLAYING' || curState === 'PAUSED';
+  btn.style.display = (perfState.enabled && inMatch) ? 'block' : 'none';
 }
 
 /**

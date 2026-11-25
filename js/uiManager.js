@@ -68,7 +68,8 @@ import {
   WIN_CONDITIONS
 } from './deathmatch/index.js';
 import { bot, setBotDifficulty, getBotDifficulty, setBotCount, getBotCount, isBotEnabled, setBotEnabled } from './bot.js';
-import { syncDevBotButtonUI, syncDevZombieButtonUI } from './dev/devPanel.js';
+import { syncDevBotButtonUI, syncDevZombieButtonUI, syncDevPanelPosition } from './dev/devPanel.js';
+import { syncCopyButtonVisibility } from './dev/mobilePerfMonitor.js';
 import { isZombieModeActive, setZombieModeActive } from './zombie/index.js';
 
 // Domyślna konfiguracja
@@ -1221,6 +1222,9 @@ export const uiManager = {
     }
     if (gameState === 'PLAYING') this.closeRanksModal();
     this.stopCreatorPreview();
+    if (typeof syncCopyButtonVisibility === 'function') {
+      syncCopyButtonVisibility(gameState);
+    }
 
     const isCursorActive = (gameState !== 'PLAYING');
 
@@ -1282,6 +1286,7 @@ export const uiManager = {
           hudPauseBtn.style.display = isTouch ? 'flex' : 'none';
         }
         if (devPanel) devPanel.style.display = 'flex';
+        if (typeof syncDevPanelPosition === 'function') syncDevPanelPosition();
         break;
 
       case 'SETTINGS':

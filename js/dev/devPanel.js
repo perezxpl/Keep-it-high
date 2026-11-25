@@ -26,7 +26,25 @@ import { uiManager } from '../uiManager.js';
 import { updateButtonLayout } from '../mobileControls.js';
 import { editorState, renderEditorPalette } from './obstacleEditor.js';
 import { isZombieModeActive, setZombieModeActive } from '../zombie/index.js';
-import { isPerfMonitorEnabled, setPerfMonitorEnabled, togglePerfMonitor } from './mobilePerfMonitor.js';
+import { isPerfMonitorEnabled, setPerfMonitorEnabled, togglePerfMonitor, copyPerfReportToClipboard } from './mobilePerfMonitor.js';
+
+export function syncDevPanelPosition() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  const devPanelContainer = document.getElementById('dev-panel-container');
+  if (!devPanelContainer || devPanelContainer.dataset.userDragged === '1') return;
+
+  const isMobile = (
+    window.innerWidth < 768 ||
+    !!isTouchDevice ||
+    ('ontouchstart' in window) ||
+    (navigator && navigator.maxTouchPoints > 0)
+  );
+  devPanelContainer.classList.toggle('dev-panel-mobile', isMobile);
+}
+if (typeof window !== 'undefined') {
+  window.syncDevPanelPosition = syncDevPanelPosition;
+  window.addEventListener('resize', syncDevPanelPosition);
+}
 
 // =========================================================================
 // PANEL DEWELOPERSKI (PRZECIĄGANIE, PRZEŁĄCZANIE, BOT, ARENA)
@@ -208,6 +226,9 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
         const newTop = devPanelStartTop + dy;
         const maxLeft = Math.max(10, window.innerWidth - devToggleBtn.offsetWidth - 10);
         const maxTop = Math.max(10, window.innerHeight - devToggleBtn.offsetHeight - 10);
+        devPanelContainer.dataset.userDragged = '1';
+        devPanelContainer.style.right = 'auto';
+        devPanelContainer.style.flexDirection = 'row';
         devPanelContainer.style.left = Math.max(8, Math.min(maxLeft, newLeft)) + 'px';
         devPanelContainer.style.top = Math.max(8, Math.min(maxTop, newTop)) + 'px';
       }
@@ -375,6 +396,7 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
   }
 
   initDevCollisionUI();
+  syncDevPanelPosition();
 }
 
 // =========================================================================
@@ -498,6 +520,31 @@ export function initDevPerfUI() {
     devPerfBtn.addEventListener('click', handleToggle);
     devPerfBtn.addEventListener('touchend', handleToggle);
     syncDevPerfButtonUI();
+
+    // Przycisk kopiowania logów wydajności bezpośrednio w panelu DEV
+    let devPerfCopyBtn = document.getElementById('dev-perf-copy-btn');
+    if (!devPerfCopyBtn && devMenu) {
+      devPerfCopyBtn = document.createElement('button');
+      devPerfCopyBtn.className = 'dev-btn';
+      devPerfCopyBtn.id = 'dev-perf-copy-btn';
+      devPerfCopyBtn.style.cssText = 'border-color: #0284c7; color: #38bdf8;';
+      devPerfCopyBtn.title = 'Skopiuj raport wydajności FPS i zacięć do schowka';
+      devPerfCopyBtn.textContent = 'KOPIUJ LOG FPS';
+
+      const handleCopyLog = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        copyPerfReportToClipboard(devPerfCopyBtn);
+      };
+      devPerfCopyBtn.addEventListener('click', handleCopyLog);
+      devPerfCopyBtn.addEventListener('touchend', handleCopyLog);
+
+      if (devPerfBtn.parentNode) {
+        devPerfBtn.parentNode.insertBefore(devPerfCopyBtn, devPerfBtn.nextSibling);
+      } else {
+        devMenu.appendChild(devPerfCopyBtn);
+      }
+    }
   }
 }
 
@@ -624,6 +671,7 @@ export function toggleTouchControls(forceVal) {
     updateButtonLayout(W, H);
   }
   updateDevTouchButtonUI();
+  syncDevPanelPosition();
   const hudPauseBtn = document.getElementById('hud-pause-btn');
   if (hudPauseBtn) {
     const isOverlayOpen = document.getElementById('pause-overlay')?.style.display === 'flex' ||
@@ -658,6 +706,7 @@ export function initTouchControlsDevUI() {
   devTouchBtn.addEventListener('touchend', handleToggle);
   devMenu.appendChild(devTouchBtn);
   updateDevTouchButtonUI();
+  syncDevPanelPosition();
 }
 
 export function initModularGearDevUI() {

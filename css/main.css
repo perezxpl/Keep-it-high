@@ -140,20 +140,42 @@ button, .dev-btn {
   }
 }
 
-/* Dev / Admin Panel - Pływający kontener */
+/* Dev / Admin Panel - Pływający kontener pod górną krawędzią ekranu */
 #dev-panel-container {
   position: absolute;
-  top: 118px;
-  left: 16px;
+  top: 8px;
+  right: 16px;
+  left: auto;
+  max-width: calc(100vw - 32px);
   z-index: 100;
   display: flex;
+  flex-direction: row-reverse;
   flex-wrap: wrap; /* Pozwala na przełamanie do nowej linii na smartfonie */
+  justify-content: flex-start;
   align-items: center;
   gap: 6px;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
   cursor: default;
+}
+
+#dev-panel-container.dev-panel-mobile {
+  top: 5px;
+  left: 88px;
+  right: auto;
+  max-width: calc(100vw - 96px);
+  flex-direction: row;
+}
+
+@media (max-width: 767px) {
+  #dev-panel-container:not([data-user-dragged="1"]) {
+    top: 5px;
+    left: 88px;
+    right: auto;
+    max-width: calc(100vw - 96px);
+    flex-direction: row;
+  }
 }
 
 #dev-toggle-btn {

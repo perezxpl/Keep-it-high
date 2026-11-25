@@ -20,6 +20,7 @@ import { drawDeathmatchHUD, drawDeathmatchPodium, deathmatchState } from '../dea
 import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { getStrikerFlameColor } from '../classes/striker.js';
 import { drawCombatFeedBanner } from './combatFeed.js';
+import { isPerfMonitorEnabled } from '../dev/mobilePerfMonitor.js';
 
 export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
   ctx.save();
@@ -1861,12 +1862,13 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     }
     ctx.restore();
 
-    // --- C. KLASA I FPS (DYSKRETNY PASEK POD KARTĄ BRONI) ---
+    // --- C. KLASA I OPCJONALNY FPS (DYSKRETNY PASEK POD KARTĄ BRONI) ---
     const metaY = wepBoxY + wepBoxH + 13;
     ctx.textAlign = 'left';
     ctx.font = 'bold 9.5px monospace';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
+    const fpsSuffix = isPerfMonitorEnabled() ? `   FPS: ${currentFps}` : '';
+    ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}${fpsSuffix}`, hudX + 2, metaY);
 
     // --- D. RANGA WOJSKOWA & PROGRES XP ---
     const rankY = metaY + 15;
