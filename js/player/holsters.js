@@ -17,6 +17,7 @@
 // =========================================================================
 
 import { getWeaponPartSprite, getWeaponSpritePivot, drawWeaponBloodOverlay, drawMinigunModularSprite } from '../weapons/renderer.js';
+import { rightStick } from '../mobileControls.js';
 
 export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER', 'FLAMETHROWER', 'MINIGUN'];
 export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7'];
@@ -72,7 +73,9 @@ export function getCharacterLoadout(p) {
   // 3. Sprawdzenie, czy broń jest aktualnie trzymana w dłoniach operatora
   const isDead = !!p.isDead;
   const isStaggered = (p.staggerTimer > 0);
-  const isThrowingGrenade = !!((p.throwAnim && p.throwAnim.active) || p.throwMode);
+  const isLocalPlayer = (typeof window !== 'undefined' && window.player === p);
+  const isArmedThrowable = !!(isLocalPlayer && rightStick && rightStick.armedMode === 'GRENADE' && (p.grenades ?? 1) > 0 && !p.isReloading && !p.meleeState);
+  const isThrowingGrenade = !!((p.throwAnim && p.throwAnim.active) || p.throwMode || isArmedThrowable);
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
   const isHolstered = hWeight >= 0.90;
 

@@ -1675,10 +1675,13 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
 
       const bLen = (typeof hold.barrelLen === 'number') ? hold.barrelLen : 31.00;
       const bOffY = (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -1.00;
+      // Uwzględnij płynne przesunięcie sprite'a między pozycją marszową (walkX=240) a celowaniem (480)
+      const nozzleX = bLen + (480.0 - pivotSpriteX) * s + 1.5;
+      const nozzleY = bOffY + (160.0 - pivotSpriteY) * s;
 
-      // Pilot light / płomyk zapalnika na wylocie dyszy - widoczny gdy gracz nie przeładowuje broni
+      // Pilot light / płomyk zapalnika na wylocie dyszy - widoczny gdy gracz trzyma broń i nie przeładowuje
       if (!isReloading) {
-        drawPilotFlame(ctx, bLen + 2.0, bOffY, 0, 1);
+        drawPilotFlame(ctx, nozzleX, nozzleY, 0, 1);
       }
     } else {
       // Rezerwowy podglad proceduralny
@@ -1688,6 +1691,7 @@ export function drawHeldWeapon(ctx, p, cachedHold = null) {
       ctx.fillRect(6, 2, 12, 6);
       ctx.fillStyle = '#f97316';
       ctx.fillRect(28, -2, 4, 4);
+      drawPilotFlame(ctx, 32.5, 0, 0, 1);
     }
   } else if (weapon.id === 'MINIGUN') {
     // -------------------------------------------------------------

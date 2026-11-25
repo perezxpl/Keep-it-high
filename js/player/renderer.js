@@ -15,6 +15,7 @@ import { getRagdollRenderPose } from './death.js';
 import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js';
 import { camera } from '../camera.js';
 import { drawBackWeapon } from './holsters.js';
+import { rightStick } from '../mobileControls.js';
 
 import {
   DEFAULT_VISUALS,
@@ -350,9 +351,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   if (p.currentClass?.id === 'STRIKER') {
     v.hasRocketBoots = true;
   }
-  v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned && p.throwAnim.throwType !== 'TOMAHAWK');
+  const throwSlotIdx = p.loadout?.pocket2?.activeThrowableIndex || 0;
+  const selectedThrowableId = p.loadout?.pocket2?.throwables?.[throwSlotIdx] || 'GRENADE';
+  const isArmedThrowableIdle = !!(isLocalOrCreator && rightStick && rightStick.armedMode === 'GRENADE' && (p.grenades ?? 1) > 0 && !p.isDead && !(p.staggerTimer > 0) && !p.isReloading && !p.meleeState && !p.isZombie);
+  v.heldGrenade = !!((p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned && p.throwAnim.throwType !== 'TOMAHAWK') || isArmedThrowableIdle);
   v.heldTomahawk = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned && p.throwAnim.throwType === 'TOMAHAWK');
-  v.throwType = p.throwAnim?.throwType || 'GRENADE';
+  v.throwType = (p.throwAnim && p.throwAnim.active) ? (p.throwAnim.throwType || selectedThrowableId) : selectedThrowableId;
   v.grenadeCookRatio = (p.throwAnim && p.throwAnim.active && p.throwAnim.cookTimer) ? Math.min(1.0, p.throwAnim.cookTimer / 300) : 0;
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
@@ -979,7 +983,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
-  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active) && !p.isZombie;
+  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active) && !isArmedThrowableIdle && !p.isZombie;
   let weaponHold = null;
 
   if (hasActiveWeapon) {
@@ -1035,8 +1039,14 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   }
 
-  // PROCEDURALNA KINEMATYKA RZUTU BRONIĄ MIOTANĄ (GRANATEM)
-  if (p.throwAnim && p.throwAnim.active) {
+  // PROCEDURALNA KINEMATYKA TRZYMANIA I RZUTU BRONIĄ MIOTANĄ (GRANAT / MOŁOTOW)
+  if (isArmedThrowableIdle && !(p.throwAnim && p.throwAnim.active)) {
+    // Spokojna postawa taktyczna z granatem lub płonącym Mołotowem trzymanym w dłoni
+    rawFrontSwing = 0.42;
+    rawFrontElbow = 1.08;
+    rawBackSwing = lerp(rawBackSwing, -0.18, 0.75);
+    rawBackElbow = lerp(rawBackElbow, 0.45, 0.75);
+  } else if (p.throwAnim && p.throwAnim.active) {
     const tAnim = p.throwAnim;
     const facingDir = p.facing || 1;
     const handBaseX = p.x + p.w / 2;
@@ -2239,8 +2249,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
     }
 
-    // Broń trzymana w prawej ręce PRZED prawą nogą
-    drawHeldWeapon(ctx, p, weaponHold);
+    // Broń trzymana w prawej ręce PRZED prawą nogą (ukryta gdy w dłoni trzymamy granat/mołotow)
+    if (!isArmedThrowableIdle) {
+      drawHeldWeapon(ctx, p, weaponHold);
+    }
 
     // Prawe ramię na wierzchu (dłoń obejmuje chwyt broni)
     if (!isArmFrontDismembered) {
@@ -2257,8 +2269,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, effUpperArmLen, effForearmLen, p);
     }
 
-    // Broń w prawej dłoni w tle znajduje się ZA pierwszoplanową lewą nogą
-    drawHeldWeapon(ctx, p, weaponHold);
+    // Broń w prawej dłoni w tle znajduje się ZA pierwszoplanową lewą nogą (ukryta gdy trzymamy granat/mołotow)
+    if (!isArmedThrowableIdle) {
+      drawHeldWeapon(ctx, p, weaponHold);
+    }
 
     // Lewa noga na pierwszym planie (zasłania broń trzymaną w tle)
     if (!isLegBackDismembered) {

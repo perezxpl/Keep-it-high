@@ -2659,35 +2659,60 @@ export function drawBurningEffects(ctx, combatants, ball) {
 }
 
 /**
- * Rysuje mały płomyk pilotujący (Pilot Flame) u wylotu dyszy miotacza ognia
+ * Rysuje mały, żywy płomyk pilotujący (Pilot Flame) u wylotu dyszy miotacza ognia.
+ * Widoczny zarówno w spoczynku (gdy gracz tylko trzyma broń w ręku), jak i w ruchu.
  */
 export function drawPilotFlame(ctx, muzzleX, muzzleY, angle, facing = 1) {
   if (!ctx) return;
-  const sheet = getFlameSpritesheet();
-  const now = performance.now() * 0.015;
-  const frameIdx = Math.floor(now) % 4; // Klatki 0..3 z wiersza 2
+  const now = performance.now() * 0.012;
+  const flicker1 = Math.sin(now * 1.9 + muzzleX * 0.25);
+  const flicker2 = Math.cos(now * 2.7 + muzzleY * 0.35);
+  const flameLen = 9.5 + flicker1 * 2.2;
+  const flameH = 2.6 + flicker2 * 0.55;
+  const liftY = -1.6 + flicker2 * 0.65;
 
   ctx.save();
   ctx.translate(muzzleX, muzzleY);
   ctx.rotate(angle);
   ctx.scale(facing, 1);
 
-  if (sheet && sheet.complete && sheet.naturalWidth > 0) {
-    const sx = frameIdx * FLAME_CELL_SIZE;
-    const sy = FLAME_ROW_PILOT * FLAME_CELL_SIZE;
-    ctx.globalAlpha = 0.90;
-    ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -6, -14, 22, 22);
-  } else {
-    // Prosty proceduralny płomyk
-    ctx.fillStyle = '#38bdf8';
-    ctx.beginPath();
-    ctx.ellipse(4, 0, 3, 1.8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.ellipse(6, 0, 2, 1.0, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // Delikatna ciepła poświata zapalnika (zero alokacji gradientu i zero shadowBlur)
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = 'rgba(251, 146, 60, 0.24)';
+  ctx.beginPath();
+  ctx.arc(4.5, liftY * 0.4, 7.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Zewnętrzny pomarańczowy język płomienia unoszący się z dyszy
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(249, 115, 22, 0.92)';
+  ctx.beginPath();
+  ctx.moveTo(0.2, -1.2);
+  ctx.quadraticCurveTo(flameLen * 0.55, liftY - flameH, flameLen, liftY);
+  ctx.quadraticCurveTo(flameLen * 0.55, liftY + flameH * 0.85, 0.2, 1.3);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wewnętrzny złocisto-biały rdzeń płomienia
+  ctx.fillStyle = '#fef08a';
+  ctx.beginPath();
+  ctx.moveTo(0.6, -0.7);
+  ctx.quadraticCurveTo(flameLen * 0.45, liftY * 0.7 - flameH * 0.55, flameLen * 0.72, liftY * 0.75);
+  ctx.quadraticCurveTo(flameLen * 0.45, liftY * 0.7 + flameH * 0.45, 0.6, 0.8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Niebieska baza gazu palnika bezpośrednio przy dyszy
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath();
+  ctx.ellipse(1.6, 0.0, 2.3, 1.35, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(2.0, 0.0, 0.75, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
 }
 

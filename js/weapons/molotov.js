@@ -669,20 +669,54 @@ export function drawHandheldMolotov(ctx, x, y, scale = 1.0) {
     ctx.fillRect(-2, -1, 4, 7);
   }
 
-  // Płonący knot w dłoni
-  if (sheet && sheet.complete && sheet.naturalWidth > 0) {
-    const flameIdx = Math.floor(performance.now() * 0.008) % 4;
-    const sx = flameIdx * FLAME_CELL_SIZE;
-    const sy = 2 * FLAME_CELL_SIZE;
-    const flameSize = 22;
+  // Płonący knot na szyjce butelki (wyraźny, tańczący ogień w dłoni nawet w spoczynku)
+  const t = performance.now() * 0.013;
+  const swayX = Math.sin(t * 2.1 + x * 0.2) * 1.4;
+  const flameH = 9.5 + Math.cos(t * 2.9 + y * 0.2) * 2.0;
+  const baseY = -12.6;
 
-    ctx.save();
-    ctx.translate(0, -14);
-    ctx.rotate(-Math.PI * 0.5);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.95;
-    ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -flameSize * 0.5, -flameSize * 0.7, flameSize, flameSize);
-    ctx.restore();
-  }
+  ctx.save();
+  ctx.translate(0, baseY);
+
+  // Ciepła poświata płonącego knota (zero alokacji gradientu i zero shadowBlur)
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = 'rgba(251, 146, 60, 0.28)';
+  ctx.beginPath();
+  ctx.arc(swayX * 0.4, -3.5, 7.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Zewnętrzny pomarańczowo-czerwony język ognia
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#f97316';
+  ctx.beginPath();
+  ctx.moveTo(-2.3, 0.8);
+  ctx.quadraticCurveTo(-3.2, -flameH * 0.45, swayX, -flameH);
+  ctx.quadraticCurveTo(3.2, -flameH * 0.45, 2.3, 0.8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Środkowa warstwa złocistego płomienia
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  ctx.moveTo(-1.5, 0.6);
+  ctx.quadraticCurveTo(-2.0, -flameH * 0.35, swayX * 0.75, -flameH * 0.76);
+  ctx.quadraticCurveTo(2.0, -flameH * 0.35, 1.5, 0.6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Jasny biało-żółty rdzeń u nasady knota
+  ctx.fillStyle = '#fef08a';
+  ctx.beginPath();
+  ctx.ellipse(swayX * 0.35, -1.8, 1.1, 2.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Drobna odlatująca iskra nad płomieniem
+  const sparkPhase = (t * 0.65) % 1;
+  ctx.fillStyle = `rgba(253, 224, 71, ${(1 - sparkPhase) * 0.85})`;
+  ctx.beginPath();
+  ctx.arc(swayX * 1.2 + Math.sin(t * 4) * 1.2, -flameH - sparkPhase * 5.0, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
   ctx.restore();
 }

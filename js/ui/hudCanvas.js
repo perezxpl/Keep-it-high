@@ -111,7 +111,7 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
     ctx.stroke();
 
     // Stalowa głowica toporka w uderzeniu w dół (Overhead Hawk Head)
-    ctx.fillStyle = isPressed ? '#fb923c' : mainColor;
+    ctx.fillStyle = isPressed ? 'rgba(255, 255, 255, 0.96)' : mainColor;
     ctx.beginPath();
     ctx.moveTo(3, 3);
     ctx.lineTo(9, 1);
@@ -129,7 +129,7 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
     ctx.fill();
 
     // Dynamiczna smuga uderzenia z góry w dół (Overhead Slash Trail)
-    ctx.strokeStyle = isPressed ? '#ea580c' : faintColor;
+    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.55)' : faintColor;
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.arc(0, 0, 11, -Math.PI * 0.45, Math.PI * 0.25);
@@ -414,7 +414,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.save();
     ctx.translate(knobX, knobY);
     if (isGrenadeMode) {
-      const throwId = player.loadout?.pocket2?.throwables?.[0] || 'GRENADE';
+      const tIdx = player.loadout?.pocket2?.activeThrowableIndex || 0;
+      const throwId = player.loadout?.pocket2?.throwables?.[tIdx] || 'GRENADE';
       ctx.scale(0.65, 0.65);
       drawWeaponSilhouette(ctx, throwId, 0, 0, isStickActive);
     } else {
@@ -493,7 +494,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
         ctx.save();
         ctx.beginPath();
         ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 1.5, -Math.PI / 2, -Math.PI / 2 + holdProg * Math.PI * 2, false);
-        ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
         ctx.lineWidth = 2.4;
         ctx.stroke();
         ctx.restore();
@@ -504,7 +505,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.save();
       ctx.beginPath();
       ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 1.5, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, false);
-      ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.lineWidth = 2.2;
       ctx.stroke();
       ctx.restore();
@@ -529,8 +530,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     }
 
     // Wskaźnik liczby nabojów w kieszeni broni dla urządzeń mobilnych
-    const defM = curId === 'SHOTGUN' ? 8 : (curId === 'SNIPER' ? 5 : (curId === 'GRENADE' ? 1 : 30));
-    const defR = curId === 'SHOTGUN' ? 64 : (curId === 'SNIPER' ? 25 : (curId === 'GRENADE' ? 0 : 90));
+    const defM = curId === 'SHOTGUN' ? 8 : (curId === 'SNIPER' ? 5 : (curId === 'FLAMETHROWER' ? 100 : (curId === 'MINIGUN' ? 150 : (curId === 'RPG7' ? 1 : (curId === 'REVOLVER' ? 6 : (curId === 'SAWED_OFF' ? 2 : (curId === 'GLOCK' ? 17 : ((curId === 'GRENADE' || curId === 'MOLOTOV') ? 1 : 30))))))));
+    const defR = curId === 'SHOTGUN' ? 64 : (curId === 'SNIPER' ? 25 : (curId === 'FLAMETHROWER' ? 200 : (curId === 'MINIGUN' ? 300 : (curId === 'RPG7' ? 3 : (curId === 'REVOLVER' ? 36 : (curId === 'SAWED_OFF' ? 24 : (curId === 'GLOCK' ? 68 : ((curId === 'GRENADE' || curId === 'MOLOTOV') ? 0 : 90))))))));
     const cAmmo = ammoObj ? ammoObj.currentAmmo : defM;
     const rAmmo = ammoObj ? ammoObj.reserveAmmo : defR;
     const isRelAmmo = ammoObj ? ammoObj.isReloading : !!player.isReloading;
@@ -646,7 +647,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.save();
     ctx.translate(pThrowable.x, pThrowable.y - (isReady ? 2 : 3));
     ctx.scale(0.85, 0.85);
-    const throwId = player.loadout?.pocket2?.throwables?.[0] || 'GRENADE';
+    const tIdx = player.loadout?.pocket2?.activeThrowableIndex || 0;
+    const throwId = player.loadout?.pocket2?.throwables?.[tIdx] || 'GRENADE';
     drawWeaponSilhouette(ctx, throwId, 0, 0, isReady && (isEquipped || isPressed));
     ctx.restore();
 
@@ -1057,6 +1059,43 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     ctx.fillRect(-10, -2.0, 3.2, 4.0);
     // 5. Dolny podajnik taśmy amunicyjnej
     ctx.fillRect(-4, 3.2, 5.0, 3.0);
+  } else if (type === 'FLAMETHROWER') {
+    // Miotacz ognia (monochromatyczna sylwetka taktyczna)
+    // 1. Kolba i tylny chwyt pistoletowy
+    ctx.fillRect(-12.5, -2.2, 4.5, 2.8);
+    ctx.fillRect(-6.8, 0.8, 2.4, 4.2);
+    // 2. Komora główna i długa perforowana lufa z dyszą zapalnika
+    ctx.fillRect(-8.5, -2.6, 10.5, 3.8);
+    ctx.fillRect(1.8, -2.2, 10.2, 2.6);
+    // Kołnierz dyszy i iglica zapalnika na końcu lufy
+    ctx.fillRect(11.8, -2.8, 2.6, 3.6);
+    ctx.fillRect(14.2, -1.6, 1.6, 1.4);
+    // Perforacja osłony termicznej lufy (wycięcia kontrastowe)
+    const cutFill = isSelected ? 'rgba(15, 23, 42, 0.72)' : 'rgba(15, 23, 42, 0.65)';
+    ctx.save();
+    ctx.fillStyle = cutFill;
+    ctx.fillRect(3.2, -1.6, 1.6, 1.3);
+    ctx.fillRect(6.0, -1.6, 1.6, 1.3);
+    ctx.fillRect(8.8, -1.6, 1.6, 1.3);
+    ctx.restore();
+    // 3. Przedni chwyt wspomagający (foregrip)
+    ctx.fillRect(-1.0, 1.1, 2.2, 3.6);
+    // 4. Podwieszana cylindryczna butla paliwowa pod lufą
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(1.5, 1.4, 8.8, 4.2, 1.8);
+    } else {
+      ctx.rect(1.5, 1.4, 8.8, 4.2);
+    }
+    ctx.fill();
+    // Przewód paliwowy łączący butlę z komorą
+    ctx.strokeStyle = isSelected ? 'rgba(255, 255, 255, 0.76)' : 'rgba(255, 255, 255, 0.45)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(2.0, 3.6);
+    ctx.lineTo(-2.5, 3.6);
+    ctx.lineTo(-3.2, 1.0);
+    ctx.stroke();
   } else if (type === 'KNIFE') {
     ctx.fillRect(-6, -1.0, 5, 2.0);
     ctx.fillRect(-1.5, -3.0, 1.2, 6.0);
@@ -1104,19 +1143,23 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     ctx.moveTo(0, -5.2); ctx.lineTo(0, 7.6);
     ctx.stroke();
 
-    // Szyjka zapalnika i łyżka (safety lever)
-    ctx.fillStyle = isSelected ? '#fed7aa' : '#94a3b8';
+    // Szyjka zapalnika i łyżka (monochromatyczna)
+    ctx.fillStyle = isSelected ? 'rgba(255, 255, 255, 0.88)' : 'rgba(255, 255, 255, 0.56)';
     ctx.fillRect(-2, -6.5, 4, 2.2);
     ctx.fillRect(1.5, -6.5, 2, 7.0);
 
-    // Zawleczka z kółkiem (pull ring)
-    ctx.strokeStyle = isSelected ? '#ffffff' : '#cbd5e1';
+    // Zawleczka z kółkiem (monochromatyczna)
+    ctx.strokeStyle = isSelected ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.62)';
     ctx.lineWidth = 1.0;
     ctx.beginPath();
     ctx.arc(-3.5, -5.8, 1.8, 0, Math.PI * 2);
     ctx.stroke();
   } else if (type === 'MOLOTOV') {
-    // Korpus butelki (szkło)
+    const bodyCol = customColor || (isSelected ? 'rgba(255, 255, 255, 0.68)' : 'rgba(255, 255, 255, 0.40)');
+    const detailCol = customColor || (isSelected ? 'rgba(255, 255, 255, 0.90)' : 'rgba(255, 255, 255, 0.58)');
+
+    // Korpus butelki (monochromatyczne szkło)
+    ctx.fillStyle = bodyCol;
     ctx.beginPath();
     if (ctx.roundRect) {
       ctx.roundRect(-3.5, -1.0, 7.0, 8.5, [0, 0, 2, 2]);
@@ -1125,12 +1168,12 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     }
     ctx.fill();
 
-    // Poziom ciekłego paliwa / napalmu wewnątrz butelki
-    ctx.fillStyle = isSelected ? '#fbbf24' : '#d97706';
-    ctx.fillRect(-2.7, 1.2, 5.4, 5.5);
+    // Poziom paliwa w środku (wyraźniejsze monochromatyczne odcięcie)
+    ctx.fillStyle = isSelected ? 'rgba(15, 23, 42, 0.35)' : 'rgba(15, 23, 42, 0.45)';
+    ctx.fillRect(-2.7, -0.3, 5.4, 2.0);
 
     // Zwężające się ramiona i szyjka butelki
-    ctx.fillStyle = isSelected ? '#ffffff' : '#e2e8f0';
+    ctx.fillStyle = detailCol;
     ctx.beginPath();
     ctx.moveTo(-3.5, -1.0);
     ctx.lineTo(-1.6, -4.8);
@@ -1143,13 +1186,14 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     ctx.fillRect(-1.6, -7.5, 3.2, 3.0);
     ctx.fillRect(-2.1, -8.3, 4.2, 1.4);
 
-    // Płócienny knot z płomieniem
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(-0.9, -10.0, 1.8, 2.2);
-
-    ctx.fillStyle = isSelected ? '#f97316' : '#ea580c';
+    // Płócienny knot z płomieniem (monochromatyczny)
+    ctx.fillRect(-0.9, -10.0, 1.8, 2.0);
     ctx.beginPath();
-    ctx.arc(0, -11.0, 1.6, 0, Math.PI * 2);
+    ctx.moveTo(0, -13.0);
+    ctx.quadraticCurveTo(2.1, -11.0, 1.2, -9.8);
+    ctx.lineTo(-1.2, -9.8);
+    ctx.quadraticCurveTo(-2.1, -11.0, 0, -13.0);
+    ctx.closePath();
     ctx.fill();
   }
 
@@ -1248,8 +1292,8 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
 
   // Pobranie stanu amunicji z obiektu gracza
   const ammoObj = player.ammo?.[btn.id];
-  const defMag = (btn.id === 'SHOTGUN' ? 8 : (btn.id === 'SNIPER' ? 5 : (btn.id === 'FLAMETHROWER' ? 100 : (btn.id === 'RPG7' ? 1 : 30))));
-  const defRes = (btn.id === 'SHOTGUN' ? 64 : (btn.id === 'SNIPER' ? 25 : (btn.id === 'FLAMETHROWER' ? 200 : (btn.id === 'RPG7' ? 3 : 90))));
+  const defMag = (btn.id === 'SHOTGUN' ? 8 : (btn.id === 'SNIPER' ? 5 : (btn.id === 'FLAMETHROWER' ? 100 : (btn.id === 'MINIGUN' ? 150 : (btn.id === 'RPG7' ? 1 : (btn.id === 'REVOLVER' ? 6 : (btn.id === 'SAWED_OFF' ? 2 : (btn.id === 'GLOCK' ? 17 : 30))))))));
+  const defRes = (btn.id === 'SHOTGUN' ? 64 : (btn.id === 'SNIPER' ? 25 : (btn.id === 'FLAMETHROWER' ? 200 : (btn.id === 'MINIGUN' ? 300 : (btn.id === 'RPG7' ? 3 : (btn.id === 'REVOLVER' ? 36 : (btn.id === 'SAWED_OFF' ? 24 : (btn.id === 'GLOCK' ? 68 : 90))))))));
   const bCurrentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
   const bReserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
   const bMagSize = ammoObj ? (ammoObj.magSize || defMag) : defMag;
@@ -1354,8 +1398,8 @@ export function drawSingleMobileWeaponIcon(ctx, x, y, size, player) {
   const accentCol = isShotgun ? '#fb923c' : (isSniper ? '#38bdf8' : '#f59e0b');
 
   const ammoObj = player.ammo?.[curWepId];
-  const defMag = isShotgun ? 8 : (isSniper ? 5 : (curWepId === 'FLAMETHROWER' ? 100 : (curWepId === 'RPG7' ? 1 : 30)));
-  const defRes = isShotgun ? 64 : (isSniper ? 25 : (curWepId === 'FLAMETHROWER' ? 200 : (curWepId === 'RPG7' ? 3 : 90)));
+  const defMag = isShotgun ? 8 : (isSniper ? 5 : (curWepId === 'FLAMETHROWER' ? 100 : (curWepId === 'MINIGUN' ? 150 : (curWepId === 'RPG7' ? 1 : (curWepId === 'REVOLVER' ? 6 : (curWepId === 'SAWED_OFF' ? 2 : (curWepId === 'GLOCK' ? 17 : 30)))))));
+  const defRes = isShotgun ? 64 : (isSniper ? 25 : (curWepId === 'FLAMETHROWER' ? 200 : (curWepId === 'MINIGUN' ? 300 : (curWepId === 'RPG7' ? 3 : (curWepId === 'REVOLVER' ? 36 : (curWepId === 'SAWED_OFF' ? 24 : (curWepId === 'GLOCK' ? 68 : 90)))))));
   const currentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
   const reserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
   const isReloading = !!ammoObj?.isReloading;
@@ -1758,10 +1802,10 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
     ctx.stroke();
 
-    // Rysowanie wyraźnej sylwetki broni po lewej stronie karty
+    // Rysowanie wyraźnej monochromatycznej sylwetki broni po lewej stronie karty
     const silX = hudX + 27;
     const silY = wepBoxY + wepBoxH / 2;
-    drawWeaponSilhouette(ctx, curWepId, silX, silY, true, wepAccent);
+    drawWeaponSilhouette(ctx, curWepId, silX, silY, true);
 
     // Nazwa broni w wyrazistym kolorze
     ctx.save();
@@ -1860,7 +1904,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     const slot0Id = player.loadout?.pocket1?.slots?.[0] || 'AK47';
     const slot1Id = player.loadout?.pocket1?.slots?.[1] || 'GLOCK';
     const slot2Id = player.loadout?.pocket1?.slots?.[2] || 'KNIFE';
-    const throwId = player.loadout?.pocket2?.throwables?.[0] || 'GRENADE';
+    const throwIdx = player.loadout?.pocket2?.activeThrowableIndex || 0;
+    const throwId = player.loadout?.pocket2?.throwables?.[throwIdx] || 'GRENADE';
 
     weaponButtons[0].x = panelX;
     weaponButtons[0].y = panelY;
