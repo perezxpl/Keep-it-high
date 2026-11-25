@@ -3,7 +3,7 @@
 // =============================================================================
 
 export const AUDIO_CONFIG = {
-  MANIFEST_URL: './assets/audio/manifest.json?v=v528_real_cc0_knife_hit',
+  MANIFEST_URL: './assets/audio/manifest.json?v=v529_zero_ring_cc0_damage_audio',
   DEFAULT_BASE_PATH: './assets/audio/',
   ENABLE_GAMEPLAY_SYNTH: false,
   ENABLE_UI_SYNTH_FALLBACK: true,

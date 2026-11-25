@@ -131,12 +131,12 @@
       "volume": 0.90
     },
     "hit_shield": {
-      "src": ["hit_shield_1.ogg", "hit_shield_2.ogg"],
-      "volume": 0.90
+      "src": ["hit_shield_1.wav", "hit_shield_2.wav"],
+      "volume": 0.85
     },
     "hit_ricochet": {
-      "src": ["hit_ricochet_1.ogg", "hit_ricochet_2.ogg", "hit_ricochet_3.ogg"],
-      "volume": 0.82
+      "src": ["hit_ricochet_1.wav", "hit_ricochet_2.wav", "hit_ricochet_3.wav"],
+      "volume": 0.72
     },
     "jetpack_loop": {
       "src": "jetpack_loop.wav",
@@ -205,6 +205,18 @@
     },
     "ui_pause": "ui_pause.wav",
     "ui_resume": "ui_resume.wav",
+    "ui_callout_multikill": {
+      "src": "ui_click_2.wav",
+      "volume": 0.45
+    },
+    "ui_callout_oneshot": {
+      "src": "ui_click_2.wav",
+      "volume": 0.48
+    },
+    "ui_callout_revenge": {
+      "src": "ui_click_2.wav",
+      "volume": 0.48
+    },
     "ui_test_tone": "ui_test_tone.ogg",
     "ui_countdown_tick": null,
     "ui_countdown_go": null,
