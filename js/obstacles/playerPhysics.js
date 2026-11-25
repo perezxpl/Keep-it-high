@@ -76,6 +76,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     if (isDropAllowed) {
       p.dropThroughPlatform = curPlat;
       p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 22);
+      p._dropThroughOriginY = (typeof p.currentGroundY === 'number') ? p.currentGroundY : feetY;
       p.currentPlatform = null;
       p.onGround = false;
       p.isJumping = true;
@@ -340,7 +341,14 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
 
       if (isLanding) {
-        if (p.dropThroughTimer > 0 && (plat === p.dropThroughPlatform || (p.dropThroughPlatform && plat.id === p.dropThroughPlatform.id)) && !isFallenDebris) {
+        const isDroppedPlat = (plat === p.dropThroughPlatform || (p.dropThroughPlatform && plat.id === p.dropThroughPlatform.id));
+        const isSeamNeighbor = (
+          p.dropThroughTimer > 12 &&
+          (plat.isDropThrough === true || plat.dropThrough === true) &&
+          typeof p._dropThroughOriginY === 'number' &&
+          Math.abs(topY - p._dropThroughOriginY) <= 10
+        );
+        if (p.dropThroughTimer > 0 && (isDroppedPlat || isSeamNeighbor) && !isFallenDebris) {
           continue;
         }
         if (p.onGround && p.currentPlatform === plat) {
@@ -463,9 +471,11 @@ export function checkPlayerPlatformLanding(p, groundY) {
     const pCenterX = p.x + p.w * 0.5;
     for (const plat of ARENA_PLATFORMS) {
       if (!plat || plat.solid === false) continue;
-      const isTerrainBlock = (plat.id === 'ground_left' || plat.id === 'ground_right' ||
+      const isTerrainBlock = (
+        plat.id === 'ground_left' || plat.id === 'ground_right' ||
         plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' ||
-        plat.isTerrain || (plat.w > 600 && !plat.isWall));
+        plat.isTerrain
+      ) && !plat.oneWay && !plat.isDropThrough && !plat.isSlope;
       if (!isTerrainBlock) continue;
 
       if (pCenterX >= plat.x - 4 && pCenterX <= plat.x + plat.w + 4) {
@@ -562,6 +572,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     // Reset stanu drop-through po pomyślnym wylądowaniu na platformie
     p.dropThroughTimer = 0;
     p.dropThroughPlatform = null;
+    p._dropThroughOriginY = null;
 
     // Przerwanie powietrznego dasha Strikera przy kontakcie z platformą
     if (p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR') {

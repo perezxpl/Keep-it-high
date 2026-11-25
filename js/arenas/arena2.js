@@ -22,7 +22,8 @@ import {
   isPlayerSubmergedInAcid,
   triggerPlayerAcidDeath,
   updateArena2,
-  handleArena2BulletHit
+  handleArena2BulletHit,
+  getActiveHangingPipes
 } from './arena2/state.js';
 import {
   drawArena2Background,
@@ -66,9 +67,10 @@ const arena2 = {
     _acidDebrisList.length = 0;
     _acidSmokeParticles.length = 0;
     _acidBoilEmitters.length = 0;
-    for (let i = 0; i < ARENA_2_PLATFORMS.length; i++) {
-      const p = ARENA_2_PLATFORMS[i];
-      if (p.hangingPhysics) {
+    const allPipes = [...ARENA_2_PLATFORMS, ...getActiveHangingPipes()];
+    for (let i = 0; i < allPipes.length; i++) {
+      const p = allPipes[i];
+      if (p && p.hangingPhysics) {
         p.y = p.baseY;
         p.vy = 0;
         p.angle = 0;
@@ -93,9 +95,10 @@ const arena2 = {
   },
   onExplosion(expX, expY, radius, context) {
     const rad = radius || 140;
-    for (let i = 0; i < ARENA_2_PLATFORMS.length; i++) {
-      const p = ARENA_2_PLATFORMS[i];
-      if (p.hangingPhysics) {
+    const pipes = getActiveHangingPipes();
+    for (let i = 0; i < pipes.length; i++) {
+      const p = pipes[i];
+      if (p && p.hangingPhysics) {
         const cx = p.x + p.w * 0.5;
         const cy = p.y;
         const dist = Math.hypot(expX - cx, expY - cy);

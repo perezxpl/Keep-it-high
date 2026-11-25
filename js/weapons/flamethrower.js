@@ -8,7 +8,7 @@
 // Zero shadowBlur w pętli renderowania - stabilne 60 FPS.
 // =========================================================================
 
-import { checkRayObstacleCollision, obstacles, ARENA_PLATFORMS } from '../obstacles.js';
+import { checkRayObstacleCollision, obstacles, ARENA_PLATFORMS, getPlatformSurfaceInfo, getPlatformSurfaceY } from '../obstacles.js';
 import { triggerScreenShake, spawnBloodSpurt, spawnDroppedWeapon } from '../world.js';
 import { isDeathmatchFFA, deathmatchState, deathmatchConfig } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
@@ -107,7 +107,7 @@ export class BurningFuelGlob {
 
     // 1. Zgaszenie w kwasie lub głębokiej wodzie
     if (isA2) {
-      const acidY = (typeof curArena?.acidSurge?.currentY === 'number') ? curArena.acidSurge.currentY : 1250;
+      const acidY = (typeof curArena?.acidSurge?.currentY === 'number') ? curArena.acidSurge.currentY : 1440;
       if (this.y >= acidY) {
         this.dead = true;
         return false;
@@ -139,7 +139,8 @@ export class BurningFuelGlob {
         vx: this.vx,
         vy: this.vy,
         damage: 1,
-        shooter: this.shooter
+        shooter: this.shooter,
+        isFire: true
       };
       if (curArena.onBulletHit(dummyHit)) {
         hit = {
@@ -153,22 +154,50 @@ export class BurningFuelGlob {
       }
     }
 
-    // 3. Kolizje z platformami areny
+    // 2B. Kolizja kropli napalmu z wybuchowymi/toksycznymi beczkami
+    const hazBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels)) ? window.hazardsBarrels : null;
+    if (hazBarrels && hazBarrels.length > 0) {
+      const maxGlobT = hit ? hit.t : 1.0;
+      for (let bi = 0; bi < hazBarrels.length; bi++) {
+        const bar = hazBarrels[bi];
+        if (!bar || bar.isDead) continue;
+        const barT = getSegmentAABBHitT(this.prevX, this.prevY, this.x, this.y, bar.x - 3, bar.y - 3, bar.x + bar.w + 3, bar.y + bar.h + 3);
+        if (barT !== null && barT <= maxGlobT) {
+          const hitX = this.prevX + (this.x - this.prevX) * barT;
+          const hitY = this.prevY + (this.y - this.prevY) * barT;
+          if (typeof window.damageBarrel === 'function') {
+            window.damageBarrel(bar, Math.max(4, Math.round(8 * this.fuelAmount)), this.shooter, this.vx * 0.15, this.vy * 0.15);
+          }
+          if (typeof window.igniteBarrel === 'function') {
+            window.igniteBarrel(bar, this.shooter, 2.2);
+          }
+          spawnImpactSplash(hitX, hitY, -Math.sign(this.vx || 1), -0.5);
+          this.dead = true;
+          return false;
+        }
+      }
+    }
+
+    // 3. Kolizje z platformami areny (z obsługą skosów/ramp)
     if (!hit && Array.isArray(platforms)) {
       for (const plat of platforms) {
-        if (!plat || plat.intact === false) continue;
+        if (!plat || plat.intact === false || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
         const pLeft = plat.x;
-        const pRight = plat.x + plat.w;
-        const topY = plat.y;
+        const pRight = plat.x + (plat.w || 0);
         if (this.x >= pLeft && this.x <= pRight) {
-          if (this.vy > 0 && this.prevY <= topY + 4 && this.y >= topY - 2) {
+          const isSloped = !!(plat.isSlope || Array.isArray(plat.surfacePoints));
+          const surf = isSloped ? getPlatformSurfaceInfo(plat, this.x, groundY) : null;
+          const topY = surf ? surf.surfaceY : (plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0)));
+          const pNx = surf ? (surf.nx || 0) : 0;
+          const pNy = surf ? (surf.ny !== undefined ? surf.ny : -1) : -1;
+          if (this.vy > 0 && this.prevY <= topY + 6 && this.y >= topY - 2) {
             hit = {
               hit: true,
               t: (topY - this.prevY) / (this.y - this.prevY || 1),
               x: this.x,
               y: topY,
-              nx: 0,
-              ny: -1,
+              nx: pNx,
+              ny: pNy,
               platform: plat
             };
             break;
@@ -479,6 +508,7 @@ export class FlameParticle {
     this.damage = weapon?.damage || 4;
     this.dead = false;
     this.hitCombatants = new Set();
+    this.hitBarrels = new Set();
   }
 
   update(groundY, platforms, customObs, combatants, ball) {
@@ -532,7 +562,8 @@ export class FlameParticle {
         vx: this.vx,
         vy: this.vy,
         damage: this.damage,
-        shooter: this.shooter
+        shooter: this.shooter,
+        isFire: true
       };
       if (activeArena.onBulletHit(dummyHit)) {
         mapHit = {
@@ -549,6 +580,30 @@ export class FlameParticle {
     const endX = mapHit ? mapHit.x : this.x;
     const endY = mapHit ? mapHit.y : this.y;
     const maxT = mapHit ? mapHit.t : 1.0;
+
+    // 2A. Kolizja strumienia ognia z beczkami (podpalenie i obrażenia termiczne)
+    const hazBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels)) ? window.hazardsBarrels : null;
+    if (hazBarrels && hazBarrels.length > 0) {
+      const rPad = Math.min(7, this.radius * 0.35);
+      for (let bi = 0; bi < hazBarrels.length; bi++) {
+        const bar = hazBarrels[bi];
+        if (!bar || bar.isDead || this.hitBarrels.has(bar)) continue;
+        const barT = getSegmentAABBHitT(this.prevX, this.prevY, this.x, this.y, bar.x - rPad, bar.y - rPad, bar.x + bar.w + rPad, bar.y + bar.h + rPad);
+        if (barT !== null && barT <= maxT) {
+          this.hitBarrels.add(bar);
+          const hitX = this.prevX + (this.x - this.prevX) * barT;
+          const hitY = this.prevY + (this.y - this.prevY) * barT;
+          if (typeof window.damageBarrel === 'function') {
+            window.damageBarrel(bar, Math.max(3, Math.round(this.damage * 0.9)), this.shooter, this.vx * 0.15, this.vy * 0.15);
+          }
+          if (typeof window.igniteBarrel === 'function') {
+            window.igniteBarrel(bar, this.shooter, 2.2);
+          }
+          spawnImpactSplash(hitX, hitY, -Math.sign(this.vx || 1), -0.4);
+          this.life -= 10;
+        }
+      }
+    }
 
     // 2. Interakcja z piłką
     if (ball) {
@@ -667,6 +722,11 @@ export class FlameParticle {
       this.x = mapHit.x;
       this.y = mapHit.y;
       this.dead = true;
+
+      // Ciecz toksyczna w Arenie 2 gasi strumień ognia zamiast rozlewać płomienie na kwasie
+      if (mapHit.source === 'acid_pool') {
+        return false;
+      }
 
       const isWall = Math.abs(mapHit.nx || 0) > 0.6;
       const customW = 26 + Math.random() * 12;
@@ -808,9 +868,12 @@ export class SurfaceFire {
 
     // Wygaszanie w toksycznym kwasie lub głębokiej wodzie
     const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-    if (curArena?.id === 'arena-2' && this.y >= 1250) {
-      this.dead = true;
-      return false;
+    if (curArena?.id === 'arena-2') {
+      const acidY = (typeof curArena?.acidSurge?.currentY === 'number') ? curArena.acidSurge.currentY : 1440;
+      if (this.y >= acidY) {
+        this.dead = true;
+        return false;
+      }
     }
     if (curArena?.id === 'arena-3' && this.y >= 1390) {
       this.dead = true;
@@ -863,16 +926,23 @@ export class SurfaceFire {
         }
         if (!hasSupport && Array.isArray(ARENA_PLATFORMS)) {
           for (const plat of ARENA_PLATFORMS) {
-            if (!plat || plat.intact === false) continue;
-            if (this.x >= plat.x - 4 && this.x <= plat.x + plat.w + 4 && Math.abs(plat.y - this.y) < 12) {
-              hasSupport = true;
-              // Sprawdzenie krawędzi platformy: napalm skapuje w dół
-              if (this.x < plat.x + 4) {
-                spawnBurningFuelGlob(plat.x - 2, plat.y + 2, -0.6 - Math.random() * 0.6, 0.8, this.shooter, this.team, this.intensity * 0.6);
-              } else if (this.x > plat.x + plat.w - 4) {
-                spawnBurningFuelGlob(plat.x + plat.w + 2, plat.y + 2, 0.6 + Math.random() * 0.6, 0.8, this.shooter, this.team, this.intensity * 0.6);
+            if (!plat || plat.intact === false || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
+            const pw = plat.w ?? plat.width ?? 0;
+            if (this.x >= plat.x - 4 && this.x <= plat.x + pw + 4) {
+              const isSloped = !!(plat.isSlope || Array.isArray(plat.surfacePoints));
+              const platTopY = isSloped ? getPlatformSurfaceY(plat, this.x, groundY) : (plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0)));
+              if (Math.abs(platTopY - this.y) < 12) {
+                hasSupport = true;
+                // Sprawdzenie krawędzi platformy: napalm skapuje w dół
+                if (this.x < plat.x + 4) {
+                  const edgeY = isSloped ? getPlatformSurfaceY(plat, plat.x, groundY) : platTopY;
+                  spawnBurningFuelGlob(plat.x - 2, edgeY + 2, -0.6 - Math.random() * 0.6, 0.8, this.shooter, this.team, this.intensity * 0.6);
+                } else if (this.x > plat.x + pw - 4) {
+                  const edgeY = isSloped ? getPlatformSurfaceY(plat, plat.x + pw, groundY) : platTopY;
+                  spawnBurningFuelGlob(plat.x + pw + 2, edgeY + 2, 0.6 + Math.random() * 0.6, 0.8, this.shooter, this.team, this.intensity * 0.6);
+                }
+                break;
               }
-              break;
             }
           }
         }
@@ -934,6 +1004,17 @@ export class SurfaceFire {
       this.x += slideDir * 0.22;
       if (curArena?.id === 'arena-3' && typeof getRiverbankGroundY === 'function') {
         this.y = getRiverbankGroundY(this.x);
+      } else if (Array.isArray(ARENA_PLATFORMS)) {
+        for (const plat of ARENA_PLATFORMS) {
+          if (!plat || plat.intact === false || (!plat.isSlope && !Array.isArray(plat.surfacePoints))) continue;
+          if (this.x >= plat.x && this.x <= plat.x + (plat.w || 0)) {
+            const sy = getPlatformSurfaceY(plat, this.x, groundY);
+            if (Math.abs(sy - this.y) < 16) {
+              this.y = sy;
+              break;
+            }
+          }
+        }
       }
     }
 
@@ -1037,11 +1118,36 @@ export class SurfaceFire {
       }
     }
 
-    // 2. Podpalenie piłki przetaczającej się przez kałużę ognia
+    // 2. Podpalenie i uszkadzanie beczek wybuchowych/toksycznych w ogniu powierzchniowym
+    const hazBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels)) ? window.hazardsBarrels : null;
+    if (hazBarrels && hazBarrels.length > 0) {
+      for (let bi = 0; bi < hazBarrels.length; bi++) {
+        const bar = hazBarrels[bi];
+        if (!bar || bar.isDead) continue;
+        const barLeft = bar.x;
+        const barRight = bar.x + bar.w;
+        const barTop = bar.y;
+        const barBottom = bar.y + bar.h;
+        if (!(barRight < fireLeft || barLeft > fireRight || barBottom < fireTop || barTop > fireBottom)) {
+          if (typeof window.igniteBarrel === 'function') {
+            window.igniteBarrel(bar, this.shooter, 2.0);
+          }
+          if (!this.damageCooldown.has(bar)) {
+            this.damageCooldown.set(bar, 12);
+            if (typeof window.damageBarrel === 'function') {
+              window.damageBarrel(bar, 5, this.shooter, 0, 0);
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Podpalenie piłki przetaczającej się przez kałużę ognia
     if (ball) {
+      const ballHalfW = this.width * 0.55;
       const bDistX = Math.abs(ball.x - this.x);
       const bDistY = Math.abs(ball.y - this.y);
-      if (bDistX < halfW + (ball.colRadius || 5.2) && bDistY < 24) {
+      if (bDistX < ballHalfW + (ball.colRadius || 5.2) && bDistY < 24) {
         ball.burnTimer = Math.max(ball.burnTimer || 0, 90);
         ball.vx += (this.x < ball.x ? 0.15 : -0.15);
       }

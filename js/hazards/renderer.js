@@ -191,9 +191,29 @@ function drawSingleBarrel(ctx, b) {
     );
   }
 
-  // Dynamiczne cząsteczki i snopy iskier dla stanu krytycznego (lont)
-  if (b.fuseTimer > 0 || b.isExploding) {
+  // Dynamiczne cząsteczki i snopy iskier dla stanu krytycznego (lont) lub podpalenia
+  if (b.fuseTimer > 0 || b.isExploding || b.burnTimer > 0) {
     drawDynamicFuseSparks(ctx, b, w, h);
+    if (b.burnTimer > 0) {
+      const now = performance.now() * 0.012;
+      const sway = Math.sin(now + b.x * 0.1) * 3.0;
+      const flameH = 14 + Math.cos(now * 1.7) * 4;
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.85)';
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.35, -h * 0.25);
+      ctx.quadraticCurveTo(-w * 0.4, -h * 0.5 - flameH * 0.6, sway, -h * 0.5 - flameH);
+      ctx.quadraticCurveTo(w * 0.4, -h * 0.5 - flameH * 0.6, w * 0.35, -h * 0.25);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.18, -h * 0.3);
+      ctx.quadraticCurveTo(-w * 0.2, -h * 0.5 - flameH * 0.35, sway * 0.6, -h * 0.5 - flameH * 0.62);
+      ctx.quadraticCurveTo(w * 0.2, -h * 0.5 - flameH * 0.35, w * 0.18, -h * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   ctx.restore();

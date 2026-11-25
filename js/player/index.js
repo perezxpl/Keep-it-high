@@ -194,6 +194,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.dropThroughTimer--;
     if (player.dropThroughTimer <= 0) {
       player.dropThroughPlatform = null;
+      player._dropThroughOriginY = null;
     }
   }
   if (player.muzzleFlashTimer > 0) player.muzzleFlashTimer--;

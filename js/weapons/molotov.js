@@ -7,7 +7,7 @@
 // Fizyka: natychmiastowe rozbicie przy uderzeniu, odłamki szkła, DoT i pożoga.
 // =========================================================================
 
-import { checkRayObstacleCollision, obstacles, ARENA_PLATFORMS, activeArenaId } from '../obstacles.js';
+import { checkRayObstacleCollision, obstacles, ARENA_PLATFORMS, activeArenaId, getPlatformSurfaceInfo } from '../obstacles.js';
 import { triggerScreenShake } from '../world.js';
 import { isDeathmatchFFA, deathmatchState, deathmatchConfig } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
@@ -280,24 +280,29 @@ export class MolotovCocktail {
       return false;
     }
 
-    // 6. Kolizje z platformami (np. most, konstrukcje stalowe)
+    // 6. Kolizje z platformami (np. most, konstrukcje stalowe, rampy)
     if (Array.isArray(activePlats)) {
       for (const plat of activePlats) {
-        if (!plat) continue;
+        if (!plat || plat.intact === false || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
         const pLeft = plat.x;
-        const pRight = plat.x + plat.w;
-        const topY = plat.y;
-        const bottomY = plat.y + (plat.h || 10);
+        const pRight = plat.x + (plat.w || 0);
+        const isSloped = !!(plat.isSlope || Array.isArray(plat.surfacePoints));
+        const surf = isSloped ? getPlatformSurfaceInfo(plat, this.x, groundY) : null;
+        const topY = surf ? surf.surfaceY : (plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0)));
+        const thick = isSloped ? (plat.thickness || 18) : (plat.h || plat.thickness || 10);
+        const bottomY = topY + thick;
+        const topNx = surf ? (surf.nx || 0) : 0;
+        const topNy = surf ? (surf.ny !== undefined ? surf.ny : -1) : -1;
 
         if (this.x + this.radius >= pLeft && this.x - this.radius <= pRight) {
-          // Lądowanie na wierzchu platformy
+          // Lądowanie na wierzchu platformy / rampy
           if (this.vy > 0 && this.prevY + this.radius <= topY + 8 && this.y + this.radius >= topY - 2) {
             this.y = topY - this.radius;
-            this.shatter(topY, activePlats, customObs, combatants, ball, { nx: 0, ny: -1 });
+            this.shatter(topY, activePlats, customObs, combatants, ball, { nx: topNx, ny: topNy });
             return false;
           }
-          // Spód platformy litej
-          else if (!plat.oneWay && this.vy < 0 && this.prevY - this.radius >= bottomY - 8 && this.y - this.radius <= bottomY + 2) {
+          // Spód platformy litej lub blokującej pociski
+          else if ((!plat.oneWay || plat.blocksBullets) && this.vy < 0 && this.prevY - this.radius >= bottomY - 8 && this.y - this.radius <= bottomY + 2) {
             this.y = bottomY + this.radius;
             this.shatter(bottomY, activePlats, customObs, combatants, ball, { nx: 0, ny: 1 });
             return false;
@@ -329,6 +334,23 @@ export class MolotovCocktail {
         const ny = (this.y - chCenterY) / (dist || 1);
         this.shatter(groundY, activePlats, customObs, combatants, ball, { nx, ny });
         return false;
+      }
+    }
+
+    // 8B. Bezpośrednie trafienie w wybuchową/toksyczną beczkę
+    const hazBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels)) ? window.hazardsBarrels : null;
+    if (hazBarrels && hazBarrels.length > 0) {
+      for (let bi = 0; bi < hazBarrels.length; bi++) {
+        const bar = hazBarrels[bi];
+        if (!bar || bar.isDead) continue;
+        if (this.x + this.radius >= bar.x && this.x - this.radius <= bar.x + bar.w &&
+            this.y + this.radius >= bar.y && this.y - this.radius <= bar.y + bar.h) {
+          const bCx = bar.x + bar.w * 0.5;
+          const bCy = bar.y + bar.h * 0.5;
+          const bDist = Math.hypot(this.x - bCx, this.y - bCy) || 1;
+          this.shatter(groundY, activePlats, customObs, combatants, ball, { nx: (this.x - bCx) / bDist, ny: (this.y - bCy) / bDist });
+          return false;
+        }
       }
     }
 
@@ -554,6 +576,33 @@ export function detonateMolotovExplosion(
       const bFactor = Math.max(0, 1.0 - (bDist / radius));
       ball.vx += ((ball.x - expX) / (bDist || 1)) * bFactor * 12.0;
       ball.vy += ((ball.y - expY) / (bDist || 1)) * bFactor * 12.0 - 2.5;
+    }
+  }
+
+  // 4B. Obrażenia i podpalenie pobliskich beczek wybuchowych/toksycznych
+  const activeHazBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels))
+    ? window.hazardsBarrels
+    : [];
+  for (let bi = 0; bi < activeHazBarrels.length; bi++) {
+    const bar = activeHazBarrels[bi];
+    if (!bar || bar.isDead) continue;
+    const barMidX = bar.x + bar.w * 0.5;
+    const barMidY = bar.y + bar.h * 0.5;
+    const barDist = Math.hypot(barMidX - expX, barMidY - expY);
+    if (barDist <= radius) {
+      const factor = Math.max(0.2, 1.0 - (barDist / radius));
+      const expDmg = Math.round(35 * factor);
+      const bNormX = barDist > 0.001 ? (barMidX - expX) / barDist : 0;
+      const bNormY = barDist > 0.001 ? (barMidY - expY) / barDist : -0.7;
+      if (typeof window.damageBarrel === 'function') {
+        window.damageBarrel(bar, expDmg, shooter, bNormX * 6 * factor, bNormY * 6 * factor);
+      } else {
+        bar.hp -= expDmg;
+        if (bar.hp <= 0 && bar.fuseTimer <= 0) bar.fuseTimer = 0.07;
+      }
+      if (typeof window.igniteBarrel === 'function') {
+        window.igniteBarrel(bar, shooter, 2.5);
+      }
     }
   }
 

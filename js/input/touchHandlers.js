@@ -116,14 +116,17 @@ let enforcerFlickDownDetected = false;
 
 export function updateDoubleFlickDetection(axisY) {
   const now = performance.now();
+  const curPlat = player.currentPlatform;
   const isCurrentPlatDropThrough = !!(
     player.onGround &&
-    player.currentPlatform &&
-    player.currentPlatform.isDropThrough === true
+    curPlat &&
+    !curPlat.isHull &&
+    (curPlat.isDropThrough === true || curPlat.dropThrough === true || curPlat.type === 'catwalk' || curPlat.type === 'cyber_catwalk' || curPlat.type === 'floating_hex')
   );
 
   const doDropThrough = () => {
     player.dropThroughTimer = 22;
+    player._dropThroughOriginY = (typeof player.currentGroundY === 'number') ? player.currentGroundY : (player.y + (player.h || 72));
     if (player.currentPlatform) {
       player.y += 4;
       player.dropThroughPlatform = player.currentPlatform;

@@ -197,15 +197,18 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  // W Arenie 2 (Sektor X) toksyczny kwas (y >= 1260) pochłania pociski
+  // W Arenie 2 (Sektor X) dynamiczny poziom toksycznego kwasu pochłania pociski
   if (isA2) {
-    if (y2 >= 1260) {
-      if (y1 < 1260) {
+    const acidY = (typeof curArenaObj?.acidSurge?.currentY === 'number')
+      ? curArenaObj.acidSurge.currentY
+      : (curArenaObj?.hazardZoneY ?? 1440);
+    if (y2 >= acidY) {
+      if (y1 < acidY) {
         const dy = y2 - y1;
-        const t = dy !== 0 ? Math.max(0, Math.min(1, (1260 - y1) / dy)) : 0;
-        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 1260, nx: 0, ny: -1 }, 'acid_pool');
+        const t = dy !== 0 ? Math.max(0, Math.min(1, (acidY - y1) / dy)) : 0;
+        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: acidY, nx: 0, ny: -1 }, 'acid_pool');
       } else {
-        recordHit({ hit: true, t: 0, x: x1, y: 1260, nx: 0, ny: -1 }, 'acid_pool');
+        recordHit({ hit: true, t: 0, x: x1, y: acidY, nx: 0, ny: -1 }, 'acid_pool');
       }
     }
   }
@@ -274,33 +277,49 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         continue;
       }
 
-      // Jednorazowe zbuforowanie AABB platformy do odrzucania O(1)
-      if (plat._minX === undefined) {
-        if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length > 0) {
-          let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
-          for (let pi = 0; pi < plat.surfacePoints.length; pi++) {
-            const p = plat.surfacePoints[pi];
-            if (p.x < mnx) mnx = p.x;
-            if (p.x > mxx) mxx = p.x;
-            const py = p.y !== undefined ? p.y : (groundY - (p.relY || 0));
-            if (py < mny) mny = py;
-            if (py > mxy) mxy = py;
+      let pMinX, pMaxX, pMinY, pMaxY;
+      if (plat.hangingPhysics) {
+        const pw = plat.w || 0;
+        const ph = plat.h || plat.thickness || 16;
+        const tiltMargin = (pw * 0.5) * Math.abs(Math.sin(plat.angle || 0)) + 4;
+        pMinX = (plat.x !== undefined ? plat.x : 0) - 2;
+        pMaxX = (plat.x !== undefined ? plat.x : 0) + pw + 2;
+        pMinY = plat.y - tiltMargin;
+        pMaxY = plat.y + ph + tiltMargin;
+      } else {
+        // Jednorazowe zbuforowanie AABB platformy do odrzucania O(1)
+        if (plat._minX === undefined) {
+          if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length > 0) {
+            let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+            for (let pi = 0; pi < plat.surfacePoints.length; pi++) {
+              const p = plat.surfacePoints[pi];
+              if (p.x < mnx) mnx = p.x;
+              if (p.x > mxx) mxx = p.x;
+              const py = p.y !== undefined ? p.y : (groundY - (p.relY || 0));
+              if (py < mny) mny = py;
+              if (py > mxy) mxy = py;
+            }
+            const extraThick = plat.isSlope ? (plat.thickness || 18) : (plat.thickness || plat.h || 20);
+            plat._minX = mnx;
+            plat._maxX = mxx;
+            plat._minY = mny;
+            plat._maxY = mxy + extraThick;
+          } else {
+            plat._minX = plat.x !== undefined ? plat.x : 0;
+            plat._maxX = plat._minX + (plat.w || 0);
+            const py = plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0));
+            plat._minY = Math.min(py, plat.startY !== undefined ? plat.startY : py);
+            plat._maxY = Math.max(py + (plat.h || plat.thickness || 30), plat.endY !== undefined ? plat.endY + 30 : py + 30);
           }
-          plat._minX = mnx;
-          plat._maxX = mxx;
-          plat._minY = mny;
-          plat._maxY = mxy;
-        } else {
-          plat._minX = plat.x !== undefined ? plat.x : 0;
-          plat._maxX = plat._minX + (plat.w || 0);
-          const py = plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0));
-          plat._minY = Math.min(py, plat.startY !== undefined ? plat.startY : py);
-          plat._maxY = Math.max(py + (plat.h || plat.thickness || 30), plat.endY !== undefined ? plat.endY + 30 : py + 30);
         }
+        pMinX = plat._minX;
+        pMaxX = plat._maxX;
+        pMinY = plat._minY;
+        pMaxY = plat._maxY;
       }
 
       // Szybki test odrzucenia AABB promienia względem platformy
-      if (rayMaxX < plat._minX || rayMinX > plat._maxX || rayMaxY < plat._minY || rayMinY > plat._maxY) {
+      if (rayMaxX < pMinX || rayMinX > pMaxX || rayMaxY < pMinY || rayMinY > pMaxY) {
         continue;
       }
 
@@ -315,19 +334,25 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
           if (plat.fillToGround) {
             const bottomY = Math.max(topY1, topY2) + (plat.h || 20);
             const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, bottomY, plat.x + plat.w, bottomY);
-            if (bottomHit) recordHit(bottomHit, plat.id || 'ramp_bottom');
+            if (bottomHit) {
+              if (bottomHit.ny < 0) { bottomHit.nx = -bottomHit.nx; bottomHit.ny = -bottomHit.ny; }
+              recordHit(bottomHit, plat.id || 'ramp_bottom');
+            }
             const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x, bottomY);
-            if (leftHit) recordHit(leftHit, plat.id || 'ramp_left');
+            if (leftHit) { leftHit.nx = -1; leftHit.ny = 0; recordHit(leftHit, plat.id || 'ramp_left'); }
             const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x + plat.w, topY2, plat.x + plat.w, bottomY);
-            if (rightHit) recordHit(rightHit, plat.id || 'ramp_right');
+            if (rightHit) { rightHit.nx = 1; rightHit.ny = 0; recordHit(rightHit, plat.id || 'ramp_right'); }
           } else {
             const thick = plat.thickness || 18;
             const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1 + thick, plat.x + plat.w, topY2 + thick);
-            if (bottomHit) recordHit(bottomHit, (plat.id || 'ramp') + '_bottom');
+            if (bottomHit) {
+              if (bottomHit.ny < 0) { bottomHit.nx = -bottomHit.nx; bottomHit.ny = -bottomHit.ny; }
+              recordHit(bottomHit, (plat.id || 'ramp') + '_bottom');
+            }
             const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x, topY1 + thick);
-            if (leftHit) recordHit(leftHit, (plat.id || 'ramp') + '_left');
+            if (leftHit) { leftHit.nx = -1; leftHit.ny = 0; recordHit(leftHit, (plat.id || 'ramp') + '_left'); }
             const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x + plat.w, topY2, plat.x + plat.w, topY2 + thick);
-            if (rightHit) recordHit(rightHit, (plat.id || 'ramp') + '_right');
+            if (rightHit) { rightHit.nx = 1; rightHit.ny = 0; recordHit(rightHit, (plat.id || 'ramp') + '_right'); }
           }
         }
         continue;
@@ -387,13 +412,39 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         continue;
       }
 
-      // 4. Lite platformy przemysłowe areny (np. floor_l1, floor_l2, floor_r1, floor_r2, furnace_deck, tunnel_floor)
-      if (plat.solid && !plat.oneWay) {
+      // 4. Lite platformy przemysłowe areny oraz platformy blokujące pociski (np. Arena 2 bastiony, center hub, belki sufitowe)
+      if (plat.solid && (!plat.oneWay || plat.blocksBullets)) {
         const topY = plat.y !== undefined ? plat.y : (plat.relY !== undefined ? groundY - plat.relY : null);
         const thick = plat.h || plat.thickness || 20;
         if (topY !== null) {
-          const solidHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
-          if (solidHit) recordHit(solidHit, plat.id || 'solid_platform');
+          if (plat.hangingPhysics && Math.abs(plat.angle || 0) > 0.005) {
+            const angle = plat.angle;
+            const pw = plat.w || 0;
+            const cx = plat.x + pw * 0.5;
+            const cy = topY + thick * 0.5;
+            const cosA = Math.cos(-angle);
+            const sinA = Math.sin(-angle);
+            const lx1 = (x1 - cx) * cosA - (y1 - cy) * sinA;
+            const ly1 = (x1 - cx) * sinA + (y1 - cy) * cosA;
+            const lx2 = (x2 - cx) * cosA - (y2 - cy) * sinA;
+            const ly2 = (x2 - cx) * sinA + (y2 - cy) * cosA;
+            const localHit = getSegmentAABBIntersection(lx1, ly1, lx2, ly2, -pw * 0.5, -thick * 0.5, pw * 0.5, thick * 0.5);
+            if (localHit) {
+              const cosB = Math.cos(angle);
+              const sinB = Math.sin(angle);
+              recordHit({
+                hit: true,
+                t: localHit.t,
+                x: cx + localHit.x * cosB - localHit.y * sinB,
+                y: cy + localHit.x * sinB + localHit.y * cosB,
+                nx: localHit.nx * cosB - localHit.ny * sinB,
+                ny: localHit.nx * sinB + localHit.ny * cosB
+              }, plat.id || 'solid_platform');
+            }
+          } else {
+            const solidHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
+            if (solidHit) recordHit(solidHit, plat.id || 'solid_platform');
+          }
         }
       }
     }

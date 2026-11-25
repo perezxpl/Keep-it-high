@@ -752,6 +752,18 @@ export function damageBarrel(barrel, dmg, attacker = null, bulletVx = 0, bulletV
 }
 
 /**
+ * Podpala beczkę (ogień z miotacza, Mołotowa lub pożogi powierzchniowej)
+ */
+export function igniteBarrel(barrel, attacker = null, durationSec = 2.0) {
+  if (!barrel || barrel.isDead) return;
+  barrel.burnTimer = Math.max(barrel.burnTimer || 0, durationSec);
+  if (attacker) {
+    barrel.burnAttacker = attacker;
+    barrel.lastAttacker = attacker;
+  }
+}
+
+/**
  * Wykonuje potężną detonację beczki i zadaje obrażenia obszarowe
  */
 export function detonateBarrel(barrel, combatants = [], groundY = 800, options = {}) {
@@ -971,6 +983,20 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
     // Czas ochronny dla kopiącego gracza
     if (b.kickerGraceTimer > 0) {
       b.kickerGraceTimer -= dt;
+    }
+
+    // Podpalenie beczki ogniem: cykliczne obrażenia termiczne prowadzące do detonacji
+    if (b.burnTimer > 0) {
+      b.burnTimer -= dt;
+      b.burnTickAccum = (b.burnTickAccum || 0) + dt;
+      if (b.burnTickAccum >= 0.22) {
+        b.burnTickAccum -= 0.22;
+        damageBarrel(b, 5, b.burnAttacker || b.lastAttacker, 0, 0);
+      }
+      if (b.burnTimer <= 0) {
+        b.burnTimer = 0;
+        b.burnTickAccum = 0;
+      }
     }
 
     // Detonacja po upływie fuseTimer
@@ -1343,6 +1369,7 @@ export function checkBarrelKickInteraction(char, isSlide = false) {
 
 if (typeof window !== 'undefined') {
   window.damageBarrel = damageBarrel;
+  window.igniteBarrel = igniteBarrel;
   window.detonateBarrel = detonateBarrel;
   window.getValidBarrelSpawnSurfaceY = getValidBarrelSpawnSurfaceY;
   window.getAcidPoolSupportBounds = getAcidPoolSupportBounds;

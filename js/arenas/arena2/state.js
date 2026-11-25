@@ -123,6 +123,7 @@ export const ARENA_2_PLATFORMS = [
     isDropThrough: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true
   },
   {
@@ -137,6 +138,7 @@ export const ARENA_2_PLATFORMS = [
     isDropThrough: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true
   },
 
@@ -154,8 +156,9 @@ export const ARENA_2_PLATFORMS = [
     isPlatform: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true,
-    isDropThrough: false,
+    isDropThrough: true,
     x: 880,
     w: 680,
     y: 420,
@@ -180,8 +183,9 @@ export const ARENA_2_PLATFORMS = [
     isPlatform: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true,
-    isDropThrough: false,
+    isDropThrough: true,
     x: 2440,
     w: 680,
     y: 420,
@@ -204,9 +208,10 @@ export const ARENA_2_PLATFORMS = [
     h: 26,
     thickness: 26,
     isPlatform: true,
-    isDropThrough: false,
+    isDropThrough: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true
   },
 
@@ -224,8 +229,9 @@ export const ARENA_2_PLATFORMS = [
     isPlatform: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true,
-    isDropThrough: false,
+    isDropThrough: true,
     x: 900,
     w: 660,
     y: 720,
@@ -250,8 +256,9 @@ export const ARENA_2_PLATFORMS = [
     isPlatform: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true,
-    isDropThrough: false,
+    isDropThrough: true,
     x: 2440,
     w: 660,
     y: 720,
@@ -274,9 +281,10 @@ export const ARENA_2_PLATFORMS = [
     h: 32,
     thickness: 32,
     isPlatform: true,
-    isDropThrough: false,
+    isDropThrough: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true
   },
   {
@@ -288,15 +296,29 @@ export const ARENA_2_PLATFORMS = [
     h: 32,
     thickness: 32,
     isPlatform: true,
-    isDropThrough: false,
+    isDropThrough: true,
     oneWay: true,
     solid: true,
+    blocksBullets: true,
     indestructible: true
   }
 ];
 
 // Platformy wiszące z fizyką uginania i blokowaniem strzałów
 export const ARENA_2_HANGING_PIPES = ARENA_2_PLATFORMS.filter(p => p.hangingPhysics);
+
+export function getActiveHangingPipes() {
+  const activePlats = (typeof globalThis !== 'undefined' && Array.isArray(globalThis.ARENA_PLATFORMS))
+    ? globalThis.ARENA_PLATFORMS
+    : ((typeof globalThis !== 'undefined' && globalThis.world && Array.isArray(globalThis.world.platforms))
+      ? globalThis.world.platforms
+      : null);
+  if (activePlats) {
+    const livePipes = activePlats.filter(p => p && p.hangingPhysics);
+    if (livePipes.length > 0) return livePipes;
+  }
+  return ARENA_2_HANGING_PIPES;
+}
 
 // Aliasy wstecznej kompatybilności dla fizyki i orkiestratora
 export const ARENA_2_PANDORA_PLATFORMS = ARENA_2_PLATFORMS;
@@ -1246,9 +1268,10 @@ export function drawCeilingPipeSparks(ctx, viewLeft, viewRight) {
 export function updateHangingPlatformsPhysics(dt, players) {
   const charList = Array.isArray(players) ? players : [];
   const time = performance.now() * 0.001;
+  const pipes = getActiveHangingPipes();
 
-  for (let i = 0; i < ARENA_2_HANGING_PIPES.length; i++) {
-    const plat = ARENA_2_HANGING_PIPES[i];
+  for (let i = 0; i < pipes.length; i++) {
+    const plat = pipes[i];
     let totalDownForce = 0;
     let totalTorque = 0;
     const platCenterX = plat.x + plat.w * 0.5;
@@ -1385,20 +1408,26 @@ function getRayAABBHit(x1, y1, x2, y2, minX, minY, maxX, maxY) {
  * Zatrzymuje pocisk, wyrzuca iskry i nadaje impuls kinetyczny platformie
  */
 export function handleArena2BulletHit(bullet) {
-  if (!bullet) return false;
+  if (!bullet || bullet.isFire) return false;
 
   const x1 = (typeof bullet.prevX === 'number') ? bullet.prevX : bullet.x;
   const y1 = (typeof bullet.prevY === 'number') ? bullet.prevY : bullet.y;
   const x2 = bullet.x;
   const y2 = bullet.y;
+  const pipes = getActiveHangingPipes();
 
-  for (let i = 0; i < ARENA_2_HANGING_PIPES.length; i++) {
-    const plat = ARENA_2_HANGING_PIPES[i];
+  for (let i = 0; i < pipes.length; i++) {
+    const plat = pipes[i];
+    const pw = plat.w || 550;
+    const ph = plat.h || 16;
+    const angle = plat.angle || 0;
+    const cx = plat.x + pw * 0.5;
+    const cy = plat.y + ph * 0.5;
+    const tiltMargin = (pw * 0.5) * Math.abs(Math.sin(angle));
     const minX = plat.x - 2;
-    const maxX = plat.x + plat.w + 2;
-    const tiltMargin = (plat.w * 0.5) * Math.abs(Math.sin(plat.angle || 0));
+    const maxX = plat.x + pw + 2;
     const minY = plat.y - tiltMargin - 4;
-    const maxY = plat.y + (plat.h || 16) + tiltMargin + 4;
+    const maxY = plat.y + ph + tiltMargin + 4;
 
     const rayMinX = Math.min(x1, x2);
     const rayMaxX = Math.max(x1, x2);
@@ -1408,10 +1437,32 @@ export function handleArena2BulletHit(bullet) {
       continue;
     }
 
-    const hit = getRayAABBHit(x1, y1, x2, y2, minX, minY, maxX, maxY);
-    if (hit || (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY)) {
-      const hitX = hit ? hit.x : x2;
-      const hitY = hit ? hit.y : y2;
+    let hit = null;
+    if (Math.abs(angle) > 0.005) {
+      const cosA = Math.cos(-angle);
+      const sinA = Math.sin(-angle);
+      const lx1 = (x1 - cx) * cosA - (y1 - cy) * sinA;
+      const ly1 = (x1 - cx) * sinA + (y1 - cy) * cosA;
+      const lx2 = (x2 - cx) * cosA - (y2 - cy) * sinA;
+      const ly2 = (x2 - cx) * sinA + (y2 - cy) * cosA;
+      const localHit = getRayAABBHit(lx1, ly1, lx2, ly2, -pw * 0.5 - 2, -ph * 0.5 - 3, pw * 0.5 + 2, ph * 0.5 + 3);
+      if (localHit) {
+        const cosB = Math.cos(angle);
+        const sinB = Math.sin(angle);
+        hit = {
+          hit: true,
+          t: localHit.t,
+          x: cx + localHit.x * cosB - localHit.y * sinB,
+          y: cy + localHit.x * sinB + localHit.y * cosB
+        };
+      }
+    } else {
+      hit = getRayAABBHit(x1, y1, x2, y2, minX, minY, maxX, maxY);
+    }
+
+    if (hit) {
+      const hitX = hit.x;
+      const hitY = hit.y;
 
       // 1. Spawnowanie iskier rykoszetu
       spawnCeilingPipeSparks(hitX, hitY, bullet.vx || 0, bullet.vy || 0);
@@ -1419,7 +1470,7 @@ export function handleArena2BulletHit(bullet) {
       // 2. Fizyczny impuls kinetyczny przekazany wiszącej belce
       const bulletVy = bullet.vy || 0;
       plat.vy += Math.max(-1.5, Math.min(3.5, bulletVy * 0.15 + 1.0));
-      const relX = (hitX - (plat.x + plat.w * 0.5)) / (plat.w * 0.5);
+      const relX = (hitX - cx) / (pw * 0.5);
       plat.vAngle += relX * 0.04;
 
       return true; // Pocisk ZABLOKOWANY!

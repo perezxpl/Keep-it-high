@@ -13,6 +13,7 @@ import {
   getAcidSurfaceY,
   drawAcidDeathEffects,
   ARENA_2_HANGING_PIPES,
+  getActiveHangingPipes,
   drawCeilingPipeSparks
 } from './state.js';
 import {
@@ -1100,8 +1101,9 @@ function drawFloatingFishBones(ctx, size, time, item) {
 
 /** Rysuje rury i kratownice sufitowe z fizyką uginania i kołysania (Y = 150-180 - symetria X = 2000, 0 alokacji GC) */
 function drawCeilingInfrastructure(ctx, time, viewLeft, viewRight) {
-  const pipes = (ARENA_2_HANGING_PIPES && ARENA_2_HANGING_PIPES.length > 0)
-    ? ARENA_2_HANGING_PIPES
+  const activePipes = (typeof getActiveHangingPipes === 'function') ? getActiveHangingPipes() : ARENA_2_HANGING_PIPES;
+  const pipes = (activePipes && activePipes.length > 0)
+    ? activePipes
     : [
       { x: 650,  y: 180, w: 550, h: 16, id: 'ceil_pipe_left' },
       { x: 1700, y: 150, w: 600, h: 16, id: 'ceil_pipe_mid' },

@@ -374,16 +374,19 @@ export function initKeyboardMouseHandlers({
       }
       const now = performance.now();
       const isDoublePress = (now - inputSession.lastSPressTime < 280);
+      const curPlat = player.currentPlatform;
       const isCurrentPlatDropThrough = !!(
         player.onGround &&
-        player.currentPlatform &&
-        player.currentPlatform.isDropThrough === true
+        curPlat &&
+        !curPlat.isHull &&
+        (curPlat.isDropThrough === true || curPlat.dropThrough === true || curPlat.type === 'catwalk' || curPlat.type === 'cyber_catwalk' || curPlat.type === 'floating_hex')
       );
 
       if (isDoublePress && isCurrentPlatDropThrough) {
         player.dropThroughTimer = 22;
-        player.dropThroughPlatform = player.currentPlatform || null;
-        if (player.currentPlatform) {
+        player.dropThroughPlatform = curPlat || null;
+        player._dropThroughOriginY = (typeof player.currentGroundY === 'number') ? player.currentGroundY : (player.y + (player.h || 72));
+        if (curPlat) {
           player.y += 4;
           player.currentPlatform = null;
           player.onGround = false;

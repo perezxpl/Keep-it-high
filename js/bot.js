@@ -1095,6 +1095,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         if (safeBelow !== null && safeBelow <= targetY + 140) {
           botTarget.dropThroughTimer = 20;
           botTarget.dropThroughPlatform = botTarget.currentPlatform;
+          botTarget._dropThroughOriginY = (typeof botTarget.currentGroundY === 'number') ? botTarget.currentGroundY : (botTarget.y + (botTarget.h || 72));
           botTarget.y += 4;
           botTarget.currentPlatform = null;
           botTarget.onGround = false;

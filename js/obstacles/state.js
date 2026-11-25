@@ -585,6 +585,10 @@ export function resetArena() {
   }
 }
 
+if (typeof window !== 'undefined') {
+  window.ARENA_PLATFORMS = ARENA_PLATFORMS;
+}
+
 if (typeof world !== 'undefined' && world) {
   world.initialState = arenaSnapshot;
   world.resetArena = resetArena;
