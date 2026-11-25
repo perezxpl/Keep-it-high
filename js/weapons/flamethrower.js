@@ -967,10 +967,20 @@ export class SurfaceFire {
 }
 
 /**
+ * Całkowicie gasi ogień na postaci (np. przy zgonie i odrodzeniu)
+ */
+export function extinguishCombatant(combatant) {
+  if (!combatant) return;
+  combatant.burnTimer = 0;
+  combatant.burnAttacker = null;
+}
+
+/**
  * Podpalenie postaci (Status efektu DoT)
  */
 export function igniteCombatant(combatant, attacker, durationFrames = 100) {
   if (!combatant || combatant.isDead) return;
+  if (!combatant.isZombie && combatant.spawnProtectionTimer && combatant.spawnProtectionTimer > 0) return;
   combatant.burnTimer = Math.max(combatant.burnTimer || 0, durationFrames);
   combatant.burnAttacker = attacker || combatant.burnAttacker;
 }
@@ -1044,6 +1054,7 @@ function handleFireDeath(ch, killer, groundY) {
     return handleZombieFireDeath(ch, killer, groundY, false);
   }
   ch.isDead = true;
+  extinguishCombatant(ch);
   ch.killer = killer || { name: 'PŁOMIENIE', isSelf: false };
   ch.respawnTimer = 180;
   ch.corpseFloorY = groundY;
@@ -1194,9 +1205,15 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
     if (!ch) continue;
     const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
     if (ch.isZombie) {
-      if (ch.isDead && !isLyingZombie) continue;
+      if (ch.isDead && !isLyingZombie) {
+        if (ch.burnTimer > 0 || ch.burnAttacker) extinguishCombatant(ch);
+        continue;
+      }
     } else {
-      if (ch.isDead) continue;
+      if (ch.isDead) {
+        if (ch.burnTimer > 0 || ch.burnAttacker) extinguishCombatant(ch);
+        continue;
+      }
     }
 
     if (ch.burnTimer && ch.burnTimer > 0) {
@@ -2055,9 +2072,15 @@ export function drawBurningEffects(ctx, combatants, ball) {
     if (!ch) continue;
     const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
     if (ch.isZombie) {
-      if (ch.isDead && !isLyingZombie) continue;
+      if (ch.isDead && !isLyingZombie) {
+        if (ch.burnTimer > 0 || ch.burnAttacker) extinguishCombatant(ch);
+        continue;
+      }
     } else {
-      if (ch.isDead) continue;
+      if (ch.isDead) {
+        if (ch.burnTimer > 0 || ch.burnAttacker) extinguishCombatant(ch);
+        continue;
+      }
     }
     if (!ch.burnTimer || ch.burnTimer <= 0) continue;
 
@@ -2138,4 +2161,42 @@ export function clearFlamethrowerState() {
   activeFuelGlobs.length = 0;
   activeSurfaceFires.length = 0;
   activeImpactSplashes.length = 0;
+}
+
+/**
+ * Sprawdza, czy wskazany prostokąt koliduje z aktywnym ogniem powierzchniowym, kroplami paliwa lub strumieniem płomieni.
+ */
+export function hasFireHazardInBox(minX, minY, maxX, maxY) {
+  for (let i = 0; i < activeSurfaceFires.length; i++) {
+    const f = activeSurfaceFires[i];
+    if (!f || f.dead || f.life <= 0) continue;
+    const halfW = (f.width || 34) * 0.55 + 22;
+    const fLeft = f.x - halfW;
+    const fRight = f.x + halfW;
+    const fTop = f.y - 40;
+    const fBottom = f.y + 18;
+    if (maxX >= fLeft && minX <= fRight && maxY >= fTop && minY <= fBottom) {
+      return true;
+    }
+  }
+
+  for (let i = 0; i < activeFuelGlobs.length; i++) {
+    const g = activeFuelGlobs[i];
+    if (!g || g.dead || g.life <= 0) continue;
+    const pad = 34;
+    if (maxX >= g.x - pad && minX <= g.x + pad && maxY >= g.y - 36 && minY <= g.y + 120) {
+      return true;
+    }
+  }
+
+  for (let i = 0; i < activeFlameStreams.length; i++) {
+    const p = activeFlameStreams[i];
+    if (!p || p.dead || p.life <= 0) continue;
+    const r = (p.radius || 18) + 26;
+    if (maxX >= p.x - r && minX <= p.x + r && maxY >= p.y - r && minY <= p.y + r) {
+      return true;
+    }
+  }
+
+  return false;
 }

@@ -17,6 +17,8 @@ import {
 } from './bot.js';
 import { deathmatchState } from './deathmatch/state.js';
 import { drawPlayer } from './player/renderer.js';
+import { evaluateSpawnSafety, findDynamicSafeSpawns } from './player/spawnSafety.js';
+import { extinguishCombatant } from './weapons/flamethrower.js';
 import { checkPlayerPlatformLanding } from './obstacles/playerPhysics.js';
 import { 
   switchArena, 
@@ -557,12 +559,16 @@ export function updateMenuShowcase(dt = 1 / 60) {
     if (b.isDead || (b.acidDeath && b.acidDeath.dissolved)) {
       b.respawnTimer = (b.respawnTimer || 50) - 1;
       if (b.respawnTimer <= 0) {
-        // Respawn na losowym punkcie platformy blisko akcji
+        // Respawn na bezpiecznym punkcie platformy (bez ognia, przepaści, kwasu ani wody)
         const sps = config.spawns;
-        const sp = sps[i % sps.length];
-        applyBotClassAndConfig(b, sp.classKey, sp.team);
+        const curArena = getActiveArena();
+        const safeShowcaseSpawns = sps.filter(cand => evaluateSpawnSafety(cand, curArena, b, effectiveGroundY).safe);
+        const pool = safeShowcaseSpawns.length > 0 ? safeShowcaseSpawns : findDynamicSafeSpawns(curArena, b, effectiveGroundY, sps);
+        const spRaw = sps[i % sps.length];
+        const sp = pool.length > 0 ? pool[i % pool.length] : spRaw;
+        applyBotClassAndConfig(b, spRaw.classKey || sp.classKey, spRaw.team || sp.team);
         b.difficulty = 'hard';
-        b.x = sp.x + (Math.random() - 0.5) * 30;
+        b.x = sp.x;
         b.y = sp.y;
         b.vx = 0;
         b.vy = 0;
@@ -574,6 +580,7 @@ export function updateMenuShowcase(dt = 1 / 60) {
         b.hasHelmet = true;
         b.helmetHits = 2;
         b.isDead = false;
+        extinguishCombatant(b);
         b.isAcidDying = false;
         b.acidDeath = null;
         b.respawnTimer = 0;
@@ -604,7 +611,10 @@ export function updateMenuShowcase(dt = 1 / 60) {
     }
     if (b.y > (config.deathY - 40)) {
       const sps = config.spawns;
-      const sp = sps[i % sps.length];
+      const curArena = getActiveArena();
+      const safeShowcaseSpawns = sps.filter(cand => evaluateSpawnSafety(cand, curArena, b, effectiveGroundY).safe);
+      const sp = safeShowcaseSpawns.length > 0 ? safeShowcaseSpawns[i % safeShowcaseSpawns.length] : sps[i % sps.length];
+      extinguishCombatant(b);
       b.x = sp.x;
       b.y = sp.y;
       b.vx = 0;

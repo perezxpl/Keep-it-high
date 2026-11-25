@@ -249,10 +249,17 @@ export function updateAllRemotePlayers(groundY) {
     const dy = targetY - rp.y;
     const dist = Math.hypot(dx, dy);
 
+    if (rp.isDead) {
+      rp.burnTimer = 0;
+      rp.burnAttacker = null;
+    }
+
     if (!rp.hasReceivedState || dist > 130) {
       // Pierwsza klatka lub duzy przeskok (respawn / teleport / catch-up)
       rp.x = targetX;
       rp.y = targetY;
+      rp.burnTimer = 0;
+      rp.burnAttacker = null;
     } else {
       rp.x += dx * 0.65;
       rp.y += dy * 0.65;

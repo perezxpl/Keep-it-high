@@ -1530,13 +1530,19 @@ function updateTowerApexAndSpawns() {
     let bestX = fallbackX;
     let foundSolid = false;
 
-    // Przeszukaj kolumny w danym sektorze
+    const crane = arena5State.crane;
+    const craneActive = !!(crane && crane.shape && (crane.phase === 'WARNING' || crane.phase === 'FALLING'));
+    const craneColMin = craneActive ? crane.col : -1;
+    const craneColMax = craneActive ? (crane.col + (crane.shape.w || 1) - 1) : -1;
+
+    // Przeszukaj kolumny w danym sektorze (z pominięciem kolumn pod aktywnym zrzutem suwnicy)
     for (let c = startCol; c <= endCol; c++) {
+      if (craneActive && c >= craneColMin && c <= craneColMax) continue;
       for (let r = arena5State.highestRowIndex + 2; r >= minRow; r--) {
         const rowData = arena5State.gridRows.get(r);
         if (rowData && rowData[c] && rowData[c].hp > 0) {
           const blockTopY = rowData[c].y;
-          if (blockTopY < arena5State.recyclerY - 40) {
+          if (blockTopY < arena5State.recyclerY - 60) {
             if (!foundSolid || blockTopY < bestY) {
               bestY = blockTopY;
               bestX = getGridX(c) + CELL_SIZE * 0.5;
@@ -1549,19 +1555,21 @@ function updateTowerApexAndSpawns() {
     }
 
     if (!foundSolid) {
-      // Jeśli w danym sektorze nie ma klocków powyżej utylizatora, znajdź najwyższy solidny punkt w całej wieży
+      // Jeśli w danym sektorze nie ma bezpiecznych klocków, znajdź najwyższy solidny punkt poza suwnicą w całej wieży
       for (let c = 0; c < COLS; c++) {
+        if (craneActive && c >= craneColMin && c <= craneColMax) continue;
         for (let r = arena5State.highestRowIndex + 2; r >= minRow; r--) {
           const rowData = arena5State.gridRows.get(r);
           if (rowData && rowData[c] && rowData[c].hp > 0) {
             const bY = rowData[c].y;
-            if (bY < arena5State.recyclerY - 40) {
-              if (bY < bestY) {
+            if (bY < arena5State.recyclerY - 60) {
+              if (!foundSolid || bY < bestY) {
                 bestY = bY;
                 bestX = getGridX(c) + CELL_SIZE * 0.5;
                 foundSolid = true;
               }
             }
+            break;
           }
         }
       }

@@ -244,6 +244,8 @@ export function resetMenuBot(bot, spawnIdx = null, arenaId = null) {
   bot.hasHelmet = true;
   bot.helmetHits = 3;
   bot.isDead = false;
+  bot.burnTimer = 0;
+  bot.burnAttacker = null;
   bot.respawnTimer = 0;
   bot.deathTilt = 0;
   bot.deathRotVel = 0;

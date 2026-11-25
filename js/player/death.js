@@ -4,10 +4,12 @@
 // =========================================================================
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X } from '../config.js';
-import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, spawnBloodDrip, spawnBloodSpurt, isGroundAt } from '../world.js';
+import { GROUND_Y, triggerScreenShake, spawnBloodDecal, spawnBloodFountain, spawnBloodDrip, spawnBloodSpurt, isGroundAt } from '../world.js';
 import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
 import { getArmAnglesForTarget } from './ik.js';
 import { WEAPONS } from '../weapons.js';
+import { extinguishCombatant } from '../weapons/flamethrower.js';
+import { evaluateSpawnSafety, findDynamicSafeSpawns } from './spawnSafety.js';
 import { ACID_SURGE_SYSTEM } from '../arenas/arena2/state.js';
 import { getRiverbankGroundY, getSafeArena3Spawn, getSafeSurfaceBelow } from '../arenas/arena3/state.js';
 import { deathmatchState } from '../deathmatch/state.js';
@@ -295,58 +297,32 @@ export function getRagdollRenderPose(p, groundY) {
 }
 
 /**
- * Wybiera punkt odrodzenia maksymalnie oddalony od wszystkich żywych przeciwników
+ * Wybiera bezpieczny punkt odrodzenia maksymalnie oddalony od wszystkich żywych przeciwników.
+ * Automatycznie odrzuca pozycje z ogniem, kwasem, lawą, przepaścią, wodą lub opadającą suwnicą.
  */
-export function getFarthestSpawnPoint(activeArena, respawningChar, combatantsList = null) {
-  let candidates = [];
+export function getFarthestSpawnPoint(activeArena, respawningChar, combatantsList = null, groundY = GROUND_Y) {
+  let rawCandidates = [];
   if (activeArena && Array.isArray(activeArena.spawns) && activeArena.spawns.length > 0) {
-    candidates = [...activeArena.spawns];
+    rawCandidates = [...activeArena.spawns];
   } else {
-    candidates = [
-      { x: START_X - 60, y: 580, facing: 1 },
-      { x: START_X + 600, y: 580, facing: -1 }
+    rawCandidates = [
+      { x: START_X - 60, y: Math.min(580, groundY - 74), facing: 1 },
+      { x: START_X + 600, y: Math.min(580, groundY - 74), facing: -1 }
     ];
   }
 
-  // W Arenie 2 (Sektor X) odfiltruj punkty zalane przez kwas (podczas zalań)
-  if (activeArena?.id === 'arena-2' || activeArena?.alias === 'ARENA_2_SECTOR_X') {
-    const curAcidY = (typeof ACID_SURGE_SYSTEM !== 'undefined' && typeof ACID_SURGE_SYSTEM.currentY === 'number')
-      ? ACID_SURGE_SYSTEM.currentY
-      : 1440;
-    const safeCandidates = candidates.filter(s => (s.y + 70) < (curAcidY - 40));
-    if (safeCandidates.length > 0) {
-      candidates = safeCandidates;
-    } else {
-      candidates = [
-        { x: 530, y: 350, facing: 1 },
-        { x: 3470, y: 350, facing: -1 }
-      ];
+  let candidates = [];
+  for (let i = 0; i < rawCandidates.length; i++) {
+    const res = evaluateSpawnSafety(rawCandidates[i], activeArena, respawningChar, groundY);
+    if (res.safe && res.adjustedSpawn) {
+      candidates.push(res.adjustedSpawn);
     }
   }
 
-  // W Arenie 3 (Tajemnicza Dżungla) filtruj punkty zniszczonego mostu / rozbitych płyt i dopasuj Y do kraterów
-  const isA3 = (activeArena?.id === 'arena-3' || activeArena?.alias === 'JUNGLE_ARENA' || activeArena?.alias === 'ARENA_3' || activeArena?.alias === 'ARENA_FOUNDRY');
-  if (isA3) {
-    const charH = respawningChar?.h || 72;
-    const safeCandidates = [];
-    for (let i = 0; i < candidates.length; i++) {
-      const s = candidates[i];
-      const safe = getSafeArena3Spawn(s, charH);
-      if (safe) {
-        safeCandidates.push(safe);
-      }
-    }
-    if (safeCandidates.length > 0) {
-      candidates = safeCandidates;
-    } else {
-      // Gwarantowany awaryjny fallback na litym podłożu brzegowym (bedrock poza zasięgiem wody)
-      const leftGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(450) : 1200;
-      const rightGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(3950) : 1200;
-      candidates = [
-        { x: 450, y: leftGroundY - charH, facing: 1 },
-        { x: 3950, y: rightGroundY - charH, facing: -1 }
-      ];
-    }
+  // Jeśli wszystkie predefiniowane spawny są zagrożone (np. spalone ogniem, pod suwnicą, w kwasie lub kraterach),
+  // dynamicznie wyszukaj pewne punkty na stabilnych platformach i gruncie aktywnej areny.
+  if (candidates.length === 0) {
+    candidates = findDynamicSafeSpawns(activeArena, respawningChar, groundY, rawCandidates);
   }
 
   const isCyan = (respawningChar.team === 'CYAN' || (!respawningChar.team && !respawningChar.isBot));
@@ -481,6 +457,7 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
   // Respawn: odnowienie stanu i przywrócenie kompletnych kończyn
   if (player.respawnTimer <= 0) {
     onCharacterRespawnCorpse(player, groundY);
+    extinguishCombatant(player);
     player.isDead = false;
     player.isSquashed = false;
     player.isCrushed = false;
@@ -590,29 +567,47 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     const isCyan = (player.team === 'CYAN' || (!player.team && !player.isBot));
     const scatterX = (Math.random() - 0.5) * 24;
 
-    const chosenSpawn = getFarthestSpawnPoint(activeArena, player, combatants);
+    const chosenSpawn = getFarthestSpawnPoint(activeArena, player, combatants, groundY);
     const isA3Respawn = (activeArena?.id === 'arena-3' || activeArena?.alias === 'JUNGLE_ARENA' || activeArena?.alias === 'ARENA_3' || activeArena?.alias === 'ARENA_FOUNDRY');
     if (chosenSpawn) {
-      player.x = (chosenSpawn.x || (isCyan ? 530 : 3470)) + scatterX;
-      player.y = chosenSpawn.y || 350;
-      player.facing = chosenSpawn.facing || (chosenSpawn.x < 2000 ? 1 : -1);
+      const baseSpawnX = chosenSpawn.x !== undefined ? chosenSpawn.x : (isCyan ? 530 : 3470);
+      const baseSpawnY = chosenSpawn.y !== undefined ? chosenSpawn.y : 350;
+      const baseFacing = chosenSpawn.facing !== undefined ? chosenSpawn.facing : (baseSpawnX < 2000 ? 1 : -1);
+
+      const scatteredCheck = evaluateSpawnSafety(
+        { x: baseSpawnX + scatterX, y: baseSpawnY, facing: baseFacing },
+        activeArena,
+        player,
+        groundY
+      );
+      const verifiedSpawn = (scatteredCheck.safe && scatteredCheck.adjustedSpawn)
+        ? scatteredCheck.adjustedSpawn
+        : (evaluateSpawnSafety({ x: baseSpawnX, y: baseSpawnY, facing: baseFacing }, activeArena, player, groundY).adjustedSpawn || { x: baseSpawnX, y: baseSpawnY, facing: baseFacing });
+
+      player.x = verifiedSpawn.x;
+      player.y = verifiedSpawn.y;
+      player.facing = verifiedSpawn.facing;
 
       if (isA3Respawn) {
-        // Dodatkowe zabezpieczenie po przesunięciu o scatterX: weryfikacja podłoża i dopasowanie do krateru
         const safeCandidate = getSafeArena3Spawn({ x: player.x, y: player.y, facing: player.facing }, player.h || 72, player.team || (isCyan ? 'CYAN' : 'ORANGE'));
         if (safeCandidate) {
           player.x = safeCandidate.x;
           player.y = safeCandidate.y;
-        } else {
-          const fallbackGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(player.x) : 1200;
-          player.y = Math.min(1200, fallbackGroundY) - (player.h || 72);
         }
       }
     } else {
       player.x = player.isBot ? (START_X + 600 + scatterX) : (START_X - 60);
       if (isA3Respawn) {
-        const fallbackGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(player.x) : 1200;
-        player.y = fallbackGroundY - (player.h || 72);
+        const safeA3Fallback = getSafeArena3Spawn({ x: player.x, y: 1120, facing: player.isBot ? -1 : 1 }, player.h || 72, isCyan ? 'CYAN' : 'ORANGE');
+        if (safeA3Fallback) {
+          player.x = safeA3Fallback.x;
+          player.y = safeA3Fallback.y;
+        } else {
+          const safeBankX = isCyan ? 450 : 3950;
+          const fallbackGroundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(safeBankX) : 1200;
+          player.x = safeBankX;
+          player.y = fallbackGroundY - (player.h || 72);
+        }
       } else {
         player.y = groundY - player.h;
       }

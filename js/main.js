@@ -40,6 +40,8 @@ import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses, isBotEnabled, setBotEnabled, getBotDifficulty, setBotDifficulty, getBotCount, setBotCount } from './bot.js';
 import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHazardName } from './ui/combatFeed.js';
 import { WEAPONS, updateBullets, drawBullets, drawBarrelSmoke, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState, drawBurningEffects } from './weapons.js';
+import { extinguishCombatant } from './weapons/flamethrower.js';
+import { evaluateSpawnSafety, findDynamicSafeSpawns } from './player/spawnSafety.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
   remotePlayer, networkState, initNetwork, sendPlayerState, sendBallState, sendShootEvent,
@@ -478,6 +480,7 @@ export function selectPlayerClass(targetClass) {
 
   // Reset i respawn gracza po zatwierdzeniu wyboru klasy
   player.isDead = false;
+  extinguishCombatant(player);
   player.deathTimer = 0;
   player.hp = player.currentClass?.stats?.hp || 100;
   player.maxHp = player.hp;
@@ -487,13 +490,23 @@ export function selectPlayerClass(targetClass) {
   if (currentArena && Array.isArray(currentArena.spawns) && currentArena.spawns[0]) {
     const rawX = currentArena.spawns[0].x;
     const rawY = currentArena.spawns[0].y;
-    if (isA3) {
-      const safeP = getSafeArena3Spawn({ x: rawX, y: rawY, facing: 1 }, player.h || 72, 'CYAN');
-      player.x = safeP ? safeP.x : rawX;
-      player.y = safeP ? safeP.y : rawY;
+    const safety = evaluateSpawnSafety({ x: rawX, y: rawY, facing: 1 }, currentArena, player, GROUND_Y);
+    if (safety.safe && safety.adjustedSpawn) {
+      player.x = safety.adjustedSpawn.x;
+      player.y = safety.adjustedSpawn.y;
     } else {
-      player.x = rawX;
-      player.y = rawY;
+      const safeList = findDynamicSafeSpawns(currentArena, player, GROUND_Y, currentArena.spawns);
+      if (safeList.length > 0) {
+        player.x = safeList[0].x;
+        player.y = safeList[0].y;
+      } else if (isA3) {
+        const safeP = getSafeArena3Spawn({ x: rawX, y: rawY, facing: 1 }, player.h || 72, 'CYAN');
+        player.x = safeP ? safeP.x : rawX;
+        player.y = safeP ? safeP.y : rawY;
+      } else {
+        player.x = rawX;
+        player.y = rawY;
+      }
     }
   } else {
     player.x = START_X;
