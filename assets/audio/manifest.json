@@ -65,8 +65,8 @@
       "pitchJitter": 0.04
     },
     "weapon_melee_hit": {
-      "src": ["melee_hit_1.wav", "melee_hit_2.ogg"],
-      "volume": 0.95,
+      "src": ["melee_hit_1.wav", "melee_hit_2.wav", "melee_hit_3.wav"],
+      "volume": 0.88,
       "pitchJitter": 0.04
     },
     "weapon_dry_fire": {

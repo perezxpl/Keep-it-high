@@ -3,7 +3,7 @@
 // =============================================================================
 
 export const AUDIO_CONFIG = {
-  MANIFEST_URL: './assets/audio/manifest.json?v=v527_real_cc0_damage_foley',
+  MANIFEST_URL: './assets/audio/manifest.json?v=v528_real_cc0_knife_hit',
   DEFAULT_BASE_PATH: './assets/audio/',
   ENABLE_GAMEPLAY_SYNTH: false,
   ENABLE_UI_SYNTH_FALLBACK: true,
@@ -45,7 +45,7 @@ export const SOUND_CATALOG = {
   minigun_spin: { bus: 'sfx', volume: 0.36, pitchJitter: 0.02, cooldownMs: 80, spatial: true, maxDistance: 1400 },
   minigun_spindown: { bus: 'sfx', volume: 0.32, pitchJitter: 0.02, cooldownMs: 120, spatial: true, maxDistance: 1300 },
   weapon_melee_swing: { bus: 'sfx', volume: 0.22, pitchJitter: 0.05, cooldownMs: 65, spatial: true, maxDistance: 850 },
-  weapon_melee_hit: { bus: 'sfx', volume: 0.56, pitchJitter: 0.04, cooldownMs: 60, spatial: true, maxDistance: 1100 },
+  weapon_melee_hit: { bus: 'sfx', volume: 0.54, pitchJitter: 0.04, cooldownMs: 60, spatial: true, maxDistance: 1100 },
   weapon_dry_fire: { bus: 'sfx', volume: 0.44, pitchJitter: 0.03, cooldownMs: 100, spatial: true, maxDistance: 750 },
   weapon_reload_start: { bus: 'sfx', volume: 0.42, pitchJitter: 0.03, cooldownMs: 120, spatial: true, maxDistance: 800 },
   weapon_reload_end: { bus: 'sfx', volume: 0.46, pitchJitter: 0.03, cooldownMs: 120, spatial: true, maxDistance: 850 },
