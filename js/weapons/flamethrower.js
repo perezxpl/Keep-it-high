@@ -203,32 +203,44 @@ export class BurningFuelGlob {
       const nx = hit.nx || 0;
       const ny = hit.ny !== undefined ? hit.ny : -1;
 
-      // Uderzenie w pionową ścianę (Math.abs(nx) > 0.6)
-      if (Math.abs(nx) > 0.6) {
-        this.x = hx + nx * 2;
+      // Uderzenie w pionową ścianę (Math.abs(nx) > 0.55)
+      if (Math.abs(nx) > 0.55) {
+        this.x = hx + nx * 3;
         this.y = hy;
-        // Rozprysk małego płomienia na ścianie
+        // Ognisko przywiera do pionowej ściany i zaczyna powoli spływać w dół
         spawnSurfaceFire(
           hx,
           hy,
           nx,
-          ny,
+          0,
           this.shooter,
           this.team,
-          14 + this.fuelAmount * 10,
-          120 + Math.floor(this.fuelAmount * 60),
-          0.50 + this.fuelAmount * 0.40
+          18 + this.fuelAmount * 14,
+          145 + Math.floor(this.fuelAmount * 70),
+          0.60 + this.fuelAmount * 0.45
         );
-        // Spływanie w dół ściany
-        this.vx = nx * 0.4;
-        this.vy = 1.2 + Math.random() * 0.8;
+        // Spływanie w dół wzdłuż ściany z lekkim odbiciem
+        this.vx = nx * (0.25 + Math.random() * 0.45);
+        this.vy = 1.4 + Math.random() * 0.9;
         this.fuelAmount *= 0.55;
-        this.life = Math.min(this.life, 35);
+        this.life = Math.min(this.life, 36);
         this.bounced = true;
         return true;
       }
 
-      // Uderzenie w podłoże/platformę/skarpę (ny < -0.4)
+      // Uderzenie w sufit / spód belki (ny > 0.55): kropla odbija się w dół zamiast przyklejać na stałe do sufitu
+      if (ny > 0.55) {
+        this.x = hx;
+        this.y = hy + 3;
+        this.vx *= 0.65;
+        this.vy = Math.max(0.8, Math.abs(this.vy) * 0.30);
+        this.fuelAmount *= 0.75;
+        this.bounced = true;
+        spawnImpactSplash(hx, hy, nx, ny);
+        return true;
+      }
+
+      // Uderzenie w podłoże/platformę/skarpę (ny < -0.35)
       const fireW = 16 + this.fuelAmount * 22;
       const fireLife = 160 + Math.floor(this.fuelAmount * 90);
       const fireIntensity = 0.55 + this.fuelAmount * 0.65;
@@ -805,56 +817,117 @@ export class SurfaceFire {
       return false;
     }
 
-    // Weryfikacja podparcia i destrukcji podłoża (co 6 klatek)
+    const isWall = Math.abs(this.nx) > 0.55;
+    const isSlope = !isWall && Math.abs(this.surfaceAngle) > 0.22;
+
+    // Weryfikacja podparcia ściany lub podłoża (co 6 klatek)
     this.supportCheckTimer++;
     if (this.supportCheckTimer % 6 === 0) {
       const isA3 = curArena?.id === 'arena-3';
       const obs = customObs || obstacles;
       let hasSupport = false;
 
-      if (isA3 && typeof getRiverbankGroundY === 'function') {
-        const terrY = getRiverbankGroundY(this.x);
-        if (Math.abs(terrY - this.y) < 14) hasSupport = true;
-      }
-      if (!hasSupport && Math.abs(this.y - groundY) < 14) {
-        hasSupport = true;
-      }
-      if (!hasSupport && Array.isArray(ARENA_PLATFORMS)) {
-        for (const plat of ARENA_PLATFORMS) {
-          if (!plat || plat.intact === false) continue;
-          if (this.x >= plat.x - 4 && this.x <= plat.x + plat.w + 4 && Math.abs(plat.y - this.y) < 12) {
-            hasSupport = true;
-            // Sprawdzenie krawędzi platformy: napalm skapuje w dół
-            if (this.x < plat.x + 4) {
-              spawnBurningFuelGlob(plat.x - 2, plat.y + 2, -0.6 - Math.random() * 0.6, 0.8, this.shooter, this.team, this.intensity * 0.6);
-            } else if (this.x > plat.x + plat.w - 4) {
-              spawnBurningFuelGlob(plat.x + plat.w + 2, plat.y + 2, 0.6 + Math.random() * 0.6, 0.8, this.shooter, this.team, this.intensity * 0.6);
+      if (isWall) {
+        // Dla ognia na pionowej ścianie sondujemy poziomo W GŁĄB ściany (-nx), a nie pionowo w dół
+        const wallHit = checkRayObstacleCollision(this.x + this.nx * 6, this.y, this.x - this.nx * 18, this.y, groundY, obs, null);
+        if (wallHit) hasSupport = true;
+
+        if (!hasSupport && Array.isArray(ARENA_PLATFORMS)) {
+          const probeX = this.x - this.nx * 6;
+          for (const plat of ARENA_PLATFORMS) {
+            if (!plat || plat.intact === false || plat.solid === false) continue;
+            const pw = plat.w ?? plat.width ?? 0;
+            const ph = plat.h ?? plat.height ?? plat.thickness ?? 24;
+            if (!plat.isWall && plat.oneWay && ph < 24) continue;
+            const py = plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0));
+            if (probeX >= plat.x - 4 && probeX <= plat.x + pw + 4 && this.y >= py - 4 && this.y <= py + ph + 4) {
+              hasSupport = true;
+              break;
             }
-            break;
           }
         }
-      }
-      if (!hasSupport) {
-        const supportHit = checkRayObstacleCollision(this.x, this.y - 4, this.x, this.y + 12, groundY, obs, null);
-        if (supportHit) hasSupport = true;
-      }
 
-      // Jeśli podłoże zniknęło (np. zniszczony segment lub blok Tetrisa), ogień odpada w dół jako kropla
-      if (!hasSupport && this.y < groundY - 20) {
-        spawnBurningFuelGlob(this.x, this.y, (Math.random() - 0.5) * 1.0, 0.8, this.shooter, this.team, this.intensity * 0.8);
-        this.dead = true;
-        return false;
+        if (!hasSupport) {
+          // Zsunięcie pod dolną krawędź bloku / ściany -> oderwanie jako spadająca kropla napalmu
+          spawnBurningFuelGlob(this.x + this.nx * 3, this.y, this.nx * 0.5, 1.0, this.shooter, this.team, Math.max(0.45, this.intensity * 0.75));
+          this.dead = true;
+          return false;
+        }
+      } else {
+        if (isA3 && typeof getRiverbankGroundY === 'function') {
+          const terrY = getRiverbankGroundY(this.x);
+          if (Math.abs(terrY - this.y) < 14) hasSupport = true;
+        }
+        if (!hasSupport && Math.abs(this.y - groundY) < 14) {
+          hasSupport = true;
+        }
+        if (!hasSupport && Array.isArray(ARENA_PLATFORMS)) {
+          for (const plat of ARENA_PLATFORMS) {
+            if (!plat || plat.intact === false) continue;
+            if (this.x >= plat.x - 4 && this.x <= plat.x + plat.w + 4 && Math.abs(plat.y - this.y) < 12) {
+              hasSupport = true;
+              // Sprawdzenie krawędzi platformy: napalm skapuje w dół
+              if (this.x < plat.x + 4) {
+                spawnBurningFuelGlob(plat.x - 2, plat.y + 2, -0.6 - Math.random() * 0.6, 0.8, this.shooter, this.team, this.intensity * 0.6);
+              } else if (this.x > plat.x + plat.w - 4) {
+                spawnBurningFuelGlob(plat.x + plat.w + 2, plat.y + 2, 0.6 + Math.random() * 0.6, 0.8, this.shooter, this.team, this.intensity * 0.6);
+              }
+              break;
+            }
+          }
+        }
+        if (!hasSupport) {
+          const supportHit = checkRayObstacleCollision(this.x, this.y - 4, this.x, this.y + 12, groundY, obs, null);
+          if (supportHit) hasSupport = true;
+        }
+
+        // Jeśli podłoże zniknęło (np. zniszczony segment lub blok Tetrisa), ogień odpada w dół jako kropla
+        if (!hasSupport && this.y < groundY - 20) {
+          spawnBurningFuelGlob(this.x, this.y, (Math.random() - 0.5) * 1.0, 0.8, this.shooter, this.team, this.intensity * 0.8);
+          this.dead = true;
+          return false;
+        }
       }
     }
 
-    // Dynamiczne spływanie ciekłego napalmu po pionowych ścianach lub stromych skarpach
-    const isWall = Math.abs(this.nx) > 0.55;
-    const isSlope = Math.abs(this.surfaceAngle) > 0.22;
+    // Dynamiczne, lepkie spływanie ciekłego napalmu po ścianach aż do rozlania u podstawy
     if (isWall) {
-      this.y += 0.32;
+      const dripSpeed = 0.16 + Math.min(0.24, (this.intensity || 0.7) * 0.16);
+      this.y += dripSpeed;
       this.flowTimer++;
-      if (this.flowTimer % 34 === 0 && Math.random() < 0.40) {
-        spawnBurningFuelGlob(this.x + this.nx * 2, this.y, this.nx * 0.5, 1.2, this.shooter, this.team, this.intensity * 0.5);
+      if (this.flowTimer % 40 === 0 && Math.random() < 0.35) {
+        spawnBurningFuelGlob(this.x + this.nx * 3, this.y + Math.min(12, this.width * 0.25), this.nx * (0.45 + Math.random() * 0.5), 1.1, this.shooter, this.team, this.intensity * 0.5);
+      }
+
+      // Sprawdzenie zetknięcia z posadzką lub górą półki u podstawy ściany -> przejście w kałużę na podłożu
+      const baseFootX = this.x + this.nx * 10;
+      const obs = customObs || obstacles;
+      let floorTouchY = null;
+
+      const isA2 = (curArena?.id === 'arena-2');
+      const isA3 = (curArena?.id === 'arena-3');
+      const isA4 = (curArena?.id === 'arena-4');
+      if (isA3 && typeof getRiverbankGroundY === 'function') {
+        const ry = getRiverbankGroundY(baseFootX);
+        if (this.y >= ry - 3 && ry < 1300) floorTouchY = ry;
+      } else if (!isA2 && !isA4 && this.y >= groundY - 3) {
+        floorTouchY = groundY;
+      }
+
+      if (floorTouchY === null) {
+        const downHit = checkRayObstacleCollision(baseFootX, this.y - 6, baseFootX, this.y + 5, groundY, obs, null);
+        if (downHit && (downHit.ny === undefined || downHit.ny < -0.45)) {
+          floorTouchY = downHit.y;
+        }
+      }
+
+      if (floorTouchY !== null) {
+        this.x = this.x + this.nx * 16;
+        this.y = floorTouchY;
+        this.nx = 0;
+        this.ny = -1;
+        this.surfaceAngle = 0;
+        this.width = Math.max(24, this.width * 0.85);
       }
     } else if (isSlope) {
       const slideDir = this.surfaceAngle > 0 ? 1 : -1;
@@ -873,17 +946,30 @@ export class SurfaceFire {
       }
     }
 
-    // 1. Zadawanie obrażeń postaciom stojącym w rozlanym ogniu
+    // 1. Zadawanie obrażeń postaciom stojącym w rozlanym ogniu (oddzielna bryła pionowa dla ściany)
     const targets = Array.isArray(combatants) ? combatants : [];
     const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
       (deathmatchState && deathmatchState.mode === 'FFA') ||
       (deathmatchConfig && deathmatchConfig.mode === 'FFA');
 
-    const halfW = this.width * 0.55;
-    const fireLeft = this.x - halfW;
-    const fireRight = this.x + halfW;
-    const fireTop = this.y - 28;
-    const fireBottom = this.y + 4;
+    let fireLeft, fireRight, fireTop, fireBottom, losOriginX, losOriginY;
+    if (isWall) {
+      const halfSpan = this.width * 0.60;
+      fireLeft = this.nx > 0 ? (this.x - 4) : (this.x - 28);
+      fireRight = this.nx > 0 ? (this.x + 28) : (this.x + 4);
+      fireTop = this.y - halfSpan - 22;
+      fireBottom = this.y + halfSpan + 4;
+      losOriginX = this.x + this.nx * 5;
+      losOriginY = this.y;
+    } else {
+      const halfW = this.width * 0.55;
+      fireLeft = this.x - halfW;
+      fireRight = this.x + halfW;
+      fireTop = this.y - 28;
+      fireBottom = this.y + 4;
+      losOriginX = this.x;
+      losOriginY = this.y - 6;
+    }
     const obs = customObs || obstacles;
 
     for (const ch of targets) {
@@ -910,7 +996,7 @@ export class SurfaceFire {
       const overlaps = !(chRight < fireLeft || chLeft > fireRight || chBottom < fireTop || chTop > fireBottom);
       if (overlaps) {
         // Blokada ognia przez przeszkodę: kałuża ognia nie rani postaci za ścianą
-        const wallBetween = checkRayObstacleCollision(this.x, this.y - 6, ch.x + hitW * 0.5, ch.y + hitH * 0.45, groundY, obs, null);
+        const wallBetween = checkRayObstacleCollision(losOriginX, losOriginY, ch.x + hitW * 0.5, ch.y + hitH * 0.45, groundY, obs, null);
         if (wallBetween && wallBetween.t < 0.92) {
           continue;
         }
@@ -1167,18 +1253,30 @@ export function spawnFlamethrowerStream(shooter, muzzleX, muzzleY, theta, weapon
  * Spawnowanie rozlanego ognia na powierzchni
  */
 export function spawnSurfaceFire(x, y, nx, ny, shooter, team, customWidth = null, customLife = null, customIntensity = null) {
+  // Trafienie w sufit / spód przeszkody (ny > 0.55): zamiast przyklejać pas do sufitu, napalm skapuje w dół
+  if (typeof ny === 'number' && ny > 0.55) {
+    spawnBurningFuelGlob(x, y + 3, (Math.random() - 0.5) * 1.4, 0.7 + Math.random() * 0.7, shooter, team, 0.65);
+    return null;
+  }
+
   // Ograniczenie maksymalnej liczby węzłów ognia dla zachowania 60 FPS
   while (activeSurfaceFires.length >= 65) {
     activeSurfaceFires.shift();
   }
 
-  // Scalanie z bardzo bliskimi sąsiednimi kroplami ognia
+  const isIncomingWall = Math.abs(nx || 0) > 0.55;
+
+  // Scalanie z bardzo bliskimi sąsiednimi kroplami ognia o tej samej orientacji powierzchni
   for (const existing of activeSurfaceFires) {
     if (existing.dead) continue;
+    const isExistingWall = Math.abs(existing.nx || 0) > 0.55;
+    if (isIncomingWall !== isExistingWall) continue;
+    if (isIncomingWall && Math.sign(existing.nx || 0) !== Math.sign(nx || 0)) continue;
+
     const distSq = (existing.x - x) * (existing.x - x) + (existing.y - y) * (existing.y - y);
-    if (distSq < 15 * 15 && (!shooter || existing.shooter === shooter)) {
+    if (distSq < 18 * 18 && (!shooter || existing.shooter === shooter)) {
       existing.life = Math.min(existing.maxLife, existing.life + 45);
-      existing.width = Math.min(64, existing.width + 3);
+      existing.width = Math.min(isIncomingWall ? 72 : 64, existing.width + 4);
       if (typeof customIntensity === 'number') {
         existing.intensity = Math.min(1.6, Math.max(existing.intensity, customIntensity + 0.15));
       }
@@ -1906,102 +2004,183 @@ function renderGroundCluster(ctx, cluster) {
 }
 
 /**
- * Renderuje ogień płonący na pionowej ścianie (Wall Fire)
+ * Pomocnik krzywej pojedynczego płomienia odrywającego się od ściany i unoszącego w górę (wyporność termiczna)
+ */
+function traceWallFlameLick(ctx, wallX, anchorY, baseH, reachOutX, tipX, tipY, dir, curlShift) {
+  ctx.moveTo(wallX - dir * 1.5, anchorY + baseH * 0.55);
+  // Dolny łuk odrywa płomień od ściany (+dir), potem zawija płynnie ku górze (-Y) do czubka
+  ctx.bezierCurveTo(
+    wallX + reachOutX * 0.95, anchorY + baseH * 0.15,
+    tipX + reachOutX * 0.45 + curlShift, (anchorY + tipY) * 0.52,
+    tipX, tipY
+  );
+  // Wewnętrzna krawędź przylega bliżej nagrzanej ściany podczas wznoszenia
+  ctx.bezierCurveTo(
+    wallX + reachOutX * 0.20 + curlShift * 0.5, (anchorY + tipY) * 0.55,
+    wallX + dir * 2.0, anchorY - baseH * 0.35,
+    wallX - dir * 1.5, anchorY - baseH * 0.65
+  );
+  ctx.closePath();
+}
+
+/**
+ * Renderuje realistyczny, wznoszący się ku górze ogień na pionowej ścianie (Wall Fire)
+ * Zastępuje sztywne prostokąty i poziome zęby naturalną konwekcją (-Y), spływającą kroplą napalmu i krzywymi S.
  */
 function renderWallCluster(ctx, cluster) {
-  const { fires, surfaceAngle, cx, totalW, avgTimer, maxLifeRatio, clusterSeed } = cluster;
+  const { fires, surfaceAngle, avgTimer, maxLifeRatio, clusterSeed } = cluster;
   if (!fires || fires.length === 0 || maxLifeRatio <= 0.01) return;
 
   const refFire = fires[0];
-  const nx = refFire.nx || (surfaceAngle > 0 ? 1 : -1);
+  const nx = (typeof refFire.nx === 'number' && Math.abs(refFire.nx) > 0.1) ? refFire.nx : (surfaceAngle > 0 ? 1 : -1);
+  const dir = nx >= 0 ? 1 : -1;
+  const wallX = refFire.x;
 
   let minY = Infinity;
   let maxY = -Infinity;
+  let maxIntensity = 0.7;
   for (let i = 0; i < fires.length; i++) {
     const f = fires[i];
-    const half = f.width * 0.65;
+    const half = (f.width || 30) * 0.52;
     if (f.y - half < minY) minY = f.y - half;
     if (f.y + half > maxY) maxY = f.y + half;
+    if ((f.intensity || 0) > maxIntensity) maxIntensity = f.intensity;
   }
   const clusterH = maxY - minY;
   if (clusterH <= 4) return;
 
-  const wallX = cx;
+  const heatScale = Math.min(1.45, 0.78 + maxIntensity * 0.42);
+  const midY = (minY + maxY) * 0.5;
 
   ctx.save();
-  // 1. Spływająca smuga napalmu na ścianie
-  ctx.globalAlpha = Math.min(0.95, maxLifeRatio * 0.95);
+
+  // 1. Delikatny kłębek dymu termicznego unoszący się znad ściany w górę (-Y)
+  const numSmoke = Math.max(1, Math.min(3, Math.ceil(clusterH / 38)));
+  ctx.fillStyle = '#18181b';
+  ctx.globalAlpha = Math.min(0.20, maxLifeRatio * 0.18);
+  ctx.beginPath();
+  for (let s = 0; s < numSmoke; s++) {
+    const cycle = (avgTimer * 0.045 + s * (1 / numSmoke) + clusterSeed * 0.17) % 1.0;
+    const prog = cycle < 0 ? cycle + 1.0 : cycle;
+    const sx = wallX + dir * (6 + prog * 14) + Math.sin(prog * 5.0 + s * 2.1 + clusterSeed) * 4;
+    const sy = minY - 6 - prog * 34;
+    const sr = 3.5 + prog * 6.5;
+    ctx.moveTo(sx + sr, sy);
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+  }
+  ctx.fill();
+
+  // 2. Lepka, spływająca smuga stopionego napalmu przylegająca organicznie do ściany (zwężona góra, kropla na dole)
+  const streakSteps = Math.max(5, Math.min(12, Math.ceil(clusterH / 10)));
+  ctx.globalAlpha = Math.min(0.92, maxLifeRatio * 0.90);
   ctx.fillStyle = '#220303';
-  ctx.fillRect(wallX - (nx > 0 ? 1 : 3), minY, 4, clusterH);
+  ctx.beginPath();
+  ctx.moveTo(wallX - dir * 1.2, minY);
+  for (let i = 0; i <= streakSteps; i++) {
+    const u = i / streakSteps;
+    const wy = minY + u * clusterH;
+    const bulb = Math.sin(u * Math.PI) * 1.8 + (u > 0.78 ? (1.0 - (u - 0.78) / 0.22) * 2.2 : 0);
+    const wobble = Math.sin(wy * 0.16 - avgTimer * 1.4 + clusterSeed) * 0.8;
+    ctx.lineTo(wallX + dir * Math.max(1.2, 1.5 + bulb + wobble), wy);
+  }
+  ctx.lineTo(wallX - dir * 1.2, maxY + 2);
+  ctx.closePath();
+  ctx.fill();
+
   ctx.fillStyle = '#ea580c';
-  ctx.fillRect(wallX - (nx > 0 ? 0.5 : 2.5), minY + 2, 3, clusterH - 4);
-  ctx.fillStyle = '#fef08a';
-  ctx.fillRect(wallX - (nx > 0 ? 0 : 1.5), minY + 6, 1.5, clusterH - 12);
+  ctx.beginPath();
+  ctx.moveTo(wallX - dir * 0.5, minY + 3);
+  for (let i = 0; i <= streakSteps; i++) {
+    const u = i / streakSteps;
+    const wy = minY + 3 + u * Math.max(2, clusterH - 5);
+    const bulb = Math.sin(u * Math.PI) * 1.2;
+    ctx.lineTo(wallX + dir * Math.max(0.8, 1.0 + bulb), wy);
+  }
+  ctx.lineTo(wallX - dir * 0.5, maxY);
+  ctx.closePath();
+  ctx.fill();
 
-  // 2. Płomienie liżące w górę (-Y) i wystające ze ściany
-  const numSteps = Math.max(8, Math.min(24, Math.ceil(clusterH / 7)));
-  const stepH = clusterH / numSteps;
+  // 3. Jęzory ognia unoszące się ku górze (-Y) i falujące od ściany (konwekcja naturalna)
+  const numTongues = Math.max(3, Math.min(7, Math.ceil(clusterH / 16) + 1));
+  const tongues = new Array(numTongues);
+  for (let k = 0; k < numTongues; k++) {
+    const u = numTongues === 1 ? 0.5 : (k / (numTongues - 1));
+    const anchorY = minY + 6 + u * Math.max(6, clusterH - 10);
+    const phase = avgTimer * (0.95 + (k % 3) * 0.18) + k * 2.31 + clusterSeed;
+    const flickerA = Math.sin(phase);
+    const flickerB = Math.cos(phase * 1.57);
+    const upRise = (22 + Math.sin(u * Math.PI) * 14 + flickerA * 8) * heatScale;
+    const reachOut = dir * ((9 + Math.sin(u * Math.PI) * 5 + flickerB * 3.0) * heatScale);
+    const tipX = wallX + reachOut * (0.45 + Math.abs(flickerA) * 0.35) + dir * 2;
+    const tipY = anchorY - upRise;
+    const baseH = (11 + Math.sin(u * Math.PI) * 4) * heatScale;
+    const curlShift = dir * Math.sin(phase * 1.3) * 3.2;
+    tongues[k] = { anchorY, baseH, reachOut, tipX, tipY, curlShift };
+  }
 
+  // 3A. Zewnętrzna warstwa szkarłatna (#dc2626)
   ctx.fillStyle = '#dc2626';
+  ctx.globalAlpha = Math.min(0.86, maxLifeRatio * 0.82);
   ctx.beginPath();
-  ctx.moveTo(wallX, minY);
-  for (let i = 0; i <= numSteps; i++) {
-    const wy = minY + i * stepH;
-    const wave = Math.sin(wy * 0.12 - avgTimer * 4.5 + clusterSeed) * 4;
-    const flameW = (12 + wave) * (nx > 0 ? 1 : -1);
-    ctx.lineTo(wallX + flameW, wy);
+  for (let k = 0; k < tongues.length; k++) {
+    const t = tongues[k];
+    traceWallFlameLick(ctx, wallX, t.anchorY, t.baseH, t.reachOut, t.tipX, t.tipY, dir, t.curlShift);
   }
-  ctx.lineTo(wallX, maxY);
-  ctx.closePath();
   ctx.fill();
 
-  // Wewnętrzny gorący pomarańcz
+  // 3B. Środkowa warstwa gorącego pomarańczu (#f97316)
   ctx.fillStyle = '#f97316';
+  ctx.globalAlpha = Math.min(0.92, maxLifeRatio * 0.90);
   ctx.beginPath();
-  ctx.moveTo(wallX, minY + 3);
-  for (let i = 0; i <= numSteps; i++) {
-    const wy = minY + i * stepH;
-    const wave = Math.sin(wy * 0.12 - avgTimer * 4.5 + clusterSeed) * 2.5;
-    const flameW = (7 + wave) * (nx > 0 ? 1 : -1);
-    ctx.lineTo(wallX + flameW, wy);
+  for (let k = 0; k < tongues.length; k++) {
+    const t = tongues[k];
+    const midTipX = wallX + (t.tipX - wallX) * 0.78;
+    const midTipY = t.anchorY + (t.tipY - t.anchorY) * 0.78;
+    traceWallFlameLick(ctx, wallX, t.anchorY, t.baseH * 0.72, t.reachOut * 0.74, midTipX, midTipY, dir, t.curlShift * 0.8);
   }
-  ctx.lineTo(wallX, maxY - 3);
-  ctx.closePath();
   ctx.fill();
 
-  // Addytywny rdzeń
+  // 4. Addytywny blask, złoty rdzeń oraz iskry unoszące się wzdłuż ściany
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = '#fde047';
-  ctx.beginPath();
-  ctx.moveTo(wallX, minY + 6);
-  for (let i = 0; i <= numSteps; i++) {
-    const wy = minY + i * stepH;
-    const flameW = 4 * (nx > 0 ? 1 : -1);
-    ctx.lineTo(wallX + flameW, wy);
-  }
-  ctx.lineTo(wallX, maxY - 6);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
 
-  // Iskry unoszące się wzdłuż ściany ku górze
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = Math.min(0.90, maxLifeRatio * 0.80);
+  const glowSprite = getCharFireGlowSprite();
+  if (glowSprite) {
+    const glowW = 36 + heatScale * 14;
+    const glowH = clusterH + 46;
+    ctx.globalAlpha = Math.min(0.45, maxLifeRatio * 0.42);
+    ctx.drawImage(glowSprite, wallX + dir * 7 - glowW * 0.5, midY - glowH * 0.5 - 8, glowW, glowH);
+  }
+
+  // Złote groty wewnętrzne (#fde047)
   ctx.fillStyle = '#fde047';
+  ctx.globalAlpha = Math.min(0.85, maxLifeRatio * 0.78);
   ctx.beginPath();
-  const numEmbers = Math.min(4, Math.max(2, Math.floor(clusterH / 22)));
+  for (let k = 0; k < tongues.length; k++) {
+    const t = tongues[k];
+    const coreTipX = wallX + (t.tipX - wallX) * 0.52;
+    const coreTipY = t.anchorY + (t.tipY - t.anchorY) * 0.54;
+    traceWallFlameLick(ctx, wallX, t.anchorY, t.baseH * 0.44, t.reachOut * 0.46, coreTipX, coreTipY, dir, t.curlShift * 0.5);
+  }
+  ctx.fill();
+
+  // Iskry unoszące się ku górze (-Y) wzdłuż rozgrzanej ściany
+  ctx.fillStyle = '#fef08a';
+  ctx.globalAlpha = Math.min(0.90, maxLifeRatio * 0.82);
+  ctx.beginPath();
+  const numEmbers = Math.min(6, Math.max(2, Math.floor(clusterH / 16) + 1));
   for (let e = 0; e < numEmbers; e++) {
-    const eProgress = (avgTimer * 0.08 + e * 0.25) % 1.0;
-    const ey = maxY - eProgress * clusterH;
-    const ex = wallX + (nx > 0 ? 1 : -1) * (2 + Math.sin(eProgress * 6.28 + e) * 5);
-    ctx.moveTo(ex + 1.3, ey);
-    ctx.arc(ex, ey, 1.3, 0, Math.PI * 2);
+    const eProgress = (avgTimer * 0.08 + e * (1 / numEmbers) + clusterSeed * 0.11) % 1.0;
+    const prog = eProgress < 0 ? eProgress + 1.0 : eProgress;
+    const ey = maxY - prog * (clusterH + 34);
+    const ex = wallX + dir * (3 + prog * 9 + Math.sin(prog * 7.2 + e * 2.1 + clusterSeed) * 4.5);
+    const er = 1.3 * (1.0 - prog * 0.4);
+    ctx.moveTo(ex + er, ey);
+    ctx.arc(ex, ey, er, 0, Math.PI * 2);
   }
   ctx.fill();
-  ctx.restore();
 
+  ctx.restore();
   ctx.restore();
 }
 
@@ -2009,7 +2188,8 @@ function renderWallCluster(ctx, cluster) {
  * Renderuje pojedynczy, spójny, organiczny pas ognia (Fire Cluster)
  */
 function renderFireCluster(ctx, cluster) {
-  if (Math.abs(cluster.surfaceAngle) >= 1.0) {
+  const isWall = Math.abs(cluster.nx ?? Math.sin(cluster.surfaceAngle)) > 0.55;
+  if (isWall) {
     renderWallCluster(ctx, cluster);
   } else {
     renderGroundCluster(ctx, cluster);
@@ -2045,7 +2225,7 @@ export function drawSurfaceFires(ctx, camera) {
   for (let i = 0; i < activeSurfaceFires.length; i++) {
     const f = activeSurfaceFires[i];
     if (f.dead) continue;
-    if (f.x + f.width < minX || f.x - f.width > maxX || f.y < minY || f.y - 65 > maxY) {
+    if (f.x + f.width < minX || f.x - f.width > maxX || f.y + f.width < minY || f.y - 75 > maxY) {
       continue;
     }
     visibleFires.push(f);
@@ -2070,7 +2250,7 @@ export function drawSurfaceFires(ctx, camera) {
         if (visited[j]) continue;
         const other = visibleFires[j];
 
-        // Sprawdź zgodność kąta powierzchni (ta sama płaszczyzna/skarpa)
+        // Sprawdź zgodność kąta powierzchni (ta sama płaszczyzna/skarpa/ściana)
         let angDiff = Math.abs(cur.surfaceAngle - other.surfaceAngle);
         while (angDiff > Math.PI) angDiff -= Math.PI * 2;
         angDiff = Math.abs(angDiff);
@@ -2080,7 +2260,7 @@ export function drawSurfaceFires(ctx, camera) {
         const dx = other.x - cur.x;
         const dy = other.y - cur.y;
         const dist = Math.hypot(dx, dy);
-        const maxConnectDist = Math.max(38, (cur.width + other.width) * 0.75);
+        const maxConnectDist = Math.max(42, (cur.width + other.width) * 0.78);
 
         if (dist <= maxConnectDist) {
           visited[j] = 1;
@@ -2127,6 +2307,7 @@ export function drawSurfaceFires(ctx, camera) {
     clusters.push({
       fires: clusterFires,
       surfaceAngle,
+      nx: refFire.nx || 0,
       cx,
       cy,
       minT,
