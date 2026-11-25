@@ -543,8 +543,8 @@ export const WEAPON_GRIP_CONFIGS = {
     foreGripX: 13.50,
     foreGripY: 1.20,
     angleOffset: 0.000,
-    barrelLen: 31.00,
-    barrelOffsetY: -1.00,
+    barrelLen: 30.10,
+    barrelOffsetY: -3.40,
     stockLen: 12.50
   },
   MINIGUN: {

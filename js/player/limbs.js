@@ -121,47 +121,48 @@ if (typeof window !== 'undefined') {
   getHandheldAxeSprite();
 }
 
-export function drawHandheldTomahawk(ctx, x, y, scale = 1.0) {
+export function drawHandheldTomahawk(ctx, x, y, scale = 1.0, facing = 1) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(scale, scale);
-  ctx.rotate(-1.25);
+  ctx.scale(scale, scale * (facing < 0 ? -1 : 1));
+  ctx.rotate(-1.35);
 
   const img = getHandheldAxeSprite();
   if (img && img.complete && img.naturalWidth > 0) {
     const s = 19.5 / 1115;
-    const pivotSpriteX = 228.7;
+    const pivotSpriteX = 330.0;
     const pivotSpriteY = 206.0;
     ctx.scale(s, s);
     ctx.translate(-pivotSpriteX, -pivotSpriteY);
     ctx.drawImage(img, 0, 0);
   } else {
     ctx.fillStyle = '#27272a';
-    ctx.fillRect(-4.0, -1.8, 16.0, 2.6);
+    ctx.fillRect(-5.0, -1.5, 16.0, 2.4);
     ctx.fillStyle = '#94a3b8';
     ctx.beginPath();
-    ctx.moveTo(11.0, -7.0);
-    ctx.lineTo(15.5, -5.5);
-    ctx.lineTo(14.0, 6.5);
-    ctx.lineTo(9.5, 5.0);
+    ctx.moveTo(10.0, -6.5);
+    ctx.lineTo(14.5, -5.0);
+    ctx.lineTo(13.0, 6.0);
+    ctx.lineTo(8.5, 4.5);
     ctx.closePath();
     ctx.fill();
   }
   ctx.restore();
 }
 
-export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
+export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0, facing = 1) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(scale, scale);
+  ctx.scale(scale, scale * (facing < 0 ? -1 : 1));
+  ctx.rotate(0.25);
 
   const img = getHandheldGrenadeSprite();
   if (img && img.complete && img.naturalWidth > 0) {
-    // Skalowanie fotorealistycznego granatu M67 w dłoni postaci
-    const s = 0.016;
+    // Skalowanie granatu M67 dokładnie w dłoni postaci (centrowany w zaciśniętej pięści)
+    const s = 0.013;
     ctx.save();
     ctx.scale(s, s);
-    ctx.drawImage(img, -333, -520);
+    ctx.drawImage(img, -335, -490);
     ctx.restore();
 
     // Pulsująca dioda LED uzbrojonego zapalnika (Pulsing Armed LED)
@@ -169,11 +170,11 @@ export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
     const pulse = 0.6 + 0.4 * Math.sin(performance.now() * blinkSpeed);
     ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
     ctx.beginPath();
-    ctx.arc(0, -7.5, 1.2, 0, Math.PI * 2);
+    ctx.arc(0.4, -5.8, 1.05, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(0, -7.5, 0.5, 0, Math.PI * 2);
+    ctx.arc(0.4, -5.8, 0.45, 0, Math.PI * 2);
     ctx.fill();
   } else {
     // Korpus granatu – fasetowany, ciemno-stalowy aero-kanister (fallback)
@@ -1179,14 +1180,50 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   // DŁOŃ BOJOWA W RĘKAWICY TAKTYCZNEJ (Zastępuje dawną kulkę)
   drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v, playerRef);
 
-  if (isFront && visuals && visuals.heldGrenade) {
-    if (visuals.throwType === 'MOLOTOV') {
-      drawHandheldMolotov(ctx, foreLen + 4.2, 0, 1.0);
-    } else {
-      drawHandheldGrenade(ctx, foreLen + 4.2, 0, 1.0, (visuals && visuals.grenadeCookRatio) || 0);
+  const hasHeldThrowable = !!(isFront && visuals && (visuals.heldGrenade || visuals.heldTomahawk));
+  if (hasHeldThrowable) {
+    const gripX = foreLen + 2.0;
+    const gripY = 0.2 * (facing < 0 ? -1 : 1);
+    if (visuals.heldGrenade) {
+      if (visuals.throwType === 'MOLOTOV') {
+        drawHandheldMolotov(ctx, gripX, gripY, 1.0, facing, foreDir);
+      } else {
+        drawHandheldGrenade(ctx, gripX, gripY, 1.0, visuals.grenadeCookRatio || 0, facing);
+      }
+    } else if (visuals.heldTomahawk) {
+      drawHandheldTomahawk(ctx, gripX, gripY, 1.0, facing);
     }
-  } else if (isFront && visuals && visuals.heldTomahawk) {
-    drawHandheldTomahawk(ctx, foreLen + 4.2, 0, 1.0);
+
+    // Zaciśnięte palce rękawicy i kciuk obejmujące chwytany przedmiot od przodu
+    const useGloves = !(Boolean((playerRef && playerRef.isZombie) || (v && v.isZombieVisuals))) && (v.hasTacticalGloves !== false);
+    const wrapBase = useGloves ? (v.gloveColor || '#18181b') : (v.skinMid || '#d4a373');
+    const wrapHi = useGloves ? '#3f3f46' : (v.skinLight || '#e6b89c');
+    const hScale = (isSculpted ? Math.max(1.0, muscle * 0.95) : muscle);
+    const fDir = (facing < 0 ? -1 : 1);
+
+    ctx.save();
+    ctx.translate(gripX, 0);
+    ctx.scale(hScale, hScale * fDir);
+    // Zaciśnięte paliczki oplatające przedmiot w śródręczu
+    ctx.fillStyle = wrapBase;
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.75;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(-0.8, -1.2, 3.0, 2.8, 1.1);
+    } else {
+      ctx.rect(-0.8, -1.2, 3.0, 2.8);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // Kciuk dociskający chwyt od góry
+    ctx.fillStyle = wrapHi;
+    ctx.beginPath();
+    ctx.ellipse(0.4, -1.5, 1.45, 0.75, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 
   // Rany i rozcięcia na przedramieniu i dłoni

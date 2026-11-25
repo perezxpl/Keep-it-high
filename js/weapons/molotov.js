@@ -645,35 +645,41 @@ export function spawnMolotovCocktail(shooter, targetX, targetY, customPower = 1.
 }
 
 /**
- * Rysowanie koktajlu Mołotowa w dłoni rzucającego gracza
+ * Rysowanie koktajlu Mołotowa w dłoni rzucającego gracza (pewny chwyt za górny korpus butelki)
  */
-export function drawHandheldMolotov(ctx, x, y, scale = 1.0) {
+export function drawHandheldMolotov(ctx, x, y, scale = 1.0, facing = 1, foreDir = 0) {
+  const fDir = facing < 0 ? -1 : 1;
+  // Wychylenie w przestrzeni przedramienia z łagodną kompensacją pionu,
+  // żeby w zamachu za głową butelka i płomień były zwrócone ku górze/tyłowi, a nie w dół
+  const relFore = fDir < 0 ? Math.atan2(Math.sin(Math.PI - foreDir), Math.cos(Math.PI - foreDir)) : foreDir;
+  const tiltAngle = 0.38 - relFore * 0.55;
+
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(scale, scale);
-  ctx.rotate(-0.85);
+  ctx.scale(scale, scale * fDir);
+  ctx.rotate(tiltAngle);
 
   const img = getMolotovSprite();
-  const sheet = getFlameSpritesheet();
 
   if (img && img.complete && img.naturalWidth > 0) {
-    const s = 0.026;
+    const s = 0.0205;
     ctx.save();
     ctx.scale(s, s);
-    ctx.drawImage(img, -165, -560);
+    // Punkt chwytu dłoni w górnej części korpusu pod szyjką butelki (x=135, y=460)
+    ctx.drawImage(img, -135, -460);
     ctx.restore();
   } else {
     ctx.fillStyle = '#1e3a1e';
-    ctx.fillRect(-3, -5, 6, 12);
+    ctx.fillRect(-2.4, -4.5, 4.8, 10.5);
     ctx.fillStyle = '#eab308';
-    ctx.fillRect(-2, -1, 4, 7);
+    ctx.fillRect(-1.7, -1, 3.4, 6);
   }
 
-  // Płonący knot na szyjce butelki (wyraźny, tańczący ogień w dłoni nawet w spoczynku)
+  // Płonący knot na szyjce butelki (0, -9.2 w skali s=0.0205)
   const t = performance.now() * 0.013;
-  const swayX = Math.sin(t * 2.1 + x * 0.2) * 1.4;
-  const flameH = 9.5 + Math.cos(t * 2.9 + y * 0.2) * 2.0;
-  const baseY = -12.6;
+  const swayX = Math.sin(t * 2.1 + x * 0.2) * 1.25;
+  const flameH = 8.4 + Math.cos(t * 2.9 + y * 0.2) * 1.8;
+  const baseY = -9.3;
 
   ctx.save();
   ctx.translate(0, baseY);

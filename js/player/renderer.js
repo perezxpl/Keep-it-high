@@ -1041,11 +1041,20 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   // PROCEDURALNA KINEMATYKA TRZYMANIA I RZUTU BRONIĄ MIOTANĄ (GRANAT / MOŁOTOW)
   if (isArmedThrowableIdle && !(p.throwAnim && p.throwAnim.active)) {
-    // Spokojna postawa taktyczna z granatem lub płonącym Mołotowem trzymanym w dłoni
-    rawFrontSwing = 0.42;
-    rawFrontElbow = 1.08;
-    rawBackSwing = lerp(rawBackSwing, -0.18, 0.75);
-    rawBackElbow = lerp(rawBackElbow, 0.45, 0.75);
+    // Spokojna postawa taktyczna z granatem lub płonącym Mołotowem trzymanym w dłoni pierwszoplanowej
+    const idleSwing = 0.42;
+    const idleElbow = 1.08;
+    if (isRightLimbForeground) {
+      rawFrontSwing = idleSwing;
+      rawFrontElbow = idleElbow;
+      rawBackSwing = lerp(rawBackSwing, -0.18, 0.75);
+      rawBackElbow = lerp(rawBackElbow, 0.45, 0.75);
+    } else {
+      rawBackSwing = idleSwing;
+      rawBackElbow = idleElbow;
+      rawFrontSwing = lerp(rawFrontSwing, -0.18, 0.75);
+      rawFrontElbow = lerp(rawFrontElbow, 0.45, 0.75);
+    }
   } else if (p.throwAnim && p.throwAnim.active) {
     const tAnim = p.throwAnim;
     const facingDir = p.facing || 1;
@@ -1058,49 +1067,51 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     let throwSwing = 0, throwElbow = 0;
     let guideSwing = 0, guideElbow = 0;
 
-    // Naturalna, taktyczna pozycja zamachu (bez nienaturalnego łamania stawu ramienia w tył za postać)
-    const windupSwing = -0.50 + localAimAngle * 0.15;
-    const windupElbow = 1.35;
-    const windupTorsoTilt = -0.06;
-    const windupShoulderTilt = -0.05;
+    // Wyraźny atletyczny zamach z łokciem cofniętym i dłonią uniesioną wyraźnie za tył głowy
+    const windupSwing = Math.max(-2.35, Math.min(-1.82, -2.05 + localAimAngle * 0.16));
+    const windupElbow = -0.78;
+    const windupTorsoTilt = -0.15;
+    const windupShoulderTilt = -0.11;
+    // Łuk wypuszczenia górą ponad głową (-PI/2*3 - localAimAngle == +PI/2 - localAimAngle, ale przez górę)
+    const releaseOverhandSwing = -(Math.PI * 1.5) - localAimAngle;
+    const followOverhandSwing = releaseOverhandSwing - 0.45;
 
     if (tAnim.phase === 'WINDUP') {
-      // 1. ZAMACH / CHAMBERING: Dłoń z granatem uniesiona w gotowości przy biodrze/klatce
+      // 1. ZAMACH / COCKING: Dłoń z granatem/mołotowem/toporkiem wyraźnie cofnięta za tył głowy
       const uWindup = Math.min(1.0, (tAnim.timer || 0) / (tAnim.windupDuration || 6));
-      throwSwing = lerp(rawFrontSwing, windupSwing, Math.max(0.4, uWindup));
-      throwElbow = lerp(rawFrontElbow, windupElbow, Math.max(0.4, uWindup));
+      const wEase = Math.max(0.45, uWindup);
+      throwSwing = lerpAngle(rawFrontSwing, windupSwing, wEase);
+      throwElbow = lerp(rawFrontElbow, windupElbow, wEase);
 
       // Ręka nie-dominująca wyciągnięta w stronę celu (stabilizacja i celowanie)
-      const pointSwing = 1.05 + localAimAngle * 0.65;
-      guideSwing = lerp(rawBackSwing, pointSwing, Math.max(0.4, uWindup));
-      guideElbow = 0.35;
+      const pointSwing = 1.10 + localAimAngle * 0.55;
+      guideSwing = lerpAngle(rawBackSwing, pointSwing, wEase);
+      guideElbow = 0.30;
 
-      p.torsoTilt = windupTorsoTilt * facingDir;
+      p.torsoTilt = lerp(p.torsoTilt || 0, windupTorsoTilt * facingDir, wEase);
       if (p.pose) {
         p.pose.torsoTilt = p.torsoTilt;
         p.pose.shoulderTilt = windupShoulderTilt;
       }
     } else if (tAnim.phase === 'THROW') {
-      // 2. WYRZUT / SNAP FORWARD & RELEASE APEX: Eksplozja ramienia w wektor celu
+      // 2. WYRZUT / OVERHEAD SNAP: Zamach górą nad głową i dynamiczne wyrzucenie w cel
       const dur = tAnim.throwDuration || 5;
       const uT = Math.min(1.0, (tAnim.timer || 0) / dur);
-      const releaseSwing = (Math.PI / 2) - localAimAngle;
-      const followSwing = releaseSwing - 0.45;
 
       if (uT < 0.45) {
-        // Eksplozja w przód w stronę Apex (Klatka 0 do 2)
+        // Eksplozja górą znad tyłu głowy w przód do punktu wypuszczenia (Klatka 0 do 2)
         const uApex = uT / 0.45;
-        throwSwing = lerp(windupSwing, releaseSwing, uApex);
-        throwElbow = lerp(windupElbow, 0.25, uApex);
-        guideSwing = lerp(1.05, -0.55, uApex);
-        guideElbow = lerp(0.35, 0.85, uApex);
+        throwSwing = lerp(windupSwing, releaseOverhandSwing, uApex);
+        throwElbow = lerp(windupElbow, 0.22, uApex);
+        guideSwing = lerp(1.10, -0.55, uApex);
+        guideElbow = lerp(0.30, 0.85, uApex);
         p.torsoTilt = lerp(windupTorsoTilt, 0.35, uApex) * facingDir;
         if (p.pose) p.pose.shoulderTilt = lerp(windupShoulderTilt, 0.20, uApex);
       } else {
-        // Follow-through po wypuszczeniu granatu z dłoni (Klatka 2 do 5)
+        // Follow-through po wypuszczeniu przedmiotu z dłoni (Klatka 2 do 5)
         const uFollow = (uT - 0.45) / 0.55;
-        throwSwing = lerp(releaseSwing, followSwing, uFollow);
-        throwElbow = lerp(0.25, 0.45, uFollow);
+        throwSwing = lerp(releaseOverhandSwing, followOverhandSwing, uFollow);
+        throwElbow = lerp(0.22, 0.45, uFollow);
         guideSwing = -0.55;
         guideElbow = 0.85;
         p.torsoTilt = 0.35 * facingDir;
@@ -1108,12 +1119,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       }
       if (p.pose) p.pose.torsoTilt = p.torsoTilt;
     } else if (tAnim.phase === 'RECOVERY') {
-      // 3. POWRÓT DO POSTAWY / RECOVERY: Płynne wyhamowanie i powrót do gotowości
+      // 3. POWRÓT DO POSTAWY / RECOVERY: Płynne opadnięcie ręki z przodu w dół do boku
       const uRec = Math.min(1.0, (tAnim.timer || 0) / (tAnim.recoveryDuration || 8));
-      const releaseSwing = (Math.PI / 2) - localAimAngle;
-      const followSwing = releaseSwing - 0.45;
+      const normFollow = Math.atan2(Math.sin(followOverhandSwing), Math.cos(followOverhandSwing));
 
-      throwSwing = lerp(followSwing, 0.05, uRec);
+      throwSwing = lerp(normFollow, 0.05, uRec);
       throwElbow = lerp(0.45, 0.35, uRec);
       guideSwing = lerp(-0.55, -0.05, uRec);
       guideElbow = lerp(0.85, 0.28, uRec);
