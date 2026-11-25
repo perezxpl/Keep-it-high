@@ -533,8 +533,16 @@ export function detonateMolotovExplosion(
       ch.vy += normY * impulse - 2.5;
       ch.hp = (ch.hp !== undefined ? ch.hp : 100) - damage;
 
-      // Status podpalenia postaci na 3 sekundy (180 klatek)
-      igniteCombatant(ch, shooter, 180);
+      // Status podpalenia postaci zależny od bliskości rozbicia butelki z napalmem
+      const hitIntensity = Math.min(1.0, 0.30 + factor * 0.68);
+      const hitDuration = Math.round(95 + factor * 135);
+      igniteCombatant(ch, shooter, hitDuration, {
+        intensity: hitIntensity,
+        additiveIntensity: 0.20,
+        additiveDuration: 30,
+        maxDuration: 265,
+        maxIntensity: 1.0
+      });
     }
   }
 

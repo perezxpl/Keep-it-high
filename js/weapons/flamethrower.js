@@ -602,7 +602,13 @@ export class FlameParticle {
         if (isLyingZombie) {
           // Zadawanie obrażeń powalonemu zombie (spalanie leżącego ciała)
           ch.downedHp = (ch.downedHp !== undefined ? ch.downedHp : 60) - this.damage * 1.5;
-          igniteCombatant(ch, this.shooter, 100);
+          igniteCombatant(ch, this.shooter, 120, {
+            intensity: 0.38,
+            additiveIntensity: 0.14,
+            additiveDuration: 26,
+            maxDuration: 265,
+            maxIntensity: 1.0
+          });
           if (ch.downedHp <= 0) {
             handleZombieFireDeath(ch, this.shooter, groundY, true);
           }
@@ -612,8 +618,14 @@ export class FlameParticle {
           ch.lastAttacker = this.shooter;
           ch.lastAttackerTimer = 240;
 
-          // Podpalenie postaci (DoT palenia napalmem)
-          igniteCombatant(ch, this.shooter, 100);
+          // Kumulatywne podpalenie ciekłym napalmem ze strumienia (od lekkiego muśnięcia do pełnego pożaru)
+          igniteCombatant(ch, this.shooter, 120, {
+            intensity: 0.36,
+            additiveIntensity: 0.14,
+            additiveDuration: 26,
+            maxDuration: 265,
+            maxIntensity: 1.0
+          });
 
           // Odrzut kinetyczny celu
           ch.vx += this.vx * 0.035;
@@ -903,8 +915,16 @@ export class SurfaceFire {
           continue;
         }
 
-        // Podpalenie postaci
-        igniteCombatant(ch, this.shooter, 90);
+        // Podpalenie postaci: krótkie wejście daje lekki płomień, dłuższe stanie w ogniu potęguje pożar
+        if (!ch.burnTimer || ch.burnTimer <= 0 || !this.damageCooldown.has(ch)) {
+          igniteCombatant(ch, this.shooter, 65, {
+            intensity: 0.24,
+            additiveIntensity: 0.11,
+            additiveDuration: 18,
+            maxDuration: 165,
+            maxIntensity: 0.85
+          });
+        }
 
         if (!this.damageCooldown.has(ch)) {
           this.damageCooldown.set(ch, 11); // Tick obrażeń co 11 klatek (~5.5 ticków/s)
@@ -972,16 +992,38 @@ export class SurfaceFire {
 export function extinguishCombatant(combatant) {
   if (!combatant) return;
   combatant.burnTimer = 0;
+  combatant.burnIntensity = 0;
   combatant.burnAttacker = null;
 }
 
 /**
- * Podpalenie postaci (Status efektu DoT)
+ * Podpalenie postaci ze stopniowaniem intensywności (od lekkiego muśnięcia do pełnego oblania napalmem)
  */
-export function igniteCombatant(combatant, attacker, durationFrames = 100) {
+export function igniteCombatant(combatant, attacker, durationFrames = 100, options = {}) {
   if (!combatant || combatant.isDead) return;
   if (!combatant.isZombie && combatant.spawnProtectionTimer && combatant.spawnProtectionTimer > 0) return;
-  combatant.burnTimer = Math.max(combatant.burnTimer || 0, durationFrames);
+
+  const prevTimer = combatant.burnTimer || 0;
+  const prevInt = combatant.burnIntensity || 0;
+  const maxDur = (typeof options.maxDuration === 'number') ? options.maxDuration : 265;
+  const maxInt = (typeof options.maxIntensity === 'number') ? options.maxIntensity : 1.0;
+
+  if (prevTimer <= 0) {
+    combatant.burnTimer = Math.min(maxDur, durationFrames);
+  } else {
+    const addDur = (typeof options.additiveDuration === 'number') ? options.additiveDuration : 0;
+    combatant.burnTimer = Math.min(maxDur, Math.max(prevTimer, durationFrames) + addDur);
+  }
+
+  const baseInt = (typeof options.intensity === 'number')
+    ? options.intensity
+    : Math.min(0.85, Math.max(0.25, durationFrames / 220));
+  const addInt = (prevTimer > 0 && typeof options.additiveIntensity === 'number') ? options.additiveIntensity : 0;
+  const nextInt = prevTimer > 0
+    ? Math.max(prevInt + addInt, baseInt)
+    : baseInt;
+
+  combatant.burnIntensity = Math.min(maxInt, Math.max(0.12, nextInt));
   combatant.burnAttacker = attacker || combatant.burnAttacker;
 }
 
@@ -1217,15 +1259,55 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
     }
 
     if (ch.burnTimer && ch.burnTimer > 0) {
+      // Wygaszanie ognia po wejściu do wody w rzece Areny 3
+      const curArenaObj = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+      if (curArenaObj?.id === 'arena-3') {
+        const chCx = ch.x + (ch.w || 24) * 0.5;
+        const chFeetY = ch.y + (ch.h || 70);
+        if (chCx >= 1560 && chCx <= 2840 && chFeetY >= 1300) {
+          ch.burnTimer = Math.max(0, ch.burnTimer - 6);
+          ch.burnIntensity = Math.max(0, (ch.burnIntensity || 0.3) * 0.85);
+          if (ch.burnTimer <= 0) {
+            extinguishCombatant(ch);
+            continue;
+          }
+        }
+      }
+
       ch.burnTimer--;
+      if (typeof ch.burnIntensity !== 'number' || ch.burnIntensity <= 0) {
+        ch.burnIntensity = Math.min(0.85, Math.max(0.22, ch.burnTimer / 180));
+      } else if (ch.burnTimer < 70) {
+        ch.burnIntensity = Math.max(0.08, ch.burnIntensity * 0.982);
+      } else {
+        ch.burnIntensity = Math.max(0.22, ch.burnIntensity - 0.0012);
+      }
+
+      // Ciepły blask dynamiczny na otoczeniu podczas silnego pożaru postaci
+      if (ch.burnIntensity >= 0.42 && ch.burnTimer % 6 === 0) {
+        addDynamicLight({
+          x: ch.x + (ch.w || 24) * 0.5,
+          y: ch.y + (ch.h || 70) * 0.45,
+          radius: 95 + ch.burnIntensity * 75,
+          color: ch.burnIntensity >= 0.72 ? '#ff6b1a' : '#f97316',
+          intensity: 0.25 + ch.burnIntensity * 0.35,
+          duration: 0.12,
+          flicker: true,
+          followEntity: ch
+        });
+      }
+
       if (ch.burnTimer % 15 === 0) {
+        const bInt = ch.burnIntensity || 0.35;
         if (isLyingZombie) {
-          ch.downedHp = (ch.downedHp !== undefined ? ch.downedHp : 60) - 3;
+          const lyingDmg = bInt >= 0.72 ? 5 : (bInt >= 0.40 ? 3 : 2);
+          ch.downedHp = (ch.downedHp !== undefined ? ch.downedHp : 60) - lyingDmg;
           if (ch.downedHp <= 0) {
             handleZombieFireDeath(ch, ch.burnAttacker, groundY, true);
           }
         } else {
-          ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - 2);
+          const tickDmg = bInt >= 0.72 ? 4 : (bInt >= 0.40 ? 2 : 1);
+          ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - tickDmg);
           if (ch.hp <= 0) {
             if (ch.isZombie) {
               handleZombieFireDeath(ch, ch.burnAttacker, groundY, false);
@@ -1234,6 +1316,10 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
             }
           }
         }
+      }
+
+      if (ch.burnTimer <= 0) {
+        extinguishCombatant(ch);
       }
     }
   }
@@ -2059,7 +2145,296 @@ export function drawSurfaceFires(ctx, camera) {
 }
 
 /**
- * Renderowanie płomyków na podpalonych postaciach i piłce
+ * Anatomiczne kotwice płomieni dla sylwetki (stopy, uda, talia, klatka, barki, głowa)
+ * Zwraca listę punktów dopasowaną do pozy i poziomu intensywności pożaru.
+ */
+function buildCharacterFlameAnchors(cx, topY, feetY, bodyHalfW, isHorizontal, level, now, seed) {
+  const anchors = [];
+  if (isHorizontal) {
+    const baseCount = level >= 0.72 ? 6 : (level >= 0.38 ? 4 : 2);
+    for (let i = 0; i < baseCount; i++) {
+      const u = baseCount === 1 ? 0 : (i / (baseCount - 1)) * 2 - 1;
+      const sway = Math.sin(now * 2.1 + i * 1.9 + seed) * 3;
+      anchors.push({
+        x: cx + u * bodyHalfW * 0.78 + sway * 0.4,
+        y: feetY - 6 - (Math.cos(i * 2.1 + seed) * 0.5 + 0.5) * 10,
+        size: (0.65 + (1 - Math.abs(u) * 0.35) * 0.45) * (0.55 + level * 0.75),
+        isUpper: false
+      });
+    }
+    return anchors;
+  }
+
+  const hSpan = Math.max(24, feetY - topY);
+  // 0: dolne strefy (zawsze aktywne przy lekkim podpaleniu)
+  anchors.push({ x: cx - bodyHalfW * 0.45, y: feetY - hSpan * 0.22, size: 0.65 + level * 0.45, isUpper: false });
+  anchors.push({ x: cx + bodyHalfW * 0.42, y: feetY - hSpan * 0.34, size: 0.70 + level * 0.50, isUpper: false });
+
+  // Od lekkiego-średniego wzwyż (level >= 0.26): pas i boki korpusu
+  if (level >= 0.26) {
+    anchors.push({ x: cx, y: feetY - hSpan * 0.48, size: 0.80 + level * 0.55, isUpper: false });
+  }
+  // Średnie podpalenie (level >= 0.40): klatka piersiowa i barki
+  if (level >= 0.40) {
+    anchors.push({ x: cx - bodyHalfW * 0.62, y: feetY - hSpan * 0.66, size: 0.75 + level * 0.60, isUpper: true });
+    anchors.push({ x: cx + bodyHalfW * 0.60, y: feetY - hSpan * 0.70, size: 0.75 + level * 0.60, isUpper: true });
+  }
+  // Pełne oblanie napalmem (level >= 0.70): płonie cała sylwetka aż po kark i szczyt głowy
+  if (level >= 0.70) {
+    anchors.push({ x: cx + Math.sin(now * 2.4 + seed) * 3, y: feetY - hSpan * 0.88, size: 0.90 + level * 0.65, isUpper: true });
+    anchors.push({ x: cx, y: feetY - hSpan * 0.10, size: 0.60 + level * 0.40, isUpper: false });
+  }
+  return anchors;
+}
+
+let _charFireGlowCanvas = null;
+function getCharFireGlowSprite() {
+  if (_charFireGlowCanvas) return _charFireGlowCanvas;
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const gctx = c.getContext('2d');
+  if (!gctx) return null;
+  const grad = gctx.createRadialGradient(32, 32, 2, 32, 32, 31);
+  grad.addColorStop(0.0, 'rgba(255, 250, 220, 0.85)');
+  grad.addColorStop(0.28, 'rgba(249, 115, 22, 0.60)');
+  grad.addColorStop(0.62, 'rgba(220, 38, 38, 0.22)');
+  grad.addColorStop(1.0, 'rgba(127, 29, 29, 0.0)');
+  gctx.fillStyle = grad;
+  gctx.fillRect(0, 0, 64, 64);
+  _charFireGlowCanvas = c;
+  return _charFireGlowCanvas;
+}
+
+/**
+ * Rysuje pojedynczy, plynny jęzor ognia z krzywą S (bezierCurveTo) zamiast ostrych trójkątów
+ */
+function traceOrganicFlameLick(ctx, bx, by, baseW, tipX, tipY, curlShift) {
+  const h = by - tipY;
+  const bulgeL = bx - baseW * 1.15;
+  const bulgeR = bx + baseW * 1.15;
+  ctx.moveTo(bx - baseW * 0.72, by + 2);
+  ctx.bezierCurveTo(
+    bulgeL, by - h * 0.30,
+    tipX - baseW * 0.55 + curlShift, by - h * 0.72,
+    tipX, tipY
+  );
+  ctx.bezierCurveTo(
+    tipX + baseW * 0.45 + curlShift, by - h * 0.70,
+    bulgeR, by - h * 0.28,
+    bx + baseW * 0.72, by + 2
+  );
+  ctx.closePath();
+}
+
+/**
+ * Wielowarstwowy, dynamiczny render płomieni na podpalonej postaci:
+ * - Level 1 (< 0.38): lekkie muśnięcie ogniem (drobne płomyki na nogach/pasie, lekka poświata i iskry)
+ * - Level 2 (0.38..0.72): wyraźne płonięcie korpusu, barków i przywartego żaru napalmu
+ * - Level 3 (>= 0.72): gwałtowny pożar całego ciała aż po kark/głowę, z białym rdzeniem, żarem i smugą dymu
+ * Zero ctx.shadowBlur i brak twardych owalnych bąbli, zgrupowane ścieżki GPU pod 60 FPS.
+ */
+function drawCharacterFire(ctx, ch, now, isLyingZombie, sheet) {
+  const rawDur = ch.burnTimer || 0;
+  if (rawDur <= 0) return;
+
+  const baseInt = (typeof ch.burnIntensity === 'number' && ch.burnIntensity > 0)
+    ? ch.burnIntensity
+    : Math.min(0.85, Math.max(0.22, rawDur / 160));
+  const fade = Math.min(1.0, rawDur / 28);
+  const level = Math.max(0.08, Math.min(1.0, baseInt)) * fade;
+  if (level <= 0.03) return;
+
+  const w = ch.w || 24;
+  const h = ch.h || 70;
+  const isHorizontal = !!(isLyingZombie || (ch.isZombie && ch.isCrawling) || ch.isProne || (ch.staggerTimer > 0));
+  const cx = ch.x + w * 0.5;
+  const feetY = ch.y + h - (isHorizontal ? 2 : 0);
+  const rawTopY = isHorizontal ? (feetY - 22) : (ch.isCrouching ? (ch.y + 16) : (ch.y + 3));
+  const bodyHalfW = isHorizontal ? 24 : Math.max(12, w * 0.52);
+  const midY = (rawTopY + feetY) * 0.5;
+
+  const seed = ((typeof ch.botIndex === 'number' ? ch.botIndex : 0) * 17.3) + (ch.isBot ? 5.1 : 1.7);
+  const windX = Math.max(-22, Math.min(22, -(ch.vx || 0) * 1.55));
+  const windY = Math.max(-10, Math.min(12, -(ch.vy || 0) * 0.55));
+
+  const anchors = buildCharacterFlameAnchors(cx, rawTopY, feetY, bodyHalfW, isHorizontal, level, now, seed);
+  if (anchors.length === 0) return;
+
+  const tongues = new Array(anchors.length);
+  for (let i = 0; i < anchors.length; i++) {
+    const a = anchors[i];
+    const phase = now * (2.8 + (i % 3) * 0.5) + i * 2.17 + seed;
+    const waveA = Math.sin(phase);
+    const waveB = Math.cos(phase * 1.71);
+    const flameH = (11 + level * 20) * a.size * (0.80 + waveA * 0.24);
+    const tipX = a.x + windX * (0.55 + (a.isUpper ? 0.55 : 0.25)) + waveB * (3.5 + level * 3.8);
+    const tipY = a.y - flameH + windY * 0.45;
+    const halfBase = (2.8 + level * 3.0) * Math.min(1.2, a.size);
+    const curlShift = Math.sin(phase * 1.35 + 1.0) * (2.6 + level * 2.4);
+    tongues[i] = { x: a.x, y: a.y, tipX, tipY, halfBase, curlShift };
+  }
+
+  ctx.save();
+
+  // 1. WARSTWA TŁA: Miękka, przejrzysta smuga dymu termicznego w górze/za ruchem
+  const numSmoke = level >= 0.72 ? 4 : (level >= 0.38 ? 2 : 1);
+  ctx.fillStyle = '#18181b';
+  ctx.globalAlpha = (0.08 + level * 0.14) * fade;
+  ctx.beginPath();
+  for (let s = 0; s < numSmoke; s++) {
+    const cycle = (now * 0.16 + s * (1 / numSmoke) + seed * 0.13) % 1.0;
+    const prog = cycle < 0 ? cycle + 1.0 : cycle;
+    const sStartY = level >= 0.68 ? (rawTopY - 4) : (midY - 8);
+    const sx = cx + windX * (0.5 + prog * 1.5) + Math.sin(prog * 5.2 + s * 2.1 + seed) * (4 + level * 6);
+    const sy = sStartY - 12 - prog * (24 + level * 28) + windY * prog;
+    const sr = (2.8 + level * 3.2) + prog * (5.0 + level * 6.0);
+    ctx.moveTo(sx + sr, sy);
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+  }
+  ctx.fill();
+
+  // 2. WARSTWA ZACZERNIENIA I PRZYWARTYCH DROBIN NAPALMU NA PANCERZU
+  if (level >= 0.30) {
+    const numGlobs = Math.min(anchors.length, level >= 0.70 ? 5 : 3);
+    ctx.fillStyle = '#220303';
+    ctx.globalAlpha = Math.min(0.82, (0.35 + level * 0.45) * fade);
+    ctx.beginPath();
+    for (let g = 0; g < numGlobs; g++) {
+      const a = anchors[g];
+      const gx = a.x + Math.sin(g * 4.3 + seed) * 2.2;
+      const gy = a.y;
+      const gr = 1.5 + level * 1.4;
+      ctx.moveTo(gx + gr, gy);
+      ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+    }
+    ctx.fill();
+
+    ctx.fillStyle = '#ea580c';
+    ctx.globalAlpha = Math.min(0.92, (0.45 + level * 0.45) * fade);
+    ctx.beginPath();
+    for (let g = 0; g < numGlobs; g++) {
+      const a = anchors[g];
+      const gx = a.x + Math.sin(g * 4.3 + seed) * 2.2;
+      const gy = a.y;
+      const gr = 0.8 + level * 0.85;
+      ctx.moveTo(gx + gr, gy);
+      ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+
+  // 3. WARSTWA ZEWNĘTRZNA: Falujące szkarłatne języki ognia (#dc2626) w kształcie litery S
+  ctx.fillStyle = '#dc2626';
+  ctx.globalAlpha = (0.44 + level * 0.34) * fade;
+  ctx.beginPath();
+  for (let i = 0; i < tongues.length; i++) {
+    const t = tongues[i];
+    traceOrganicFlameLick(ctx, t.x, t.y, t.halfBase, t.tipX, t.tipY, t.curlShift);
+  }
+  ctx.fill();
+
+  // 4. WARSTWA ŚRODKOWA: Gorący pomarańczowy płomień (#f97316)
+  ctx.fillStyle = '#f97316';
+  ctx.globalAlpha = (0.58 + level * 0.34) * fade;
+  ctx.beginPath();
+  for (let i = 0; i < tongues.length; i++) {
+    const t = tongues[i];
+    const midTipX = t.x + (t.tipX - t.x) * 0.80;
+    const midTipY = t.y + (t.tipY - t.y) * 0.80;
+    traceOrganicFlameLick(ctx, t.x, t.y, t.halfBase * 0.66, midTipX, midTipY, t.curlShift * 0.85);
+  }
+  ctx.fill();
+
+  // 5. WARSTWA ADDYTYWNA ('lighter'): Jedwabista poświata radialna (sprit), złote groty i iskry
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  const glowSprite = getCharFireGlowSprite();
+  if (glowSprite) {
+    const glowCY = isHorizontal ? midY : (feetY - (feetY - rawTopY) * (0.28 + level * 0.25));
+    const glowW = (bodyHalfW * 2 + 24 + level * 22);
+    const glowH = isHorizontal ? 38 : ((feetY - rawTopY) * (0.55 + level * 0.62) + 18);
+    ctx.globalAlpha = (0.22 + level * 0.42) * fade;
+    ctx.drawImage(glowSprite, cx + windX * 0.20 - glowW * 0.5, glowCY - glowH * 0.5, glowW, glowH);
+  }
+
+  // Gorące złote groty wewnętrzne (#fde047)
+  ctx.fillStyle = '#fde047';
+  ctx.globalAlpha = (0.48 + level * 0.36) * fade;
+  ctx.beginPath();
+  for (let i = 0; i < tongues.length; i++) {
+    const t = tongues[i];
+    const coreTipX = t.x + (t.tipX - t.x) * 0.58;
+    const coreTipY = t.y + (t.tipY - t.y) * 0.58;
+    traceOrganicFlameLick(ctx, t.x, t.y, t.halfBase * 0.38, coreTipX, coreTipY, t.curlShift * 0.6);
+  }
+  ctx.fill();
+
+  // Biały żar napalmowy w samym rdzeniu (wyłącznie przy wysokim oblaniu napalmem)
+  if (level >= 0.56) {
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = Math.min(0.65, (level - 0.48) * 1.15) * fade;
+    ctx.beginPath();
+    for (let i = 0; i < tongues.length; i++) {
+      const t = tongues[i];
+      const wTipX = t.x + (t.tipX - t.x) * 0.34;
+      const wTipY = t.y + (t.tipY - t.y) * 0.34;
+      traceOrganicFlameLick(ctx, t.x, t.y, t.halfBase * 0.20, wTipX, wTipY, t.curlShift * 0.35);
+    }
+    ctx.fill();
+  }
+
+  // Iskry unoszące się wzdłuż podmuchu i skapujący napalm poniżej stóp
+  const numSparks = level >= 0.72 ? 8 : (level >= 0.38 ? 5 : 2);
+  ctx.fillStyle = '#fef08a';
+  ctx.globalAlpha = (0.58 + level * 0.38) * fade;
+  ctx.beginPath();
+  for (let p = 0; p < numSparks; p++) {
+    const spPhase = (now * 0.42 + p * (1 / numSparks) + seed * 0.27) % 1.0;
+    const prog = spPhase < 0 ? spPhase + 1.0 : spPhase;
+    const anchor = anchors[p % anchors.length];
+    const px = anchor.x + windX * (0.3 + prog * 1.25) + Math.sin(prog * 8.5 + p * 2.5 + seed) * (3 + level * 4.5);
+    const py = anchor.y - prog * (18 + level * 28) + windY * prog;
+    const pr = (0.85 + level * 0.85) * (1.0 - prog * 0.45);
+    ctx.moveTo(px + pr, py);
+    ctx.arc(px, py, pr, 0, Math.PI * 2);
+  }
+  if (level >= 0.62) {
+    for (let d = 0; d < 2; d++) {
+      const dPhase = (now * 0.32 + d * 0.5 + seed * 0.41) % 1.0;
+      const dProg = dPhase < 0 ? dPhase + 1.0 : dPhase;
+      const dx = cx + (d === 0 ? -bodyHalfW * 0.35 : bodyHalfW * 0.35) + windX * 0.25 * dProg;
+      const dy = feetY - 8 + dProg * 16;
+      const dr = 1.15 * (1.0 - dProg * 0.5);
+      ctx.moveTo(dx + dr, dy);
+      ctx.arc(dx, dy, dr, 0, Math.PI * 2);
+    }
+  }
+  ctx.fill();
+
+  // Zgrane kłęby ze sprite sheetu przy większym pożarze
+  if (level >= 0.45 && sheet && sheet.complete && sheet.naturalWidth > 0) {
+    const count = level >= 0.78 ? 2 : 1;
+    for (let k = 0; k < count; k++) {
+      const frameIdx = Math.floor(now * 2.1 + seed + k * 3) % 8;
+      const sx = frameIdx * FLAME_CELL_SIZE;
+      const sy = FLAME_ROW_SURFACE * FLAME_CELL_SIZE;
+      const spW = 24 + level * 14;
+      const spH = 26 + level * 18;
+      const oy = k === 0 ? (midY + 6) : (rawTopY + 14);
+      ctx.globalAlpha = Math.min(0.28, (level - 0.35) * 0.42) * fade;
+      ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, cx + windX * 0.25 - spW * 0.5, oy - spH * 0.6, spW, spH);
+    }
+  }
+
+  ctx.restore();
+  ctx.restore();
+}
+
+/**
+ * Renderowanie płomieni na podpalonych postaciach (skalowanych intensywnością) i piłce
  */
 export function drawBurningEffects(ctx, combatants, ball) {
   if (!ctx) return;
@@ -2084,25 +2459,7 @@ export function drawBurningEffects(ctx, combatants, ball) {
     }
     if (!ch.burnTimer || ch.burnTimer <= 0) continue;
 
-    const cx = ch.x + (ch.w || 24) * 0.5;
-    const cy = (isLyingZombie || (ch.isZombie && ch.isCrawling)) ? ch.y + (ch.h || 70) - 10 : ch.y + (ch.h || 70) * 0.45;
-    const flicker = Math.sin(now + ch.x) * 2;
-
-    ctx.save();
-    ctx.translate(cx, cy + flicker);
-    if (sheet && sheet.complete && sheet.naturalWidth > 0) {
-      const frameIdx = Math.floor(now * 1.5) % 8;
-      const sx = frameIdx * FLAME_CELL_SIZE;
-      const sy = FLAME_ROW_SURFACE * FLAME_CELL_SIZE;
-      ctx.globalAlpha = 0.85;
-      ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -18, -26, 36, 36);
-    } else {
-      ctx.fillStyle = '#f97316';
-      ctx.beginPath();
-      ctx.arc(0, 0, 10, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
+    drawCharacterFire(ctx, ch, now, isLyingZombie, sheet);
   }
 
   // Płomienie na piłce

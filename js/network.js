@@ -284,6 +284,8 @@ export function sendPlayerState(localPlayer) {
       isHolstered: !!localPlayer.isHolstered,
       isJetpacking: !!localPlayer.isJetpacking,
       jetFuel: Math.round(localPlayer.jetFuel || 0),
+      burnTimer: Math.max(0, Math.round(localPlayer.burnTimer || 0)),
+      burnIntensity: Math.round((localPlayer.burnIntensity || 0) * 100) / 100,
       gaitMode: localPlayer.gaitMode || 'run'
     });
   } catch (e) {
@@ -1125,6 +1127,13 @@ export function handleNetworkData(data, senderPeerId = null) {
         targetRp.vestHp = data.vestHp;
       }
       targetRp.isDead = !!data.isDead;
+      if (targetRp.isDead) {
+        targetRp.burnTimer = 0;
+        targetRp.burnIntensity = 0;
+      } else {
+        if (typeof data.burnTimer === 'number') targetRp.burnTimer = data.burnTimer;
+        if (typeof data.burnIntensity === 'number') targetRp.burnIntensity = data.burnIntensity;
+      }
       targetRp.isJetpacking = !!data.isJetpacking;
       targetRp.jetFuel = data.jetFuel;
       if (data.gaitMode !== undefined) targetRp.gaitMode = data.gaitMode;

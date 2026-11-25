@@ -287,15 +287,18 @@ async function runSimulation() {
   assert.strictEqual(matchSnap2.remoteCount, 1, 'Klient 2 powinien widziec Klienta 1 na liscie remotePlayers');
   console.log(`PASS: Obaj klienci weszli do bitwy online (pokoj ${matchSnap1.roomId}, CYAN vs ORANGE).`);
 
-  // Odczekanie zakonczenia 3-sekundowego odliczania startowego, a nastepnie ruch i ogien przez serwer WS
-  await new Promise((r) => setTimeout(r, 3200));
+  // Ruch i ogien po zakonczeniu 3-sekundowego odliczania startowego
   await page1.keyboard.down('KeyD');
   await page2.keyboard.down('KeyA');
   await page1.mouse.move(900, 320);
   await page1.mouse.down();
   await page2.mouse.move(320, 320);
   await page2.mouse.down();
-  await new Promise((r) => setTimeout(r, 1200));
+  await Promise.all([
+    page1.waitForFunction((startX) => Math.abs(window.player.x - startX) > 25, matchSnap1.x, { timeout: 10000 }),
+    page2.waitForFunction((startX) => Math.abs(window.player.x - startX) > 25, matchSnap2.x, { timeout: 10000 })
+  ]);
+  await new Promise((r) => setTimeout(r, 450));
   await page1.mouse.up();
   await page2.mouse.up();
   await page1.keyboard.up('KeyD');

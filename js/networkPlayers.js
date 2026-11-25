@@ -268,6 +268,7 @@ export function updateAllRemotePlayers(groundY) {
 
     if (rp.isDead) {
       rp.burnTimer = 0;
+      rp.burnIntensity = 0;
       rp.burnAttacker = null;
     }
 
@@ -276,6 +277,7 @@ export function updateAllRemotePlayers(groundY) {
       rp.x = targetX;
       rp.y = targetY;
       rp.burnTimer = 0;
+      rp.burnIntensity = 0;
       rp.burnAttacker = null;
     } else {
       rp.x += dx * 0.65;

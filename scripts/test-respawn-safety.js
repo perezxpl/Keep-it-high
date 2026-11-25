@@ -101,9 +101,30 @@ console.log('--- TEST 1: Gaszenie ognia na postaci przy zgonie i odrodzeniu (gra
   assert.strictEqual(p.isDead, false, 'Gracz powinien sie odrodzic');
   assert.strictEqual(b.isDead, false, 'Bot powinien sie odrodzic');
   assert.strictEqual(p.burnTimer, 0, 'Gracz po odrodzeniu musi miec wyzerowany burnTimer');
+  assert.strictEqual(p.burnIntensity, 0, 'Gracz po odrodzeniu musi miec wyzerowana burnIntensity');
   assert.strictEqual(p.burnAttacker, null, 'Gracz po odrodzeniu musi miec wyczyszczony burnAttacker');
   assert.strictEqual(b.burnTimer, 0, 'Bot po odrodzeniu musi miec wyzerowany burnTimer');
+  assert.strictEqual(b.burnIntensity, 0, 'Bot po odrodzeniu musi miec wyzerowana burnIntensity');
   assert.strictEqual(b.burnAttacker, null, 'Bot po odrodzeniu musi miec wyczyszczony burnAttacker');
+
+  // Test stopniowania podpalenia: lekkie musniecie vs lanie napalmu z miotacza
+  p.spawnProtectionTimer = 0;
+  igniteCombatant(p, b, 65, { intensity: 0.24, additiveIntensity: 0.11, additiveDuration: 18, maxDuration: 165, maxIntensity: 0.85 });
+  const lightIntensity = p.burnIntensity;
+  const lightDuration = p.burnTimer;
+  assert.ok(lightIntensity < 0.35, 'Krotkie wejscie w ogien powinno dac niska intensywnosc podpalenia');
+
+  // Kolejne uderzenia strumienia miotacza powinny kumulatywnie zwiekszac ogien do pelnego pozaru
+  for (let hit = 0; hit < 6; hit++) {
+    igniteCombatant(p, b, 120, { intensity: 0.36, additiveIntensity: 0.14, additiveDuration: 26, maxDuration: 265, maxIntensity: 1.0 });
+  }
+  assert.ok(p.burnIntensity >= 0.90, `Lanie napalmu z miotacza powinno rozpalic postac do pelnego pozaru (jest ${p.burnIntensity})`);
+  assert.ok(p.burnTimer > lightDuration, 'Czas trwania po oblaniu napalmem powinien byc dluzszy niz po musnieciu');
+
+  extinguishCombatant(p);
+  assert.strictEqual(p.burnTimer, 0);
+  assert.strictEqual(p.burnIntensity, 0);
+  p.spawnProtectionTimer = 150;
 
   // Dodatkowo: ponowne podpalenie z aktywna ochrona po odrodzeniu musi byc odrzucone
   igniteCombatant(p, b, 180);
