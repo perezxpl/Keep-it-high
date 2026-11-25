@@ -3,7 +3,7 @@
 // =============================================================================
 
 export const AUDIO_CONFIG = {
-  MANIFEST_URL: './assets/audio/manifest.json?v=v517_tactical_menu_music',
+  MANIFEST_URL: './assets/audio/manifest.json?v=v527_real_cc0_damage_foley',
   DEFAULT_BASE_PATH: './assets/audio/',
   ENABLE_GAMEPLAY_SYNTH: false,
   ENABLE_UI_SYNTH_FALLBACK: true,
@@ -60,18 +60,18 @@ export const SOUND_CATALOG = {
   explosion_toxic: { bus: 'sfx', volume: 0.72, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2300 },
 
   // --- Trafienia, Pancerz i Rykoszety ---
-  hit_flesh: { bus: 'sfx', volume: 0.56, pitchJitter: 0.05, cooldownMs: 50, spatial: true, maxDistance: 1200 },
-  hit_headshot: { bus: 'sfx', volume: 0.68, pitchJitter: 0.03, cooldownMs: 55, spatial: true, maxDistance: 1350 },
-  hit_armor: { bus: 'sfx', volume: 0.54, pitchJitter: 0.04, cooldownMs: 50, spatial: true, maxDistance: 1200 },
-  hit_helmet_break: { bus: 'sfx', volume: 0.66, pitchJitter: 0.04, cooldownMs: 70, spatial: true, maxDistance: 1450 },
+  hit_flesh: { bus: 'sfx', volume: 0.48, pitchJitter: 0.05, cooldownMs: 55, spatial: true, maxDistance: 1200 },
+  hit_headshot: { bus: 'sfx', volume: 0.64, pitchJitter: 0.03, cooldownMs: 60, spatial: true, maxDistance: 1350 },
+  hit_armor: { bus: 'sfx', volume: 0.48, pitchJitter: 0.04, cooldownMs: 55, spatial: true, maxDistance: 1200 },
+  hit_helmet_break: { bus: 'sfx', volume: 0.64, pitchJitter: 0.04, cooldownMs: 70, spatial: true, maxDistance: 1450 },
   hit_shield: { bus: 'sfx', volume: 0.42, pitchJitter: 0.05, cooldownMs: 70, spatial: true, maxDistance: 1100 },
   hit_ricochet: { bus: 'sfx', volume: 0.20, pitchJitter: 0.06, cooldownMs: 70, spatial: true, maxDistance: 1000 },
 
   // --- Klasy i Ruch Gracza ---
   jetpack_loop: { bus: 'sfx', volume: 0.16, pitchJitter: 0.0, cooldownMs: 0, spatial: true, maxDistance: 1050, loop: true },
   rocket_boots_dash: { bus: 'sfx', volume: 0.48, pitchJitter: 0.04, cooldownMs: 90, spatial: true, maxDistance: 1350 },
-  enforcer_piston_jump: { bus: 'sfx', volume: 0.62, pitchJitter: 0.03, cooldownMs: 120, spatial: true, maxDistance: 1550 },
-  enforcer_ground_slam: { bus: 'sfx', volume: 0.74, pitchJitter: 0.04, cooldownMs: 120, spatial: true, maxDistance: 1850 },
+  enforcer_piston_jump: { bus: 'sfx', volume: 0.56, pitchJitter: 0.03, cooldownMs: 120, spatial: true, maxDistance: 1550 },
+  enforcer_ground_slam: { bus: 'sfx', volume: 0.72, pitchJitter: 0.04, cooldownMs: 120, spatial: true, maxDistance: 1850 },
   player_jump: { bus: 'sfx', volume: 0.18, pitchJitter: 0.04, cooldownMs: 110, spatial: true, maxDistance: 750 },
   player_land: { bus: 'sfx', volume: 0.28, pitchJitter: 0.05, cooldownMs: 120, spatial: true, maxDistance: 850 },
   player_death: { bus: 'sfx', volume: 0.50, pitchJitter: 0.03, cooldownMs: 90, spatial: true, maxDistance: 1350 },
