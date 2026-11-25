@@ -440,6 +440,9 @@ export function setGameState(newState) {
   GAME_STATE.previous = prevState;
   GAME_STATE.current = newState;
   gameState = newState;
+  if (typeof window !== 'undefined') {
+    window.gameState = newState;
+  }
   setAudioGameState(newState);
   resetInputState();
   if (newState === 'ARENA_SELECT' || newState === 'PLAYING' || newState === 'CREATOR' || newState === 'ARMORY' || newState === 'CLASS_SELECT') {
@@ -456,6 +459,7 @@ export function setGameState(newState) {
   updateCursorVisibility();
 }
 if (typeof window !== 'undefined') {
+  window.gameState = GAME_STATE.current;
   window.setGameState = setGameState;
   window.GAME_STATE = GAME_STATE;
   window.ARENA_CONFIGS = ARENA_CONFIGS;

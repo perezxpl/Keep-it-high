@@ -182,11 +182,28 @@ export function removeRemotePlayer(id) {
   }
 
   if (remotePlayer.peerId === id) {
+    remotePlayer.active = false;
+    remotePlayer.peerId = null;
     const remaining = getActiveRemotePlayers();
-    if (remaining.length > 0) {
-      Object.assign(remotePlayer, remaining[0]);
-    } else {
-      remotePlayer.active = false;
+    const nextRp = remaining.find((cand) => cand && cand !== remotePlayer);
+    if (nextRp) {
+      remotePlayer.active = true;
+      remotePlayer.peerId = nextRp.peerId;
+      remotePlayer.slotIndex = nextRp.slotIndex;
+      remotePlayer.name = nextRp.name;
+      remotePlayer.team = nextRp.team;
+      remotePlayer.x = nextRp.x;
+      remotePlayer.y = nextRp.y;
+      remotePlayer.targetX = nextRp.targetX;
+      remotePlayer.targetY = nextRp.targetY;
+      remotePlayer.facing = nextRp.facing;
+      remotePlayer.yaw = nextRp.yaw;
+      remotePlayer.targetYaw = nextRp.targetYaw;
+      remotePlayer.hp = nextRp.hp;
+      remotePlayer.maxHp = nextRp.maxHp;
+      remotePlayer.isDead = nextRp.isDead;
+      remotePlayer.currentWeapon = nextRp.currentWeapon;
+      remotePlayer.customVisuals = nextRp.customVisuals;
     }
   }
 }

@@ -358,7 +358,7 @@ export function cancelDedicatedMatchmaking() {
 export function enterMultiplayerMatch(options = {}) {
   clearWsTimers();
 
-  if (typeof window !== 'undefined' && window.gameState === 'PLAYING' && !options.force) {
+  if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'PLAYING' || window.gameState === 'PLAYING') && !options.force) {
     wsState.status = 'in_game';
     return;
   }
@@ -552,7 +552,7 @@ function handleServerMessage(rawData) {
       triggerCombatFeedBanner('SYSTEM', `${msg.player.name} DOŁĄCZYŁ DO BITWY [${wsState.playersCount}/${wsState.maxPlayers}]`);
       if (typeof playUiClick === 'function') playUiClick();
 
-      const isCurrentlyPlaying = (typeof window !== 'undefined' && window.gameState === 'PLAYING');
+      const isCurrentlyPlaying = (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'PLAYING' || window.gameState === 'PLAYING'));
       if (!isCurrentlyPlaying) {
         // Jeśli jesteśmy w lobby / odprawie -> startujemy desant dla obu graczy!
         const briefingStatus = document.getElementById('briefing-matchmake-status');
