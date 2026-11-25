@@ -29,11 +29,30 @@ export const gamepadState = {
     dpadLeft: false,
     dpadRight: false
   },
-  prevButtons: {}
+  prevButtons: {},
+  lastInputTime: 0,
+  lastKeyboardMouseTime: 0
 };
 
 if (typeof window !== 'undefined') {
   window.gamepadState = gamepadState;
+}
+
+export function notifyKeyboardMouseActivity() {
+  gamepadState.lastKeyboardMouseTime = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+}
+
+export function getGamepadStyle() {
+  const id = (gamepadState.id || '').toLowerCase();
+  if (/dualshock|dualsense|playstation|sony|054c/.test(id)) {
+    return 'PLAYSTATION';
+  }
+  return 'XBOX';
+}
+
+export function isGamepadPrimaryInput() {
+  if (!gamepadState.connected) return false;
+  return gamepadState.lastInputTime >= gamepadState.lastKeyboardMouseTime;
 }
 
 export function applyDeadzone(value, deadzone = gamepadState.deadzone) {
@@ -51,6 +70,7 @@ export function initGamepadHandlers() {
     gamepadState.connected = true;
     gamepadState.index = gp.index;
     gamepadState.id = gp.id || 'Gamepad';
+    gamepadState.lastInputTime = (typeof performance !== 'undefined') ? performance.now() : Date.now();
   });
 
   window.addEventListener('gamepaddisconnected', (e) => {
@@ -59,6 +79,7 @@ export function initGamepadHandlers() {
       gamepadState.connected = false;
       gamepadState.index = null;
       gamepadState.id = '';
+      gamepadState.lastInputTime = 0;
       gamepadState.leftStick.x = 0;
       gamepadState.leftStick.y = 0;
       gamepadState.leftStick.magnitude = 0;
@@ -120,6 +141,12 @@ export function pollGamepadInput() {
 
   gamepadState.triggers.l2 = val(6);
   gamepadState.triggers.r2 = val(7);
+
+  const hasButtonInput = Object.values(gamepadState.buttons).some(Boolean);
+  const hasAxisInput = gamepadState.leftStick.magnitude > 0.12 || gamepadState.rightStick.magnitude > 0.12 || val(6) > 0.15 || val(7) > 0.15;
+  if (hasButtonInput || hasAxisInput) {
+    gamepadState.lastInputTime = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+  }
 
   return true;
 }

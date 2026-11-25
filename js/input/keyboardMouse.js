@@ -46,7 +46,8 @@ import {
 import { deathmatchState } from '../deathmatch/index.js';
 import { matchWinState } from '../ui/rankHud.js';
 import { equipPocket1Slot, cyclePocket1, quickSwitchPocket1 } from '../loadout/index.js';
-import { pickupPromptState } from '../pickup/index.js';
+import { pickupPromptState, performWeaponSwap } from '../pickup/index.js';
+import { notifyKeyboardMouseActivity } from './gamepad.js';
 
 export const mouseState = {
   lmbDown: false,
@@ -84,7 +85,8 @@ export const inputSession = {
   lastWPressTime: 0,
   isJetpackActive: false,
   ctrlPressStartTime: 0,
-  ctrlWasToggledOnKeyDown: false
+  ctrlWasToggledOnKeyDown: false,
+  lastKeyboardMouseTime: 0
 };
 
 if (typeof window !== 'undefined') {
@@ -169,6 +171,8 @@ export function initKeyboardMouseHandlers({
   mouseState.screenY = H * 0.45;
 
   window.addEventListener('keydown', (e) => {
+    inputSession.lastKeyboardMouseTime = performance.now();
+    notifyKeyboardMouseActivity();
     // Bezwzględna blokada skrótu Ctrl+W / Cmd+W (zamykanie karty w przeglądarce)
     if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyW' || e.key === 'w' || e.key === 'W')) {
       e.preventDefault();
@@ -757,6 +761,8 @@ export function initKeyboardMouseHandlers({
   }, { passive: false });
 
   canvas.addEventListener('mousedown', (e) => {
+    inputSession.lastKeyboardMouseTime = performance.now();
+    notifyKeyboardMouseActivity();
     mouseState.screenX = e.clientX;
     mouseState.screenY = e.clientY;
     setCameraMouseScreenPos(e.clientX, e.clientY);
@@ -813,6 +819,10 @@ export function initKeyboardMouseHandlers({
       const distToFarm = dist(e.clientX, e.clientY, pFarm.x, pFarm.y);
       const inTopCard = (e.clientX >= 10 && e.clientX <= 235 && e.clientY >= 28 && e.clientY <= 78);
       if (distToFarm < pFarm.r + 20 || inTopCard) {
+        const hasWeaponSwap = (
+          pickupPromptState.currentInteractable?.type === 'WEAPON' &&
+          pickupPromptState.promptAlpha > 0.02
+        );
         if (pFarm.holdTimerId) clearTimeout(pFarm.holdTimerId);
         rightStick.draggedSlot = null;
         pFarm.active = true;
@@ -822,15 +832,19 @@ export function initKeyboardMouseHandlers({
         pFarm.touchStartTime = performance.now();
         pFarm.isDragging = false;
         pFarm.reloadTriggered = false;
-        pFarm.holdTimerId = setTimeout(() => {
-          pFarm.holdTimerId = null;
-          if (pFarm.active && !pFarm.isDragging && !pFarm.reloadTriggered) {
-            pFarm.reloadTriggered = true;
-            player.isHolstered = false;
-            rightStick.armedMode = 'FIREARM';
-            reloadWeapon(player, player.currentWeapon);
-          }
-        }, 500);
+        pFarm.swapIntent = hasWeaponSwap;
+        pFarm.swapCompleted = false;
+        if (!hasWeaponSwap) {
+          pFarm.holdTimerId = setTimeout(() => {
+            pFarm.holdTimerId = null;
+            if (pFarm.active && !pFarm.isDragging && !pFarm.reloadTriggered && !pFarm.swapIntent) {
+              pFarm.reloadTriggered = true;
+              player.isHolstered = false;
+              rightStick.armedMode = 'FIREARM';
+              reloadWeapon(player, player.currentWeapon);
+            }
+          }, 500);
+        }
         return;
       }
     }
@@ -979,11 +993,25 @@ export function initKeyboardMouseHandlers({
         pockets.firearm.holdTimerId = null;
       }
       const wasReloadTriggered = !!pockets.firearm.reloadTriggered;
+      const wasSwapIntent = !!pockets.firearm.swapIntent;
+      const wasSwapCompleted = !!pockets.firearm.swapCompleted;
       const touchStartTime = pockets.firearm.touchStartTime || 0;
       pockets.firearm.active = false;
       pockets.firearm.isDragging = false;
       pockets.firearm.id = null;
       pockets.firearm.reloadTriggered = false;
+      pockets.firearm.swapIntent = false;
+      pockets.firearm.swapCompleted = false;
+
+      if (wasSwapIntent) {
+        if (!wasSwapCompleted) {
+          const cand = pickupPromptState.currentInteractable;
+          if (cand && cand.type === 'WEAPON' && cand.target) {
+            performWeaponSwap(player, cand.target);
+          }
+        }
+        return;
+      }
 
       if (!wasReloadTriggered) {
         const touchDur = performance.now() - touchStartTime;

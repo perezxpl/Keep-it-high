@@ -130,7 +130,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   }
 
   // 500-MS PRZYTRZYMANIE KIESZENI BRONI PALNEJ NA EKRANIE DOTYKOWYM -> PRZEŁADOWANIE
-  if (pockets.firearm && pockets.firearm.active && !pockets.firearm.reloadTriggered) {
+  if (pockets.firearm && pockets.firearm.active && !pockets.firearm.reloadTriggered && !pockets.firearm.swapIntent) {
     const holdElapsed = performance.now() - (pockets.firearm.touchStartTime || 0);
     if (holdElapsed >= 500) {
       if (pockets.firearm.holdTimerId) {

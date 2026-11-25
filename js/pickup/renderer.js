@@ -5,6 +5,7 @@
 
 import { getWeaponSprite } from '../loadout/weaponPreviews.js';
 import { getCanvasLogicalWidth, getCanvasLogicalHeight } from '../camera.js';
+import { isGamepadPrimaryInput, getGamepadStyle } from '../input/gamepad.js';
 import { pickupState, pickupPromptState } from './state.js';
 import { getGroundSurfaceBelow } from './logic.js';
 
@@ -166,12 +167,17 @@ export function drawPickupPrompt(ctx, camera, isTouchDevice = false) {
   const candidate = pState.currentInteractable;
   if (!ctx || !candidate || pState.promptAlpha <= 0.02) return;
 
+  // Na urzadzeniach dotykowych zamiana broni palnej odbywa sie bezposrednio na kieszeni broni
+  if (isTouchDevice && candidate.type === 'WEAPON') return;
+
   const btn = pState.touchButtonBounds;
   const alpha = pState.promptAlpha;
   const prog = Math.max(0, Math.min(1.0, candidate.progress || 0));
 
   ctx.save();
   ctx.globalAlpha = alpha;
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 
   const cx = btn.x;
   const cy = btn.y;
@@ -192,6 +198,99 @@ export function drawPickupPrompt(ctx, camera, isTouchDevice = false) {
     actionWord = 'ZŁAP';
   }
 
+  if (!isTouchDevice) {
+    // Widok PC (klawiatura lub fizyczny pad): kompaktowa, niezaslaniajaca postaci pastylka pod bronia
+    const useGamepad = isGamepadPrimaryInput();
+    const padStyle = useGamepad ? getGamepadStyle() : 'KEYBOARD';
+
+    ctx.font = '800 9.5px system-ui, sans-serif';
+    const labelW = ctx.measureText(actionWord).width;
+    const iconBoxW = 15;
+    const padX = 6;
+    const gap = 5;
+    const pillW = Math.ceil(padX + iconBoxW + gap + labelW + padX);
+    const pillH = 21;
+    const pillX = Math.round(cx - pillW * 0.5);
+    const pillY = Math.round(cy - pillH * 0.5);
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(pillX, pillY, pillW, pillH, 5);
+    else ctx.rect(pillX, pillY, pillW, pillH);
+    ctx.fill();
+    ctx.stroke();
+
+    const iconCx = pillX + padX + iconBoxW * 0.5;
+    const iconCy = pillY + pillH * 0.5;
+
+    if (useGamepad) {
+      // Symbol fizycznego pada (PS: Kwadrat / Xbox: X)
+      const isPs = (padStyle === 'PLAYSTATION');
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.95)';
+      ctx.strokeStyle = isPs ? '#f472b6' : '#38bdf8';
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.arc(iconCx, iconCy, 6.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      if (isPs) {
+        ctx.strokeStyle = '#f472b6';
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(iconCx - 2.6, iconCy - 2.6, 5.2, 5.2);
+      } else {
+        ctx.fillStyle = '#e0f2fe';
+        ctx.font = '900 8.5px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('X', iconCx, iconCy + 0.5);
+      }
+    } else {
+      // Maly skrot klawiszowy [E]
+      const keySize = 14;
+      const kx = Math.round(iconCx - keySize * 0.5);
+      const ky = Math.round(iconCy - keySize * 0.5);
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.98)';
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.65)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(kx, ky, keySize, keySize, 3);
+      else ctx.rect(kx, ky, keySize, keySize);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('E', iconCx, iconCy + 0.5);
+    }
+
+    // Podpis akcji obok ikony skrotu
+    ctx.fillStyle = accentColor;
+    ctx.font = '800 9.5px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(actionWord, pillX + padX + iconBoxW + gap, iconCy + 0.5);
+
+    // Dyskretny pasek postepu przytrzymania na dolnej krawedzi
+    if (prog > 0.01) {
+      const barPad = 3;
+      const barW = Math.max(0, (pillW - barPad * 2) * prog);
+      ctx.fillStyle = accentColor;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(pillX + barPad, pillY + pillH - 3, barW, 2, 1);
+      else ctx.rect(pillX + barPad, pillY + pillH - 3, barW, 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+    return;
+  }
+
+  // Widok Mobilny / Dotykowy dla ZRZUT (CARE_PACKAGE) oraz ZŁAP (TOMAHAWK)
   // 1. Dyskretny pulsujacy pierscien zewnetrzny
   const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
   ctx.strokeStyle = (candidate.type === 'CARE_PACKAGE')
@@ -227,42 +326,12 @@ export function drawPickupPrompt(ctx, camera, isTouchDevice = false) {
     ctx.stroke();
   }
 
-  // 4. Wnetrze przycisku:
-  if (!isTouchDevice) {
-    // Widok PC: Klawisz [E] w srodku oraz mikro-etykieta pod spodem
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '900 12px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('E', cx, cy);
-
-    // Mikro-badge akcji pod przyciskiem PC
-    ctx.font = 'bold 9px monospace';
-    const tagW = Math.max(50, ctx.measureText(actionWord).width + 12);
-    const tagH = 15;
-    const tagX = cx - tagW * 0.5;
-    const tagY = cy + r + 3;
-
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.strokeStyle = mainColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(tagX, tagY, tagW, tagH, 3);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = accentColor;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(actionWord, cx, tagY + tagH * 0.5);
-  } else {
-    // Widok Mobilny / Dotykowy: Napis akcji "ZAMIEŃ", "ZRZUT" lub "ZŁAP" bezposrednio w przycisku
-    ctx.fillStyle = accentColor;
-    ctx.font = '900 9.5px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(actionWord, cx, cy);
-  }
+  // 4. Napis akcji bezposrednio w przycisku dotykowym
+  ctx.fillStyle = accentColor;
+  ctx.font = '900 9.5px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(actionWord, cx, cy);
 
   ctx.restore();
 }

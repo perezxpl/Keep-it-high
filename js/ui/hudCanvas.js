@@ -21,6 +21,66 @@ import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { getStrikerFlameColor } from '../classes/striker.js';
 import { drawCombatFeedBanner } from './combatFeed.js';
 import { isPerfMonitorEnabled } from '../dev/mobilePerfMonitor.js';
+import { pickupPromptState } from '../pickup/state.js';
+
+export function drawSwapArrowsIcon(ctx, cx, cy, radius = 16, alpha = 1) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.globalAlpha *= alpha;
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+
+  const r = Math.max(10, radius);
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.42)';
+  ctx.fillStyle = 'rgba(34, 211, 238, 0.48)';
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Gorny luk kierunkowy w prawo (swap w prawo)
+  const topStart = -Math.PI * 0.85;
+  const topEnd = -Math.PI * 0.15;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, topStart, topEnd, false);
+  ctx.stroke();
+
+  // Grot gornego luku
+  const tx = Math.cos(topEnd) * r;
+  const ty = Math.sin(topEnd) * r;
+  ctx.save();
+  ctx.translate(tx, ty);
+  ctx.rotate(topEnd + Math.PI * 0.5);
+  ctx.beginPath();
+  ctx.moveTo(4.5, 0);
+  ctx.lineTo(-3.2, -3.8);
+  ctx.lineTo(-2.0, 3.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Dolny luk kierunkowy w lewo (swap w lewo)
+  const botStart = Math.PI * 0.15;
+  const botEnd = Math.PI * 0.85;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, botStart, botEnd, false);
+  ctx.stroke();
+
+  // Grot dolnego luku
+  const bx = Math.cos(botEnd) * r;
+  const by = Math.sin(botEnd) * r;
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.rotate(botEnd + Math.PI * 0.5);
+  ctx.beginPath();
+  ctx.moveTo(4.5, 0);
+  ctx.lineTo(-3.2, -3.8);
+  ctx.lineTo(-2.0, 3.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
 
 export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
   ctx.save();
@@ -445,12 +505,26 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       const activeIdx = player.loadout.pocket1.activeSlotIndex ?? 0;
       curId = player.loadout.pocket1.slots[activeIdx] || 'AK47';
     }
-    const ammoObj = player.ammo?.[curId];
-    const isRel = !!(ammoObj?.isReloading || player.isReloading);
+    const swapCandidate = (
+      isTouchDevice &&
+      pickupPromptState.currentInteractable?.type === 'WEAPON' &&
+      pickupPromptState.promptAlpha > 0.02 &&
+      pickupPromptState.currentInteractable?.target?.weaponId
+    ) ? pickupPromptState.currentInteractable : null;
+    const swapTarget = swapCandidate?.target || null;
+    const displayWeaponId = swapTarget ? swapTarget.weaponId : curId;
+    const swapAlpha = swapCandidate ? Math.max(0, Math.min(1, pickupPromptState.promptAlpha)) : 0;
+
+    const ammoObj = swapTarget ? null : player.ammo?.[curId];
+    const isRel = swapTarget ? false : !!(ammoObj?.isReloading || player.isReloading);
 
     // Baza kieszeni: szkło z gradientem i subtelnym przydymieniem na krawędzi
     const grad = ctx.createRadialGradient(pFirearm.x - 2, pFirearm.y - 2, 2, pFirearm.x, pFirearm.y, pFirearm.r);
-    if (isEquipped || isPressed) {
+    if (swapTarget) {
+      grad.addColorStop(0.0, `rgba(34, 211, 238, ${0.24 * swapAlpha})`);
+      grad.addColorStop(0.65, `rgba(8, 145, 178, ${0.14 * swapAlpha})`);
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.20)');
+    } else if (isEquipped || isPressed) {
       grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
       grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.07)');
       grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
@@ -465,31 +539,46 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
 
     // Główny pierścień zewnętrzny – Warstwa 1 (Dark Halo)
-    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 3.3 : 2.5;
+    ctx.strokeStyle = (isEquipped || isPressed || swapTarget) ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
+    ctx.lineWidth = (isEquipped || isPressed || swapTarget) ? 3.3 : 2.5;
     ctx.stroke();
 
-    // Główny pierścień zewnętrzny – Warstwa 2 (Light Core)
-    ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.44)'
-      : 'rgba(255, 255, 255, 0.20)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
+    // Główny pierścień zewnętrzny – Warstwa 2 (Light Core lub Cyjanowy akcent zamiany)
+    if (swapTarget) {
+      const swapPulse = 0.5 + 0.5 * Math.sin(time * 0.008);
+      ctx.strokeStyle = `rgba(34, 211, 238, ${(0.52 + 0.28 * swapPulse) * swapAlpha})`;
+      ctx.lineWidth = 1.8;
+    } else {
+      ctx.strokeStyle = (isEquipped || isPressed)
+        ? 'rgba(255, 255, 255, 0.44)'
+        : 'rgba(255, 255, 255, 0.20)';
+      ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
+    }
     ctx.stroke();
 
     // Wewnętrzny pierścień w stylu drążka (Dual-Stroke)
     ctx.beginPath();
     ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 4, 0, Math.PI * 2);
-    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.15)';
+    ctx.strokeStyle = (isEquipped || isPressed || swapTarget) ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.15)';
     ctx.lineWidth = 2.0;
     ctx.stroke();
-    ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.18)'
-      : 'rgba(255, 255, 255, 0.08)';
+    ctx.strokeStyle = swapTarget
+      ? `rgba(34, 211, 238, ${0.24 * swapAlpha})`
+      : ((isEquipped || isPressed) ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.08)');
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
-    // Pierścień postępu 500-ms przytrzymania (wyzwalającego przeładowanie)
-    if (isPressed && !pFirearm.isDragging && !pFirearm.reloadTriggered && !isRel) {
+    // Pierścień postępu zamiany broni LUB 500-ms przytrzymania przeładowania
+    if (swapCandidate && (swapCandidate.progress || 0) > 0.01) {
+      const swapProg = Math.max(0, Math.min(1, swapCandidate.progress));
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 1.5, -Math.PI / 2, -Math.PI / 2 + swapProg * Math.PI * 2, false);
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 2.6;
+      ctx.stroke();
+      ctx.restore();
+    } else if (!swapTarget && isPressed && !pFirearm.isDragging && !pFirearm.reloadTriggered && !pFirearm.swapIntent && !isRel) {
       const holdProg = Math.max(0, Math.min(1, (time - (pFirearm.touchStartTime || time)) / 500));
       if (holdProg > 0.05) {
         ctx.save();
@@ -512,10 +601,15 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.restore();
     }
 
+    // Symbol zamiany (strzałki wymiany) na tle ikony broni leżącej do podniesienia
+    if (swapTarget) {
+      drawSwapArrowsIcon(ctx, pFirearm.x, pFirearm.y - 2, pFirearm.r * 0.62, swapAlpha);
+    }
+
     ctx.save();
     ctx.translate(pFirearm.x, pFirearm.y - 2);
     ctx.scale(0.88, 0.88);
-    drawWeaponSilhouette(ctx, curId, 0, 0, isEquipped || isPressed);
+    drawWeaponSilhouette(ctx, displayWeaponId, 0, 0, isEquipped || isPressed || !!swapTarget, swapTarget ? '#e0f2fe' : null);
     ctx.restore();
 
     if (player.loadout?.pocket1?.slots) {
@@ -523,26 +617,26 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       const totalSlots = 2;
       ctx.save();
       ctx.font = 'bold 8px Rajdhani, monospace';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+      ctx.fillStyle = swapTarget ? `rgba(103, 232, 249, ${0.85 * swapAlpha})` : 'rgba(255, 255, 255, 0.70)';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
       ctx.fillText(`${activeIdx}/${totalSlots}`, pFirearm.x + pFirearm.r - 3, pFirearm.y - pFirearm.r + 9);
       ctx.restore();
     }
 
-    // Wskaźnik liczby nabojów w kieszeni broni dla urządzeń mobilnych
-    const defM = curId === 'SHOTGUN' ? 8 : (curId === 'SNIPER' ? 5 : (curId === 'FLAMETHROWER' ? 100 : (curId === 'MINIGUN' ? 150 : (curId === 'RPG7' ? 1 : (curId === 'REVOLVER' ? 6 : (curId === 'SAWED_OFF' ? 2 : (curId === 'GLOCK' ? 17 : ((curId === 'GRENADE' || curId === 'MOLOTOV') ? 1 : 30))))))));
-    const defR = curId === 'SHOTGUN' ? 64 : (curId === 'SNIPER' ? 25 : (curId === 'FLAMETHROWER' ? 200 : (curId === 'MINIGUN' ? 300 : (curId === 'RPG7' ? 3 : (curId === 'REVOLVER' ? 36 : (curId === 'SAWED_OFF' ? 24 : (curId === 'GLOCK' ? 68 : ((curId === 'GRENADE' || curId === 'MOLOTOV') ? 0 : 90))))))));
-    const cAmmo = ammoObj ? ammoObj.currentAmmo : defM;
-    const rAmmo = ammoObj ? ammoObj.reserveAmmo : defR;
-    const isRelAmmo = ammoObj ? ammoObj.isReloading : !!player.isReloading;
+    // Wskaźnik liczby nabojów w kieszeni broni dla urządzeń mobilnych (lub broni do zamiany)
+    const defM = displayWeaponId === 'SHOTGUN' ? 8 : (displayWeaponId === 'SNIPER' ? 5 : (displayWeaponId === 'FLAMETHROWER' ? 100 : (displayWeaponId === 'MINIGUN' ? 150 : (displayWeaponId === 'RPG7' ? 1 : (displayWeaponId === 'REVOLVER' ? 6 : (displayWeaponId === 'SAWED_OFF' ? 2 : (displayWeaponId === 'GLOCK' ? 17 : ((displayWeaponId === 'GRENADE' || displayWeaponId === 'MOLOTOV') ? 1 : 30))))))));
+    const defR = displayWeaponId === 'SHOTGUN' ? 64 : (displayWeaponId === 'SNIPER' ? 25 : (displayWeaponId === 'FLAMETHROWER' ? 200 : (displayWeaponId === 'MINIGUN' ? 300 : (displayWeaponId === 'RPG7' ? 3 : (displayWeaponId === 'REVOLVER' ? 36 : (displayWeaponId === 'SAWED_OFF' ? 24 : (displayWeaponId === 'GLOCK' ? 68 : ((displayWeaponId === 'GRENADE' || displayWeaponId === 'MOLOTOV') ? 0 : 90))))))));
+    const cAmmo = swapTarget ? (swapTarget.currentAmmo ?? defM) : (ammoObj ? ammoObj.currentAmmo : defM);
+    const rAmmo = swapTarget ? (swapTarget.reserveAmmo ?? defR) : (ammoObj ? ammoObj.reserveAmmo : defR);
+    const isRelAmmo = swapTarget ? false : (ammoObj ? ammoObj.isReloading : !!player.isReloading);
     const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
     const isLow = (!isNoAmmo && cAmmo <= Math.ceil(defM * 0.25));
 
     let ammoBadgeText = `${cAmmo}`;
-    let ammoBadgeCol = '#ffffff';
+    let ammoBadgeCol = swapTarget ? '#67e8f9' : '#ffffff';
     let badgeBgCol = 'rgba(6, 12, 22, 0.82)';
-    let badgeBorderCol = 'rgba(255, 255, 255, 0.22)';
+    let badgeBorderCol = swapTarget ? 'rgba(34, 211, 238, 0.65)' : 'rgba(255, 255, 255, 0.22)';
 
     if (isRelAmmo) {
       ammoBadgeText = 'REL...';

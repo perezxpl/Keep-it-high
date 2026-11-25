@@ -3,7 +3,7 @@
 // Standard: Zero emojis, modularyzacja ES, strict DAG
 // =========================================================================
 
-import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from '../config.js';
+import { CONFIG, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
 import { WEAPONS, getWeaponAmmo, cancelReload } from '../weapons/transform.js';
 import { saveStoredLoadout } from '../loadout/state.js';
 import { triggerScreenShake, worldToScreen } from '../camera.js';
@@ -481,23 +481,35 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
     // Plynne pojawienie sie przycisku
     pickupPromptState.promptAlpha = Math.min(1.0, pickupPromptState.promptAlpha + safeDt * 6.5);
 
-    // Przeliczenie pozycji na ekranie dla dotyku
-    const scrPos = worldToScreen(candidate.x, candidate.y - 40, camera);
+    // Przeliczenie pozycji na ekranie: pod bronią na PC (nie zasłania postaci) lub wyłączony pływający przycisk dla WEAPON na dotyku (zamiana na kieszeni)
     const w = (typeof window !== 'undefined') ? (window.innerWidth || 1920) : 1920;
     const h = (typeof window !== 'undefined') ? (window.innerHeight || 1080) : 1080;
-    const btnX = Math.max(36, Math.min(w - 36, scrPos.x));
-    const btnY = Math.max(36, Math.min(h - 60, scrPos.y));
+    if (isTouchDevice && bestType === 'WEAPON') {
+      pickupPromptState.touchButtonBounds.active = false;
+    } else {
+      const yOffset = (bestType === 'CARE_PACKAGE') ? -36 : 18;
+      const scrPos = worldToScreen(candidate.x, candidate.y + yOffset, camera);
+      const btnX = Math.max(48, Math.min(w - 48, scrPos.x));
+      const btnY = Math.max(28, Math.min(h - 32, scrPos.y));
 
-    pickupPromptState.touchButtonBounds.x = btnX;
-    pickupPromptState.touchButtonBounds.y = btnY;
-    pickupPromptState.touchButtonBounds.r = 21;
-    pickupPromptState.touchButtonBounds.hitR = 35;
-    pickupPromptState.touchButtonBounds.active = true;
+      pickupPromptState.touchButtonBounds.x = btnX;
+      pickupPromptState.touchButtonBounds.y = btnY;
+      pickupPromptState.touchButtonBounds.r = 21;
+      pickupPromptState.touchButtonBounds.hitR = 35;
+      pickupPromptState.touchButtonBounds.active = true;
+    }
 
-    // Sprawdzenie intencji przytrzymania przycisku interakcji
+    // Sprawdzenie intencji przytrzymania przycisku interakcji (lub kieszeni broni palnej na dotyku)
+    const isHoldingPocketSwap = !!(
+      isTouchDevice &&
+      bestType === 'WEAPON' &&
+      typeof window !== 'undefined' &&
+      window.pockets?.firearm?.active &&
+      window.pockets?.firearm?.swapIntent
+    );
     const isHoldingKey = !!(keys.KeyE || keys.KeyF || keys.interact);
     const isHoldingPad = !!(gamepadState.buttons && (gamepadState.buttons.west || gamepadState.buttons.south));
-    const isHolding = pickupPromptState.isHoldingTouch || pickupPromptState.isHoldingMouse || isHoldingKey || isHoldingPad;
+    const isHolding = pickupPromptState.isHoldingTouch || pickupPromptState.isHoldingMouse || isHoldingPocketSwap || isHoldingKey || isHoldingPad;
 
     if (isHolding) {
       candidate.progress += safeDt / candidate.holdDuration;
@@ -509,6 +521,9 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
       if (candidate.progress >= 1.0) {
         if (bestType === 'WEAPON') {
           performWeaponSwap(player, bestTarget);
+          if (typeof window !== 'undefined' && window.pockets?.firearm?.swapIntent) {
+            window.pockets.firearm.swapCompleted = true;
+          }
         } else if (bestType === 'TOMAHAWK') {
           performTomahawkPickup(player, bestTarget);
         } else if (bestType === 'CARE_PACKAGE') {
@@ -560,6 +575,15 @@ export function handlePickupTouchStart(touchX, touchY, touchId) {
  * Obsluga zdarzenia touchmove
  */
 export function handlePickupTouchMove(touchX, touchY, touchId) {
+  if (typeof window !== 'undefined' && window.pockets?.firearm?.swapIntent && touchId === window.pockets.firearm.id) {
+    const pFarm = window.pockets.firearm;
+    const dFarm = Math.hypot(touchX - pFarm.x, touchY - pFarm.y);
+    if (dFarm > (pFarm.r || 30) + 28) {
+      pFarm.isDragging = true;
+      pFarm.swapIntent = false;
+    }
+    return;
+  }
   if (!pickupPromptState.isHoldingTouch || touchId !== pickupPromptState.activeTouchId) return;
   const b = pickupPromptState.touchButtonBounds;
   const d = Math.hypot(touchX - b.x, touchY - b.y);

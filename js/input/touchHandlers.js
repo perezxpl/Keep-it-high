@@ -53,6 +53,8 @@ import {
 import { deathmatchState } from '../deathmatch/index.js';
 import { matchWinState } from '../ui/rankHud.js';
 import {
+  pickupPromptState,
+  performWeaponSwap,
   handlePickupTouchStart,
   handlePickupTouchMove,
   handlePickupTouchEnd
@@ -434,6 +436,10 @@ canvas.addEventListener('touchstart', (e) => {
         pMelee.touchStartTime = performance.now();
         handleMeleeButtonPress(player);
       } else if (minDist === distToFarm && pFarm && distToFarm < pFarm.r + 20) {
+        const hasWeaponSwap = (
+          pickupPromptState.currentInteractable?.type === 'WEAPON' &&
+          pickupPromptState.promptAlpha > 0.02
+        );
         if (pFarm.holdTimerId) clearTimeout(pFarm.holdTimerId);
         rightStick.draggedSlot = null;
         pFarm.active = true;
@@ -443,15 +449,19 @@ canvas.addEventListener('touchstart', (e) => {
         pFarm.touchStartTime = performance.now();
         pFarm.isDragging = false;
         pFarm.reloadTriggered = false;
-        pFarm.holdTimerId = setTimeout(() => {
-          pFarm.holdTimerId = null;
-          if (pFarm.active && !pFarm.isDragging && !pFarm.reloadTriggered) {
-            pFarm.reloadTriggered = true;
-            player.isHolstered = false;
-            rightStick.armedMode = 'FIREARM';
-            reloadWeapon(player, player.currentWeapon);
-          }
-        }, 500);
+        pFarm.swapIntent = hasWeaponSwap;
+        pFarm.swapCompleted = false;
+        if (!hasWeaponSwap) {
+          pFarm.holdTimerId = setTimeout(() => {
+            pFarm.holdTimerId = null;
+            if (pFarm.active && !pFarm.isDragging && !pFarm.reloadTriggered && !pFarm.swapIntent) {
+              pFarm.reloadTriggered = true;
+              player.isHolstered = false;
+              rightStick.armedMode = 'FIREARM';
+              reloadWeapon(player, player.currentWeapon);
+            }
+          }, 500);
+        }
       } else if (minDist === distToThrow && pThrow && distToThrow < pThrow.r + 18) {
         rightStick.draggedSlot = null;
         pThrow.active = true;
@@ -951,12 +961,27 @@ function endTouch(e) {
         pockets.firearm.holdTimerId = null;
       }
       const wasReloadTriggered = !!pockets.firearm.reloadTriggered;
+      const wasSwapIntent = !!pockets.firearm.swapIntent;
+      const wasSwapCompleted = !!pockets.firearm.swapCompleted;
+      const wasDragging = !!pockets.firearm.isDragging;
       const touchStartTime = pockets.firearm.touchStartTime || 0;
       pockets.firearm.active = false;
       pockets.firearm.isDragging = false;
       pockets.firearm.id = null;
       pockets.firearm.reloadTriggered = false;
+      pockets.firearm.swapIntent = false;
+      pockets.firearm.swapCompleted = false;
       rightStick.draggedSlot = null;
+
+      if (wasSwapIntent) {
+        if (!wasSwapCompleted && !wasDragging) {
+          const cand = pickupPromptState.currentInteractable;
+          if (cand && cand.type === 'WEAPON' && cand.target) {
+            performWeaponSwap(player, cand.target);
+          }
+        }
+        continue;
+      }
 
       if (!wasReloadTriggered) {
         const now = performance.now();
@@ -1083,6 +1108,8 @@ function endTouch(e) {
       pockets.firearm.active = false;
       pockets.firearm.id = null;
       pockets.firearm.reloadTriggered = false;
+      pockets.firearm.swapIntent = false;
+      pockets.firearm.swapCompleted = false;
     }
     if (pockets.throwable) {
       pockets.throwable.isDragging = false;
