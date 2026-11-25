@@ -177,6 +177,7 @@ const BACKGROUND_SFX_IDS = new Set([
   'weapon_dry_fire',
   'weapon_melee_swing',
   'grenade_throw',
+  'player_death',
   'hit_ricochet'
 ]);
 

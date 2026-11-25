@@ -3,7 +3,7 @@
 // =============================================================================
 
 export const AUDIO_CONFIG = {
-  MANIFEST_URL: './assets/audio/manifest.json?v=v529_zero_ring_cc0_damage_audio',
+  MANIFEST_URL: './assets/audio/manifest.json?v=v530_subtle_death_drop',
   DEFAULT_BASE_PATH: './assets/audio/',
   ENABLE_GAMEPLAY_SYNTH: false,
   ENABLE_UI_SYNTH_FALLBACK: true,
@@ -74,7 +74,7 @@ export const SOUND_CATALOG = {
   enforcer_ground_slam: { bus: 'sfx', volume: 0.72, pitchJitter: 0.04, cooldownMs: 120, spatial: true, maxDistance: 1850 },
   player_jump: { bus: 'sfx', volume: 0.18, pitchJitter: 0.04, cooldownMs: 110, spatial: true, maxDistance: 750 },
   player_land: { bus: 'sfx', volume: 0.28, pitchJitter: 0.05, cooldownMs: 120, spatial: true, maxDistance: 850 },
-  player_death: { bus: 'sfx', volume: 0.50, pitchJitter: 0.03, cooldownMs: 90, spatial: true, maxDistance: 1350 },
+  player_death: { bus: 'sfx', volume: 0.28, pitchJitter: 0.04, cooldownMs: 90, spatial: true, maxDistance: 1200 },
   gore_gib: { bus: 'sfx', volume: 0.50, pitchJitter: 0.05, cooldownMs: 75, spatial: true, maxDistance: 1300 },
 
   // --- Pilka i Bramki ---

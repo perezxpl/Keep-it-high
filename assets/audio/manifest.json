@@ -166,9 +166,9 @@
       "volume": 0.82
     },
     "player_death": {
-      "src": ["death_1.wav", "death_2.wav", "death_3.wav"],
-      "volume": 0.82,
-      "pitchJitter": 0.03
+      "src": ["death_1.wav", "death_2.wav"],
+      "volume": 0.62,
+      "pitchJitter": 0.04
     },
     "gore_gib": {
       "src": ["gore_gib_1.wav", "gore_gib_2.wav", "gore_gib_3.wav"],
