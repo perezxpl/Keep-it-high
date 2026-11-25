@@ -671,6 +671,7 @@ function update() {
     mouseState.lmbDown = false;
     mouseState.rmbDown = false;
     updateMenuShowcase(1 / 60);
+    updateAudio(1 / 60, { gameState: GAME_STATE.current });
     return;
   }
 
@@ -679,6 +680,7 @@ function update() {
     mouseState.rmbDown = false;
     updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
     updateParticles();
+    updateAudio(1 / 60, { gameState: GAME_STATE.current });
     return;
   }
 
@@ -696,6 +698,7 @@ function update() {
     // Ambientowe tło i ruch kamery bez symulacji fizyki
     updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
     updateParticles();
+    updateAudio(1 / 60, { gameState: GAME_STATE.current });
     return;
   }
 

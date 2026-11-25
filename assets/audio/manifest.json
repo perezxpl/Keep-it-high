@@ -207,6 +207,13 @@
     "ui_resume": "ui_resume.wav",
     "ui_test_tone": "ui_test_tone.ogg",
     "ui_countdown_tick": null,
-    "ui_countdown_go": null
+    "ui_countdown_go": null,
+    "menu_music": {
+      "src": "menu_music.ogg",
+      "volume": 1.0,
+      "loop": true,
+      "loopStart": 0,
+      "loopEnd": 64.0
+    }
   }
 }

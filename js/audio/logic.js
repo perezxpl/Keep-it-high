@@ -10,6 +10,7 @@ import {
   playDecodedSample
 } from './samples.js';
 import { playSynthSound, createSynthJetpackVoice, createSynthMinigunVoice } from './synth.js';
+import { updateMenuMusic, stopMenuMusicImmediate } from './music.js';
 
 function applyGainLevels() {
   const ctx = audioState.ctx;
@@ -18,6 +19,7 @@ function applyGainLevels() {
   const headroom = AUDIO_CONFIG.MASTER_HEADROOM ?? 1.0;
   const masterVal = audioState.muted ? 0 : Math.max(0, Math.min(1.5, audioState.masterVolume * headroom));
   const sfxVal = Math.max(0, Math.min(1.5, audioState.sfxVolume));
+  const musicVal = Math.max(0, Math.min(1.5, audioState.musicVolume));
 
   if (audioState.masterGain) {
     audioState.masterGain.gain.setValueAtTime(masterVal, now);
@@ -27,6 +29,9 @@ function applyGainLevels() {
   }
   if (audioState.uiGain) {
     audioState.uiGain.gain.setValueAtTime(sfxVal, now);
+  }
+  if (audioState.musicGain) {
+    audioState.musicGain.gain.setValueAtTime(musicVal, now);
   }
 }
 
@@ -42,6 +47,7 @@ export function ensureAudioContext() {
       const compressor = ctx.createDynamicsCompressor();
       const sfxGain = ctx.createGain();
       const uiGain = ctx.createGain();
+      const musicGain = ctx.createGain();
 
       compressor.threshold.setValueAtTime(-6, ctx.currentTime);
       compressor.knee.setValueAtTime(8, ctx.currentTime);
@@ -52,6 +58,7 @@ export function ensureAudioContext() {
       sfxGain.connect(compressor);
       uiGain.connect(compressor);
       compressor.connect(masterGain);
+      musicGain.connect(masterGain);
       masterGain.connect(ctx.destination);
 
       audioState.ctx = ctx;
@@ -59,6 +66,7 @@ export function ensureAudioContext() {
       audioState.compressor = compressor;
       audioState.sfxGain = sfxGain;
       audioState.uiGain = uiGain;
+      audioState.musicGain = musicGain;
 
       applyGainLevels();
 
@@ -115,6 +123,9 @@ export function syncAudioSettings(settings) {
   if (typeof settings.sfxVolume === 'number') {
     audioState.sfxVolume = Math.max(0, Math.min(1, settings.sfxVolume / 100));
   }
+  if (typeof settings.musicVolume === 'number') {
+    audioState.musicVolume = Math.max(0, Math.min(1, settings.musicVolume / 100));
+  }
   if (typeof settings.muteAll === 'boolean') {
     audioState.muted = settings.muteAll;
   }
@@ -144,7 +155,13 @@ export function stopAllMinigunVoices() {
 
 export function setAudioGameState(newState) {
   const prevState = audioState.gameState;
-  audioState.gameState = newState || 'MENU';
+  const resolved = newState || 'MENU';
+  audioState.gameState = resolved;
+  if (resolved === 'MENU' || resolved === 'ARENA_SELECT' || resolved === 'CREATOR') {
+    audioState.inLiveMatch = false;
+  } else if (resolved === 'PLAYING' || resolved === 'CLASS_SELECT') {
+    audioState.inLiveMatch = true;
+  }
   if (prevState !== audioState.gameState && audioState.gameState !== 'PLAYING') {
     stopAllJetpackVoices();
     stopAllMinigunVoices();
@@ -282,7 +299,9 @@ export function playSound(soundId, opts = {}) {
   const finalGain = Math.max(0.001, Math.min(1.4, def.volume * spatialGain * gainScale));
   if (finalGain < 0.008) return false;
 
-  const destNode = (def.bus === 'ui') ? audioState.uiGain : audioState.sfxGain;
+  const destNode = (def.bus === 'ui')
+    ? audioState.uiGain
+    : (def.bus === 'music' ? (audioState.musicGain || audioState.sfxGain) : audioState.sfxGain);
   if (!destNode) return false;
 
   const jitter = (typeof opts.pitchJitter === 'number') ? opts.pitchJitter : (def.pitchJitter || 0);
@@ -674,7 +693,8 @@ function updateEntityTrackers(entity, isPlaying) {
 }
 
 export function updateAudio(dt = 1 / 60, context = {}) {
-  const isPlaying = (context.gameState ? context.gameState : audioState.gameState) === 'PLAYING';
+  const currentGameState = context.gameState ? context.gameState : audioState.gameState;
+  const isPlaying = currentGameState === 'PLAYING';
   const activeEntities = new Set();
 
   if (context.player) activeEntities.add(context.player);
@@ -710,4 +730,7 @@ export function updateAudio(dt = 1 / 60, context = {}) {
       audioState.minigunVoices.delete(entity);
     }
   }
+
+  // Taktyczna muzyka menu z plynnym fade-in / fade-out i bezszwowa petla
+  updateMenuMusic(dt, currentGameState);
 }

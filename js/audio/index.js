@@ -25,6 +25,7 @@ import {
   playTestTone,
   playAcidSurgeSiren
 } from './logic.js';
+import { stopMenuMusicImmediate } from './music.js';
 
 export {
   AUDIO_CONFIG,
@@ -39,6 +40,7 @@ export {
   setAudioGameState,
   stopAllJetpackVoices,
   stopAllMinigunVoices,
+  stopMenuMusicImmediate,
   testSound,
   loadAudioManifest,
   setCustomSoundOverride,

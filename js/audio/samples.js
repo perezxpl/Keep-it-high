@@ -44,7 +44,9 @@ function normalizeSampleEntry(rawEntry, basePath = audioState.manifestBasePath |
       urls,
       volume: (typeof rawEntry.volume === 'number' && !Number.isNaN(rawEntry.volume)) ? rawEntry.volume : 1.0,
       pitchJitter: (typeof rawEntry.pitchJitter === 'number' && !Number.isNaN(rawEntry.pitchJitter)) ? rawEntry.pitchJitter : null,
-      loop: (typeof rawEntry.loop === 'boolean') ? rawEntry.loop : null
+      loop: (typeof rawEntry.loop === 'boolean') ? rawEntry.loop : null,
+      loopStart: (typeof rawEntry.loopStart === 'number' && !Number.isNaN(rawEntry.loopStart) && rawEntry.loopStart >= 0) ? rawEntry.loopStart : null,
+      loopEnd: (typeof rawEntry.loopEnd === 'number' && !Number.isNaN(rawEntry.loopEnd) && rawEntry.loopEnd > 0) ? rawEntry.loopEnd : null
     };
   }
 

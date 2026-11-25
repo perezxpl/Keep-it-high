@@ -3,7 +3,7 @@
 // =============================================================================
 
 export const AUDIO_CONFIG = {
-  MANIFEST_URL: './assets/audio/manifest.json?v=v516_hit_piston_audio_and_zombie_surface_fix',
+  MANIFEST_URL: './assets/audio/manifest.json?v=v517_tactical_menu_music',
   DEFAULT_BASE_PATH: './assets/audio/',
   ENABLE_GAMEPLAY_SYNTH: false,
   ENABLE_UI_SYNTH_FALLBACK: true,
@@ -94,7 +94,10 @@ export const SOUND_CATALOG = {
   ui_callout_revenge: { bus: 'ui', volume: 0.40, pitchJitter: 0.02, cooldownMs: 120, spatial: false, allowInAnyState: false },
   ui_test_tone: { bus: 'sfx', volume: 0.48, pitchJitter: 0.0, cooldownMs: 80, spatial: false, allowInAnyState: true },
   ui_countdown_tick: { bus: 'ui', volume: 0.55, pitchJitter: 0.0, cooldownMs: 80, spatial: false, allowInAnyState: true },
-  ui_countdown_go: { bus: 'ui', volume: 0.70, pitchJitter: 0.0, cooldownMs: 120, spatial: false, allowInAnyState: true }
+  ui_countdown_go: { bus: 'ui', volume: 0.70, pitchJitter: 0.0, cooldownMs: 120, spatial: false, allowInAnyState: true },
+
+  // --- Muzyka Menu / Lobby ---
+  menu_music: { bus: 'music', volume: 0.85, pitchJitter: 0.0, cooldownMs: 0, spatial: false, allowInAnyState: true, loop: true }
 };
 
 /**
@@ -105,6 +108,7 @@ export const audioState = {
   masterGain: null,
   sfxGain: null,
   uiGain: null,
+  musicGain: null,
   compressor: null,
   noiseBuffer: null,
   unlockListenersBound: false,
@@ -114,11 +118,13 @@ export const audioState = {
   // Synchronizowane ustawienia użytkownika z uiManager
   masterVolume: 0.80,
   sfxVolume: 0.85,
+  musicVolume: 0.55,
   muted: false,
   acidSirenEnabled: true,
 
   // Aktualny stan ekranu gry ('MENU' wycisza walkę w tle, 'PLAYING' włącza dźwięki rozgrywki)
   gameState: 'MENU',
+  inLiveMatch: false,
 
   // Ochrona przed przesterowaniem i spamem klatek
   activeVoiceCount: 0,
@@ -134,8 +140,9 @@ export const audioState = {
   loadingUrls: new Map(),
   failedUrls: new Set(),
 
-  // Aktywne głosy ciągłe (np. jetpack, minigun) i wykrywanie krawędzi stanów postaci
+  // Aktywne głosy ciągłe (np. jetpack, minigun, muzyka menu) i wykrywanie krawędzi stanów postaci
   jetpackVoices: new Map(),
   minigunVoices: new Map(),
+  musicVoice: null,
   entityTrackers: new WeakMap()
 };

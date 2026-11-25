@@ -86,6 +86,7 @@ const DEFAULT_SETTINGS = {
   // Audio i Dźwięk
   masterVolume: 80,
   sfxVolume: 85,
+  musicVolume: 55,
   acidSiren: true,
   muteAll: false,
 
@@ -842,6 +843,12 @@ export const uiManager = {
     const sfxVal = document.getElementById('val-sfx-vol');
     if (sfxSlider) sfxSlider.value = this.settings.sfxVolume;
     if (sfxVal) sfxVal.textContent = `${this.settings.sfxVolume}%`;
+
+    const musicSlider = document.getElementById('setting-music-vol');
+    const musicVal = document.getElementById('val-music-vol');
+    const musicVol = (typeof this.settings.musicVolume === 'number') ? this.settings.musicVolume : 55;
+    if (musicSlider) musicSlider.value = musicVol;
+    if (musicVal) musicVal.textContent = `${musicVol}%`;
 
     const sirenToggle = document.getElementById('setting-acid-siren');
     if (sirenToggle) sirenToggle.checked = !!this.settings.acidSiren;
@@ -2330,6 +2337,17 @@ export const uiManager = {
         this.applySettings();
       });
       sfxSlider.addEventListener('change', () => this.saveSettings());
+    }
+
+    // Suwak Muzyka w Menu
+    const musicSlider = document.getElementById('setting-music-vol');
+    if (musicSlider) {
+      musicSlider.addEventListener('input', (e) => {
+        this.settings.musicVolume = parseInt(e.target.value, 10);
+        document.getElementById('val-music-vol').textContent = `${this.settings.musicVolume}%`;
+        this.applySettings();
+      });
+      musicSlider.addEventListener('change', () => this.saveSettings());
     }
 
     // Toggle Syreny Kwasu

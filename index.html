@@ -38,10 +38,11 @@
       "./js/arenas/arena5/renderer.js": "./js/arenas/arena5/renderer.js?v=v458_eliminate_flight_shadowblur_and_glow_artifacts",
       "./js/arenas/arena_train.js": "./js/arenas/arena_train.js?v=v390_uss_titan",
       "./js/arenas/index.js": "./js/arenas/index.js?v=v390_uss_titan",
-      "./js/audio/index.js": "./js/audio/index.js?v=v513_minigun_deep_seamless_loop",
-      "./js/audio/logic.js": "./js/audio/logic.js?v=v513_minigun_deep_seamless_loop",
-      "./js/audio/samples.js": "./js/audio/samples.js?v=v513_minigun_deep_seamless_loop",
-      "./js/audio/state.js": "./js/audio/state.js?v=v516_hit_piston_audio_and_zombie_surface_fix",
+      "./js/audio/index.js": "./js/audio/index.js?v=v517_tactical_menu_music",
+      "./js/audio/logic.js": "./js/audio/logic.js?v=v517_tactical_menu_music",
+      "./js/audio/music.js": "./js/audio/music.js?v=v517_tactical_menu_music",
+      "./js/audio/samples.js": "./js/audio/samples.js?v=v517_tactical_menu_music",
+      "./js/audio/state.js": "./js/audio/state.js?v=v517_tactical_menu_music",
       "./js/audio/synth.js": "./js/audio/synth.js?v=v516_hit_piston_audio_and_zombie_surface_fix",
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ball.js": "./js/ball.js?v=v459_stage1_hybrid_audio",
@@ -92,7 +93,7 @@
       "./js/loadout/logic.js": "./js/loadout/logic.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/state.js": "./js/loadout/state.js?v=v511_minigun_rotary_spritesheet_and_audio",
       "./js/loadout/weaponPreviews.js": "./js/loadout/weaponPreviews.js?v=v515_minigun_hd_sprite_and_ammo_belt",
-      "./js/main.js": "./js/main.js?v=v518_ws_gamestate_sync_fix",
+      "./js/main.js": "./js/main.js?v=v526_tactical_menu_music",
       "./js/menuShowcase.js": "./js/menuShowcase.js?v=v517_safe_respawn_and_extinguish_fire",
       "./js/menuFight/index.js": "./js/menuFight/index.js?v=v514_minigun_360_straight_heat_smoke",
       "./js/menuFight/logic.js": "./js/menuFight/logic.js?v=v430_menu_dynamic_battleground",
@@ -147,7 +148,7 @@
       "./js/ui/mobileTopHud.js": "./js/ui/mobileTopHud.js?v=v458_eliminate_flight_shadowblur_and_glow_artifacts",
       "./js/ui/rankBadges.js": "./js/ui/rankBadges.js?v=v388_military_rank_spritesheet",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v388_military_rank_spritesheet",
-      "./js/uiManager.js": "./js/uiManager.js?v=v459_stage1_hybrid_audio",
+      "./js/uiManager.js": "./js/uiManager.js?v=v526_tactical_menu_music",
       "./js/weapons.js": "./js/weapons.js?v=v525_flamethrower_shoulder_brace_grip",
       "./js/weapons/bulletRenderer.js": "./js/weapons/bulletRenderer.js?v=v514_minigun_360_straight_heat_smoke",
       "./js/weapons/flamethrower.js": "./js/weapons/flamethrower.js?v=v523_flamethrower_nozzle_grip_and_windup",
@@ -1558,6 +1559,17 @@
 
               <div class="setting-row">
                 <div class="setting-label-col">
+                  <div class="setting-name">Muzyka w Menu</div>
+                  <div class="setting-desc">Taktyczny podkład muzyczny w menu, lobby i zbrojowni</div>
+                </div>
+                <div class="setting-control-col">
+                  <input type="range" id="setting-music-vol" min="0" max="100" value="55" class="ui-slider">
+                  <span class="slider-val" id="val-music-vol">55%</span>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-label-col">
                   <div class="setting-name">Syrena Ostrzegawcza Kwasu</div>
                   <div class="setting-desc">Dwutonowy sygnał ostrzegawczy w Arenie 2 (Sektor X)</div>
                 </div>
@@ -2003,7 +2015,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v518_ws_gamestate_sync_fix"></script>
+  <script type="module" src="./js/main.js?v=v526_tactical_menu_music"></script>
 </body>
 
 </html>
