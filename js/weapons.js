@@ -1172,11 +1172,23 @@ export function updateWeaponState(p) {
         ammo._magEjected = true;
         const hold = getWeaponHoldTransform(p);
         const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);
-        const magDist = curWepId === 'SNIPER' ? 7.0 : (curWepId === 'GLOCK' ? 1.0 : (curWepId === 'FLAMETHROWER' ? 10.5 : 6.5));
-        const magYOffset = curWepId === 'SNIPER' ? 5.5 : (curWepId === 'GLOCK' ? 6.0 : (curWepId === 'FLAMETHROWER' ? 14.0 : 5.0));
+        let magDist, magYOffset, initMagAngle = null;
+        if (curWepId === 'FLAMETHROWER') {
+          // Dokładna kontynuacja pozycji i kąta odłączonej butli flamethrower_canister.png w momencie wypuszczenia z dłoni (u = 0.40)
+          const sCan = 48.0 / 1290;
+          const dxCenter = (858.0 - 750.0) * sCan;
+          const dyCenter = (247.0 - 160.0) * sCan;
+          const heldA = 0.12;
+          magDist = 9.0 + Math.cos(heldA) * dxCenter - Math.sin(heldA) * dyCenter;
+          magYOffset = 16.0 + Math.sin(heldA) * dxCenter + Math.cos(heldA) * dyCenter;
+          initMagAngle = hold.angle + heldA;
+        } else {
+          magDist = curWepId === 'SNIPER' ? 7.0 : (curWepId === 'GLOCK' ? 1.0 : 6.5);
+          magYOffset = curWepId === 'SNIPER' ? 5.5 : (curWepId === 'GLOCK' ? 6.0 : 5.0);
+        }
         const mX = hold.pivotX + (Math.cos(hold.angle) * magDist - Math.sin(hold.angle) * magYOffset) * charFacing;
         const mY = hold.pivotY + (Math.sin(hold.angle) * magDist + Math.cos(hold.angle) * magYOffset);
-        spawnDroppedMagazine(mX, mY, curWepId, charFacing, p.vx || 0, p.vy || 0);
+        spawnDroppedMagazine(mX, mY, curWepId, charFacing, p.vx || 0, p.vy || 0, initMagAngle);
       }
 
       // Shotgun: wyrzut łuski przy przeładowaniu czółenkiem pompy w tył

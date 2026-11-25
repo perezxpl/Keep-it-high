@@ -203,6 +203,7 @@ export function getWeaponPartSprite(partId) {
 
 // Natychmiastowe pre-loadowanie sprite'ów w przeglądarce
 if (typeof window !== 'undefined') {
+  window.getWeaponPartSprite = getWeaponPartSprite;
   for (const k of Object.keys(WEAPON_PARTS_PATHS)) {
     getWeaponPartSprite(k);
   }

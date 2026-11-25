@@ -6,6 +6,25 @@
 import { CONFIG } from './config.js';
 import { camera, getCanvasLogicalWidth, getCanvasLogicalHeight } from './camera.js';
 
+const FLAMETHROWER_CANISTER_PATH = './assets/weapons/flamethrower_canister.png?v=v487_flamethrower_modular_reload';
+let _droppedCanisterFallbackImg = null;
+
+function getDroppedCanisterSprite() {
+  if (typeof window !== 'undefined' && typeof window.getWeaponPartSprite === 'function') {
+    const part = window.getWeaponPartSprite('FLAMETHROWER_CANISTER');
+    if (part && part.complete && part.naturalWidth > 0) return part;
+  }
+  if (_droppedCanisterFallbackImg) return _droppedCanisterFallbackImg;
+  if (typeof Image === 'undefined') return null;
+  _droppedCanisterFallbackImg = new Image();
+  _droppedCanisterFallbackImg.src = FLAMETHROWER_CANISTER_PATH;
+  return _droppedCanisterFallbackImg;
+}
+
+if (typeof window !== 'undefined') {
+  getDroppedCanisterSprite();
+}
+
 // Domyślna wartość grawitacji w px/s^2 (dla dt w sekundach)
 export const CASING_GRAVITY = 820;
 
@@ -111,7 +130,8 @@ export class BulletCasing {
     type = 'AK47',
     hasRim = false,
     rimColor = '#EAB308',
-    groundTimer = 1.4
+    groundTimer = 1.4,
+    facing = 1
   } = {}) {
     this.x = x;
     this.y = y;
@@ -131,6 +151,7 @@ export class BulletCasing {
     this.hasRim = hasRim;
     this.rimColor = rimColor;
     this.groundTimer = groundTimer; // czas spoczynku na ziemi przed wygaszaniem (1-2s)
+    this.facing = facing < 0 ? -1 : 1;
   }
 
   /**
@@ -431,32 +452,45 @@ export function spawnSawedOffEjectCasings(x, y, count = 2, facing = 1, inheritVx
  * @param {number} facing Zwrot postaci
  * @param {number} inheritVx Prędkość postaci X
  * @param {number} inheritVy Prędkość postaci Y
+ * @param {number|null} [initAngle=null] Początkowy kąt obrotu spójny z fazą odczepienia broni
  */
-export function spawnDroppedMagazine(x, y, weaponType = 'AK47', facing = 1, inheritVx = 0, inheritVy = 0) {
+export function spawnDroppedMagazine(x, y, weaponType = 'AK47', facing = 1, inheritVx = 0, inheritVy = 0, initAngle = null) {
   const normType = String(weaponType || 'AK47').toUpperCase();
   const isSniper = normType.includes('SNIPER');
   const isGlock = normType.includes('GLOCK');
   const isFlame = normType.includes('FLAMETHROWER');
+  const fDir = facing < 0 ? -1 : 1;
 
-  const vx = inheritVx * 0.35 + (facing * (-24 - Math.random() * 25));
-  const vy = inheritVy * 0.35 + (20 + Math.random() * 25);
-  const vRot = (facing * (-3.2 - Math.random() * 4.5));
+  const vx = isFlame
+    ? (inheritVx * 0.45 + fDir * (4 - Math.random() * 14))
+    : (inheritVx * 0.35 + (fDir * (-24 - Math.random() * 25)));
+  const vy = isFlame
+    ? (inheritVy * 0.35 + (28 + Math.random() * 18))
+    : (inheritVy * 0.35 + (20 + Math.random() * 25));
+  const vRot = isFlame
+    ? (1.7 + Math.random() * 2.0)
+    : (fDir * (-3.2 - Math.random() * 4.5));
+
+  const startAngle = (typeof initAngle === 'number' && !isNaN(initAngle))
+    ? initAngle
+    : (isSniper ? 0.15 : (isGlock ? 0.25 : (isFlame ? 0.12 : 0.45)));
 
   const casing = new BulletCasing({
     x,
     y,
     vx,
     vy,
-    angle: isSniper ? 0.15 : (isGlock ? 0.25 : (isFlame ? 0.10 : 0.45)),
+    angle: startAngle,
     vRot,
-    width: isGlock ? 4.5 : (isSniper ? 6 : (isFlame ? 8 : 7)),
-    height: isGlock ? 7.5 : (isSniper ? 9 : (isFlame ? 15 : 11)),
-    color: isGlock ? '#18181b' : (isFlame ? '#854d0e' : '#334155'),
+    width: isGlock ? 4.5 : (isSniper ? 6 : (isFlame ? 17.3 : 7)),
+    height: isGlock ? 7.5 : (isSniper ? 9 : (isFlame ? 7.7 : 11)),
+    color: isGlock ? '#18181b' : (isFlame ? '#4d5d3b' : '#334155'),
     maxBounces: 2,
     life: 5.5,
     alpha: 1.0,
     type: isGlock ? 'GLOCK' : (isSniper ? 'SNIPER' : (isFlame ? 'FLAMETHROWER' : 'AK47')),
-    groundTimer: 4.5
+    groundTimer: 4.5,
+    facing: fDir
   });
   casing.isMagazine = true;
 
@@ -488,6 +522,9 @@ export function drawBulletCasing(ctx, casing) {
 
   ctx.save();
   ctx.translate(casing.x, casing.y);
+  if (casing.isMagazine && casing.type === 'FLAMETHROWER' && casing.facing < 0) {
+    ctx.scale(-1, 1);
+  }
   ctx.rotate(casing.angle);
   ctx.globalAlpha = Math.max(0, Math.min(1, casing.alpha));
 
@@ -520,16 +557,23 @@ export function drawBulletCasing(ctx, casing) {
       ctx.fillStyle = '#f97316';
       ctx.fillRect(-2.2, 3.2, 4.4, 0.8);
     } else if (casing.type === 'FLAMETHROWER') {
-      // Upuszczona pusta butla napalmu (oliwkowo-żółty cylinder ze stalowym zaworem)
-      ctx.fillStyle = '#854d0e';
-      ctx.fillRect(-3.5, -6.5, 7.0, 13.0);
-      ctx.fillStyle = '#ca8a04';
-      ctx.fillRect(-3.0, -6.0, 6.0, 12.0);
-      ctx.fillStyle = '#64748b';
-      ctx.fillRect(-1.5, -8.0, 3.0, 2.0);
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(-3.5, -6.5, 7.0, 13.0);
+      // Dokładnie ten sam sprite odłączanej butli (flamethrower_canister.png, środek w 858x247)
+      const img = getDroppedCanisterSprite();
+      if (img && img.complete && img.naturalWidth > 0) {
+        const s = 48.0 / 1290;
+        ctx.scale(s, s);
+        if (img._isMip) {
+          ctx.drawImage(img, -858.0, -247.0, img._origW, img._origH);
+        } else {
+          ctx.drawImage(img, -858.0, -247.0);
+        }
+      } else {
+        ctx.fillStyle = '#4d5d3b';
+        ctx.fillRect(-8.5, -3.5, 17.0, 7.0);
+        ctx.fillStyle = '#ca8a04';
+        ctx.fillRect(-8.0, -2.5, 2.0, 5.0);
+        ctx.fillRect(6.0, -2.5, 2.0, 5.0);
+      }
     }
   } else {
     ctx.fillStyle = casing.color;
