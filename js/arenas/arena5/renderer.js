@@ -307,6 +307,66 @@ export function getCellOuterEdges(cell) {
 /**
  * Rysuje wszystkie ułożone klocki w wieży z wyrazistym obrysem figur i frustum cullingiem
  */
+export const BLOCK_SPRITESHEET_URL = './assets/arena5_blocks_spritesheet.png?v=v518_arena5_blocks_spritesheet';
+const BLOCK_SPRITE_CELL = 200;
+const BLOCK_ROW_MAP = {
+  STEEL: 0,
+  CONCRETE_CRACKED: 1,
+  EXPLOSIVE: 2,
+  SCAFFOLDING: 3
+};
+
+let _blockSheetImg = null;
+let _blockSheetCanvas = null;
+let _blockSheetLoading = false;
+
+function getBlockSpritesheetSource() {
+  if (_blockSheetCanvas) return _blockSheetCanvas;
+  if (typeof window === 'undefined' || typeof Image === 'undefined') return null;
+
+  if (!_blockSheetImg && !_blockSheetLoading) {
+    _blockSheetLoading = true;
+    const img = new Image();
+    img.onload = () => {
+      _blockSheetLoading = false;
+      if (img.naturalWidth >= BLOCK_SPRITE_CELL * 4 && typeof document !== 'undefined') {
+        try {
+          const oc = document.createElement('canvas');
+          oc.width = img.naturalWidth;
+          oc.height = img.naturalHeight;
+          const octx = oc.getContext('2d');
+          if (octx) {
+            octx.drawImage(img, 0, 0);
+            _blockSheetCanvas = oc;
+          }
+        } catch (_) {
+          _blockSheetCanvas = null;
+        }
+      }
+    };
+    img.onerror = () => {
+      _blockSheetLoading = false;
+    };
+    img.src = BLOCK_SPRITESHEET_URL;
+    _blockSheetImg = img;
+  }
+
+  if (_blockSheetImg && _blockSheetImg.complete && _blockSheetImg.naturalWidth >= BLOCK_SPRITE_CELL * 4) {
+    return _blockSheetImg;
+  }
+  return null;
+}
+
+function getBlockSpriteCol(material, hpRatio, variantHint = 0) {
+  if (hpRatio < 0.34) return 3;
+  if (hpRatio < 0.68) return 2;
+  const h = Math.abs(variantHint | 0);
+  if (material === 'STEEL' || material === 'EXPLOSIVE') {
+    return (h % 3 === 1) ? 1 : 0;
+  }
+  return h % 2;
+}
+
 const _materialTileCache = new Map();
 
 function getMaterialTileCanvas(material) {
@@ -419,8 +479,9 @@ function drawSettledBlocks(ctx, camera) {
       const outerEdges = cell._outerEdges || getCellOuterEdges(cell);
       const isClearing = clearingRows !== null && clearingRows.has(cell.row);
       const blockColor = isClearing ? (flashWhite ? '#ffffff' : '#00f0ff') : cell.accentColor;
+      const variantHint = (cell.row * 7) + (cell.col * 13);
 
-      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, blockColor);
+      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, blockColor, variantHint);
 
       if (isClearing) {
         const pulse = 0.5 + 0.5 * Math.sin(now * 0.04 + c * 0.4);
@@ -442,7 +503,8 @@ function drawSettledBlocks(ctx, camera) {
       renderedCells.add(cell);
 
       const outerEdges = cell._outerEdges || getCellOuterEdges(cell);
-      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, cell.accentColor);
+      const variantHint = (cell.row * 7) + (cell.col * 13);
+      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, cell.accentColor, variantHint);
     }
   }
 }
@@ -450,28 +512,55 @@ function drawSettledBlocks(ctx, camera) {
 /**
  * Rysuje pojedynczy kafelek kontenera wg jego materiału, stanu uszkodzeń oraz obwódek figury
  */
-export function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp, outerEdges = null, accentColor = null) {
+export function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp, outerEdges = null, accentColor = null, variantHint = 0) {
   const edges = outerEdges || { top: true, bottom: true, left: true, right: true };
   const borderCol = accentColor || '#eab308';
+  const safeMaxHp = (typeof maxHp === 'number' && maxHp > 0) ? maxHp : 100;
+  const curHp = (typeof hp === 'number') ? hp : safeMaxHp;
+  const hpRatio = Math.max(0, Math.min(1, curHp / safeMaxHp));
 
-  const tile = getMaterialTileCanvas(material);
-  if (tile) {
-    ctx.drawImage(tile, x, y, w, h);
+  const sheet = getBlockSpritesheetSource();
+  if (sheet) {
+    const rowIdx = BLOCK_ROW_MAP[material] ?? 0;
+    const colIdx = getBlockSpriteCol(material, hpRatio, variantHint);
+    ctx.drawImage(
+      sheet,
+      colIdx * BLOCK_SPRITE_CELL,
+      rowIdx * BLOCK_SPRITE_CELL,
+      BLOCK_SPRITE_CELL,
+      BLOCK_SPRITE_CELL,
+      x,
+      y,
+      w,
+      h
+    );
   } else {
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(x, y, w, h);
+    const tile = getMaterialTileCanvas(material);
+    if (tile) {
+      ctx.drawImage(tile, x, y, w, h);
+    } else {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(x, y, w, h);
+    }
   }
 
-  // Delikatne szwy wewnętrzne na łączeniach komórek tej samej figury stalowej
-  if (material === 'STEEL' && (!edges.top || !edges.bottom || !edges.left || !edges.right)) {
-    ctx.strokeStyle = 'rgba(71, 85, 105, 0.45)';
-    ctx.lineWidth = 1;
+  // Delikatne szwy wewnętrzne na łączeniach komórek tej samej figury
+  if (material !== 'SCAFFOLDING' && (!edges.top || !edges.bottom || !edges.left || !edges.right)) {
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.42)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     if (!edges.top) { ctx.moveTo(x + 4, y); ctx.lineTo(x + w - 4, y); }
     if (!edges.bottom) { ctx.moveTo(x + 4, y + h); ctx.lineTo(x + w - 4, y + h); }
     if (!edges.left) { ctx.moveTo(x, y + 4); ctx.lineTo(x, y + h - 4); }
     if (!edges.right) { ctx.moveTo(x + w, y + 4); ctx.lineTo(x + w, y + h - 4); }
     ctx.stroke();
+  }
+
+  // Delikatne ostrzegawcze pulsowanie na krytycznie uszkodzonych kontenerach paliwowych
+  if (material === 'EXPLOSIVE' && hpRatio < 0.34) {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.018);
+    ctx.fillStyle = `rgba(249, 115, 22, ${0.12 + 0.14 * pulse})`;
+    ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
   }
 
   // 2. WYRAZISTA OBWÓDKA FIGURY (TETRIS SHAPE CONTOUR) — jeden batch path
@@ -662,7 +751,9 @@ function drawFallingCraneBlock(ctx) {
       right: !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel)
     };
 
-    drawSingleBlock(ctx, bx, by, CELL_SIZE, CELL_SIZE, cell.material, cell.hp, cell.maxHp, outerEdges, crane.accentColor || crane.shape?.accentColor);
+    const targetRow = (typeof crane.targetLandingRow === 'number') ? crane.targetLandingRow : 0;
+    const variantHint = ((targetRow + cell.rowRel) * 7) + ((crane.col + cell.colRel) * 13);
+    drawSingleBlock(ctx, bx, by, CELL_SIZE, CELL_SIZE, cell.material, cell.hp, cell.maxHp, outerEdges, crane.accentColor || crane.shape?.accentColor, variantHint);
   }
   ctx.restore();
 }
