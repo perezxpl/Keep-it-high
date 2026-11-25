@@ -1179,8 +1179,8 @@ export function updateWeaponState(p) {
           const dxCenter = (858.0 - 750.0) * sCan;
           const dyCenter = (247.0 - 160.0) * sCan;
           const heldA = 0.12;
-          magDist = 9.0 + Math.cos(heldA) * dxCenter - Math.sin(heldA) * dyCenter;
-          magYOffset = 16.0 + Math.sin(heldA) * dxCenter + Math.cos(heldA) * dyCenter;
+          magDist = 12.5 + Math.cos(heldA) * dxCenter - Math.sin(heldA) * dyCenter;
+          magYOffset = 16.5 + Math.sin(heldA) * dxCenter + Math.cos(heldA) * dyCenter;
           initMagAngle = hold.angle + heldA;
         } else {
           magDist = curWepId === 'SNIPER' ? 7.0 : (curWepId === 'GLOCK' ? 1.0 : 6.5);

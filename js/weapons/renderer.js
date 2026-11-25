@@ -226,9 +226,9 @@ export const WEAPON_SPRITE_PIVOTS = {
     y: 177.5
   },
   FLAMETHROWER: {
-    x: 480.0,
-    walkX: 240.0,
-    y: 160.0
+    x: 348.0,
+    walkX: 348.0,
+    y: 115.0
   },
   MINIGUN: {
     x: 72.0,

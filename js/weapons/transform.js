@@ -537,15 +537,15 @@ export const WEAPON_GRIP_CONFIGS = {
     stockLen: 19.00
   },
   FLAMETHROWER: {
-    rearGripX: 2.20,
-    walkRearGripX: 0.60,
-    rearGripY: 1.80,
-    foreGripX: 13.50,
-    foreGripY: 1.20,
+    rearGripX: -0.20,
+    walkRearGripX: -0.20,
+    rearGripY: 3.60,
+    foreGripX: 7.00,
+    foreGripY: 4.70,
     angleOffset: 0.000,
-    barrelLen: 30.10,
-    barrelOffsetY: -3.40,
-    stockLen: 12.50
+    barrelLen: 35.00,
+    barrelOffsetY: -1.73,
+    stockLen: 12.80
   },
   MINIGUN: {
     rearGripX: 0.00,
@@ -893,6 +893,17 @@ export function getWeaponHoldTransform(p) {
     loosePivotY = mgPose.pivotY;
     directAngle = mgPose.directAngle;
     looseAimAngle = mgPose.angle;
+  } else if (isFlamethrower) {
+    // Miotacz ognia w spoczynku/marszu: oparcie kolby o bark w postawie taktycznej gotowości
+    const patAngle = 0.14;
+    const patPocketX = rightShoulderX - 0.5 * charFacing;
+    const patPocketY = rightShoulderY + 0.2 + crouchDropY + headBobOffset;
+    loosePivotX = patPocketX + Math.cos(patAngle) * (gripCfg.stockLen || 12.80) * charFacing;
+    loosePivotY = patPocketY + Math.sin(patAngle) * (gripCfg.stockLen || 12.80);
+    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    if (directAngle < -Math.PI / 2) directAngle = Math.max(-1.66, directAngle);
+    else if (directAngle > Math.PI / 2 + 0.35) directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
+    looseAimAngle = directAngle + patAngle;
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 7.6 : 5.2)) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.0 : 9.5)) + headBobOffset + crouchDropY;
@@ -1378,31 +1389,31 @@ export function getWeaponHoldTransform(p) {
       // FLAMETHROWER RELOAD ANIMATION (WYMIANA BUTLI NAPALMU POD LUFA)
       // -------------------------------------------------------------
       if (u < 0.20) {
-        // Faza 1: Ruch ręki ku kołnierzowi podwieszonej butli paliwowej
+        // Faza 1: Ruch ręki z przedniego chwytu ku kołnierzowi podwieszonej butli paliwowej
         const t = u / 0.20;
-        leftHandLocalX = lerp(foreGripDistX, 10.5, ease(t));
-        leftHandLocalY = lerp(foreGripDistY, 4.5, ease(t));
+        leftHandLocalX = lerp(foreGripDistX, 15.0, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 2.5, ease(t));
         isMagInGun = true;
         heldMag = null;
       } else if (u < 0.40) {
         // Faza 2: Odkręcenie i wyjęcie pustego kartusza w dół
         const t = (u - 0.20) / 0.20;
-        leftHandLocalX = lerp(10.5, 9.0, t);
-        leftHandLocalY = lerp(4.5, 16.0, t);
+        leftHandLocalX = lerp(15.0, 12.5, t);
+        leftHandLocalY = lerp(2.5, 16.5, t);
         isMagInGun = false;
         heldMag = { type: 'FLAMETHROWER_CANISTER', x: leftHandLocalX, y: leftHandLocalY, angle: 0.12 * t };
       } else if (u < 0.62) {
         // Faza 3: Pusty kartusz upuszczony na ziemię, ręka sięga do zasobnika po nową butlę
         const t = (u - 0.40) / 0.22;
-        leftHandLocalX = lerp(9.0, -2.5, ease(t));
-        leftHandLocalY = lerp(16.0, 18.0, ease(t));
+        leftHandLocalX = lerp(12.5, 1.5, ease(t));
+        leftHandLocalY = lerp(16.5, 18.0, ease(t));
         isMagInGun = false;
         heldMag = null;
       } else if (u < 0.85) {
         // Faza 4: Uniesienie nowej butli i dokręcenie w gnieździe pod lufą
         const t = (u - 0.62) / 0.23;
-        leftHandLocalX = lerp(-2.5, 10.5, ease(t));
-        leftHandLocalY = lerp(18.0, 4.5, ease(t));
+        leftHandLocalX = lerp(1.5, 15.0, ease(t));
+        leftHandLocalY = lerp(18.0, 2.5, ease(t));
         if (t < 0.70) {
           isMagInGun = false;
           heldMag = { type: 'FLAMETHROWER_CANISTER', x: leftHandLocalX, y: leftHandLocalY, angle: -0.15 * (1 - t) };
@@ -1414,11 +1425,11 @@ export function getWeaponHoldTransform(p) {
           reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 1.2;
         }
       } else {
-        // Faza 5: Powrót dłoni na przedni chwyt stabilizujący
+        // Faza 5: Powrót dłoni na przedni chwyt pionowy (vertical foregrip)
         const t = (u - 0.85) / 0.15;
         const s = ease(t);
-        leftHandLocalX = lerp(10.5, foreGripDistX, s);
-        leftHandLocalY = lerp(4.5, foreGripDistY, s);
+        leftHandLocalX = lerp(15.0, foreGripDistX, s);
+        leftHandLocalY = lerp(2.5, foreGripDistY, s);
         isMagInGun = true;
         heldMag = null;
       }
