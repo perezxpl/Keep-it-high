@@ -678,11 +678,15 @@ export function drawHandheldMolotov(ctx, x, y, scale = 1.0) {
   ctx.save();
   ctx.translate(0, baseY);
 
-  // Ciepła poświata płonącego knota (zero alokacji gradientu i zero shadowBlur)
+  // Ciepła poświata płonącego knota (dwustopniowa, bez twardej krawędzi i shadowBlur)
   ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = 'rgba(251, 146, 60, 0.28)';
+  ctx.fillStyle = 'rgba(251, 146, 60, 0.09)';
   ctx.beginPath();
-  ctx.arc(swayX * 0.4, -3.5, 7.8, 0, Math.PI * 2);
+  ctx.arc(swayX * 0.4, -3.5, 7.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(251, 146, 60, 0.18)';
+  ctx.beginPath();
+  ctx.arc(swayX * 0.4, -3.5, 4.4, 0, Math.PI * 2);
   ctx.fill();
 
   // Zewnętrzny pomarańczowo-czerwony język ognia

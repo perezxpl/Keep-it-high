@@ -2676,11 +2676,15 @@ export function drawPilotFlame(ctx, muzzleX, muzzleY, angle, facing = 1) {
   ctx.rotate(angle);
   ctx.scale(facing, 1);
 
-  // Delikatna ciepła poświata zapalnika (zero alokacji gradientu i zero shadowBlur)
+  // Delikatna ciepła poświata zapalnika (dwustopniowa, bez twardej krawędzi i shadowBlur)
   ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = 'rgba(251, 146, 60, 0.24)';
+  ctx.fillStyle = 'rgba(251, 146, 60, 0.08)';
   ctx.beginPath();
-  ctx.arc(4.5, liftY * 0.4, 7.5, 0, Math.PI * 2);
+  ctx.arc(4.5, liftY * 0.4, 7.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(251, 146, 60, 0.16)';
+  ctx.beginPath();
+  ctx.arc(4.5, liftY * 0.4, 4.2, 0, Math.PI * 2);
   ctx.fill();
 
   // Zewnętrzny pomarańczowy język płomienia unoszący się z dyszy
