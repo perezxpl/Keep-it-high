@@ -1,5 +1,5 @@
 import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
-import { WEAPONS, shootWeapon, spawnBulletSparks } from './weapons.js';
+import { WEAPONS, shootWeapon, spawnBulletSparks, shouldDecapitateHeadshot } from './weapons.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType, arenaScore } from './obstacles.js';
 import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, triggerGoalCelebration, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
 import { ball } from './ball.js';
@@ -615,6 +615,7 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
       player.isDead = true;
       player.killer = attacker;
       player.killerBulletId = null;
+      player.killedByHeadshot = false;
       player.respawnTimer = 180;
       if (!player._calloutDeathRecorded) {
         player._calloutDeathRecorded = true;
@@ -721,9 +722,11 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
   }
 
   if (player.hp <= 0 && !player.isDead) {
+    const fatalHeadshot = Boolean(data.isHeadshot && !helmetAbsorbed);
     player.isDead = true;
     player.killer = attacker;
     player.killerBulletId = data.bulletId || null;
+    player.killedByHeadshot = fatalHeadshot;
     player.respawnTimer = 180;
     if (!player._calloutDeathRecorded) {
       player._calloutDeathRecorded = true;
@@ -741,6 +744,7 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
       victimName: localName,
       victimTeam: player.team || null,
       bulletId: data.bulletId || null,
+      isHeadshot: fatalHeadshot,
       x: player.x,
       y: player.y - 52
     });
@@ -792,6 +796,7 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
       b.isDead = true;
       b.killer = attacker;
       b.killerBulletId = null;
+      b.killedByHeadshot = false;
       b.respawnTimer = 180;
       sendKillBroadcast({
         killerId: attackerId,
@@ -821,19 +826,31 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
   spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 2, -1, 6, 0.9);
 
   if (b.hp <= 0 && !b.isDead) {
+    const fatalHeadshot = Boolean(data.isHeadshot);
     b.isDead = true;
     b.killer = attacker;
     b.killerBulletId = data.bulletId || null;
+    b.killedByHeadshot = fatalHeadshot;
     b.respawnTimer = 180;
     const bVis = b.customVisuals || b.visuals || {};
     b.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
 
-    if (data.isHeadshot) {
-      b.hasHead = false;
-      b.decapitated = true;
-      b.neckFountainTimer = 65;
-      spawnHeadGib(b.x + b.w / 2, b.y + 4, attackerFacing * 3.5, -6.0, b.facing, bVis);
-      spawnBloodFountain(b.x + b.w / 2, b.y + 14, b.facing, 6);
+    const shotDist = attacker ? Math.hypot((attacker.x || b.x) - b.x, (attacker.y || b.y) - b.y) : 999;
+
+    if (fatalHeadshot) {
+      if (shouldDecapitateHeadshot(b, data.weaponId, shotDist)) {
+        b.hasHead = false;
+        b.decapitated = true;
+        b.neckFountainTimer = 65;
+        spawnHeadGib(b.x + b.w / 2, b.y + 4, attackerFacing * 3.5, -6.0, b.facing, bVis);
+        spawnBloodFountain(b.x + b.w / 2, b.y + 14, b.facing, 6);
+      } else {
+        b.hasHead = true;
+        b.decapitated = false;
+        b.neckFountainTimer = 0;
+        b.headBobVel = attackerFacing * 0.45;
+        spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 4.5, -2.0, 20, 1.35);
+      }
     } else if (!data.isTorsoShot) {
       b.dismembered.legFront = true;
       spawnLimbGib('leg', hitPtX, hitPtY, attackerFacing * 2.5, -4.5, b.facing, bVis);
@@ -852,6 +869,7 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
       victimName: b.name || 'BOT AI',
       victimTeam: b.team || null,
       bulletId: data.bulletId || null,
+      isHeadshot: fatalHeadshot,
       x: b.x,
       y: b.y - 52
     });
@@ -1492,6 +1510,7 @@ export function handleNetworkData(data, senderPeerId = null) {
           victimId: data.victimId || null,
           victimName: data.victimName || null,
           isZombie: Boolean(data.isZombie),
+          isHeadshot: Boolean(data.isHeadshot),
           x: typeof data.x === 'number' ? data.x : undefined,
           y: typeof data.y === 'number' ? data.y : undefined
         });

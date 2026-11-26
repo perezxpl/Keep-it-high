@@ -388,6 +388,7 @@ function updateMeleeCollision(shooter, ms) {
         t.isDead = true;
         t.killer = shooter;
         t.killerBulletId = null;
+        t.killedByHeadshot = Boolean(isHeadshot);
         t.respawnTimer = 180;
         t.corpseAngle = 0;
         t.corpseRotVel = 0;
@@ -1300,6 +1301,24 @@ function getSegmentAABBHitT(x1, y1, x2, y2, left, top, right, bottom) {
 }
 
 /**
+ * Określa, czy śmiertelne trafienie w głowę powinno ją fizycznie oderwać (dekapitacja).
+ * Zombie zawsze tracą głowę przy śmiertelnym headshocie, by nie wstawały z ziemi.
+ * Dla graczy i botów odrywanie głowy jest rzadkie i zastrzeżone dla ciężkich kalibrów lub bliskiego strzelania ze strzelby.
+ * AK47 oraz GLOCK nigdy nie odrywają głowy.
+ */
+export function shouldDecapitateHeadshot(target, weaponId, shotDist = 0) {
+  if (target && target.isZombie) return true;
+  if (weaponId === 'SNIPER' || weaponId === 'RPG') return true;
+  if (weaponId === 'SHOTGUN' || weaponId === 'SAWED_OFF') {
+    return shotDist <= 220;
+  }
+  if (weaponId === 'REVOLVER' || weaponId === 'MAGNUM') {
+    return shotDist <= 200 && Math.random() < 0.25;
+  }
+  return false;
+}
+
+/**
  * Aktualizacja pocisków, strefy trafień (Headshot / Torso / Legs) i rozrywanie kończyn
  */
 export function updateBullets(groundY, obstaclesList, ball, characters) {
@@ -1527,23 +1546,27 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       let isTorsoShot = false;
 
       if (closestChar.isProne || (closestChar.staggerTimer > 0) || (closestChar.isZombie && (closestChar.isDead || closestChar.riseTimer > 0.4 || closestChar.isCrawling))) {
-        // Pozycja leżąca: sylwetka rozciągnięta wzdłuż osi X
+        // Pozycja leżąca: sylwetka rozciągnięta wzdłuż osi X (dla ludzi węższa strefa przednia)
+        const headFrac = closestChar.isZombie ? 0.50 : 0.62;
+        const headFracNeg = closestChar.isZombie ? 0.50 : 0.38;
         if (closestChar.facing === 1) {
-          isHeadshot = (hitPtX >= closestChar.x + closestChar.w * 0.50);
+          isHeadshot = (hitPtX >= closestChar.x + closestChar.w * headFrac);
           isLegshot = (hitPtX <= closestChar.x - 4);
           isTorsoShot = !isHeadshot && !isLegshot;
         } else {
-          isHeadshot = (hitPtX <= closestChar.x + closestChar.w * 0.50);
+          isHeadshot = (hitPtX <= closestChar.x + closestChar.w * headFracNeg);
           isLegshot = (hitPtX >= closestChar.x + closestChar.w + 4);
           isTorsoShot = !isHeadshot && !isLegshot;
         }
       } else if (closestChar.isCrouching) {
-        isHeadshot = (hitPtY <= closestChar.y + 26);
+        const crouchHeadLimit = closestChar.isZombie ? 26 : 22;
+        isHeadshot = (hitPtY <= closestChar.y + crouchHeadLimit);
         isLegshot = (hitPtY >= closestChar.y + 46);
         isTorsoShot = !isHeadshot && !isLegshot;
       } else {
-        // Normalna sylwetka stojąca / w biegu:
-        isHeadshot = (hitPtY <= closestChar.y + 16);
+        // Normalna sylwetka stojąca / w biegu: dla ludzi bez łapania górnego barku (y + 12)
+        const standHeadLimit = closestChar.isZombie ? 16 : 12;
+        isHeadshot = (hitPtY <= closestChar.y + standHeadLimit);
         isLegshot = (hitPtY >= closestChar.y + 40);
         isTorsoShot = !isHeadshot && !isLegshot;
       }
@@ -1860,6 +1883,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         closestChar.isDead = true;
         closestChar.killer = (b.shooter && b.shooter !== closestChar) ? b.shooter : closestChar.lastAttacker;
         closestChar.killerBulletId = (b.shooter && b.shooter !== closestChar) ? (b.bulletId || null) : null;
+        closestChar.killedByHeadshot = Boolean(isHeadshot && !helmetAbsorbed);
         closestChar.respawnTimer = 180;
         closestChar.corpseAngle = 0;
         closestChar.corpseRotVel = 0;
@@ -1941,28 +1965,40 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         }
 
         if (isHeadshot) {
-          // 1. DEKAPITACJA (Śmiertelny strzał w głowę):
-          // Snajperka Barrett .50, strzelby (SPAS-12 / Obrzyn), Magnum .44 oraz bezpośrednie zabójcze trafienia z karabinów
-          // odrywają i wyrzucają głowę w powietrze z fontanną krwi z szyi.
-          closestChar.hasHead = false;
-          closestChar.decapitated = true;
-          closestChar.severedHead = null;
-          closestChar.neckFountainTimer = 65;
+          const effectiveWeaponId = isSniper ? 'SNIPER' : b.weaponId;
+          if (shouldDecapitateHeadshot(closestChar, effectiveWeaponId, shotDist)) {
+            // 1A. DEKAPITACJA (ciężkie kalibry / bliski strzał ze strzelby / zombie):
+            closestChar.hasHead = false;
+            closestChar.decapitated = true;
+            closestChar.severedHead = null;
+            closestChar.neckFountainTimer = 65;
 
-          triggerHitstop(2);
-          triggerScreenShake(isSniper ? 22 : (isShotgun ? 18 : 12));
+            triggerHitstop(2);
+            triggerScreenShake(isSniper ? 22 : (isShotgun ? 18 : 12));
 
-          spawnHeadGib(
-            closestChar.x + closestChar.w / 2,
-            closestChar.y + 2,
-            b.vx * 0.65,
-            -6.5,
-            closestChar.facing,
-            charVisuals
-          );
+            spawnHeadGib(
+              closestChar.x + closestChar.w / 2,
+              closestChar.y + 2,
+              b.vx * 0.65,
+              -6.5,
+              closestChar.facing,
+              charVisuals
+            );
 
-          spawnBloodSpurt(hitPtX, hitPtY, b.vx, -2.5, 25, 1.4);
-          spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
+            spawnBloodSpurt(hitPtX, hitPtY, b.vx, -2.5, 25, 1.4);
+            spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
+          } else {
+            // 1B. ŚMIERTELNY HEADSHOT BEZ ODRYWANIA GŁOWY (AK47, Glock, dalszy strzał ze strzelby, zwykłe Magnum):
+            closestChar.hasHead = true;
+            closestChar.decapitated = false;
+            closestChar.severedHead = null;
+            closestChar.neckFountainTimer = 0;
+            closestChar.headBobVel = (b.vx >= 0 ? 1 : -1) * 0.45;
+
+            triggerHitstop(2);
+            triggerScreenShake(isMagnum ? 9 : 7);
+            spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.75, -2.2, 22, 1.35);
+          }
 
           if (closestChar.isZombie) {
             closestChar.reviveTimer = 0;

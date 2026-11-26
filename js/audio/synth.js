@@ -616,6 +616,14 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
       return true;
     }
 
+    case 'ui_callout_headshot': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.30);
+      // Krystaliczny, ostry "ding" potwierdzajacy smiertelny strzal w glowe
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 988 * p, freqEnd: 1318 * p, duration: 0.07, gain: gain * 0.42, attack: 0.002 });
+      scheduleTone(ctx, out, { startTime: now + 0.035, type: 'sine', freqStart: 1568 * p, freqEnd: 1975 * p, duration: 0.145, gain: gain * 0.46, attack: 0.002 });
+      return true;
+    }
+
     case 'ui_countdown_tick': {
       const { now, out } = createVoiceStage(ctx, destNode, 0, 0.14);
       const baseFreq = 587.33 * p;

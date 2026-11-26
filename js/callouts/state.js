@@ -20,7 +20,8 @@ export const CALLOUT_CONFIG = {
     QUAD_KILL: 35,
     PENTA_KILL: 45,
     MULTI_KILL: 55,
-    REVENGE: 15
+    REVENGE: 15,
+    HEADSHOT: 10
   }
 };
 

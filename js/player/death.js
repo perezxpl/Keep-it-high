@@ -473,6 +473,7 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     player.hp = player.maxHp;
     player.killer = null;
     player.killerBulletId = null;
+    player.killedByHeadshot = false;
     player.lastAttacker = null;
     player.lastAttackerTimer = 0;
     player._fragRecorded = false;

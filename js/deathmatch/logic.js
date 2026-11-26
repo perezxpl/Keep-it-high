@@ -446,6 +446,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
               victimId: c.peerId || c.id || null,
               victimName: victimName,
               isZombie: Boolean(c.isZombie),
+              isHeadshot: Boolean(c.killedByHeadshot),
               x: c.x,
               y: c.y - 52
             });
@@ -545,6 +546,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
       c._dmDeathRecorded = false;
       c.killer = null;
       c.killerBulletId = null;
+      c.killedByHeadshot = false;
       if (c === player) c._calloutDeathRecorded = false;
 
       // Zabezpieczenie przed odrodzeniem nad zniszczonym mostem / rzeką na Arenie 3

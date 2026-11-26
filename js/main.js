@@ -317,6 +317,7 @@ export function startRound() {
     player._droppedWeaponThisDeath = false;
     player._calloutDeathRecorded = false;
     player.killerBulletId = null;
+    player.killedByHeadshot = false;
     player.ragdoll = null;
     player.staggerTimer = 0;
     player.prevX = player.x;
@@ -857,6 +858,7 @@ function update() {
       player._fragRecorded = false;
       player._calloutDeathRecorded = false;
       player.killerBulletId = null;
+      player.killedByHeadshot = false;
     }
 
     for (const b of activeBots) {
@@ -873,6 +875,7 @@ function update() {
               victimId: b.id || null,
               victimName: b.name || null,
               isZombie: Boolean(b.isZombie),
+              isHeadshot: Boolean(b.killedByHeadshot),
               x: b.x,
               y: b.y - 52
             });
@@ -907,6 +910,7 @@ function update() {
       } else {
         b._fragRecorded = false;
         b.killerBulletId = null;
+        b.killedByHeadshot = false;
       }
     }
 
@@ -924,6 +928,7 @@ function update() {
               victimId: rp.peerId || rp.id || null,
               victimName: rp.name || null,
               isZombie: Boolean(rp.isZombie),
+              isHeadshot: Boolean(rp.killedByHeadshot),
               x: rp.x,
               y: rp.y - 52
             });
@@ -957,6 +962,7 @@ function update() {
         }
       } else {
         rp._fragRecorded = false;
+        rp.killedByHeadshot = false;
       }
     }
   }

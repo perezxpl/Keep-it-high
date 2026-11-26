@@ -177,6 +177,23 @@ function getRevengeDescriptor(targetName) {
   };
 }
 
+function getHeadshotDescriptor() {
+  return {
+    kind: 'HEADSHOT',
+    priority: 1,
+    xp: CALLOUT_CONFIG.XP_BONUSES.HEADSHOT,
+    notifyLabel: 'HEADSHOT',
+    notifyColor: '#f87171',
+    accentColor: '#ef4444',
+    secondaryColor: '#fef08a',
+    bgTop: '#2a090e',
+    bgBottom: '#160d18',
+    words: [
+      { text: 'HEADSHOT', tilt: -0.075, scale: 1.20, color: '#fef2f2', row: 0 }
+    ]
+  };
+}
+
 function computeStaggerOffset(worldX, worldY, kind) {
   let nearbyCount = 0;
   for (const b of calloutState.bubbles) {
@@ -218,7 +235,9 @@ function spawnCalloutBubble(descriptor, worldX, worldY) {
     popAge: 0,
     tilt: descriptor.kind === 'REVENGE'
       ? -0.055
-      : (descriptor.kind === 'ONESHOT' ? 0.045 : ((calloutState.nextBubbleId % 2 === 0) ? -0.035 : 0.035)),
+      : (descriptor.kind === 'HEADSHOT'
+        ? -0.045
+        : (descriptor.kind === 'ONESHOT' ? 0.045 : ((calloutState.nextBubbleId % 2 === 0) ? -0.035 : 0.035))),
     tailDir: (calloutState.nextBubbleId % 2 === 0) ? -1 : 1,
     accentColor: descriptor.accentColor,
     secondaryColor: descriptor.secondaryColor,
@@ -421,6 +440,15 @@ export function registerCalloutKill(killer, victim, opts = {}) {
     spawnCalloutBubble(revDesc, worldX, worldY);
     grantCalloutXp(revDesc.notifyLabel, revDesc.xp, revDesc.notifyColor);
     playSound('ui_callout_revenge');
+  }
+
+  // 4. Śmiertelny strzał w głowę ("HEADSHOT" - wyświetla się niezależnie od tego czy głowa odpadła)
+  const isHeadshotKill = Boolean(opts.isHeadshot || (victim && victim.killedByHeadshot));
+  if (isHeadshotKill) {
+    const hsDesc = getHeadshotDescriptor();
+    spawnCalloutBubble(hsDesc, worldX, worldY);
+    grantCalloutXp(hsDesc.notifyLabel, hsDesc.xp, hsDesc.notifyColor);
+    playSound('ui_callout_headshot');
   }
 }
 

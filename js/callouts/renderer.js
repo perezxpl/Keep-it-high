@@ -38,12 +38,12 @@ function computePopScale(popAge) {
 
 function traceBubblePolygon(ctx, halfW, halfH, kind) {
   const c = kind === 'REVENGE' ? 10 : 8;
-  const flare = kind === 'ONESHOT' ? 5 : (kind === 'REVENGE' ? 4 : 2.5);
+  const flare = kind === 'ONESHOT' ? 5 : (kind === 'REVENGE' ? 4 : (kind === 'HEADSHOT' ? 4.5 : 2.5));
 
   ctx.beginPath();
   // Lewy górny róg (lekko ścięty i dynamicznie rozszerzony)
   ctx.moveTo(-halfW + c, -halfH);
-  if (kind === 'REVENGE' || kind === 'ONESHOT') {
+  if (kind === 'REVENGE' || kind === 'ONESHOT' || kind === 'HEADSHOT') {
     ctx.lineTo(-halfW * 0.25, -halfH - 2.5);
     ctx.lineTo(halfW * 0.18, -halfH + 1);
   }
