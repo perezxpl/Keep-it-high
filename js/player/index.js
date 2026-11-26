@@ -190,6 +190,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   if (player.kickBufferTimer > 0) player.kickBufferTimer--;
   if (player.headshotImmunityTimer > 0) player.headshotImmunityTimer--;
+  if (player.helmetBurstGuardTimer > 0) player.helmetBurstGuardTimer--;
   if (player.kickCooldown > 0 && player.kickState === 'IDLE') player.kickCooldown--;
   if (player.slideCooldown > 0 && !player.isSliding) player.slideCooldown--;
   if (player.shootCooldown > 0) player.shootCooldown--;

@@ -197,6 +197,7 @@ export function awardCarePackageLoot(crate, recipient, player) {
       recipient.hasVest = true;
       recipient.vestHp = 100;
       recipient.hasHelmet = true;
+      recipient.helmetHits = recipient.isJuggernaut ? 3 : 2;
       recipient.hp = recipient.maxHp || 100;
       if (recipient.visuals) {
         recipient.visuals.hasVest = true;
@@ -346,6 +347,7 @@ export function applyRemoteCarePackageOpened(data, owner) {
       owner.hasVest = true;
       owner.vestHp = 100;
       owner.hasHelmet = true;
+      owner.helmetHits = owner.isJuggernaut ? 3 : 2;
       if (owner.visuals) {
         owner.visuals.hasVest = true;
         owner.visuals.hasHelmet = true;

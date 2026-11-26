@@ -32,6 +32,13 @@ import { spawnFlamethrowerStream, spawnSurfaceFire, updateFlamethrower } from '.
 import { playSound, playWeaponFireSound } from './audio/index.js';
 import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
 import { updateBulletVisuals, spawnImpactVisuals, spawnBarrelSmoke } from './weapons/bulletRenderer.js';
+import {
+  getArmorRicochetChance,
+  deflectBulletOffArmor,
+  spawnArmorRicochetEffects,
+  resolveHelmetImpact,
+  resolveTorsoVestImpact
+} from './weapons/armorBallistics.js';
 import { isEnforcerPoiseActive } from './classes/enforcer.js';
 import { triggerCombatFeedBanner } from './ui/combatFeed.js';
 
@@ -629,6 +636,7 @@ function updateMeleeCollision(shooter, ms) {
 }
 
 let _nextBulletId = 1;
+let _nextShotBurstId = 1;
 
 export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return false;
@@ -832,6 +840,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   }
 
   const activeSpread = weapon.spread * (isCrouch ? weapon.crouchSpreadMult : 1.0);
+  const shotBurstId = _nextShotBurstId++;
 
   for (let i = 0; i < weapon.pellets; i++) {
     const dev = (Math.random() * 2 - 1) * activeSpread;
@@ -840,6 +849,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
     bullets.push({
       bulletId: _nextBulletId++,
+      shotBurstId,
       x: muzzleX,
       y: muzzleY,
       prevX: muzzleX,
@@ -1537,6 +1547,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     }
 
     let bulletDestroyed = false;
+    let bulletRicocheted = false;
 
     for (const hitCandidate of candidateHits) {
       const closestChar = hitCandidate.ch;
@@ -1593,43 +1604,97 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         break;
       }
 
+      // Rykoszet od pancerza (hełm, kamizelka, pancerz Kolosa; Barrett .50 nie rykoszetuje)
+      const ricochetChance = b.noRicochet ? 0 : getArmorRicochetChance({
+        target: closestChar,
+        isHeadshot,
+        isTorsoShot,
+        weaponId: b.weaponId,
+        isSniper: b.isSniper,
+        ricochetCount: b.ricochetCount || 0
+      });
+      if (ricochetChance > 0 && Math.random() < ricochetChance) {
+        const { nx, ny } = deflectBulletOffArmor(b, hitPtX, hitPtY, {
+          isHeadshot,
+          isTorsoShot,
+          target: closestChar
+        });
+        spawnArmorRicochetEffects({
+          x: hitPtX,
+          y: hitPtY,
+          nx,
+          ny,
+          isJuggernaut: !!(closestChar.isJuggernaut && !closestChar.isZombie),
+          isHelmet: isHeadshot
+        });
+
+        const sendRicochetDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+        if (isNetConnected && typeof sendRicochetDmg === 'function') {
+          const relY = (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0);
+          if (closestChar.isRemote) {
+            sendRicochetDmg({
+              target: 'player',
+              targetId: closestChar.peerId || null,
+              damage: 0,
+              isHeadshot,
+              isTorsoShot,
+              ricocheted: true,
+              nx,
+              ny,
+              hitX: hitPtX,
+              hitY: hitPtY,
+              relHitY: relY,
+              weaponId: b.weaponId,
+              bulletId: b.bulletId || null
+            });
+          } else if (closestChar.isBot && !isNetHost) {
+            const activeBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
+              ? window.getActiveBots()
+              : (typeof window !== 'undefined' && Array.isArray(window.bots) ? window.bots : []);
+            const bIdx = activeBots.indexOf(closestChar);
+            if (bIdx !== -1) {
+              sendRicochetDmg({
+                target: 'bot',
+                botIdx: bIdx,
+                damage: 0,
+                isHeadshot,
+                isTorsoShot,
+                ricocheted: true,
+                nx,
+                ny,
+                hitX: hitPtX,
+                hitY: hitPtY,
+                relHitY: relY,
+                weaponId: b.weaponId,
+                bulletId: b.bulletId || null
+              });
+            }
+          }
+        }
+
+        bulletRicocheted = true;
+        break;
+      }
+
       let damageMultiplier = 1.0;
       let helmetAbsorbed = false;
       let vestAbsorbed = false;
 
-      // 1. GŁOWA (HEADSHOT) - NAJWYŻSZE OBRAŻENIA (2.25x), HEŁM CHRONI PRZED HEADSHOTEM NA KRÓTKO:
+      // 1. GŁOWA (HEADSHOT) - NAJWYŻSZE OBRAŻENIA (2.25x), HEŁM CHRONI KILKA RAZY (CHYBA ŻE BARRETT .50):
       if (isHeadshot) {
-        const hasHelm = !!(closestChar.hasHelmet || closestChar.visuals?.hasHelmet);
-        const hasImmunity = ((closestChar.headshotImmunityTimer || 0) > 0);
-
-        if (hasImmunity) {
-          // Krótkie okno ochronne po zestrzeleniu hełmu: wygasza kolejne kule z tej samej salwy
-          damageMultiplier = 0.35;
-          helmetAbsorbed = true;
-          spawnBulletSparks(hitPtX, hitPtY, '#facc15', 5);
-          playSound('hit_armor', { x: hitPtX, y: hitPtY });
-        } else if (hasHelm) {
-          // Hełm chroni przed headshotem na krótko: pochłania zabójczą siłę i odlatuje z głowy
-          helmetAbsorbed = true;
-          damageMultiplier = 0.40; // Redukcja zabójczego one-shota
-
-          closestChar.hasHelmet = false;
-          if (closestChar.visuals) closestChar.visuals.hasHelmet = false;
-          closestChar.helmetHits = 0;
-          closestChar.headshotImmunityTimer = 22; // ~360ms krótkiej osłony przed serią
-
-          spawnKnockedHelmet(hitPtX, hitPtY - 4, b.vx, b.vy, closestChar.facing, closestChar.visuals || closestChar.currentClass?.visuals);
-          triggerScreenShake(3.2);
-          spawnBulletSparks(hitPtX, hitPtY, '#facc15', 12);
-          playSound('hit_helmet_break', { x: hitPtX, y: hitPtY });
-
-          if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
-            window.syncArmorDevButtons();
-          }
-        } else {
-          // Czyste trafienie w nieosłoniętą głowę: najwięcej obrażeń (2.25x)!
-          damageMultiplier = 2.25;
-        }
+        const helmRes = resolveHelmetImpact({
+          target: closestChar,
+          weaponId: b.weaponId,
+          isSniper: b.isSniper,
+          shotBurstId: b.shotBurstId ?? null,
+          bulletVx: b.vx,
+          bulletVy: b.vy,
+          hitPtX,
+          hitPtY,
+          attackerFacing: b.vx >= 0 ? 1 : -1
+        });
+        damageMultiplier = helmRes.damageMultiplier;
+        helmetAbsorbed = helmRes.helmetAbsorbed;
       } else if (isTorsoShot) {
         // 2. TORS (TORSO SHOT) - DRUGIE W HIERARCHII OBRAŻEŃ (1.25x):
         damageMultiplier = 1.25;
@@ -1646,37 +1711,16 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       // 4. PANCERZ KORPUSU (KAMIZELKA KULOODPORNA):
       // Kamizelka posiada swoje własne HP nałożone na HP posiadacza i chroni TYLKO od obrażeń na tors!
       if (isTorsoShot && (closestChar.hasVest || closestChar.visuals?.hasVest)) {
-        if (closestChar.vestHp === undefined) {
-          closestChar.vestHp = 60;
-          closestChar.vestMaxHp = 60;
-        }
-
-        if (closestChar.vestHp > 0) {
-          vestAbsorbed = true;
-          spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 7);
-          playSound('hit_armor', { x: hitPtX, y: hitPtY });
-
-          if (closestChar.vestHp >= totalDamage) {
-            // Kamizelka przyjmuje CAŁOŚĆ obrażeń na tors – HP posiadacza nienaruszone!
-            closestChar.vestHp -= totalDamage;
-            totalDamage = 0;
-          } else {
-            // Kamizelka pochłania ile ma, reszta przechodzi na HP posiadacza
-            totalDamage -= closestChar.vestHp;
-            closestChar.vestHp = 0;
-          }
-
-          if (closestChar.vestHp <= 0) {
-            closestChar.vestHp = 0;
-            closestChar.hasVest = false;
-            if (closestChar.visuals) closestChar.visuals.hasVest = false;
-            spawnVestShreds(hitPtX, hitPtY, b.vx, b.vy, closestChar.visuals?.vestColor || '#18181b');
-            triggerScreenShake(2.5);
-            if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
-              window.syncArmorDevButtons();
-            }
-          }
-        }
+        const vestRes = resolveTorsoVestImpact({
+          target: closestChar,
+          totalDamage,
+          hitPtX,
+          hitPtY,
+          vx: b.vx,
+          vy: b.vy
+        });
+        totalDamage = vestRes.totalDamage;
+        vestAbsorbed = vestRes.vestAbsorbed;
       }
 
       closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - totalDamage);
@@ -1744,7 +1788,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             hitY: hitPtY,
             relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
             weaponId: b.weaponId,
-            bulletId: b.bulletId || null
+            bulletId: b.bulletId || null,
+            shotBurstId: b.shotBurstId || null
           });
         } else if (closestChar.isZombie && !isNetHost) {
           sendDmg({
@@ -1775,7 +1820,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
               hitY: hitPtY,
               relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
               weaponId: b.weaponId,
-              bulletId: b.bulletId || null
+              bulletId: b.bulletId || null,
+              shotBurstId: b.shotBurstId || null
             });
           }
         }
@@ -2123,7 +2169,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
     if (bulletDestroyed) continue;
 
-    if (mapHit) {
+    if (mapHit && !bulletRicocheted) {
       spawnImpactVisuals(mapHit.x, mapHit.y, mapHit.nx, mapHit.ny, b.weaponId);
       bullets.splice(i, 1);
       continue;

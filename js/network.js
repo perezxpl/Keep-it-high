@@ -1,6 +1,8 @@
 import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
 import { activateJuggernautMode } from './player/juggernaut.js';
 import { WEAPONS, shootWeapon, spawnBulletSparks, shouldDecapitateHeadshot, isMeleeStrikeWeapon } from './weapons.js';
+import { spawnArmorRicochetEffects, resolveHelmetImpact, resolveTorsoVestImpact } from './weapons/armorBallistics.js';
+import { isEnforcerPoiseActive } from './classes/enforcer.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType, arenaScore } from './obstacles.js';
 import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, triggerGoalCelebration, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
 import { ball } from './ball.js';
@@ -274,6 +276,7 @@ export function sendPlayerState(localPlayer) {
       maxHp: localPlayer.maxHp || 100,
       hasVest: !!localPlayer.hasVest,
       hasHelmet: !!localPlayer.hasHelmet,
+      helmetHits: Math.max(0, Math.round(localPlayer.helmetHits ?? 0)),
       vestHp: Math.round(localPlayer.vestHp || 0),
       isJuggernaut: !!localPlayer.isJuggernaut,
       isDead: !!localPlayer.isDead,
@@ -445,6 +448,11 @@ export function sendBotsState(activeBotsList) {
         isJetpacking: !!b.isJetpacking,
         hp: (typeof b.hp === 'number') ? b.hp : 100,
         maxHp: b.maxHp || 100,
+        hasVest: !!b.hasVest,
+        vestHp: Math.round(b.vestHp || 0),
+        hasHelmet: !!b.hasHelmet,
+        helmetHits: Math.max(0, Math.round(b.helmetHits ?? 0)),
+        isJuggernaut: !!b.isJuggernaut,
         isDead: !!b.isDead,
         selectedClass: b.selectedClass || b.currentClass?.id || 'STRIKER',
         currentWeaponId: b.currentWeapon ? b.currentWeapon.id : 'AK47',
@@ -642,33 +650,35 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
     return;
   }
 
+  if (data.ricocheted) {
+    spawnArmorRicochetEffects({
+      x: hitPtX,
+      y: hitPtY,
+      nx: typeof data.nx === 'number' ? data.nx : -attackerFacing,
+      ny: typeof data.ny === 'number' ? data.ny : -0.7,
+      isJuggernaut: !!(player.isJuggernaut && !player.isZombie),
+      isHelmet: !!data.isHeadshot
+    });
+    return;
+  }
+
   let damageMultiplier = 1.0;
   let helmetAbsorbed = false;
   let vestAbsorbed = false;
 
   if (data.isHeadshot) {
-    const hasHelm = !!(player.hasHelmet || player.visuals?.hasHelmet);
-    const hasImmunity = ((player.headshotImmunityTimer || 0) > 0);
-    if (hasImmunity) {
-      damageMultiplier = 0.35;
-      helmetAbsorbed = true;
-      spawnBulletSparks(hitPtX, hitPtY, '#facc15', 5);
-    } else if (hasHelm) {
-      helmetAbsorbed = true;
-      damageMultiplier = 0.40;
-      player.hasHelmet = false;
-      if (player.visuals) player.visuals.hasHelmet = false;
-      player.helmetHits = 0;
-      player.headshotImmunityTimer = 22;
-      spawnKnockedHelmet(hitPtX, hitPtY - 4, attackerFacing * 8, -4, player.facing, player.visuals || player.currentClass?.visuals);
-      triggerScreenShake(3.2);
-      spawnBulletSparks(hitPtX, hitPtY, '#facc15', 12);
-      if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
-        window.syncArmorDevButtons();
-      }
-    } else {
-      damageMultiplier = 2.25;
-    }
+    const helmRes = resolveHelmetImpact({
+      target: player,
+      weaponId: data.weaponId,
+      shotBurstId: data.shotBurstId ?? null,
+      bulletVx: attackerFacing * 8,
+      bulletVy: -4,
+      hitPtX,
+      hitPtY,
+      attackerFacing
+    });
+    damageMultiplier = helmRes.damageMultiplier;
+    helmetAbsorbed = helmRes.helmetAbsorbed;
   } else if (data.isTorsoShot) {
     damageMultiplier = 1.25;
   } else {
@@ -676,33 +686,21 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
   }
 
   let totalDamage = Math.round(data.damage * damageMultiplier);
+  if (player.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(player)) {
+    totalDamage = Math.round(totalDamage * 0.82);
+  }
 
   if (data.isTorsoShot && (player.hasVest || player.visuals?.hasVest)) {
-    if (player.vestHp === undefined) {
-      player.vestHp = 60;
-      player.vestMaxHp = 60;
-    }
-    if (player.vestHp > 0) {
-      vestAbsorbed = true;
-      spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 7);
-      if (player.vestHp >= totalDamage) {
-        player.vestHp -= totalDamage;
-        totalDamage = 0;
-      } else {
-        totalDamage -= player.vestHp;
-        player.vestHp = 0;
-      }
-      if (player.vestHp <= 0) {
-        player.vestHp = 0;
-        player.hasVest = false;
-        if (player.visuals) player.visuals.hasVest = false;
-        spawnVestShreds(hitPtX, hitPtY, attackerFacing * 6, -3, player.visuals?.vestColor || '#18181b');
-        triggerScreenShake(2.5);
-        if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
-          window.syncArmorDevButtons();
-        }
-      }
-    }
+    const vestRes = resolveTorsoVestImpact({
+      target: player,
+      totalDamage,
+      hitPtX,
+      hitPtY,
+      vx: attackerFacing * 6,
+      vy: -3
+    });
+    totalDamage = vestRes.totalDamage;
+    vestAbsorbed = vestRes.vestAbsorbed;
   }
 
   player.hp = Math.max(0, (player.hp !== undefined ? player.hp : 100) - totalDamage);
@@ -815,20 +813,70 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
     return;
   }
 
-  let dmg = data.damage || 25;
-  if (data.isHeadshot) dmg = Math.round(dmg * 2.25);
-  else if (data.isTorsoShot) dmg = Math.round(dmg * 1.25);
-  else dmg = Math.round(dmg * 0.75);
+  if (data.ricocheted) {
+    spawnArmorRicochetEffects({
+      x: hitPtX,
+      y: hitPtY,
+      nx: typeof data.nx === 'number' ? data.nx : -attackerFacing,
+      ny: typeof data.ny === 'number' ? data.ny : -0.7,
+      isJuggernaut: !!(b.isJuggernaut && !b.isZombie),
+      isHelmet: !!data.isHeadshot
+    });
+    return;
+  }
+
+  let botDamageMult = 1.0;
+  let botHelmetAbsorbed = false;
+  let botVestAbsorbed = false;
+
+  if (data.isHeadshot) {
+    const helmRes = resolveHelmetImpact({
+      target: b,
+      weaponId: data.weaponId,
+      shotBurstId: data.shotBurstId ?? null,
+      bulletVx: attackerFacing * 8,
+      bulletVy: -4,
+      hitPtX,
+      hitPtY,
+      attackerFacing
+    });
+    botDamageMult = helmRes.damageMultiplier;
+    botHelmetAbsorbed = helmRes.helmetAbsorbed;
+  } else if (data.isTorsoShot) {
+    botDamageMult = 1.25;
+  } else {
+    botDamageMult = 0.75;
+  }
+
+  let dmg = Math.round((data.damage || 25) * botDamageMult);
+  if (b.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(b)) {
+    dmg = Math.round(dmg * 0.82);
+  }
+
+  if (data.isTorsoShot && (b.hasVest || b.visuals?.hasVest)) {
+    const vestRes = resolveTorsoVestImpact({
+      target: b,
+      totalDamage: dmg,
+      hitPtX,
+      hitPtY,
+      vx: attackerFacing * 6,
+      vy: -3
+    });
+    dmg = vestRes.totalDamage;
+    botVestAbsorbed = vestRes.vestAbsorbed;
+  }
 
   b.hp = Math.max(0, (b.hp !== undefined ? b.hp : 100) - dmg);
   b.lastAttacker = attacker;
   b.lastAttackerTimer = 240;
 
-  spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 6);
-  spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 2, -1, 6, 0.9);
+  if (!botHelmetAbsorbed && !botVestAbsorbed) {
+    spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 6);
+    spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 2, -1, 6, 0.9);
+  }
 
   if (b.hp <= 0 && !b.isDead) {
-    const fatalHeadshot = Boolean(data.isHeadshot && !isMeleeStrikeWeapon(data.weaponId));
+    const fatalHeadshot = Boolean(data.isHeadshot && !botHelmetAbsorbed && !isMeleeStrikeWeapon(data.weaponId));
     b.isDead = true;
     b.killer = attacker;
     b.killerBulletId = data.bulletId || null;
@@ -1143,6 +1191,9 @@ export function handleNetworkData(data, senderPeerId = null) {
         targetRp.hasHelmet = !!data.hasHelmet;
         if (targetRp.visuals) targetRp.visuals.hasHelmet = !!data.hasHelmet;
       }
+      if (data.helmetHits !== undefined) {
+        targetRp.helmetHits = data.helmetHits;
+      }
       if (data.vestHp !== undefined) {
         targetRp.vestHp = data.vestHp;
       }
@@ -1415,6 +1466,17 @@ export function handleNetworkData(data, senderPeerId = null) {
         localBot.isJetpacking = rBot.isJetpacking;
         localBot.hp = rBot.hp;
         localBot.maxHp = rBot.maxHp;
+        if (rBot.hasVest !== undefined) {
+          localBot.hasVest = !!rBot.hasVest;
+          if (localBot.visuals) localBot.visuals.hasVest = !!rBot.hasVest;
+        }
+        if (rBot.vestHp !== undefined) localBot.vestHp = rBot.vestHp;
+        if (rBot.hasHelmet !== undefined) {
+          localBot.hasHelmet = !!rBot.hasHelmet;
+          if (localBot.visuals) localBot.visuals.hasHelmet = !!rBot.hasHelmet;
+        }
+        if (rBot.helmetHits !== undefined) localBot.helmetHits = rBot.helmetHits;
+        if (rBot.isJuggernaut !== undefined) localBot.isJuggernaut = !!rBot.isJuggernaut;
         localBot.isDead = rBot.isDead;
         if (rBot.team) localBot.team = rBot.team;
         if (rBot.name) localBot.name = rBot.name;

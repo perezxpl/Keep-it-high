@@ -157,7 +157,7 @@ export function createPlayerInstance(overrides = {}) {
     vestHp: 0,
     vestMaxHp: 60,
     hasHelmet: false,
-    helmetHits: 1,
+    helmetHits: 2,
     headshotImmunityTimer: 0,
     currentWeapon: WEAPONS.AK47,
     isHolstered: (typeof activeArenaId !== 'undefined' ? (activeArenaId === 'ARENA_1') : true),

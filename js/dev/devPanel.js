@@ -725,7 +725,8 @@ export function initModularGearDevUI() {
   helmBtn.title = 'Załóż / Zdejmij hełm balistyczny (chroni przed headshotem na krótko!)';
   const updateHelmUI = () => {
     const hasH = !!player.hasHelmet;
-    helmBtn.textContent = hasH ? 'HEŁM: WŁ' : 'HEŁM: BRAK';
+    const hHits = Math.max(1, player.helmetHits || (player.isJuggernaut ? 3 : 2));
+    helmBtn.textContent = hasH ? `HEŁM: WŁ (${hHits})` : 'HEŁM: BRAK';
     helmBtn.style.borderColor = hasH ? '#06b6d4' : '#64748b';
     helmBtn.style.color = hasH ? '#22d3ee' : '#94a3b8';
     helmBtn.style.background = hasH ? 'rgba(6, 182, 212, 0.2)' : 'transparent';
@@ -746,7 +747,7 @@ export function initModularGearDevUI() {
       player.helmetHits = 0;
     } else {
       player.hasHelmet = true;
-      player.helmetHits = 1;
+      player.helmetHits = player.isJuggernaut ? 3 : 2;
     }
     updateHelmUI();
   };

@@ -119,7 +119,7 @@ export function clearJuggernautMode(target) {
   const classMaxHp = target.currentClass?.stats?.maxHp || target.currentClass?.stats?.hp || 100;
   target.maxHp = classMaxHp;
   target.vestMaxHp = 60;
-  target.helmetHits = 1;
+  target.helmetHits = 2;
 }
 
 /**
