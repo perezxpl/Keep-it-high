@@ -113,6 +113,7 @@ import {
   initMobilePerfMonitor,
   notifyRoundStart
 } from './dev/mobilePerfMonitor.js';
+import { initKillstreaksDevUI } from './dev/killstreakDevUI.js';
 import {
   keys,
   mouseState,
@@ -569,6 +570,7 @@ initModularGearDevUI();
 initDevPerfUI();
 initMobilePerfMonitor();
 initWeaponEditorUI();
+initKillstreaksDevUI();
 initNetwork();
 initKillstreaks();
 initPickups();
