@@ -1,5 +1,5 @@
 import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
-import { WEAPONS, shootWeapon, spawnBulletSparks, shouldDecapitateHeadshot } from './weapons.js';
+import { WEAPONS, shootWeapon, spawnBulletSparks, shouldDecapitateHeadshot, isMeleeStrikeWeapon } from './weapons.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType, arenaScore } from './obstacles.js';
 import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, triggerGoalCelebration, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
 import { ball } from './ball.js';
@@ -722,7 +722,7 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
   }
 
   if (player.hp <= 0 && !player.isDead) {
-    const fatalHeadshot = Boolean(data.isHeadshot && !helmetAbsorbed);
+    const fatalHeadshot = Boolean(data.isHeadshot && !helmetAbsorbed && !isMeleeStrikeWeapon(data.weaponId));
     player.isDead = true;
     player.killer = attacker;
     player.killerBulletId = data.bulletId || null;
@@ -826,7 +826,7 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
   spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 2, -1, 6, 0.9);
 
   if (b.hp <= 0 && !b.isDead) {
-    const fatalHeadshot = Boolean(data.isHeadshot);
+    const fatalHeadshot = Boolean(data.isHeadshot && !isMeleeStrikeWeapon(data.weaponId));
     b.isDead = true;
     b.killer = attacker;
     b.killerBulletId = data.bulletId || null;

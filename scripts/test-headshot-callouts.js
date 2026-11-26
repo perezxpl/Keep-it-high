@@ -33,7 +33,8 @@ globalThis.Image = class {
 };
 globalThis.performance = { now: () => Date.now() };
 
-const { shouldDecapitateHeadshot, updateBullets } = await import('../js/weapons.js');
+const { shouldDecapitateHeadshot, isMeleeStrikeWeapon, updateBullets } = await import('../js/weapons.js');
+const { spawnThrownTomahawk, updateProjectiles } = await import('../js/projectiles.js');
 const { bullets } = await import('../js/weapons/transform.js');
 const { calloutState } = await import('../js/callouts/state.js');
 const { initCallouts, registerCalloutKill } = await import('../js/callouts/logic.js');
@@ -247,6 +248,53 @@ console.log('--- TEST 4: Dymek HEADSHOT w callouts (pojawia sie ludziom, NIE poj
   assert.ok(lastMulti.offsetY !== lastHs.offsetY || lastMulti.offsetX !== lastHs.offsetX, 'Dymki PODWOJNE ZABOJSTWO i HEADSHOT nie moga nakladac sie na siebie');
 
   console.log('PASS: System dymkow HEADSHOT dziala poprawnie i pomija zombie.');
+}
+
+console.log('--- TEST 5: Brak HEADSHOT od walki wrecz vs HEADSHOT przy rzucie toporkiem (TOMAHAWK) ---');
+{
+  assert.strictEqual(isMeleeStrikeWeapon('KNIFE'), true, 'KNIFE to cios wrecz (bez HEADSHOT calloutu)');
+  assert.strictEqual(isMeleeStrikeWeapon('MACHETE'), true, 'MACHETE to cios wrecz (bez HEADSHOT calloutu)');
+  assert.strictEqual(isMeleeStrikeWeapon('AXE'), true, 'AXE to cios wrecz (bez HEADSHOT calloutu)');
+  assert.strictEqual(isMeleeStrikeWeapon('TOMAHAWK'), false, 'TOMAHAWK to rzut i moze wywolac HEADSHOT callout');
+  assert.strictEqual(isMeleeStrikeWeapon('AK47'), false, 'AK47 to bron palna');
+
+  // Symulacja rzutu Tomahawkiem w glowe przeciwnika bez helmu
+  player.x = 100;
+  player.y = 700;
+  player.facing = 1;
+  player.team = 'CYAN';
+
+  const target = {
+    id: 'bot_tomahawk_target',
+    name: 'AXE_VICTIM',
+    team: 'ORANGE',
+    isBot: true,
+    active: true,
+    isZombie: false,
+    x: 200,
+    y: 700,
+    w: 24,
+    h: 70,
+    hp: 100,
+    facing: -1,
+    hasHelmet: false,
+    hasVest: false,
+    hasHead: true,
+    decapitated: false,
+    isDead: false
+  };
+
+  const tomahawk = spawnThrownTomahawk(player, 212, 704, 1.0, 140, 704);
+  tomahawk.x = 212;
+  tomahawk.y = 704;
+  tomahawk.vx = 18;
+  tomahawk.vy = 0;
+
+  updateProjectiles(800, [], null, [player, target], null, 1 / 60);
+
+  assert.strictEqual(target.isDead, true, 'Rzut Tomahawkiem w glowe powinien zabic przeciwnika');
+  assert.strictEqual(target.killedByHeadshot, true, 'Rzut broni bialej (Tomahawk) w glowe musi ustawiac killedByHeadshot = true');
+  console.log('PASS: Walka wrecz blokuje napis HEADSHOT, a rzut Tomahawkiem w glowe go wyzwala.');
 }
 
 console.log('\n[SUKCES] Wszystkie testy headshotow, dekapitacji i calloutow zakonczone sukcesem!');

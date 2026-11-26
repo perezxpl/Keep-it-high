@@ -874,7 +874,7 @@ export class ThrownTomahawk {
               ch.isDead = true;
               ch.killer = this.shooter;
               ch.killerBulletId = null;
-              ch.killedByHeadshot = Boolean(isHeadshot);
+              ch.killedByHeadshot = Boolean(isHeadshot && !helmetAbsorbed);
               ch.respawnTimer = 180;
               ch.corpseAngle = 0;
               ch.corpseRotVel = 0;

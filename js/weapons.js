@@ -388,7 +388,7 @@ function updateMeleeCollision(shooter, ms) {
         t.isDead = true;
         t.killer = shooter;
         t.killerBulletId = null;
-        t.killedByHeadshot = Boolean(isHeadshot);
+        t.killedByHeadshot = false;
         t.respawnTimer = 180;
         t.corpseAngle = 0;
         t.corpseRotVel = 0;
@@ -1301,14 +1301,21 @@ function getSegmentAABBHitT(x1, y1, x2, y2, left, top, right, bottom) {
 }
 
 /**
+ * Sprawdza, czy identyfikator broni dotyczy bezpośredniego ciosu wręcz (nie rzutu).
+ */
+export function isMeleeStrikeWeapon(weaponId) {
+  return weaponId === 'KNIFE' || weaponId === 'MACHETE' || weaponId === 'AXE';
+}
+
+/**
  * Określa, czy śmiertelne trafienie w głowę powinno ją fizycznie oderwać (dekapitacja).
  * Zombie zawsze tracą głowę przy śmiertelnym headshocie, by nie wstawały z ziemi.
- * Dla graczy i botów odrywanie głowy jest rzadkie i zastrzeżone dla ciężkich kalibrów lub bliskiego strzelania ze strzelby.
+ * Dla graczy i botów odrywanie głowy jest rzadkie i zastrzeżone dla ciężkich kalibrów, maczety lub bliskiego strzelania ze strzelby.
  * AK47 oraz GLOCK nigdy nie odrywają głowy.
  */
 export function shouldDecapitateHeadshot(target, weaponId, shotDist = 0) {
   if (target && target.isZombie) return true;
-  if (weaponId === 'SNIPER' || weaponId === 'RPG') return true;
+  if (weaponId === 'SNIPER' || weaponId === 'RPG' || weaponId === 'MACHETE') return true;
   if (weaponId === 'SHOTGUN' || weaponId === 'SAWED_OFF') {
     return shotDist <= 220;
   }
