@@ -19,6 +19,7 @@ import { getActiveArena } from '../obstacles.js';
 import { initCarePackages, spawnCarePackage, updateCarePackages } from './carePackage.js';
 import { spawnMortarStrike, updateMortarStrikes, spawnAttackDrone, updateAttackDrones } from './supportStrikes.js';
 import { initSentryGuns, spawnSentryGun, updateSentryGuns } from './sentryGun.js';
+import { activateJuggernautMode } from '../player/juggernaut.js';
 
 function resetUiAnimState() {
   if (!killstreakState.uiAnim) killstreakState.uiAnim = {};
@@ -236,24 +237,14 @@ export function activateKillstreak(streakId) {
     return true;
   }
 
-  // Obsługa nagrody: JUGGERNAUT (Pancerz Juggernaut)
+  // Obsługa nagrody: JUGGERNAUT (Pancerz Juggernaut + M134 Minigun)
   if (streakId === 'JUGGERNAUT') {
     killstreakState.availableStreaks.splice(idx, 1);
-    if (player) {
-      player.maxHp = 250;
-      player.hp = 250;
-      player.hasVest = true;
-      player.vestHp = 200;
-      player.hasHelmet = true;
-      if (player.visuals) {
-        player.visuals.hasVest = true;
-        player.visuals.hasHelmet = true;
-      }
-    }
+    activateJuggernautMode(player);
     triggerKillstreakActivateAnim('JUGGERNAUT');
 
-    setKillstreakNotification('[KOLOS] PANCERZ JUGGERNAUT', 'CIĘŻKI BALISTYCZNY PANCERZ 250 HP I 200 KEVLARU', def.accent || '#eab308', 4.5, 'JUGGERNAUT');
-    triggerCombatFeedBanner('KILL', '[KOLOS] WYPOSAŻONO PANCERZ JUGGERNAUT (250 HP)!');
+    setKillstreakNotification('[KOLOS] PANCERZ JUGGERNAUT', 'PANCERZ EOD 250 HP + M134 MINIGUN AKTYWNE!', def.accent || '#eab308', 4.5, 'JUGGERNAUT');
+    triggerCombatFeedBanner('KILL', '[KOLOS] WYPOSAŻONO PANCERZ JUGGERNAUT (250 HP + M134 MINIGUN)!');
     if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
       window.sendKillstreakEvent({ subType: 'JUGGERNAUT' }, player);
     }

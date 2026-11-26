@@ -1686,6 +1686,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     AK47: 'AK-47',
     SHOTGUN: 'Shotgun',
     SNIPER: 'Barrett .50',
+    MINIGUN: 'M134 Minigun',
     GLOCK: 'Glock 17',
     REVOLVER: 'Magnum .44',
     SAWED_OFF: 'Obrzyn 12G',
@@ -1696,11 +1697,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   const wepAccent = curWepId === 'SHOTGUN'
     ? '#fb923c'
-    : (curWepId === 'SNIPER' ? '#38bdf8' : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? '#f97316' : '#f59e0b'));
+    : (curWepId === 'SNIPER' ? '#38bdf8' : (curWepId === 'MINIGUN' ? '#eab308' : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? '#f97316' : '#f59e0b')));
 
   const curAmmoObj = player.ammo?.[curWepId];
-  const defM = curWepId === 'SHOTGUN' ? 8 : (curWepId === 'SNIPER' ? 5 : (curWepId === 'FLAMETHROWER' ? 100 : (curWepId === 'RPG7' ? 1 : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? 1 : 30))));
-  const defR = curWepId === 'SHOTGUN' ? 64 : (curWepId === 'SNIPER' ? 25 : (curWepId === 'FLAMETHROWER' ? 200 : (curWepId === 'RPG7' ? 3 : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? 0 : 90))));
+  const defM = curWepId === 'SHOTGUN' ? 8 : (curWepId === 'SNIPER' ? 5 : (curWepId === 'FLAMETHROWER' ? 100 : (curWepId === 'MINIGUN' ? 150 : (curWepId === 'RPG7' ? 1 : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? 1 : 30)))));
+  const defR = curWepId === 'SHOTGUN' ? 64 : (curWepId === 'SNIPER' ? 25 : (curWepId === 'FLAMETHROWER' ? 200 : (curWepId === 'MINIGUN' ? 300 : (curWepId === 'RPG7' ? 3 : (curWepId === 'GRENADE' || curWepId === 'MOLOTOV' ? 0 : 90)))));
   const cAmmo = curAmmoObj ? curAmmoObj.currentAmmo : defM;
   const rAmmo = curAmmoObj ? curAmmoObj.reserveAmmo : defR;
   const isRel = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;

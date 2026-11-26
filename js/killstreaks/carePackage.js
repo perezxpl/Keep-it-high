@@ -16,6 +16,7 @@ import { spawnMortarStrike, spawnAttackDrone } from './supportStrikes.js';
 import { spawnSentryGun } from './sentryGun.js';
 import { addDynamicLight } from '../lighting/index.js';
 import { cureInfection, isZombieModeActive } from '../zombie/index.js';
+import { activateJuggernautMode } from '../player/juggernaut.js';
 
 function getKeys() {
   if (typeof window !== 'undefined' && window.keys) return window.keys;
@@ -299,23 +300,15 @@ export function awardCarePackageLoot(crate, recipient, player) {
     }
 
     case 'JUGGERNAUT': {
-      recipient.maxHp = 250;
-      recipient.hp = 250;
-      recipient.hasVest = true;
-      recipient.vestHp = 200;
-      recipient.hasHelmet = true;
-      if (recipient.visuals) {
-        recipient.visuals.hasVest = true;
-        recipient.visuals.hasHelmet = true;
-      }
+      activateJuggernautMode(recipient);
 
-      const label = 'PANCERZ JUGGERNAUT [KOLOS] (250 HP)';
+      const label = 'PANCERZ JUGGERNAUT + MINIGUN [KOLOS]';
       crate.floatingNotice = { text: `[KOLOS] ${label}`, color: '#eab308', y: crate.y - 12, alpha: 1.0 };
 
       if (isPlayer) {
         triggerKillstreakActivateAnim('JUGGERNAUT');
         triggerCombatFeedBanner('KILL', `[ZRZUT] JACKPOT! ${label}`);
-        setKillstreakNotification('[ZRZUT] PANCERZ JUGGERNAUT', 'CIĘŻKI PANCERZ TYTANOWY (250 HP / 200 KEVLARU)', '#eab308', 5.0, 'JUGGERNAUT');
+        setKillstreakNotification('[ZRZUT] PANCERZ JUGGERNAUT', 'PANCERZ EOD 250 HP + M134 MINIGUN AKTYWNE!', '#eab308', 5.0, 'JUGGERNAUT');
       } else {
         triggerCombatFeedBanner('DEATH', `[UWAGA] BOT ZDOBYŁ: ${label}!`);
       }
@@ -358,15 +351,7 @@ export function applyRemoteCarePackageOpened(data, owner) {
         owner.visuals.hasHelmet = true;
       }
     } else if (data.loot === 'JUGGERNAUT') {
-      owner.maxHp = 250;
-      owner.hp = 250;
-      owner.hasVest = true;
-      owner.vestHp = 200;
-      owner.hasHelmet = true;
-      if (owner.visuals) {
-        owner.visuals.hasVest = true;
-        owner.visuals.hasHelmet = true;
-      }
+      activateJuggernautMode(owner, { fromNetwork: true });
     }
   }
 }

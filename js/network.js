@@ -1,4 +1,5 @@
 import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
+import { activateJuggernautMode } from './player/juggernaut.js';
 import { WEAPONS, shootWeapon, spawnBulletSparks, shouldDecapitateHeadshot, isMeleeStrikeWeapon } from './weapons.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType, arenaScore } from './obstacles.js';
 import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, triggerGoalCelebration, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
@@ -274,6 +275,7 @@ export function sendPlayerState(localPlayer) {
       hasVest: !!localPlayer.hasVest,
       hasHelmet: !!localPlayer.hasHelmet,
       vestHp: Math.round(localPlayer.vestHp || 0),
+      isJuggernaut: !!localPlayer.isJuggernaut,
       isDead: !!localPlayer.isDead,
       selectedClass: localPlayer.selectedClass || localPlayer.currentClass?.id || 'STRIKER',
       classId: localPlayer.currentClass?.id || localPlayer.selectedClass || 'STRIKER',
@@ -1144,6 +1146,9 @@ export function handleNetworkData(data, senderPeerId = null) {
       if (data.vestHp !== undefined) {
         targetRp.vestHp = data.vestHp;
       }
+      if (data.isJuggernaut !== undefined) {
+        targetRp.isJuggernaut = !!data.isJuggernaut;
+      }
       targetRp.isDead = !!data.isDead;
       if (targetRp.isDead) {
         targetRp.burnTimer = 0;
@@ -1590,17 +1595,9 @@ export function handleNetworkData(data, senderPeerId = null) {
           break;
         case 'JUGGERNAUT':
           if (owner) {
-            owner.maxHp = 250;
-            owner.hp = 250;
-            owner.hasVest = true;
-            owner.vestHp = 200;
-            owner.hasHelmet = true;
-            if (owner.visuals) {
-              owner.visuals.hasVest = true;
-              owner.visuals.hasHelmet = true;
-            }
+            activateJuggernautMode(owner, { fromNetwork: true });
           }
-          triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} AKTYWOWAŁ PANCERZ JUGGERNAUT (250 HP)!`);
+          triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} AKTYWOWAŁ PANCERZ JUGGERNAUT (250 HP + MINIGUN)!`);
           break;
       }
       break;

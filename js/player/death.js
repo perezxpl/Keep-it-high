@@ -17,6 +17,7 @@ import { clearPlayerThrownTomahawks } from '../projectiles.js';
 import { spawnDroppedWeapon } from '../pickup/index.js';
 import { restorePlayerArmoryLoadout } from '../loadout/index.js';
 import { onCharacterRespawnCorpse } from '../zombie/index.js';
+import { clearJuggernautMode } from './juggernaut.js';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
@@ -469,6 +470,7 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     player.axeThrown = false;
     player.meleeBloodTimer = 0;
     clearPlayerThrownTomahawks(player);
+    clearJuggernautMode(player);
     player.isAcidDying = false;
     player.hp = player.maxHp;
     player.killer = null;

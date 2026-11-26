@@ -70,6 +70,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.spawnProtectionTimer > 0) {
     player.spawnProtectionTimer--;
   }
+  if (player.juggernautDeployAnim > 0) {
+    player.juggernautDeployAnim = Math.max(0, player.juggernautDeployAnim - 0.018);
+  }
 
   if (player.isDead) {
     handlePlayerDeath(player, GROUND_Y, targets || player._targets);
@@ -542,7 +545,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     targetTopSpeed = jogMax;
   }
 
-  // Spowolnienie ruchu od ciężaru M134 Minigun (zwłaszcza przy rozkręconych lufach i prowadzeniu ognia)
+  // Lekki spadek mobilności ciężkiego pancerza Juggernaut oraz wagi M134 Minigun
+  if (player.isJuggernaut) {
+    targetTopSpeed *= 0.88;
+  }
   if (player.currentWeapon?.id === 'MINIGUN' && !player.isHolstered) {
     const spinSlowdown = (player.minigunSpin || 0) * 0.35;
     const baseHeavySlowdown = 0.15;

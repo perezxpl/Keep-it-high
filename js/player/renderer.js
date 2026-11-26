@@ -129,6 +129,14 @@ import {
   drawJetpack
 } from './limbs.js';
 
+import {
+  drawJuggernautTorsoArmor,
+  drawJuggernautHelmetProfile,
+  drawJuggernautHelmetFront,
+  drawJuggernautHelmetBack,
+  drawJuggernautDeployAura
+} from './juggernaut.js';
+
 export {
   DEFAULT_VISUALS,
   HAIR_STYLE_LIST,
@@ -358,7 +366,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   v.heldTomahawk = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned && p.throwAnim.throwType === 'TOMAHAWK');
   v.throwType = (p.throwAnim && p.throwAnim.active) ? (p.throwAnim.throwType || selectedThrowableId) : selectedThrowableId;
   v.grenadeCookRatio = (p.throwAnim && p.throwAnim.active && p.throwAnim.cookTimer) ? Math.min(1.0, p.throwAnim.cookTimer / 300) : 0;
-  const muscle = v.muscleMult || 1.0;
+  const baseMuscle = v.muscleMult || 1.0;
+  const muscle = (p.isJuggernaut && !p.isZombie) ? Math.max(baseMuscle * 1.15, 1.24) : baseMuscle;
   const isSculpted = !!v.sculptedMuscles;
 
   // Zabezpieczenie parametrow anatomicznych konczyn i pozy (w tym dla Zombie)
@@ -1797,6 +1806,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   if (hasEquippedVest) {
     drawPlateCarrierOverlay(ctx, p, v, absCos, absSin, cosYaw, isLookingAway, shoulderHalfW, waistHalfW, waistY);
   }
+  if (p.isJuggernaut && !p.isZombie) {
+    drawJuggernautTorsoArmor(ctx, p, absCos, absSin, cosYaw, isLookingAway, shoulderHalfW, waistHalfW, waistY, fDir);
+  }
 
   const plateW = Math.min(shoulderHalfW, waistHalfW) * 1.5;
 
@@ -1900,8 +1912,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     // Nakrycie głowy (beret, czapka z daszkiem, kominiarka, bandana, boonie hat, arafatka, gogle)
     drawCharacterHeadgearProfile(ctx, p, v, hasHelmet, currentFacingDir, pose.torsoTilt, pose.headPitch);
 
-    // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony)
-    if (hasHelmet) {
+    // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony i nie Juggernaut)
+    const isJuggernautHelmet = !!(hasHelmet && p.isJuggernaut && !p.isZombie);
+    if (hasHelmet && !isJuggernautHelmet) {
       if (p.isZombie) {
         ctx.fillStyle = v.helmetColor || '#27272a';
       } else {
@@ -2054,6 +2067,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Maska na twarz, okulary przeciwsłoneczne lub chusta
     drawCharacterMaskProfile(ctx, p, v, hasHelmet, currentFacingDir, pose.torsoTilt, pose.headPitch);
+
+    // Pełny hełm szturmowy EOD / Altyn z przyłbicą i wizjerem Juggernauta (na samym wierzchu)
+    if (isJuggernautHelmet) {
+      drawJuggernautHelmetProfile(ctx);
+    }
   } else if (isLookingAway) {
     ctx.rotate(pose.headPitch * 0.5);
 
@@ -2079,7 +2097,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     drawCharacterHairFrontOrBack(ctx, v, true, hasHelmet);
 
     // Hełm z tyłu (jeśli założony)
-    if (hasHelmet) {
+    if (hasHelmet && p.isJuggernaut && !p.isZombie) {
+      drawJuggernautHelmetBack(ctx);
+    } else if (hasHelmet) {
       if (p.isZombie) {
         ctx.fillStyle = v.helmetColor || '#27272a';
       } else {
@@ -2137,86 +2157,88 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     drawCharacterHairFrontOrBack(ctx, v, false, hasHelmet);
 
     // Hełm z przodu (jeśli założony)
-    if (hasHelmet) {
-      if (p.isZombie) {
-        ctx.fillStyle = v.helmetColor || '#27272a';
-      } else {
-        const helmFrontGrad = ctx.createLinearGradient(-5.5, -8.0, 5.5, 0);
-        helmFrontGrad.addColorStop(0.0, '#18181b');
-        helmFrontGrad.addColorStop(0.5, v.helmetColor || '#27272a');
-        helmFrontGrad.addColorStop(1.0, '#09090b');
-        ctx.fillStyle = helmFrontGrad;
+    const isJuggernautFrontHelm = !!(hasHelmet && p.isJuggernaut && !p.isZombie);
+    if (isJuggernautFrontHelm) {
+      drawJuggernautHelmetFront(ctx);
+    } else {
+      if (hasHelmet) {
+        if (p.isZombie) {
+          ctx.fillStyle = v.helmetColor || '#27272a';
+        } else {
+          const helmFrontGrad = ctx.createLinearGradient(-5.5, -8.0, 5.5, 0);
+          helmFrontGrad.addColorStop(0.0, '#18181b');
+          helmFrontGrad.addColorStop(0.5, v.helmetColor || '#27272a');
+          helmFrontGrad.addColorStop(1.0, '#09090b');
+          ctx.fillStyle = helmFrontGrad;
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, -1.8, 5.4, Math.PI * 0.9, Math.PI * 0.1, true);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#09090b';
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+
+        ctx.fillStyle = '#52525b';
+        ctx.fillRect(-1.4, -6.0, 2.8, 2.4);
       }
 
+      if (v.isZombieVisuals || p.isZombie) {
+        ctx.fillStyle = 'rgba(20, 32, 20, 0.88)';
+        ctx.beginPath();
+        ctx.ellipse(-2.0, -1.5, 1.8, 1.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(2.0, -1.5, 1.8, 1.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(-2.0, -1.5, 0.9, 0, Math.PI * 2);
+        ctx.arc(2.0, -1.5, 0.9, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(-2.0, -1.5, 0.45, 0, Math.PI * 2);
+        ctx.arc(2.0, -1.5, 0.45, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#580808';
+        ctx.beginPath();
+        ctx.moveTo(-1.5, 2.2);
+        ctx.lineTo(1.5, 2.2);
+        ctx.lineTo(1.2, 4.6);
+        ctx.lineTo(0.2, 3.2);
+        ctx.lineTo(-0.8, 4.8);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(-2.0, -1.5, 1.2, 0.8, 0, 0, Math.PI * 2);
+        ctx.ellipse(2.0, -1.5, 1.2, 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(-1.8, -1.5, 0.55, 0, Math.PI * 2);
+        ctx.arc(2.2, -1.5, 0.55, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = hairPal.dark;
+      ctx.lineWidth = 0.9;
       ctx.beginPath();
-      ctx.arc(0, -1.8, 5.4, Math.PI * 0.9, Math.PI * 0.1, true);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#09090b';
-      ctx.lineWidth = 1.0;
+      ctx.moveTo(-3.2, -2.8);
+      ctx.lineTo(-0.8, -2.5);
+      ctx.moveTo(3.2, -2.8);
+      ctx.lineTo(0.8, -2.5);
       ctx.stroke();
 
-      ctx.fillStyle = '#52525b';
-      ctx.fillRect(-1.4, -6.0, 2.8, 2.4);
-    }
-
-    if (v.isZombieVisuals || p.isZombie) {
-      // Martwe, podsiniałe oczodoły
-      ctx.fillStyle = 'rgba(20, 32, 20, 0.88)';
-      ctx.beginPath();
-      ctx.ellipse(-2.0, -1.5, 1.8, 1.4, 0, 0, Math.PI * 2);
-      ctx.ellipse(2.0, -1.5, 1.8, 1.4, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Puste, żółte ślepia zmartwychwstałego
-      ctx.fillStyle = '#facc15';
-      ctx.beginPath();
-      ctx.arc(-2.0, -1.5, 0.9, 0, Math.PI * 2);
-      ctx.arc(2.0, -1.5, 0.9, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#fef08a';
-      ctx.beginPath();
-      ctx.arc(-2.0, -1.5, 0.45, 0, Math.PI * 2);
-      ctx.arc(2.0, -1.5, 0.45, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Strużki zakrzepłej i świeżej krwi kapiące z kącików ust
-      ctx.fillStyle = '#580808';
-      ctx.beginPath();
-      ctx.moveTo(-1.5, 2.2);
-      ctx.lineTo(1.5, 2.2);
-      ctx.lineTo(1.2, 4.6);
-      ctx.lineTo(0.2, 3.2);
-      ctx.lineTo(-0.8, 4.8);
-      ctx.closePath();
-      ctx.fill();
-    } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.ellipse(-2.0, -1.5, 1.2, 0.8, 0, 0, Math.PI * 2);
-      ctx.ellipse(2.0, -1.5, 1.2, 0.8, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.arc(-1.8, -1.5, 0.55, 0, Math.PI * 2);
-      ctx.arc(2.2, -1.5, 0.55, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.strokeStyle = hairPal.dark;
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(-3.2, -2.8);
-    ctx.lineTo(-0.8, -2.5);
-    ctx.moveTo(3.2, -2.8);
-    ctx.lineTo(0.8, -2.5);
-    ctx.stroke();
-
-    // Rany na twarzy z przodu
-    if (!p.isZombie) {
-      drawHeadWoundsFront(ctx, dmgRatio);
+      // Rany na twarzy z przodu
+      if (!p.isZombie) {
+        drawHeadWoundsFront(ctx, dmgRatio);
+      }
     }
   }
 
@@ -2367,6 +2389,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   if (p.throwAnim && p.throwAnim.active && p.throwAnim.aiming) {
     drawGrenadeTrajectory(ctx, p, p.throwAnim.targetX, p.throwAnim.targetY, p.throwAnim.power || 1.0, GROUND_Y);
   }
+
+  // Fala wejścia pancerza Juggernaut [KOLOS]
+  drawJuggernautDeployAura(ctx, p);
 
   ctx.restore();
 }

@@ -12,6 +12,12 @@ import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
 import { getJetpackFlamePalette, drawJetpackThrustPlume } from './jetpack.js';
 import { drawRightThighPistolHolster, drawLeftThighMeleeSheath } from './holsters.js';
 import { drawHandheldMolotov } from '../weapons/molotov.js';
+import {
+  drawJuggernautUpperArmArmor,
+  drawJuggernautForearmArmor,
+  drawJuggernautThighArmor,
+  drawJuggernautShinArmor
+} from './juggernaut.js';
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -783,7 +789,9 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const isZombie = Boolean((playerRef && playerRef.isZombie) || (v && v.isZombieVisuals));
   const upperLen = armUpperLen || 14;
   const foreLen = armForeLen || 13;
-  const muscle = v.muscleMult || 1.0;
+  const baseMuscle = v.muscleMult || 1.0;
+  const isJuggernaut = Boolean(playerRef && playerRef.isJuggernaut && !isZombie);
+  const muscle = isJuggernaut ? Math.max(baseMuscle * 1.15, 1.24) : baseMuscle;
   const isSculpted = !!v.sculptedMuscles;
 
   const armMaxHp = playerRef ? (playerRef.maxHp || 100) : 100;
@@ -1032,6 +1040,10 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     }
   }
 
+  if (isJuggernaut) {
+    drawJuggernautUpperArmArmor(ctx, upperLen, armHalfH, isFront);
+  }
+
   ctx.restore();
 
   ctx.save();
@@ -1177,6 +1189,10 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.strokeRect(bandX, -wristR - 0.5, bandW, (wristR + 0.5) * 2);
   }
 
+  if (isJuggernaut) {
+    drawJuggernautForearmArmor(ctx, foreLen, elbowR, wristR, isFront);
+  }
+
   // DŁOŃ BOJOWA W RĘKAWICY TAKTYCZNEJ (Zastępuje dawną kulkę)
   drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v, playerRef);
 
@@ -1286,7 +1302,9 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     targetFootY = hipY + l1 + l2 - 4;
   }
 
-  const muscle = v.muscleMult || 1.0;
+  const baseMuscle = v.muscleMult || 1.0;
+  const isJuggernaut = Boolean(playerRef && playerRef.isJuggernaut && !isZombie);
+  const muscle = isJuggernaut ? Math.max(baseMuscle * 1.15, 1.24) : baseMuscle;
   const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;
 
@@ -1657,6 +1675,10 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     }
   }
 
+  if (isJuggernaut) {
+    drawJuggernautThighArmor(ctx, l1, thighHalfH, isFrontLeg);
+  }
+
   // Wyposażenie taktyczne na udach:
   // PRAWA NOGA -> Kabura udowa z małą bronią palną (Glock / Magnum / Obrzyn)
   // LEWA NOGA  -> Pochwa udowa z bronią białą (Nóż M9 / Maczeta Kukri / Toporek Tomahawk)
@@ -1908,6 +1930,10 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
         drawBloodSoak(ctx, bShinBackX, 0.0, 3.4, 2.2, t3 * 0.8);
       }
     }
+  }
+
+  if (isJuggernaut) {
+    drawJuggernautShinArmor(ctx, l2, calfBulge, achillesHalfW, isFrontLeg);
   }
 
   // Cholewka buta rysowana NA wierzchu nogawki (wyższe buty zakrywają dół spodni)

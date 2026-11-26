@@ -258,6 +258,7 @@ export function updateAllRemotePlayers(groundY) {
     if (rp.weaponKickback > 0.05) rp.weaponKickback *= 0.65; else rp.weaponKickback = 0;
     if (rp.muzzleRise > 0.005) rp.muzzleRise *= 0.72; else rp.muzzleRise = 0;
     if (rp.pumpTimer > 0) rp.pumpTimer--;
+    if (rp.juggernautDeployAnim > 0) rp.juggernautDeployAnim = Math.max(0, rp.juggernautDeployAnim - 0.018);
 
     // Plynna interpolacja pozycji (lerp)
     const targetX = (typeof rp.targetX === 'number') ? rp.targetX : rp.x;
