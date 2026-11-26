@@ -19,10 +19,14 @@ import { playSound } from '../../audio/index.js';
 // =========================================================================
 const WARSHIP_CELL_W = 768;
 const WARSHIP_CELL_H = 256;
-// Znormalizowane pozycje wylotów luf w obrębie klatki 768x256 (klatka 1 = dziobowa, klatka 2 = rufowa)
-const WARSHIP_MUZZLE_FWD = { u: 0.892, v: 0.398 };
-const WARSHIP_MUZZLE_AFT = { u: 0.278, v: 0.329 };
+// Dokładne pozycje wylotu luf w obrębie klatki 768x256 (początek płomienia tuż przy końcu lufy)
+const WARSHIP_MUZZLE_FWD = { u: 0.868, v: 0.465 };
+const WARSHIP_MUZZLE_AFT = { u: 0.245, v: 0.415 };
 const WARSHIP_HULL_BOTTOM_V = 0.953; // Linia wodna stępki w klatce 768x256
+
+export const ARENA3_SHIP_MORTAR_STAGGER = 0.28; // Odstęp między kolejnymi wystrzałami z okrętu
+export const ARENA3_SHIP_MORTAR_ASCENT = 0.72;  // Czas wznoszenia pocisku od lufy ponad górę ekranu
+export const ARENA3_SHIP_FLASH_DURATION = 0.16; // Czas błysku z lufy (< stagger, by okręt wracał do spoczynku)
 
 let _warshipRawImg = null;
 let _warshipNightCanvas = null;
@@ -79,6 +83,7 @@ if (typeof window !== 'undefined') {
 
 export const arena3ShipMortarState = {
   salvos: [],
+  facing: 1,
   recoilForward: 0,
   recoilAft: 0,
   muzzleFlashForward: 0,
@@ -87,6 +92,7 @@ export const arena3ShipMortarState = {
 
 export function resetArena3ShipMortars() {
   arena3ShipMortarState.salvos.length = 0;
+  arena3ShipMortarState.facing = 1;
   arena3ShipMortarState.recoilForward = 0;
   arena3ShipMortarState.recoilAft = 0;
   arena3ShipMortarState.muzzleFlashForward = 0;
@@ -99,6 +105,8 @@ export function resetArena3ShipMortars() {
  */
 export function triggerArena3ShipMortarSalvo(targetX, offsets = []) {
   const safeTargetX = (typeof targetX === 'number' && !isNaN(targetX)) ? targetX : 2200;
+  const facing = (safeTargetX < 2200) ? -1 : 1;
+  arena3ShipMortarState.facing = facing;
   const count = 5;
   const shells = [];
 
@@ -107,19 +115,21 @@ export function triggerArena3ShipMortarSalvo(targetX, offsets = []) {
       ? offsets[i]
       : Math.round((i - 2) * 58);
     shells.push({
-      delay: i * 0.22,
-      flightDuration: 0.90,
+      delay: i * ARENA3_SHIP_MORTAR_STAGGER,
+      flightDuration: ARENA3_SHIP_MORTAR_ASCENT,
       launched: false,
       launchElapsed: 0,
-      turretIdx: i % 2, // 0 = dziobowa wieża (prawa), 1 = rufowa wyrzutnia (lewa)
+      turretIdx: i % 2, // 0 = dziobowa wieża, 1 = rufowa wyrzutnia
+      facing,
       destX: safeTargetX + off,
-      spreadJitterX: (Math.random() - 0.5) * 32,
+      spreadJitterX: (Math.random() - 0.5) * 28,
       smokeTrail: []
     });
   }
 
   arena3ShipMortarState.salvos.push({
     targetX: safeTargetX,
+    facing,
     age: 0,
     shells
   });
@@ -149,13 +159,20 @@ function getArena3WarshipLayout(W_screen, H_screen, camera, time) {
   const pitch = Math.sin(time * 0.85) * 0.011;
   const shipY = shipWaterY + bobY;
 
-  // Dokładne pozycje wylotu pocisków w przestrzeni ekranu na podstawie klatek sprite sheetu
-  const topLeftX = shipX - shipDrawW * 0.5;
-  const topLeftY = shipY - shipDrawH * WARSHIP_HULL_BOTTOM_V;
-  const fwdX = topLeftX + WARSHIP_MUZZLE_FWD.u * shipDrawW;
-  const fwdY = topLeftY + WARSHIP_MUZZLE_FWD.v * shipDrawH;
-  const aftX = topLeftX + WARSHIP_MUZZLE_AFT.u * shipDrawW;
-  const aftY = topLeftY + WARSHIP_MUZZLE_AFT.v * shipDrawH;
+  // Dokładne pozycje wylotu pocisków w przestrzeni ekranu (z uwzględnieniem kierunku okrętu i kołysania pitch)
+  const facing = arena3ShipMortarState.facing || 1;
+  const cosP = Math.cos(pitch);
+  const sinP = Math.sin(pitch);
+  const uvToScreen = (u, v) => {
+    const lx = (u - 0.5) * shipDrawW * facing;
+    const ly = (v - WARSHIP_HULL_BOTTOM_V) * shipDrawH;
+    return {
+      x: shipX + lx * cosP - ly * sinP,
+      y: shipY + lx * sinP + ly * cosP
+    };
+  };
+  const fwdPos = uvToScreen(WARSHIP_MUZZLE_FWD.u, WARSHIP_MUZZLE_FWD.v);
+  const aftPos = uvToScreen(WARSHIP_MUZZLE_AFT.u, WARSHIP_MUZZLE_AFT.v);
 
   return {
     seaHorizonY: estuaryHorizonY,
@@ -168,11 +185,9 @@ function getArena3WarshipLayout(W_screen, H_screen, camera, time) {
     shipDrawW,
     shipDrawH,
     shipScale: shipDrawW / 240,
+    facing,
     pitch,
-    turrets: [
-      { x: fwdX, y: fwdY },
-      { x: aftX, y: aftY }
-    ]
+    turrets: [fwdPos, aftPos]
   };
 }
 
@@ -221,41 +236,55 @@ export function updateArena3ShipMortars(dt = (1 / 60), camera = null) {
           sh.launchElapsed = 0;
           if (sh.turretIdx === 0) {
             arena3ShipMortarState.recoilForward = 1.0;
-            arena3ShipMortarState.muzzleFlashForward = 0.24;
+            arena3ShipMortarState.muzzleFlashForward = ARENA3_SHIP_FLASH_DURATION;
           } else {
             arena3ShipMortarState.recoilAft = 1.0;
-            arena3ShipMortarState.muzzleFlashAft = 0.24;
+            arena3ShipMortarState.muzzleFlashAft = ARENA3_SHIP_FLASH_DURATION;
           }
           playSound('mortar_ship_fire');
+        } else {
+          continue;
         }
-        continue;
       }
 
       if (sh.launchElapsed < sh.flightDuration) {
         allFinished = false;
-        sh.launchElapsed += safeDt;
+        sh.launchElapsed = Math.min(sh.flightDuration, sh.launchElapsed + safeDt);
         const p = Math.min(1, sh.launchElapsed / sh.flightDuration);
         const startPos = layout.turrets[sh.turretIdx] || layout.turrets[0];
         const rawDestScreenX = (sh.destX - camX) * camZoom;
-        const apexScreenX = Math.max(50, Math.min(W_screen - 50, rawDestScreenX + sh.spreadJitterX));
-        const apexY = -65;
+        const apexScreenX = Math.max(40, Math.min(W_screen - 40, rawDestScreenX + sh.spreadJitterX));
+        const apexY = -45;
 
-        // Balistyczne wznoszenie: szybki start z lufy i łagodne odchylenie w stronę celu
-        const easeX = p * p * (0.35 + 0.65 * p);
-        const easeY = Math.pow(p, 0.80);
-        const curX = startPos.x + (apexScreenX - startPos.x) * easeX;
-        const curY = startPos.y + (apexY - startPos.y) * easeY;
+        // Krzywa Beziera startująca dokładnie w osi 45° lufy/płomienia w stronę wybranego celu,
+        // a następnie zakręcająca nad górną krawędzią ekranu
+        const dir = sh.facing || layout.facing || 1;
+        const barrelLen = 145 * layout.shipScale;
+        const c1x = startPos.x + dir * barrelLen * 0.72;
+        const c1y = startPos.y - barrelLen * 0.72;
+        const c2x = apexScreenX;
+        const c2y = Math.min(startPos.y * 0.45, apexY + 180);
+
+        const u = 1 - p;
+        const uu = u * u;
+        const tt = p * p;
+        const curX = uu * u * startPos.x + 3 * uu * p * c1x + 3 * u * tt * c2x + tt * p * apexScreenX;
+        const curY = uu * u * startPos.y + 3 * uu * p * c1y + 3 * u * tt * c2y + tt * p * apexY;
+
+        const dxdt = 3 * uu * (c1x - startPos.x) + 6 * u * p * (c2x - c1x) + 3 * tt * (apexScreenX - c2x);
+        const dydt = 3 * uu * (c1y - startPos.y) + 6 * u * p * (c2y - c1y) + 3 * tt * (apexY - c2y);
+
         sh.curX = curX;
         sh.curY = curY;
-        sh.angle = Math.atan2((apexY - startPos.y) * 0.80, (apexScreenX - startPos.x) * 0.65);
+        sh.angle = Math.atan2(dydt, dxdt);
 
         sh.smokeTrail.push({
           x: curX,
           y: curY,
-          r: (2.2 + p * 2.4) * layout.shipScale,
-          alpha: 0.72
+          r: (2.0 + p * 2.2) * layout.shipScale,
+          alpha: 0.78
         });
-        if (sh.smokeTrail.length > 18) sh.smokeTrail.shift();
+        if (sh.smokeTrail.length > 36) sh.smokeTrail.shift();
       }
 
       // Wygaszanie smugi dymu wznoszącego się pocisku
@@ -782,8 +811,9 @@ function drawArena3EstuaryAndRiver(ctx, layout, W_screen, H_screen, camera, time
 }
 
 function drawArena3Warship(ctx, layout, time) {
-  const { shipX, shipY, shipWaterY, shipDrawW, shipDrawH, shipScale, pitch, turrets } = layout;
+  const { shipX, shipY, shipWaterY, shipDrawW, shipDrawH, shipScale, facing, pitch, turrets } = layout;
   const sheet = ensureWarshipSpriteSheet();
+  const dir = facing || 1;
 
   // Wybór klatki ze sprite sheetu (0 = spoczynek, 1 = strzał z dziobu, 2 = strzał z rufy)
   const flashF = arena3ShipMortarState.muzzleFlashForward;
@@ -799,7 +829,7 @@ function drawArena3Warship(ctx, layout, time) {
     ctx.save();
     ctx.translate(shipX, shipWaterY + 2);
     ctx.rotate(-pitch * 0.5);
-    ctx.scale(1, -0.34);
+    ctx.scale(dir, -0.34);
     ctx.globalAlpha = 0.25;
     ctx.drawImage(
       sheet,
@@ -816,14 +846,14 @@ function drawArena3Warship(ctx, layout, time) {
   }
 
   if (flashF > 0 && turrets[0]) {
-    const fAlpha = Math.min(0.45, flashF * 2.0);
+    const fAlpha = Math.min(0.45, flashF * 2.2);
     ctx.fillStyle = `rgba(251, 146, 60, ${fAlpha.toFixed(2)})`;
     ctx.beginPath();
     ctx.ellipse(turrets[0].x, shipWaterY + 5 * shipScale, 28 * shipScale, 4.5 * shipScale, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   if (flashA > 0 && turrets[1]) {
-    const aAlpha = Math.min(0.45, flashA * 2.0);
+    const aAlpha = Math.min(0.45, flashA * 2.2);
     ctx.fillStyle = `rgba(251, 146, 60, ${aAlpha.toFixed(2)})`;
     ctx.beginPath();
     ctx.ellipse(turrets[1].x, shipWaterY + 5 * shipScale, 28 * shipScale, 4.5 * shipScale, 0, 0, Math.PI * 2);
@@ -834,6 +864,7 @@ function drawArena3Warship(ctx, layout, time) {
   ctx.save();
   ctx.translate(shipX, shipY);
   ctx.rotate(pitch);
+  ctx.scale(dir, 1);
 
   if (sheet) {
     ctx.globalAlpha = 0.94;

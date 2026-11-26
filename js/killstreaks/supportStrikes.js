@@ -11,7 +11,12 @@ import { detonateGrenadeExplosion } from '../projectiles.js';
 import { bullets } from '../weapons/transform.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
-import { triggerArena3ShipMortarSalvo, updateArena3ShipMortars } from '../arenas/arena3/background.js';
+import {
+  triggerArena3ShipMortarSalvo,
+  updateArena3ShipMortars,
+  ARENA3_SHIP_MORTAR_STAGGER,
+  ARENA3_SHIP_MORTAR_ASCENT
+} from '../arenas/arena3/background.js';
 
 export const activeMortarStrikes = [];
 export const activeAttackDrones = [];
@@ -75,12 +80,13 @@ export function spawnMortarStrike(targetX, owner, options = {}) {
     triggerArena3ShipMortarSalvo(safeTargetX, offsets);
   }
 
-  // Salwa 5 pocisków moździerzowych o kaskadowych opóźnieniach
+  // Salwa 5 pocisków moździerzowych o kaskadowych opóźnieniach zsynchronizowanych z okrętem
+  const apexHangDelay = 0.12;
   for (let i = 0; i < 5; i++) {
     const offsetX = offsets[i];
     const destX = safeTargetX + offsetX;
     const destY = getSurfaceY(destX);
-    const startY = (globalCamera?.y || 0) - (fromWarship ? 220 : (340 + i * 30));
+    const startY = (globalCamera?.y || 0) - (fromWarship ? 30 : (340 + i * 30));
 
     shells.push({
       x: destX + (Math.random() - 0.5) * 20,
@@ -88,8 +94,8 @@ export function spawnMortarStrike(targetX, owner, options = {}) {
       destX,
       destY,
       vx: (Math.random() - 0.5) * 1.5,
-      vy: fromWarship ? (19 + Math.random() * 2.5) : (17 + Math.random() * 3),
-      delay: fromWarship ? (i * 0.22 + 0.92) : (i * 0.38),
+      vy: fromWarship ? (21 + Math.random() * 2.5) : (17 + Math.random() * 3),
+      delay: fromWarship ? (i * ARENA3_SHIP_MORTAR_STAGGER + ARENA3_SHIP_MORTAR_ASCENT + apexHangDelay) : (i * 0.38),
       enteredSky: false,
       detonated: false,
       smokeTrail: []
@@ -140,7 +146,7 @@ export function updateMortarStrikes(dt = (1 / 60), combatants = []) {
         if (shell.delay <= 0 && !shell.enteredSky) {
           shell.enteredSky = true;
           const camTop = (globalCamera && typeof globalCamera.y === 'number') ? globalCamera.y : 0;
-          shell.y = Math.min(shell.destY - 260, camTop - 110);
+          shell.y = Math.min(shell.destY - 220, camTop - 25);
         }
         continue;
       }
