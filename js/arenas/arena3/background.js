@@ -19,7 +19,8 @@ import {
   ARENA3_SHIP_MORTAR_STAGGER,
   ARENA3_SHIP_MORTAR_ASCENT,
   ARENA3_SHIP_FLASH_DURATION,
-  computeShipMortarBallistics,
+  computeUnifiedShipMortarArc,
+  computeShipTurretAimAngle,
   drawMortarBombSprite
 } from '../../killstreaks/mortarBallistics.js';
 
@@ -110,24 +111,32 @@ export function resetArena3ShipMortars() {
  * Uruchamia wizualną salwę moździerzy z okrętu wojennego w tle Areny 3.
  * Ruchome lufy kierują się dokładnie w stronę celu, a pociski lecą zsynchronizowanym łukiem.
  */
-export function triggerArena3ShipMortarSalvo(targetX, offsets = []) {
+export function triggerArena3ShipMortarSalvo(targetX, offsets = [], arcs = []) {
   const safeTargetX = (typeof targetX === 'number' && !isNaN(targetX)) ? targetX : ARENA3_SHIP_WORLD_X;
   const count = 5;
   const shells = [];
+  const cam = (typeof window !== 'undefined' && window.camera) ? window.camera : null;
 
   for (let i = 0; i < count; i++) {
     const off = (Array.isArray(offsets) && typeof offsets[i] === 'number')
       ? offsets[i]
       : Math.round((i - 2) * 58);
     const destX = safeTargetX + off;
-    const ballistics = computeShipMortarBallistics(destX, ARENA3_SHIP_WORLD_X);
+    const turretIdx = i % 2; // 0 = dziobowa wieża, 1 = rufowa wyrzutnia
+    const arc = (Array.isArray(arcs) && arcs[i])
+      ? arcs[i]
+      : computeUnifiedShipMortarArc(destX, 1200, cam, turretIdx);
+    const delay = i * ARENA3_SHIP_MORTAR_STAGGER;
     shells.push({
-      delay: i * ARENA3_SHIP_MORTAR_STAGGER,
+      delay,
       flightDuration: ARENA3_SHIP_MORTAR_ASCENT,
+      handoffTime: delay + ARENA3_SHIP_MORTAR_ASCENT,
       launched: false,
-      launchElapsed: 0,
-      turretIdx: i % 2, // 0 = dziobowa wieża, 1 = rufowa wyrzutnia
-      barrelAngle: ballistics.barrelAngle,
+      activePhase1: false,
+      turretIdx,
+      barrelAngle: arc.barrelAngle,
+      apexWorldX: arc.apexWorldX,
+      apexWorldY: arc.apexWorldY,
       destX,
       smokeTrail: []
     });
@@ -231,6 +240,8 @@ export function updateArena3ShipMortars(dt = (1 / 60), camera = null) {
     arena3ShipMortarState.muzzleFlashAft = Math.max(0, arena3ShipMortarState.muzzleFlashAft - safeDt);
   }
 
+  const cam = camera || (typeof window !== 'undefined' ? window.camera : null);
+
   // Płynne kierowanie ruchomych luf w stronę aktywnego celu lub celownika gracza
   let desiredAngle = -Math.PI * 0.5 + 0.14 + Math.sin(time * 0.4) * 0.07;
   if (arena3ShipMortarState.salvos.length > 0) {
@@ -239,14 +250,14 @@ export function updateArena3ShipMortars(dt = (1 / 60), camera = null) {
     if (nextPending && typeof nextPending.barrelAngle === 'number') {
       desiredAngle = nextPending.barrelAngle;
     } else {
-      desiredAngle = computeShipMortarBallistics(activeSalvo.targetX, ARENA3_SHIP_WORLD_X).barrelAngle;
+      desiredAngle = computeShipTurretAimAngle(activeSalvo.targetX, cam, 0);
     }
   } else if (killstreakState && (killstreakState.mortarTargeting || killstreakState.mortarPendingLaunch)) {
     const aimX = killstreakState.mortarPendingLaunch
       ? killstreakState.mortarPendingLaunch.targetX
       : killstreakState.mortarTargetX;
     if (typeof aimX === 'number' && !isNaN(aimX)) {
-      desiredAngle = computeShipMortarBallistics(aimX, ARENA3_SHIP_WORLD_X).barrelAngle;
+      desiredAngle = computeShipTurretAimAngle(aimX, cam, 0);
     }
   }
 
@@ -256,12 +267,12 @@ export function updateArena3ShipMortars(dt = (1 / 60), camera = null) {
 
   if (arena3ShipMortarState.salvos.length === 0) return;
 
-  const cam = camera || (typeof window !== 'undefined' ? window.camera : null);
   const canvasEl = (typeof document !== 'undefined') ? (document.getElementById('game') || document.getElementById('gameCanvas') || document.querySelector('canvas')) : null;
   const W_screen = (canvasEl && canvasEl.clientWidth) ? canvasEl.clientWidth : ((typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1920);
   const H_screen = (canvasEl && canvasEl.clientHeight) ? canvasEl.clientHeight : ((typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 1080);
   const layout = getArena3WarshipLayout(W_screen, H_screen, cam, time);
   const camX = cam ? (cam.x || 0) : 0;
+  const camY = cam ? (cam.y || 0) : 0;
   const camZoom = cam ? (cam.zoom || 1) : 1;
 
   for (let i = arena3ShipMortarState.salvos.length - 1; i >= 0; i--) {
@@ -276,7 +287,6 @@ export function updateArena3ShipMortars(dt = (1 / 60), camera = null) {
         allFinished = false;
         if (salvo.age >= sh.delay) {
           sh.launched = true;
-          sh.launchElapsed = 0;
           if (sh.turretIdx === 0) {
             arena3ShipMortarState.turretAngleFwd = sh.barrelAngle;
             arena3ShipMortarState.recoilForward = 1.0;
@@ -292,45 +302,49 @@ export function updateArena3ShipMortars(dt = (1 / 60), camera = null) {
         }
       }
 
-      if (sh.launchElapsed < sh.flightDuration) {
+      if (salvo.age < sh.handoffTime) {
         allFinished = false;
-        sh.launchElapsed = Math.min(sh.flightDuration, sh.launchElapsed + safeDt);
-        const p = Math.min(1, sh.launchElapsed / sh.flightDuration);
-        const refreshedLayout = getArena3WarshipLayout(W_screen, H_screen, cam, time);
-        const startPos = refreshedLayout.turrets[sh.turretIdx] || layout.turrets[0];
-        const rawDestScreenX = (sh.destX - camX) * camZoom;
-        const apexScreenX = Math.max(40, Math.min(W_screen - 40, rawDestScreenX));
-        const apexY = -45;
+        sh.activePhase1 = true;
+        const p = Math.max(0, Math.min(1, (salvo.age - sh.delay) / sh.flightDuration));
+        const startPos = layout.turrets[sh.turretIdx] || layout.turrets[0];
+        const apexScreenX = (sh.apexWorldX - camX) * camZoom;
+        const apexScreenY = (sh.apexWorldY - camY) * camZoom;
 
-        // Krzywa Beziera startująca dokładnie w osi ruchomej lufy (barrelAngle)
+        // Krzywa Beziera startująca z lufy okrętu i wygasająca poziomo w szczycie paraboli (vy = 0)
         const dirX = Math.cos(sh.barrelAngle);
         const dirY = Math.sin(sh.barrelAngle);
-        const barrelLead = 155 * refreshedLayout.shipScale;
+        const barrelLead = Math.max(85 * layout.shipScale, (startPos.y - apexScreenY) * 0.42);
         const c1x = startPos.x + dirX * barrelLead;
         const c1y = startPos.y + dirY * barrelLead;
-        const c2x = startPos.x + (apexScreenX - startPos.x) * 0.72 + dirX * 45;
-        const c2y = Math.min(startPos.y * 0.42, apexY + 170);
+        const apexDirX = (sh.destX >= sh.apexWorldX) ? 1 : -1;
+        const c2x = apexScreenX - apexDirX * Math.max(24, Math.abs(apexScreenX - startPos.x) * 0.34);
+        const c2y = apexScreenY;
 
         const u = 1 - p;
         const uu = u * u;
         const tt = p * p;
         const curX = uu * u * startPos.x + 3 * uu * p * c1x + 3 * u * tt * c2x + tt * p * apexScreenX;
-        const curY = uu * u * startPos.y + 3 * uu * p * c1y + 3 * u * tt * c2y + tt * p * apexY;
+        const curY = uu * u * startPos.y + 3 * uu * p * c1y + 3 * u * tt * c2y + tt * p * apexScreenY;
 
         const dxdt = 3 * uu * (c1x - startPos.x) + 6 * u * p * (c2x - c1x) + 3 * tt * (apexScreenX - c2x);
-        const dydt = 3 * uu * (c1y - startPos.y) + 6 * u * p * (c2y - c1y) + 3 * tt * (apexY - c2y);
+        const dydt = 3 * uu * (c1y - startPos.y) + 6 * u * p * (c2y - c1y) + 3 * tt * (apexScreenY - c2y);
 
         sh.curX = curX;
         sh.curY = curY;
         sh.angle = Math.atan2(dydt, dxdt);
+        const startScale = Math.max(0.38, 0.52 * layout.shipScale);
+        const endScale = 1.05 * camZoom;
+        sh.renderScale = startScale + (endScale - startScale) * p;
 
         sh.smokeTrail.push({
           x: curX,
           y: curY,
-          r: (2.0 + p * 2.2) * refreshedLayout.shipScale,
+          r: (1.9 + p * 1.9) * Math.max(layout.shipScale, camZoom),
           alpha: 0.78
         });
         if (sh.smokeTrail.length > 36) sh.smokeTrail.shift();
+      } else {
+        sh.activePhase1 = false;
       }
 
       // Wygaszanie smugi dymu wznoszącego się pocisku
@@ -1040,8 +1054,8 @@ function drawArena3ShipMortars(ctx, layout) {
         ctx.fill();
       }
 
-      if (sh.launched && sh.launchElapsed < sh.flightDuration && typeof sh.curX === 'number') {
-        const sc = Math.max(0.42, 0.56 * (layout.shipScale || 1));
+      if (sh.activePhase1 && typeof sh.curX === 'number') {
+        const sc = sh.renderScale || Math.max(0.38, 0.52 * (layout.shipScale || 1));
         drawMortarBombSprite(ctx, sh.curX, sh.curY, sh.angle ?? sh.barrelAngle ?? (-Math.PI * 0.5), sc);
       }
     }

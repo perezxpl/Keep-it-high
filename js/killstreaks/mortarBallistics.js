@@ -1,55 +1,89 @@
 // =============================================================================
 // JS/KILLSTREAKS/MORTARBALLISTICS.JS - WSPÓLNA BALISTYKA I WYGLĄD POCISKÓW
-// Zapewnia pełną synchronizację kąta luf okrętu, toru wznoszenia w tle
-// oraz parabolicznego opadania i wyglądu bomb moździerzowych w świecie gry.
+// Zapewnia ciągłą parabolę lotu w obrębie ekranu/areny od luf okrętu aż po cel,
+// bez znikania pocisków za górną krawędzią ekranu.
 // =============================================================================
 
 export const ARENA3_SHIP_WORLD_X = 2200;
 export const ARENA3_SHIP_MORTAR_STAGGER = 0.28;
-export const ARENA3_SHIP_MORTAR_ASCENT = 0.72;
+export const ARENA3_SHIP_MORTAR_ASCENT = 0.68;
 export const ARENA3_SHIP_FLASH_DURATION = 0.16;
-export const ARENA3_SHIP_APEX_HANG = 0.12;
+export const ARENA3_MORTAR_FALL_GRAVITY = 0.44;
 
 export function clampVal(v, min, max) {
   return v < min ? min : (v > max ? max : v);
 }
 
 /**
- * Oblicza spójne parametry balistyczne dla strzału z okrętu (Arena 3) w stronę celu destX.
- * Kąt lufy (-90° ± 32°) bezpośrednio wyznacza kierunek wznoszenia i dryf poziomy opadania.
- */
-export function computeShipMortarBallistics(destX, shipWorldX = ARENA3_SHIP_WORLD_X) {
-  const safeDestX = (typeof destX === 'number' && !isNaN(destX)) ? destX : shipWorldX;
-  const dxWorld = safeDestX - shipWorldX;
-  const dxNorm = clampVal(dxWorld / 1650, -1, 1);
-
-  // Kąt elewacji lufy (-PI/2 = pionowo w górę; ujemny dla lewej flanki, większy dla prawej)
-  const barrelAngle = -Math.PI * 0.5 + dxNorm * 0.56;
-
-  // Prędkość pozioma i przyspieszenie grawitacyjne opadającego pocisku w świecie gry
-  const fallVx = dxNorm * 6.4;
-  const fallVyStart = 15.5;
-  const fallGravity = 0.24;
-
-  return {
-    dxNorm,
-    barrelAngle,
-    fallVx,
-    fallVyStart,
-    fallGravity
-  };
-}
-
-/**
  * Wylicza liczbę klatek (60 Hz) potrzebnych na spadek z startY do destY przy stałej grawitacji.
  */
-export function solveMortarFallTicks(startY, destY, vyStart = 15.5, gravity = 0.24) {
+export function solveMortarFallTicks(startY, destY, vyStart = 0, gravity = ARENA3_MORTAR_FALL_GRAVITY) {
   const dy = Math.max(10, destY - startY);
   if (gravity <= 0.0001) {
     return dy / Math.max(1, vyStart);
   }
   const disc = vyStart * vyStart + 2 * gravity * dy;
   return (-vyStart + Math.sqrt(Math.max(0, disc))) / gravity;
+}
+
+/**
+ * Oblicza jednolitą parabolę dla pocisku moździerzowego okrętu (Arena 3):
+ * - Szczyt paraboli (apexWorldX, apexWorldY) znajduje się zawsze w widocznym niebie areny
+ * - Faza 1 (tło/okręt) kończy lot dokładnie w punkcie szczytu (vy = 0)
+ * - Faza 2 (świat gry) płynnie przejmuje ten sam punkt i spada po paraboli w cel (destX, destY)
+ */
+export function computeUnifiedShipMortarArc(destX, destY, camera = null, turretIdx = 0) {
+  const safeDestX = (typeof destX === 'number' && !isNaN(destX)) ? destX : ARENA3_SHIP_WORLD_X;
+  const safeDestY = (typeof destY === 'number' && !isNaN(destY)) ? destY : 1200;
+
+  const camX = camera ? (camera.x || 0) : 0;
+  const camY = camera ? (camera.y || 0) : 0;
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 0.75;
+  const viewW = (camera && typeof camera.viewWidth === 'number' && camera.viewWidth > 0)
+    ? camera.viewWidth
+    : (1920 / Math.max(0.25, camZoom));
+  const viewH = (camera && typeof camera.viewHeight === 'number' && camera.viewHeight > 0)
+    ? camera.viewHeight
+    : (1080 / Math.max(0.25, camZoom));
+
+  // Dokładna pozycja okrętu w przestrzeni świata odpowiadająca jego pozycji na ekranie
+  const viewCenterX = camX + viewW * 0.5;
+  const turretOffsetWorld = (turretIdx === 0 ? 65 : -75) / Math.max(0.35, camZoom);
+  const shipWorldX = viewCenterX - ((viewCenterX - ARENA3_SHIP_WORLD_X) * 0.12) / Math.max(0.35, camZoom) + turretOffsetWorld;
+
+  // Szczyt łuku umieszczony pod górną krawędzią kadru/areny (zawsze widoczny na ekranie)
+  const rawApexY = Math.min(safeDestY - 240, camY + Math.max(105, viewH * 0.11));
+  const apexWorldY = Math.max(95, rawApexY);
+  const rawApexX = shipWorldX + (safeDestX - shipWorldX) * 0.48;
+  const apexWorldX = clampVal(rawApexX, 140, 4260);
+
+  // Kąt elewacji lufy wycelowany z okrętu ku pierwszemu odcinkowi paraboli
+  const dxToApex = apexWorldX - shipWorldX;
+  const dyToApex = Math.min(-240, apexWorldY - (camY + viewH * 0.55));
+  const rawAngle = Math.atan2(dyToApex, dxToApex * 0.75);
+  const barrelAngle = clampVal(rawAngle, -Math.PI * 0.76, -Math.PI * 0.24);
+
+  const fallGravity = ARENA3_MORTAR_FALL_GRAVITY;
+  const fallTicks = solveMortarFallTicks(apexWorldY, safeDestY, 0, fallGravity);
+  const fallVx = (safeDestX - apexWorldX) / Math.max(1, fallTicks);
+
+  return {
+    shipWorldX,
+    apexWorldX,
+    apexWorldY,
+    barrelAngle,
+    fallVx,
+    fallVyStart: 0,
+    fallGravity,
+    fallTicks
+  };
+}
+
+/**
+ * Zwraca kąt elewacji lufy okrętu dla podanego punktu X (używane do śledzenia celownika na żywo).
+ */
+export function computeShipTurretAimAngle(targetX, camera = null, turretIdx = 0) {
+  return computeUnifiedShipMortarArc(targetX, 1200, camera, turretIdx).barrelAngle;
 }
 
 /**

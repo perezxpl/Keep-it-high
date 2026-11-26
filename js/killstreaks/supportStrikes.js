@@ -16,11 +16,10 @@ import {
   updateArena3ShipMortars
 } from '../arenas/arena3/background.js';
 import {
-  ARENA3_SHIP_WORLD_X,
   ARENA3_SHIP_MORTAR_STAGGER,
   ARENA3_SHIP_MORTAR_ASCENT,
-  ARENA3_SHIP_APEX_HANG,
-  computeShipMortarBallistics,
+  ARENA3_MORTAR_FALL_GRAVITY,
+  computeUnifiedShipMortarArc,
   solveMortarFallTicks,
   drawMortarBombSprite
 } from './mortarBallistics.js';
@@ -83,24 +82,37 @@ export function spawnMortarStrike(targetX, owner, options = {}) {
     : Array.from({ length: 5 }, (_, i) => Math.round((i - 2) * 58 + (Math.random() - 0.5) * 45));
 
   const fromWarship = isArena3Active();
-  if (fromWarship) {
-    triggerArena3ShipMortarSalvo(safeTargetX, offsets);
+  const destYs = [];
+  const arcs = [];
+
+  for (let i = 0; i < 5; i++) {
+    const destX = safeTargetX + offsets[i];
+    const destY = getSurfaceY(destX);
+    destYs.push(destY);
+    if (fromWarship) {
+      arcs.push(computeUnifiedShipMortarArc(destX, destY, globalCamera, i % 2));
+    }
   }
 
-  // Salwa 5 pocisków moździerzowych o kaskadowych opóźnieniach i torze lotu zsynchronizowanym z okrętem
+  if (fromWarship) {
+    triggerArena3ShipMortarSalvo(safeTargetX, offsets, arcs);
+  }
+
+  // Salwa 5 pocisków moździerzowych z płynnym przejęciem ze szczytu paraboli okrętu
   for (let i = 0; i < 5; i++) {
     const offsetX = offsets[i];
     const destX = safeTargetX + offsetX;
-    const destY = getSurfaceY(destX);
-    const startY = (globalCamera?.y || 0) - (fromWarship ? 30 : (340 + i * 30));
-    const ballistics = fromWarship ? computeShipMortarBallistics(destX, ARENA3_SHIP_WORLD_X) : null;
-    const vx = ballistics ? ballistics.fallVx : (Math.random() - 0.5) * 1.5;
-    const vy = ballistics ? ballistics.fallVyStart : (17 + Math.random() * 3);
-    const gravity = ballistics ? ballistics.fallGravity : 0.12;
+    const destY = destYs[i];
+    const arc = fromWarship ? arcs[i] : null;
+    const startY = arc ? arc.apexWorldY : ((globalCamera?.y || 0) - (340 + i * 30));
+    const vx = arc ? arc.fallVx : (Math.random() - 0.5) * 1.5;
+    const vy = arc ? arc.fallVyStart : (17 + Math.random() * 3);
+    const gravity = arc ? arc.fallGravity : 0.12;
     const fallTicks = solveMortarFallTicks(startY, destY, vy, gravity);
+    const startX = arc ? arc.apexWorldX : (destX - vx * fallTicks);
 
     shells.push({
-      x: destX - vx * fallTicks,
+      x: startX,
       y: startY,
       destX,
       destY,
@@ -108,7 +120,8 @@ export function spawnMortarStrike(targetX, owner, options = {}) {
       vy,
       gravity,
       angle: Math.atan2(vy, vx),
-      delay: fromWarship ? (i * ARENA3_SHIP_MORTAR_STAGGER + ARENA3_SHIP_MORTAR_ASCENT + ARENA3_SHIP_APEX_HANG) : (i * 0.38),
+      handoffTime: fromWarship ? (i * ARENA3_SHIP_MORTAR_STAGGER + ARENA3_SHIP_MORTAR_ASCENT) : (i * 0.38),
+      hasVisibleApex: fromWarship,
       enteredSky: false,
       detonated: false,
       smokeTrail: []
@@ -118,6 +131,7 @@ export function spawnMortarStrike(targetX, owner, options = {}) {
   activeMortarStrikes.push({
     owner,
     targetX: safeTargetX,
+    age: 0,
     shells,
     created: Date.now()
   });
@@ -147,6 +161,7 @@ export function updateMortarStrikes(dt = (1 / 60), combatants = []) {
 
   for (let i = activeMortarStrikes.length - 1; i >= 0; i--) {
     const strike = activeMortarStrikes[i];
+    strike.age = (strike.age || 0) + safeDt;
     let allDone = true;
 
     for (let s = 0; s < strike.shells.length; s++) {
@@ -154,17 +169,18 @@ export function updateMortarStrikes(dt = (1 / 60), combatants = []) {
       if (shell.detonated) continue;
       allDone = false;
 
-      if (shell.delay > 0) {
-        shell.delay -= safeDt;
-        if (shell.delay <= 0 && !shell.enteredSky) {
-          shell.enteredSky = true;
+      if (!shell.enteredSky) {
+        if (strike.age < shell.handoffTime) {
+          continue;
+        }
+        shell.enteredSky = true;
+        if (!shell.hasVisibleApex) {
           const camTop = (globalCamera && typeof globalCamera.y === 'number') ? globalCamera.y : 0;
           shell.y = Math.min(shell.destY - 220, camTop - 25);
           const fallTicks = solveMortarFallTicks(shell.y, shell.destY, shell.vy, shell.gravity || 0);
           shell.x = shell.destX - shell.vx * fallTicks;
           shell.angle = Math.atan2(shell.vy, shell.vx);
         }
-        continue;
       }
 
       if (typeof shell.gravity === 'number' && shell.gravity > 0) {
@@ -256,7 +272,7 @@ export function drawMortarStrikes(ctx, camera) {
         ctx.fill();
       }
 
-      if (!shell.detonated && shell.delay <= 0) {
+      if (!shell.detonated && shell.enteredSky) {
         drawMortarBombSprite(ctx, shell.x, shell.y, shell.angle ?? (Math.PI * 0.5), 1.05);
       }
     }
