@@ -15,8 +15,68 @@ import { animTime } from './state.js';
 import { playSound } from '../../audio/index.js';
 
 // =========================================================================
-// 0. STAN INTERAKTYWNEGO OKRĘTU WOJENNEGO I SALW MOŹDZIERZOWYCH NA MORZU
+// 0. ŁADOWANIE SPRITE SHEETU OKRĘTU + STAN SALW MOŹDZIERZOWYCH W ZATOCE
 // =========================================================================
+const WARSHIP_CELL_W = 768;
+const WARSHIP_CELL_H = 256;
+// Znormalizowane pozycje wylotów luf w obrębie klatki 768x256 (klatka 1 = dziobowa, klatka 2 = rufowa)
+const WARSHIP_MUZZLE_FWD = { u: 0.892, v: 0.398 };
+const WARSHIP_MUZZLE_AFT = { u: 0.278, v: 0.329 };
+const WARSHIP_HULL_BOTTOM_V = 0.953; // Linia wodna stępki w klatce 768x256
+
+let _warshipRawImg = null;
+let _warshipNightCanvas = null;
+let _warshipLoadStarted = false;
+
+function ensureWarshipSpriteSheet() {
+  if (_warshipNightCanvas || typeof document === 'undefined' || typeof Image === 'undefined') return _warshipNightCanvas;
+  if (!_warshipLoadStarted) {
+    _warshipLoadStarted = true;
+    const img = new Image();
+    img.src = 'assets/arena3_warship_sheet.png';
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth || WARSHIP_CELL_W;
+        const h = img.naturalHeight || (WARSHIP_CELL_H * 3);
+        const off = document.createElement('canvas');
+        off.width = w;
+        off.height = h;
+        const octx = off.getContext('2d');
+        if (!octx) return;
+
+        octx.drawImage(img, 0, 0);
+        // Delikatna nocna gradacja pancerza (zachowuje jasny ogień z luf, okna mostka i czerwoną diodę!)
+        const imgData = octx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const a = d[i + 3];
+          if (a < 8) continue;
+          const r = d[i], g = d[i + 1], b = d[i + 2];
+          // Zachowaj ciepły płomień / dym wystrzału, cyjanowe okna mostka oraz czerwoną diodę masztu
+          const isFire = (r > 185 && g > 95 && (r - b) > 45);
+          const isCyanLight = (b > 170 && g > 170 && r < 150);
+          const isRedBeacon = (r > 175 && g < 115 && b < 115);
+          if (isFire || isCyanLight || isRedBeacon) continue;
+          // Przyciemnienie kadłuba w chłodnej nocnej poświacie księżyca
+          d[i] = Math.round(r * 0.46 + 4);
+          d[i + 1] = Math.round(g * 0.56 + 11);
+          d[i + 2] = Math.round(b * 0.68 + 18);
+        }
+        octx.putImageData(imgData, 0, 0);
+        _warshipNightCanvas = off;
+      } catch (_) {
+        _warshipNightCanvas = img;
+      }
+    };
+    _warshipRawImg = img;
+  }
+  return _warshipNightCanvas;
+}
+
+if (typeof window !== 'undefined') {
+  ensureWarshipSpriteSheet();
+}
+
 export const arena3ShipMortarState = {
   salvos: [],
   recoilForward: 0,
@@ -51,7 +111,7 @@ export function triggerArena3ShipMortarSalvo(targetX, offsets = []) {
       flightDuration: 0.90,
       launched: false,
       launchElapsed: 0,
-      turretIdx: i % 2, // 0 = dziobowa wyrzutnia, 1 = rufowa wyrzutnia
+      turretIdx: i % 2, // 0 = dziobowa wieża (prawa), 1 = rufowa wyrzutnia (lewa)
       destX: safeTargetX + off,
       spreadJitterX: (Math.random() - 0.5) * 32,
       smokeTrail: []
@@ -74,37 +134,44 @@ function getArena3WarshipLayout(W_screen, H_screen, camera, time) {
     : (W_screen / Math.max(0.25, camZoom));
   const viewCenterX = camX + viewW * 0.5;
 
-  const seaHorizonY = H_screen * 0.49 - (camY * 0.025);
-  const shipScale = Math.max(0.68, Math.min(1.24, H_screen / 860));
-  const patrolOffsetX = Math.sin(time * 0.065) * 115;
-  const shipWorldX = 2200 + patrolOffsetX;
-  const shipX = W_screen * 0.5 + (shipWorldX - viewCenterX) * 0.24;
-  const bobY = Math.sin(time * 1.15) * 2.0 * shipScale;
-  const pitch = Math.sin(time * 0.85) * 0.014;
-  const shipWaterY = seaHorizonY + Math.max(20, H_screen * 0.045);
+  // Zakotwiczenie rozlewiska i okrętu w osi doliny (X = 2200) z subtelną paralaksą 0.12
+  const arenaCenterShift = viewCenterX - 2200;
+  const estuaryCenterX = W_screen * 0.5 - arenaCenterShift * 0.12;
+  const estuaryHorizonY = H_screen * 0.52 - (camY * 0.025);
+  const estuaryHalfW = Math.max(175, Math.min(340, W_screen * 0.21));
+  const shipWaterY = estuaryHorizonY + Math.max(24, H_screen * 0.045);
+
+  const shipDrawW = Math.max(165, Math.min(340, H_screen * 0.315));
+  const shipDrawH = shipDrawW * (WARSHIP_CELL_H / WARSHIP_CELL_W);
+  const patrolOffsetX = Math.sin(time * 0.06) * Math.min(48, estuaryHalfW * 0.22);
+  const shipX = estuaryCenterX + patrolOffsetX;
+  const bobY = Math.sin(time * 1.15) * (shipDrawH * 0.018);
+  const pitch = Math.sin(time * 0.85) * 0.011;
   const shipY = shipWaterY + bobY;
 
-  // Lokalne współrzędne wyrzutni moździerzy na pokładzie (w układzie okrętu przed skalowaniem)
-  const forwardTurretLocal = { x: -58, y: -15 + arena3ShipMortarState.recoilForward * 3.5 };
-  const aftTurretLocal = { x: 54, y: -14 + arena3ShipMortarState.recoilAft * 3.5 };
-
-  const cosP = Math.cos(pitch);
-  const sinP = Math.sin(pitch);
-  const toScreen = (lx, ly) => ({
-    x: shipX + (lx * cosP - ly * sinP) * shipScale,
-    y: shipY + (lx * sinP + ly * cosP) * shipScale
-  });
+  // Dokładne pozycje wylotu pocisków w przestrzeni ekranu na podstawie klatek sprite sheetu
+  const topLeftX = shipX - shipDrawW * 0.5;
+  const topLeftY = shipY - shipDrawH * WARSHIP_HULL_BOTTOM_V;
+  const fwdX = topLeftX + WARSHIP_MUZZLE_FWD.u * shipDrawW;
+  const fwdY = topLeftY + WARSHIP_MUZZLE_FWD.v * shipDrawH;
+  const aftX = topLeftX + WARSHIP_MUZZLE_AFT.u * shipDrawW;
+  const aftY = topLeftY + WARSHIP_MUZZLE_AFT.v * shipDrawH;
 
   return {
-    seaHorizonY,
+    seaHorizonY: estuaryHorizonY,
+    estuaryCenterX,
+    estuaryHorizonY,
+    estuaryHalfW,
     shipX,
     shipY,
     shipWaterY,
-    shipScale,
+    shipDrawW,
+    shipDrawH,
+    shipScale: shipDrawW / 240,
     pitch,
     turrets: [
-      toScreen(forwardTurretLocal.x, forwardTurretLocal.y),
-      toScreen(aftTurretLocal.x, aftTurretLocal.y)
+      { x: fwdX, y: fwdY },
+      { x: aftX, y: aftY }
     ]
   };
 }
@@ -401,57 +468,53 @@ function ensureMountainsCanvas() {
   if (_cachedMountainsCanvas || typeof document === 'undefined') return;
 
   const w = 2400;
-  const h = 420;
+  const h = 580;
   _cachedMountainsCanvas = document.createElement('canvas');
   _cachedMountainsCanvas.width = w;
   _cachedMountainsCanvas.height = h;
   const mc = _cachedMountainsCanvas.getContext('2d');
   if (!mc) return;
 
-  // Sylwetki przybrzeżnych gór na lewym i prawym przylądku + odległe wyspy nad morzem
+  // Pełne nocne pasmo górskie z naturalną przełęczą / doliną rzeczną w centrum (X: ~1100-1320)
   mc.save();
   const grad = mc.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0.0, '#07101c'); // Ciemny granat szczytów
-  grad.addColorStop(0.55, '#081520');
-  grad.addColorStop(1.0, '#07181f'); // Morska mgiełka przy horyzoncie
+  grad.addColorStop(0.45, '#08141d');
+  grad.addColorStop(0.78, '#091c1b'); // Ciemny petrol
+  grad.addColorStop(1.0, '#0a221e'); // Mgła doliny
   mc.fillStyle = grad;
 
-  // Lewy przylądek górski (opadający ku zatoce)
   mc.beginPath();
   mc.moveTo(0, h);
-  mc.lineTo(0, h * 0.36);
-  mc.bezierCurveTo(160, h * 0.28, 320, h * 0.22, 470, h * 0.34);
-  mc.bezierCurveTo(580, h * 0.44, 670, h * 0.80, 790, h);
-  mc.closePath();
-  mc.fill();
-  mc.strokeStyle = 'rgba(186, 230, 253, 0.14)';
-  mc.lineWidth = 1.5;
-  mc.stroke();
+  mc.lineTo(0, h * 0.56);
 
-  // Prawy masyw / wulkan opadający ku morzu
-  mc.beginPath();
-  mc.moveTo(1620, h);
-  mc.bezierCurveTo(1740, h * 0.78, 1840, h * 0.42, 1980, h * 0.24);
-  mc.bezierCurveTo(2070, h * 0.14, 2140, h * 0.16, 2220, h * 0.32);
-  mc.bezierCurveTo(2300, h * 0.44, 2360, h * 0.42, w, h * 0.38);
+  // Pasmo zachodnie wznoszące się ponad dżunglę
+  mc.bezierCurveTo(220, h * 0.44, 420, h * 0.30, 620, h * 0.28);
+  mc.bezierCurveTo(790, h * 0.27, 920, h * 0.46, 1080, h * 0.72);
+
+  // Przełęcz / dolina rzeki opadająca ku rozlewisku
+  mc.bezierCurveTo(1140, h * 0.80, 1260, h * 0.80, 1340, h * 0.68);
+
+  // Monumentalny szczyt wschodni (wulkan / turnia dżungli)
+  mc.bezierCurveTo(1480, h * 0.42, 1620, h * 0.14, 1760, h * 0.11);
+  mc.bezierCurveTo(1860, h * 0.10, 1950, h * 0.26, 2100, h * 0.34);
+  mc.bezierCurveTo(2230, h * 0.42, 2320, h * 0.48, w, h * 0.56);
+
   mc.lineTo(w, h);
   mc.closePath();
   mc.fill();
+
+  // Srebrzyste światło księżyca na grani (rim lighting)
+  mc.strokeStyle = 'rgba(186, 230, 253, 0.16)';
+  mc.lineWidth = 1.6;
   mc.stroke();
 
-  // Dwie dalekie niskie wyspy na morskim horyzoncie
-  mc.fillStyle = '#06121b';
-  mc.beginPath();
-  mc.moveTo(880, h);
-  mc.quadraticCurveTo(960, h * 0.84, 1050, h);
-  mc.closePath();
-  mc.fill();
-
-  mc.beginPath();
-  mc.moveTo(1430, h);
-  mc.quadraticCurveTo(1505, h * 0.87, 1580, h);
-  mc.closePath();
-  mc.fill();
+  // Pasmo mgły u stóp szczytów
+  const mistGrad = mc.createLinearGradient(0, h * 0.70, 0, h);
+  mistGrad.addColorStop(0.0, 'rgba(10, 28, 24, 0)');
+  mistGrad.addColorStop(1.0, 'rgba(10, 28, 24, 0.62)');
+  mc.fillStyle = mistGrad;
+  mc.fillRect(0, h * 0.65, w, h * 0.35);
 
   mc.restore();
 }
@@ -470,72 +533,68 @@ function ensureJungleCanvas() {
   jc.save();
   const jGrad = jc.createLinearGradient(0, 0, 0, h);
   jGrad.addColorStop(0.0, '#040d0a'); // Najciemniejszy szmaragd cienia
-  jGrad.addColorStop(0.55, '#06130f');
+  jGrad.addColorStop(0.5, '#06130f');
   jGrad.addColorStop(1.0, '#071813');
   jc.fillStyle = jGrad;
 
   jc.beginPath();
   jc.moveTo(0, h);
-  jc.lineTo(0, h * 0.42);
+  jc.lineTo(0, h * 0.48);
 
-  // Lewy brzeg dżungli (wysokie korony oprawiające zatokę morską)
+  // Lewy ciąg koron dżungli schodzący ku dolinie rozlewiska (X: 0..950)
   const leftNodes = [
-    { x: 90, hRatio: 0.30, r: 125 },
-    { x: 270, hRatio: 0.36, r: 110 },
-    { x: 440, hRatio: 0.46, r: 95 },
-    { x: 590, hRatio: 0.62, r: 75 }
+    { x: 110, hRatio: 0.32, r: 125 },
+    { x: 320, hRatio: 0.38, r: 115 },
+    { x: 540, hRatio: 0.28, r: 140 },
+    { x: 760, hRatio: 0.36, r: 120 },
+    { x: 940, hRatio: 0.50, r: 85 }
   ];
   for (let i = 0; i < leftNodes.length; i++) {
     const node = leftNodes[i];
-    jc.arc(node.x, h * node.hRatio, node.r, Math.PI * 0.90, Math.PI * 0.15, false);
+    jc.arc(node.x, h * node.hRatio, node.r, Math.PI * 0.88, Math.PI * 0.14, false);
   }
 
-  // Otwarta zatoka morska w środku (niska linia przybrzeżnych krzewów i skał w dolnej części)
-  jc.bezierCurveTo(820, h * 0.68, 1080, h * 0.71, 1240, h * 0.70);
-  jc.bezierCurveTo(1420, h * 0.72, 1650, h * 0.68, 1810, h * 0.62);
+  // Prześwit na odległe rozlewisko w dolinie (X: 980..1420)
+  jc.bezierCurveTo(1060, h * 0.78, 1340, h * 0.78, 1420, h * 0.54);
 
-  // Prawy brzeg dżungli i ruiny świątyni
+  // Prawy ciąg koron dżungli z prastarymi ruinami świątyni (X: 1440..2400)
   const rightNodes = [
-    { x: 1890, hRatio: 0.50, r: 85 },
-    { x: 2040, hRatio: 0.36, r: 115 },
-    { x: 2220, hRatio: 0.30, r: 130 },
-    { x: 2370, hRatio: 0.38, r: 110 }
+    { x: 1480, hRatio: 0.44, r: 90 },
+    { x: 1680, hRatio: 0.30, r: 135 },
+    { x: 1920, hRatio: 0.38, r: 120 },
+    { x: 2140, hRatio: 0.29, r: 140 },
+    { x: 2330, hRatio: 0.36, r: 120 }
   ];
   for (let i = 0; i < rightNodes.length; i++) {
     const node = rightNodes[i];
-    jc.arc(node.x, h * node.hRatio, node.r, Math.PI * 0.85, Math.PI * 0.10, false);
+    jc.arc(node.x, h * node.hRatio, node.r, Math.PI * 0.86, Math.PI * 0.12, false);
   }
 
-  jc.lineTo(w, h * 0.48);
+  jc.lineTo(w, h * 0.52);
   jc.lineTo(w, h);
   jc.closePath();
   jc.fill();
 
-  // Sylwetka prastarej świątyni / ruiny kamiennej w głębi prawej dżungli (X: ~1980 do 2160)
+  // Sylwetka prastarej świątyni / ruiny kamiennej w stylu Khmer w głębi prawej dżungli (X: ~1760..1920)
   jc.fillStyle = '#030a08';
-  jc.fillRect(2000, h * 0.42, 140, h * 0.58);
-  jc.fillRect(2025, h * 0.33, 90, h * 0.09);
-  jc.fillRect(2048, h * 0.25, 44, h * 0.08);
+  jc.fillRect(1770, h * 0.38, 150, h * 0.62);
+  jc.fillRect(1795, h * 0.29, 100, h * 0.09);
+  jc.fillRect(1820, h * 0.22, 50, h * 0.07);
   jc.fillStyle = '#010403';
-  jc.fillRect(2050, h * 0.58, 40, h * 0.42);
+  jc.fillRect(1824, h * 0.54, 42, h * 0.46);
 
-  // Liście palmowe na brzegach zatoki
+  // Liście palmowe na grzbietach koron
   jc.strokeStyle = '#051410';
-  jc.lineWidth = 3.5;
-  const palmPositions = [
-    { px: 160, py: h * 0.30 },
-    { px: 470, py: h * 0.45 },
-    { px: 1890, py: h * 0.48 },
-    { px: 2240, py: h * 0.30 }
-  ];
-  for (const palm of palmPositions) {
+  jc.lineWidth = 3.6;
+  for (let px = 120; px < w; px += 250) {
+    if (px > 930 && px < 1450) continue;
     jc.beginPath();
-    jc.moveTo(palm.px, palm.py);
-    jc.quadraticCurveTo(palm.px + 42, palm.py - 34, palm.px + 74, palm.py - 16);
+    jc.moveTo(px, h * 0.35);
+    jc.quadraticCurveTo(px + 42, h * 0.27, px + 76, h * 0.31);
     jc.stroke();
     jc.beginPath();
-    jc.moveTo(palm.px, palm.py);
-    jc.quadraticCurveTo(palm.px - 42, palm.py - 34, palm.px - 74, palm.py - 16);
+    jc.moveTo(px, h * 0.35);
+    jc.quadraticCurveTo(px - 42, h * 0.27, px - 76, h * 0.31);
     jc.stroke();
   }
 
@@ -543,255 +602,269 @@ function ensureJungleCanvas() {
 }
 
 // =========================================================================
-// 4. NOCNE MORZE, OKRĘT WOJENNY I WZNOSZĄCE SIĘ MOŹDZIERZE
+// 4. PERSPEKTYWICZNA RZEKA, ROZLEWISKO I OKRĘT WOJENNY (SPRITE SHEET)
 // =========================================================================
-let _cachedSeaGrad = null;
-let _cachedSeaHorizonY = -1;
-let _cachedSeaH = -1;
-let _cachedWarshipCanvas = null;
+let _cachedRiverGrad = null;
+let _cachedRiverTopY = -1;
+let _cachedRiverBotY = -1;
 
-function ensureWarshipCanvas() {
-  if (_cachedWarshipCanvas || typeof document === 'undefined') return;
-  const cw = 260;
-  const ch = 90;
-  const cx = 130;
-  const cy = 74;
-  _cachedWarshipCanvas = document.createElement('canvas');
-  _cachedWarshipCanvas.width = cw;
-  _cachedWarshipCanvas.height = ch;
-  const wc = _cachedWarshipCanvas.getContext('2d');
-  if (!wc) return;
+function drawArena3EstuaryAndRiver(ctx, layout, W_screen, H_screen, camera, time) {
+  const { estuaryCenterX, estuaryHorizonY, estuaryHalfW } = layout;
+  const camX = camera ? (camera.x || 0) : 0;
+  const camY = camera ? (camera.y || 0) : 0;
+  const camZoom = camera ? (camera.zoom || 1) : 1;
 
-  wc.save();
-  wc.translate(cx, cy);
+  // Współrzędne pierwszego planu rzeki (X: 1600..2800, Y: 1300 w przestrzeni świata)
+  const nearLeftX = (1600 - camX) * camZoom;
+  const nearRightX = (2800 - camX) * camZoom;
+  const nearCenterX = (nearLeftX + nearRightX) * 0.5;
+  const nearHalfW = (nearRightX - nearLeftX) * 0.5;
+  const rawNearY = (1302 - camY) * camZoom;
+  const nearY = Math.max(estuaryHorizonY + 90, rawNearY);
 
-  // Kadłub stealth niszczyciela
-  wc.fillStyle = '#0c1824';
-  wc.beginPath();
-  wc.moveTo(-114, 2);
-  wc.lineTo(-96, -15);
-  wc.lineTo(96, -14);
-  wc.lineTo(108, 2);
-  wc.closePath();
-  wc.fill();
+  // Punkty kontrolne S-krzywizny rzeki wijącej się między brzegami dżungli od rozlewiska do mostu
+  const estuaryFrontY = estuaryHorizonY + Math.max(46, (nearY - estuaryHorizonY) * 0.26);
+  const farLeftX = estuaryCenterX - estuaryHalfW;
+  const farRightX = estuaryCenterX + estuaryHalfW;
+  const neckHalfW = Math.max(58, nearHalfW * 0.24);
+  const bendOffset = (nearCenterX - estuaryCenterX) * 0.18;
 
-  // Księżycowa krawędź pokładu i dziobu
-  wc.strokeStyle = 'rgba(148, 210, 235, 0.28)';
-  wc.lineWidth = 1.2;
-  wc.beginPath();
-  wc.moveTo(-112, 0);
-  wc.lineTo(-96, -15);
-  wc.lineTo(96, -14);
-  wc.stroke();
-
-  // Główna nadbudówka (mostek)
-  wc.fillStyle = '#0f2030';
-  wc.beginPath();
-  wc.moveTo(-36, -14);
-  wc.lineTo(-26, -34);
-  wc.lineTo(12, -34);
-  wc.lineTo(22, -26);
-  wc.lineTo(36, -26);
-  wc.lineTo(42, -14);
-  wc.closePath();
-  wc.fill();
-
-  // Komin i rufowy hangar
-  wc.fillStyle = '#0b1622';
-  wc.beginPath();
-  wc.moveTo(16, -26);
-  wc.lineTo(22, -40);
-  wc.lineTo(32, -40);
-  wc.lineTo(36, -26);
-  wc.closePath();
-  wc.fill();
-
-  // Maszt radarowy
-  wc.strokeStyle = '#1e3548';
-  wc.lineWidth = 2.0;
-  wc.beginPath();
-  wc.moveTo(-10, -34);
-  wc.lineTo(-7, -56);
-  wc.moveTo(-14, -46);
-  wc.lineTo(-2, -46);
-  wc.stroke();
-
-  // Światło mostka
-  wc.fillStyle = 'rgba(56, 189, 248, 0.55)';
-  wc.fillRect(-23, -30, 12, 2);
-
-  wc.restore();
-}
-
-function drawArena3NightSea(ctx, W_screen, H_screen, seaHorizonY, camX, time) {
-  const seaHeight = Math.max(80, H_screen - seaHorizonY);
-  const qHoriz = Math.round(seaHorizonY);
-  if (!_cachedSeaGrad || Math.abs(_cachedSeaHorizonY - qHoriz) > 1 || _cachedSeaH !== H_screen) {
-    const seaGrad = ctx.createLinearGradient(0, qHoriz, 0, H_screen);
-    seaGrad.addColorStop(0.0, '#071b2b');
-    seaGrad.addColorStop(0.28, '#051522');
-    seaGrad.addColorStop(0.65, '#030d16');
-    seaGrad.addColorStop(1.0, '#02080d');
-    _cachedSeaGrad = seaGrad;
-    _cachedSeaHorizonY = qHoriz;
-    _cachedSeaH = H_screen;
+  const qTop = Math.round(estuaryHorizonY);
+  const qBot = Math.round(nearY + 40);
+  if (!_cachedRiverGrad || Math.abs(_cachedRiverTopY - qTop) > 2 || Math.abs(_cachedRiverBotY - qBot) > 2) {
+    const rGrad = ctx.createLinearGradient(0, qTop, 0, qBot);
+    rGrad.addColorStop(0.00, '#071b2d'); // Zamglone dalekie rozlewisko
+    rGrad.addColorStop(0.26, '#092a44'); // Środkowy bieg rzeki
+    rGrad.addColorStop(0.68, '#0f4770'); // Nocny granat/cyjan nurtu
+    rGrad.addColorStop(1.00, '#1a6ea3'); // Płynne przejście w powierzchnię rzeki na arenie
+    _cachedRiverGrad = rGrad;
+    _cachedRiverTopY = qTop;
+    _cachedRiverBotY = qBot;
   }
-  ctx.fillStyle = _cachedSeaGrad;
-  ctx.fillRect(0, seaHorizonY, W_screen, seaHeight);
 
-  // Chłodna linia horyzontu morskiego i odbicie księżyca zgrane w minimalną liczbę pathów
+  const lP0 = { x: farLeftX - 24, y: estuaryHorizonY + 10 };
+  const lP1 = { x: farLeftX - 42, y: estuaryFrontY + 18 };
+  const lP2 = { x: estuaryCenterX - neckHalfW * 1.15 - bendOffset * 0.6, y: estuaryFrontY + (nearY - estuaryFrontY) * 0.42 };
+  const lP3 = { x: nearLeftX, y: nearY };
+
+  const rP0 = { x: farRightX + 24, y: estuaryHorizonY + 9 };
+  const rP1 = { x: farRightX + 42, y: estuaryFrontY + 22 };
+  const rP2 = { x: estuaryCenterX + neckHalfW * 1.38 + bendOffset, y: estuaryFrontY + (nearY - estuaryFrontY) * 0.34 };
+  const rP3 = { x: nearRightX, y: nearY };
+
+  const evalCubic = (p0, p1, p2, p3, t) => {
+    const u = 1 - t;
+    const uu = u * u;
+    const tt = t * t;
+    return {
+      x: uu * u * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + tt * t * p3.x,
+      y: uu * u * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + tt * t * p3.y
+    };
+  };
+
+  // 1. Zarys rozlewiska w dolinie oraz wijącego się koryta rzeki
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(lP0.x, lP0.y);
+  ctx.quadraticCurveTo(estuaryCenterX - estuaryHalfW * 0.52, estuaryHorizonY - 6, estuaryCenterX, estuaryHorizonY + 3);
+  ctx.quadraticCurveTo(estuaryCenterX + estuaryHalfW * 0.52, estuaryHorizonY - 7, rP0.x, rP0.y);
+  ctx.bezierCurveTo(rP1.x, rP1.y, rP2.x, rP2.y, rP3.x, rP3.y);
+  ctx.lineTo(nearRightX, Math.max(nearY + 35, H_screen));
+  ctx.lineTo(nearLeftX, Math.max(nearY + 35, H_screen));
+  ctx.lineTo(lP3.x, lP3.y);
+  ctx.bezierCurveTo(lP2.x, lP2.y, lP1.x, lP1.y, lP0.x, lP0.y);
+  ctx.closePath();
+
+  ctx.fillStyle = _cachedRiverGrad;
+  ctx.fill();
+
+  // 2. Perspektywiczne refleksy księżyca i mgła dolinna (w przycięciu do koryta)
+  ctx.save();
+  ctx.clip();
+
   const skyW = 2400;
-  const skyParallaxX = (camX * 0.02) % skyW;
+  const skyParallaxX = ((camX * 0.02) % skyW + skyW) % skyW;
   let moonScreenX = (skyW * 0.74) - skyParallaxX;
   if (moonScreenX < -100) moonScreenX += skyW;
   if (moonScreenX > W_screen + 100) moonScreenX -= skyW;
 
-  ctx.save();
-  ctx.strokeStyle = 'rgba(186, 230, 253, 0.24)';
+  // Miękka mgiełka nad dalekim brzegiem rozlewiska (płynne przejście wody w dolinę górską)
+  const hazeH = Math.max(36, (estuaryFrontY - estuaryHorizonY) * 0.85);
+  const hazeGrad = ctx.createLinearGradient(0, estuaryHorizonY - 10, 0, estuaryHorizonY + hazeH);
+  hazeGrad.addColorStop(0.0, 'rgba(9, 28, 27, 0.88)');
+  hazeGrad.addColorStop(0.35, 'rgba(10, 34, 42, 0.35)');
+  hazeGrad.addColorStop(1.0, 'rgba(12, 42, 54, 0)');
+  ctx.fillStyle = hazeGrad;
+  ctx.fillRect(farLeftX - 80, estuaryHorizonY - 12, estuaryHalfW * 2 + 160, hazeH + 12);
+
+  // Niskie zalesione wysepki / półwyspy przy dalekim brzegu rozlewiska
+  ctx.fillStyle = '#061512';
+  ctx.beginPath();
+  ctx.moveTo(farLeftX - 30, estuaryHorizonY + 14);
+  ctx.quadraticCurveTo(farLeftX + estuaryHalfW * 0.30, estuaryHorizonY - 3, farLeftX + estuaryHalfW * 0.62, estuaryHorizonY + 9);
+  ctx.lineTo(farLeftX - 30, estuaryHorizonY + 14);
+  ctx.moveTo(farRightX + 30, estuaryHorizonY + 14);
+  ctx.quadraticCurveTo(farRightX - estuaryHalfW * 0.26, estuaryHorizonY - 4, farRightX - estuaryHalfW * 0.56, estuaryHorizonY + 10);
+  ctx.lineTo(farRightX + 30, estuaryHorizonY + 14);
+  ctx.fill();
+
+  // Perspektywiczne fale w głąb rzeki (1 batch stroke)
+  ctx.strokeStyle = 'rgba(148, 226, 255, 0.22)';
   ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.moveTo(0, seaHorizonY);
-  ctx.lineTo(W_screen, seaHorizonY);
-  for (let row = 0; row < 10; row++) {
-    const tRow = row / 10;
-    const wy = seaHorizonY + 6 + tRow * Math.min(seaHeight * 0.45, 160);
-    const halfSpan = 16 + tRow * 44;
-    const drift = Math.sin(time * 2.1 + row * 1.3) * (6 + tRow * 8);
-    const segW = 14 + tRow * 24 + Math.cos(time * 2.8 + row) * 6;
-    const sx = moonScreenX + drift - segW * 0.5;
-    if (sx + halfSpan >= -50 && sx - halfSpan <= W_screen + 50) {
-      ctx.moveTo(sx, wy);
-      ctx.lineTo(sx + segW, wy);
+  const rows = 14;
+  for (let r = 0; r < rows; r++) {
+    const t = r / (rows - 1);
+    const pt = t * t;
+    const wy = estuaryHorizonY + 14 + pt * (nearY - estuaryHorizonY - 20);
+    const centerAtY = estuaryCenterX + (nearCenterX - estuaryCenterX) * pt;
+    const spanAtY = Math.max(40, (t < 0.25 ? estuaryHalfW * 0.7 : (neckHalfW + (nearHalfW - neckHalfW) * pt)) * 0.72);
+    const segCount = t < 0.3 ? 3 : 4;
+    for (let k = 0; k < segCount; k++) {
+      const frac = ((k + 0.5) / segCount) * 2 - 1;
+      const sx = centerAtY + frac * spanAtY * 0.65 + Math.sin(time * 1.9 + r + k) * (4 + pt * 12);
+      const len = (10 + pt * 36) * (0.8 + 0.3 * Math.cos(time * 2.3 + r * 1.7 + k));
+      ctx.moveTo(sx - len * 0.5, wy);
+      ctx.lineTo(sx + len * 0.5, wy);
     }
+  }
+  // Ścieżka księżycowego blasku na rozlewisku
+  for (let r = 0; r < 7; r++) {
+    const wy = estuaryHorizonY + 13 + r * 6.5;
+    const drift = Math.sin(time * 2.2 + r * 1.2) * (3 + r * 1.4);
+    const segW = 14 + r * 3.5;
+    ctx.moveTo(moonScreenX + drift - segW * 0.5, wy);
+    ctx.lineTo(moonScreenX + drift + segW * 0.5, wy);
   }
   ctx.stroke();
 
-  // Delikatne nocne grzebienie fal na całej szerokości zatoki (1 batch stroke)
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.09)';
-  ctx.lineWidth = 1.1;
+  ctx.restore(); // koniec clip
+
+  // 3. Organiczne zalesione brzegi dżungli wzdłuż wijącej się rzeki (jednolity kolor #06130f z koronami dokładnie po zewnętrznej stronie krzywej)
+  ctx.fillStyle = '#06130f';
   ctx.beginPath();
-  const waveOffset = ((camX * 0.14) % 160 + 160) % 160;
-  for (let row = 0; row < 4; row++) {
-    const wy = seaHorizonY + 16 + row * 28;
-    if (wy > H_screen) break;
-    for (let wx = -waveOffset - 40; wx < W_screen + 160; wx += 160) {
-      const shimmer = Math.sin(time * 1.4 + row + wx * 0.02) * 10;
-      const len = 28 + row * 10;
-      ctx.moveTo(wx + shimmer, wy);
-      ctx.lineTo(wx + shimmer + len, wy);
-    }
+  ctx.moveTo(lP0.x, lP0.y);
+  ctx.bezierCurveTo(lP1.x, lP1.y, lP2.x, lP2.y, lP3.x, lP3.y);
+  ctx.lineTo(lP3.x - 360, nearY + 45);
+  ctx.lineTo(Math.min(-120, farLeftX - 520), nearY + 45);
+  ctx.lineTo(Math.min(-120, farLeftX - 520), estuaryHorizonY + 26);
+  ctx.quadraticCurveTo(farLeftX - 180, estuaryHorizonY + 12, lP0.x, lP0.y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(rP0.x, rP0.y);
+  ctx.bezierCurveTo(rP1.x, rP1.y, rP2.x, rP2.y, rP3.x, rP3.y);
+  ctx.lineTo(rP3.x + 360, nearY + 45);
+  ctx.lineTo(Math.max(W_screen + 120, farRightX + 520), nearY + 45);
+  ctx.lineTo(Math.max(W_screen + 120, farRightX + 520), estuaryHorizonY + 26);
+  ctx.quadraticCurveTo(farRightX + 180, estuaryHorizonY + 12, rP0.x, rP0.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Krzewy i korony dżungli wyprofilowane dokładnie wzdłuż obu krzywych brzegu (nigdy nie wchodzą na wodę)
+  ctx.beginPath();
+  for (let s = 0; s <= 9; s++) {
+    const t = s / 9;
+    const radL = 14 + (t * t) * 26 + (s % 2) * 8;
+    const ptL = evalCubic(lP0, lP1, lP2, lP3, t);
+    ctx.moveTo(ptL.x - radL * 0.55 + radL, ptL.y);
+    ctx.arc(ptL.x - radL * 0.55, ptL.y, radL, 0, Math.PI * 2);
+
+    const radR = 14 + (t * t) * 26 + ((s + 1) % 2) * 8;
+    const ptR = evalCubic(rP0, rP1, rP2, rP3, t);
+    ctx.moveTo(ptR.x + radR * 0.55 + radR, ptR.y);
+    ctx.arc(ptR.x + radR * 0.55, ptR.y, radR, 0, Math.PI * 2);
   }
-  ctx.stroke();
+  ctx.fill();
+
   ctx.restore();
 }
 
 function drawArena3Warship(ctx, layout, time) {
-  const { shipX, shipY, shipWaterY, shipScale, pitch, turrets } = layout;
-  ensureWarshipCanvas();
+  const { shipX, shipY, shipWaterY, shipDrawW, shipDrawH, shipScale, pitch, turrets } = layout;
+  const sheet = ensureWarshipSpriteSheet();
+
+  // Wybór klatki ze sprite sheetu (0 = spoczynek, 1 = strzał z dziobu, 2 = strzał z rufy)
+  const flashF = arena3ShipMortarState.muzzleFlashForward;
+  const flashA = arena3ShipMortarState.muzzleFlashAft;
+  let frameIdx = 0;
+  if (flashF > 0 && flashF >= flashA) frameIdx = 1;
+  else if (flashA > 0) frameIdx = 2;
 
   ctx.save();
 
-  // 1. Zbuforowane odbicie okrętu w wodzie + rozbłysk odbity na wodzie
-  if (_cachedWarshipCanvas) {
+  // 1. Odbicie okrętu oraz rozbłysków wystrzału w wodzie rozlewiska
+  if (sheet) {
     ctx.save();
-    ctx.translate(shipX, shipWaterY + 3 * shipScale);
-    ctx.scale(shipScale, -shipScale * 0.40);
-    ctx.globalAlpha = 0.22;
-    ctx.drawImage(_cachedWarshipCanvas, -130, -74);
+    ctx.translate(shipX, shipWaterY + 2);
+    ctx.rotate(-pitch * 0.5);
+    ctx.scale(1, -0.34);
+    ctx.globalAlpha = 0.25;
+    ctx.drawImage(
+      sheet,
+      0,
+      frameIdx * WARSHIP_CELL_H,
+      WARSHIP_CELL_W,
+      WARSHIP_CELL_H,
+      -shipDrawW * 0.5,
+      -shipDrawH * WARSHIP_HULL_BOTTOM_V,
+      shipDrawW,
+      shipDrawH
+    );
     ctx.restore();
   }
 
-  const flashF = arena3ShipMortarState.muzzleFlashForward;
-  const flashA = arena3ShipMortarState.muzzleFlashAft;
   if (flashF > 0 && turrets[0]) {
     const fAlpha = Math.min(0.45, flashF * 2.0);
     ctx.fillStyle = `rgba(251, 146, 60, ${fAlpha.toFixed(2)})`;
     ctx.beginPath();
-    ctx.ellipse(turrets[0].x, shipWaterY + 5 * shipScale, 26 * shipScale, 4 * shipScale, 0, 0, Math.PI * 2);
+    ctx.ellipse(turrets[0].x, shipWaterY + 5 * shipScale, 28 * shipScale, 4.5 * shipScale, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   if (flashA > 0 && turrets[1]) {
     const aAlpha = Math.min(0.45, flashA * 2.0);
     ctx.fillStyle = `rgba(251, 146, 60, ${aAlpha.toFixed(2)})`;
     ctx.beginPath();
-    ctx.ellipse(turrets[1].x, shipWaterY + 5 * shipScale, 26 * shipScale, 4 * shipScale, 0, 0, Math.PI * 2);
+    ctx.ellipse(turrets[1].x, shipWaterY + 5 * shipScale, 28 * shipScale, 4.5 * shipScale, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 2. Zbuforowany kadłub + animowane elementy pokładu (radar, wieże moździerzy, kilwater)
+  // 2. Renderowanie klatki ze sprite sheetu okrętu z delikatnym kołysaniem na fali
+  ctx.save();
   ctx.translate(shipX, shipY);
   ctx.rotate(pitch);
-  ctx.scale(shipScale, shipScale);
 
-  if (_cachedWarshipCanvas) {
-    ctx.drawImage(_cachedWarshipCanvas, -130, -74);
-  }
-
-  // Obracająca się antena radaru
-  const radarW = 5 + Math.abs(Math.cos(time * 2.4)) * 9;
-  ctx.strokeStyle = 'rgba(186, 230, 253, 0.45)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(-7 - radarW * 0.5, -56);
-  ctx.lineTo(-7 + radarW * 0.5, -56);
-  // Lufy wyrzutni i kilwater
-  const rFwd = arena3ShipMortarState.recoilForward * 2.8;
-  const rAft = arena3ShipMortarState.recoilAft * 2.8;
-  ctx.stroke();
-
-  ctx.fillStyle = '#16293a';
-  ctx.fillRect(-66, -20 + rFwd * 0.5, 16, 6);
-  ctx.fillRect(46, -19 + rAft * 0.5, 16, 6);
-
-  ctx.strokeStyle = '#244159';
-  ctx.lineWidth = 2.4;
-  ctx.beginPath();
-  ctx.moveTo(-58, -19 + rFwd * 0.5);
-  ctx.lineTo(-55, -29 + rFwd);
-  ctx.moveTo(54, -18 + rAft * 0.5);
-  ctx.lineTo(56, -28 + rAft);
-  ctx.stroke();
-
-  // Czerwona dioda na szczycie masztu
-  ctx.fillStyle = (Math.sin(time * 4.5) > 0) ? 'rgba(239, 68, 68, 0.85)' : 'rgba(127, 29, 29, 0.45)';
-  ctx.beginPath();
-  ctx.arc(-7, -59, 1.8, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 3. Rozbłyski wystrzałów z wyrzutni okrętu (Muzzle Flash)
-  if (flashF > 0) {
-    const fT = Math.min(1, flashF / 0.24);
-    ctx.fillStyle = `rgba(251, 146, 60, ${(0.85 * fT).toFixed(2)})`;
-    ctx.beginPath();
-    ctx.arc(-55, -31, 12 * fT, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(255, 255, 235, ${(0.95 * fT).toFixed(2)})`;
-    ctx.beginPath();
-    ctx.arc(-55, -31, 5.5 * fT, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  if (flashA > 0) {
-    const aT = Math.min(1, flashA / 0.24);
-    ctx.fillStyle = `rgba(251, 146, 60, ${(0.85 * aT).toFixed(2)})`;
-    ctx.beginPath();
-    ctx.arc(56, -30, 12 * aT, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(255, 255, 235, ${(0.95 * aT).toFixed(2)})`;
-    ctx.beginPath();
-    ctx.arc(56, -30, 5.5 * aT, 0, Math.PI * 2);
-    ctx.fill();
+  if (sheet) {
+    ctx.globalAlpha = 0.94;
+    ctx.drawImage(
+      sheet,
+      0,
+      frameIdx * WARSHIP_CELL_H,
+      WARSHIP_CELL_W,
+      WARSHIP_CELL_H,
+      -shipDrawW * 0.5,
+      -shipDrawH * WARSHIP_HULL_BOTTOM_V,
+      shipDrawW,
+      shipDrawH
+    );
+  } else {
+    // Awaryjna lekka sylwetka zanim obraz zdąży się załadować
+    ctx.fillStyle = '#0c1824';
+    ctx.fillRect(-shipDrawW * 0.42, -14, shipDrawW * 0.84, 14);
+    ctx.fillRect(-shipDrawW * 0.12, -32, shipDrawW * 0.24, 18);
   }
 
   ctx.restore();
 
-  // Piana / ślad kilwateru na linii wody
-  ctx.save();
-  ctx.strokeStyle = 'rgba(186, 230, 253, 0.22)';
+  // 3. Delikatny ślad kilwateru na linii wody pod kadłubem
+  ctx.strokeStyle = 'rgba(186, 230, 253, 0.24)';
   ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.moveTo(shipX - 118 * shipScale, shipWaterY + 2 * shipScale);
-  ctx.lineTo(shipX + 114 * shipScale, shipWaterY + 2 * shipScale);
+  ctx.moveTo(shipX - shipDrawW * 0.48, shipWaterY + 1.5);
+  ctx.lineTo(shipX + shipDrawW * 0.48, shipWaterY + 1.5);
   ctx.stroke();
+
   ctx.restore();
 }
 
@@ -896,17 +969,17 @@ export function drawArena3Background(ctx, camera) {
   }
 
   const warshipLayout = getArena3WarshipLayout(W_screen, H_screen, camera, time);
-  const seaHorizonY = warshipLayout.seaHorizonY;
+  const estuaryHorizonY = warshipLayout.estuaryHorizonY;
 
   // -----------------------------------------------------------------------
-  // WARSTWA 4: PRZYBRZEŻNE GÓRY I WYSPY NAD MORZEM (OFFSCREEN CANVAS CACHING)
+  // WARSTWA 4: PEŁNE NOCNE PASMO GÓRSKIE Z DOLINĄ NAD ROZLEWISKIEM
   // -----------------------------------------------------------------------
   ensureMountainsCanvas();
   if (_cachedMountainsCanvas) {
     const mPeriod = 2400;
     const mBaseX = (W_screen * 0.5 - mPeriod * 0.5) - (arenaCenterShift * 0.04);
-    const mHeight = H_screen * 0.34;
-    const mY = seaHorizonY - mHeight + 2;
+    const mHeight = H_screen * 0.44;
+    const mY = estuaryHorizonY - mHeight * 0.84 - (camY * 0.015);
 
     for (let loop = -1; loop <= 1; loop++) {
       const drawX = mBaseX + loop * mPeriod;
@@ -916,20 +989,14 @@ export function drawArena3Background(ctx, camera) {
   }
 
   // -----------------------------------------------------------------------
-  // WARSTWA 4.5: NOCNE MORZE I OKRĘT WOJENNY W ZATOCE
-  // -----------------------------------------------------------------------
-  drawArena3NightSea(ctx, W_screen, H_screen, seaHorizonY, camX, time);
-  drawArena3Warship(ctx, warshipLayout, time);
-
-  // -----------------------------------------------------------------------
-  // WARSTWA 5: PRASTARE KORONY DRZEW I RUINY OPRAWIAJĄCE ZATOKĘ (OFFSCREEN CACHING)
+  // WARSTWA 5: KORONY DRZEW DŻUNGLI I RUINY OTACZAJĄCE DOLINĘ
   // -----------------------------------------------------------------------
   ensureJungleCanvas();
   if (_cachedJungleCanvas) {
     const jPeriod = 2400;
     const jBaseX = (W_screen * 0.5 - jPeriod * 0.5) - (arenaCenterShift * 0.08);
-    const jHeight = H_screen * 0.64;
-    const jY = seaHorizonY - H_screen * 0.14 - (camY * 0.02);
+    const jHeight = H_screen * 0.62;
+    const jY = estuaryHorizonY - H_screen * 0.16 - (camY * 0.02);
 
     for (let loop = -1; loop <= 1; loop++) {
       const drawX = jBaseX + loop * jPeriod;
@@ -937,6 +1004,12 @@ export function drawArena3Background(ctx, camera) {
       ctx.drawImage(_cachedJungleCanvas, drawX, jY, jPeriod, jHeight);
     }
   }
+
+  // -----------------------------------------------------------------------
+  // WARSTWA 5.2: PERSPEKTYWICZNA RZEKA ŁĄCZĄCA ARENĘ Z ROZLEWISKIEM + OKRĘT
+  // -----------------------------------------------------------------------
+  drawArena3EstuaryAndRiver(ctx, warshipLayout, W_screen, H_screen, camera, time);
+  drawArena3Warship(ctx, warshipLayout, time);
 
   // -----------------------------------------------------------------------
   // WARSTWA 5.5: WZNOSZĄCE SIĘ POCISKI MOŹDZIERZOWE Z OKRĘTU PONAD EKRAN
