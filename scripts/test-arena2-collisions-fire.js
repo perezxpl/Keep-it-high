@@ -62,6 +62,8 @@ const {
   clearFlamethrowerState
 } = await import('../js/weapons/flamethrower.js');
 const { MolotovCocktail, detonateMolotovExplosion } = await import('../js/weapons/molotov.js');
+const { deathmatchState } = await import('../js/deathmatch/index.js');
+const { createPlayerInstance, updatePlayer } = await import('../js/player/index.js');
 
 // Helper creating minimal player object
 function makePlayer(x, y, opts = {}) {
@@ -317,6 +319,51 @@ console.log('--- TEST 7: Beczki reaguja na ogien (FlameParticle, SurfaceFire, Bu
   assert.ok(b5.hp < b5.maxHp && b5.burnTimer > 0, 'detonateMolotovExplosion musi uszkodzic i podpalic beczke w zasiegu');
 
   console.log('PASS: Beczki reaguja poprawnie na kazdy rodzaj ognia.');
+}
+
+// -------------------------------------------------------------------------
+// TEST 8: Brak niewidzialnych scian na krawedziach platform Areny 2
+// -------------------------------------------------------------------------
+{
+  console.log('--- TEST 8: Brak niewidzialnych scian na krawedziach platform Areny 2 (spadanie i wypychanie) ---');
+  switchArena(2);
+  deathmatchState.matchPhase = 'ACTIVE';
+  deathmatchState.countdownTimer = 0;
+
+  // 8A. Zejscie z lewej krawedzi Bastionu A (x = 180) prowadzi do spadniecia w przepasc
+  const pLeft = createPlayerInstance({ isIntro: false });
+  pLeft.x = 195;
+  pLeft.y = 420 - pLeft.h;
+  pLeft.onGround = true;
+  pLeft.currentGroundY = 420;
+  pLeft.currentPlatform = ARENA_PLATFORMS.find(pl => pl.id === 'plat_A_top_left');
+  for (let i = 0; i < 35; i++) {
+    updatePlayer({ left: true, right: false, up: false, down: false }, null, 1600, null, null, pLeft);
+    checkPlayerPlatformLanding(pLeft, 1600);
+  }
+  assert.ok(pLeft.x < 180, `Postac idaca w lewo od x=180 musi minac krawedz bez niewidzialnej sciany (x=${pLeft.x.toFixed(1)})`);
+  assert.strictEqual(pLeft.onGround, false, 'Po wyjsciu poza x=180 postac musi spasc z platformy');
+  assert.ok(pLeft.y > 420, `Postac poza krawedzia x=180 musi opadac w dol w strone kwasu (y=${pLeft.y.toFixed(1)})`);
+
+  // 8B. Wypchniecie / odrzut z prawej krawedzi Bastionu B (x = 3820) wyrzuca postac poza krawedz
+  const pRight = createPlayerInstance({ isIntro: false });
+  pRight.x = 3790;
+  pRight.y = 420 - pRight.h;
+  pRight.vx = 12;
+  pRight.airVx = 12;
+  pRight.vy = -3.5;
+  pRight.isJumping = true;
+  pRight.staggerTimer = 22;
+  pRight.staggerLanded = false;
+  for (let i = 0; i < 45; i++) {
+    updatePlayer(null, null, 1600, null, null, pRight);
+    checkPlayerPlatformLanding(pRight, 1600);
+  }
+  assert.ok(pRight.x + pRight.w > 3820, `Wypchnieta postac musi wyleciec poza x=3820 bez blokady niewidzialnej sciany (right=${(pRight.x + pRight.w).toFixed(1)})`);
+  assert.strictEqual(pRight.onGround, false, 'Po wypchnieciu poza x=3820 postac nie moze stac w powietrzu');
+  assert.ok(pRight.y > 420, `Po wypchnieciu poza x=3820 postac musi spadac w dol (y=${pRight.y.toFixed(1)})`);
+
+  console.log('PASS: Krawedzie platform Areny 2 nie blokuja spadania ani wypychania (brak niewidzialnych scian).');
 }
 
 clearFlamethrowerState();

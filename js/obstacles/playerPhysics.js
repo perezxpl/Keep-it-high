@@ -257,7 +257,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     // Histereza na krawędziach: uwzględnia szerokość modelu postaci (Raptor 24, Striker 26, Enforcer 30)
     const halfW = (p.w || 24) * 0.5;
     const isCurrent = (p.onGround && p.currentPlatform === plat);
-    const horizMargin = isCurrent ? Math.max(16, halfW + 4) : (isA5 ? Math.max(4, halfW - 4) : Math.max(12, halfW));
+    const horizMargin = isCurrent ? Math.max(10, halfW) : (isA5 ? Math.max(4, halfW - 4) : Math.max(10, halfW - 2));
 
     if (centerX >= bnds.minX - horizMargin && centerX <= bnds.maxX + horizMargin) {
       const surf = getPlatformSurfaceInfo(plat, centerX, groundY);
