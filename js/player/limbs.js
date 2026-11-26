@@ -791,7 +791,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const foreLen = armForeLen || 13;
   const baseMuscle = v.muscleMult || 1.0;
   const isJuggernaut = Boolean(playerRef && playerRef.isJuggernaut && !isZombie);
-  const muscle = isJuggernaut ? Math.max(baseMuscle * 1.15, 1.24) : baseMuscle;
+  const muscle = isJuggernaut ? Math.max(baseMuscle * 1.28, 1.38) : baseMuscle;
   const isSculpted = !!v.sculptedMuscles;
 
   const armMaxHp = playerRef ? (playerRef.maxHp || 100) : 100;
@@ -1304,7 +1304,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const baseMuscle = v.muscleMult || 1.0;
   const isJuggernaut = Boolean(playerRef && playerRef.isJuggernaut && !isZombie);
-  const muscle = isJuggernaut ? Math.max(baseMuscle * 1.15, 1.24) : baseMuscle;
+  const muscle = isJuggernaut ? Math.max(baseMuscle * 1.28, 1.38) : baseMuscle;
   const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;
 

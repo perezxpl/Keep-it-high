@@ -367,7 +367,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   v.throwType = (p.throwAnim && p.throwAnim.active) ? (p.throwAnim.throwType || selectedThrowableId) : selectedThrowableId;
   v.grenadeCookRatio = (p.throwAnim && p.throwAnim.active && p.throwAnim.cookTimer) ? Math.min(1.0, p.throwAnim.cookTimer / 300) : 0;
   const baseMuscle = v.muscleMult || 1.0;
-  const muscle = (p.isJuggernaut && !p.isZombie) ? Math.max(baseMuscle * 1.15, 1.24) : baseMuscle;
+  const muscle = (p.isJuggernaut && !p.isZombie) ? Math.max(baseMuscle * 1.28, 1.38) : baseMuscle;
   const isSculpted = !!v.sculptedMuscles;
 
   // Zabezpieczenie parametrow anatomicznych konczyn i pozy (w tym dla Zombie)
@@ -388,6 +388,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
         : (p.y + (p.isCrawling ? (p.h || 26) : 70)))
     : ((isGrounded && typeof p.currentGroundY === 'number') ? p.currentGroundY : (p.y + colH));
   const floorY = standingY;
+  if (p.isJuggernaut && !p.isZombie && !isDissolving) {
+    ctx.translate(centerX, floorY);
+    ctx.scale(1.13, 1.09);
+    ctx.translate(-centerX, -floorY);
+  }
   const plantFloorY = floorY - 3.5;
   let hipX = centerX;
   let hipY = (p.isZombie && !p.isDead && (!p.riseTimer || p.riseTimer <= 0))
