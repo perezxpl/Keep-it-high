@@ -5,10 +5,13 @@
 // =============================================================================
 
 export const ARENA3_SHIP_WORLD_X = 2200;
-export const ARENA3_SHIP_MORTAR_STAGGER = 0.28;
-export const ARENA3_SHIP_MORTAR_ASCENT = 0.68;
+export const ARENA3_SHIP_MORTAR_STAGGER = 0.30;
+export const ARENA3_SHIP_MORTAR_ASCENT = 1.15;
 export const ARENA3_SHIP_FLASH_DURATION = 0.16;
-export const ARENA3_MORTAR_FALL_GRAVITY = 0.44;
+export const ARENA3_MORTAR_FALL_GRAVITY = 0.62;
+export const ARENA3_MORTAR_SCALE_FAR = 0.20;
+export const ARENA3_MORTAR_SCALE_APEX = 0.56;
+export const ARENA3_MORTAR_SCALE_IMPACT = 1.18;
 
 export function clampVal(v, min, max) {
   return v < min ? min : (v > max ? max : v);
@@ -51,16 +54,16 @@ export function computeUnifiedShipMortarArc(destX, destY, camera = null, turretI
   const turretOffsetWorld = (turretIdx === 0 ? 65 : -75) / Math.max(0.35, camZoom);
   const shipWorldX = viewCenterX - ((viewCenterX - ARENA3_SHIP_WORLD_X) * 0.12) / Math.max(0.35, camZoom) + turretOffsetWorld;
 
-  // Szczyt łuku umieszczony pod górną krawędzią kadru/areny (zawsze widoczny na ekranie)
-  const rawApexY = Math.min(safeDestY - 240, camY + Math.max(105, viewH * 0.11));
-  const apexWorldY = Math.max(95, rawApexY);
+  // Szczyt łuku zakotwiczony pod górną krawędzią samej areny (Y = 0), niezależnie od wysokości kamery
+  const rawApexY = Math.min(safeDestY - 320, 48 + turretIdx * 16);
+  const apexWorldY = Math.max(36, rawApexY);
   const rawApexX = shipWorldX + (safeDestX - shipWorldX) * 0.48;
   const apexWorldX = clampVal(rawApexX, 140, 4260);
 
-  // Kąt elewacji lufy wycelowany z okrętu ku pierwszemu odcinkowi paraboli
+  // Kąt elewacji lufy wycelowany z okrętu ku wysokiemu łukowi pod sufitem areny
   const dxToApex = apexWorldX - shipWorldX;
-  const dyToApex = Math.min(-240, apexWorldY - (camY + viewH * 0.55));
-  const rawAngle = Math.atan2(dyToApex, dxToApex * 0.75);
+  const dyToApex = Math.min(-360, apexWorldY - (camY + viewH * 0.55));
+  const rawAngle = Math.atan2(dyToApex, dxToApex * 0.72);
   const barrelAngle = clampVal(rawAngle, -Math.PI * 0.76, -Math.PI * 0.24);
 
   const fallGravity = ARENA3_MORTAR_FALL_GRAVITY;

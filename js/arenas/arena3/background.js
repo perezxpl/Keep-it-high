@@ -19,6 +19,8 @@ import {
   ARENA3_SHIP_MORTAR_STAGGER,
   ARENA3_SHIP_MORTAR_ASCENT,
   ARENA3_SHIP_FLASH_DURATION,
+  ARENA3_MORTAR_SCALE_FAR,
+  ARENA3_MORTAR_SCALE_APEX,
   computeUnifiedShipMortarArc,
   computeShipTurretAimAngle,
   drawMortarBombSprite
@@ -137,6 +139,7 @@ export function triggerArena3ShipMortarSalvo(targetX, offsets = [], arcs = []) {
       barrelAngle: arc.barrelAngle,
       apexWorldX: arc.apexWorldX,
       apexWorldY: arc.apexWorldY,
+      fallVx: arc.fallVx,
       destX,
       smokeTrail: []
     });
@@ -306,43 +309,49 @@ export function updateArena3ShipMortars(dt = (1 / 60), camera = null) {
         allFinished = false;
         sh.activePhase1 = true;
         const p = Math.max(0, Math.min(1, (salvo.age - sh.delay) / sh.flightDuration));
+        // Krzywa przyspieszenia perspektywicznego: wolny wylot z oddali (0.25x) -> szybsze zbliżanie (2.50x)
+        const sCurve = 0.25 * p + 0.75 * p * p * p;
         const startPos = layout.turrets[sh.turretIdx] || layout.turrets[0];
         const apexScreenX = (sh.apexWorldX - camX) * camZoom;
         const apexScreenY = (sh.apexWorldY - camY) * camZoom;
 
-        // Krzywa Beziera startująca z lufy okrętu i wygasająca poziomo w szczycie paraboli (vy = 0)
+        // Krzywa Beziera startująca z lufy okrętu i przechodząca poziomo przez szczyt pod sufitem areny
         const dirX = Math.cos(sh.barrelAngle);
         const dirY = Math.sin(sh.barrelAngle);
-        const barrelLead = Math.max(85 * layout.shipScale, (startPos.y - apexScreenY) * 0.42);
+        const barrelLead = Math.max(70 * layout.shipScale, (startPos.y - apexScreenY) * 0.36);
         const c1x = startPos.x + dirX * barrelLead;
         const c1y = startPos.y + dirY * barrelLead;
         const apexDirX = (sh.destX >= sh.apexWorldX) ? 1 : -1;
-        const c2x = apexScreenX - apexDirX * Math.max(24, Math.abs(apexScreenX - startPos.x) * 0.34);
+        const dsdtTick = (2.50 / Math.max(0.2, sh.flightDuration)) / 60;
+        const targetHandle = Math.abs((sh.fallVx || 0) * camZoom) / (3 * dsdtTick);
+        const maxHandle = Math.max(120, Math.abs(apexScreenX - startPos.x) * 0.65);
+        const handleX = Math.max(28 * camZoom, Math.min(maxHandle, targetHandle || 36));
+        const c2x = apexScreenX - apexDirX * handleX;
         const c2y = apexScreenY;
 
-        const u = 1 - p;
+        const u = 1 - sCurve;
         const uu = u * u;
-        const tt = p * p;
-        const curX = uu * u * startPos.x + 3 * uu * p * c1x + 3 * u * tt * c2x + tt * p * apexScreenX;
-        const curY = uu * u * startPos.y + 3 * uu * p * c1y + 3 * u * tt * c2y + tt * p * apexScreenY;
+        const tt = sCurve * sCurve;
+        const curX = uu * u * startPos.x + 3 * uu * sCurve * c1x + 3 * u * tt * c2x + tt * sCurve * apexScreenX;
+        const curY = uu * u * startPos.y + 3 * uu * sCurve * c1y + 3 * u * tt * c2y + tt * sCurve * apexScreenY;
 
-        const dxdt = 3 * uu * (c1x - startPos.x) + 6 * u * p * (c2x - c1x) + 3 * tt * (apexScreenX - c2x);
-        const dydt = 3 * uu * (c1y - startPos.y) + 6 * u * p * (c2y - c1y) + 3 * tt * (apexScreenY - c2y);
+        const dxdt = 3 * uu * (c1x - startPos.x) + 6 * u * sCurve * (c2x - c1x) + 3 * tt * (apexScreenX - c2x);
+        const dydt = 3 * uu * (c1y - startPos.y) + 6 * u * sCurve * (c2y - c1y) + 3 * tt * (apexScreenY - c2y);
 
         sh.curX = curX;
         sh.curY = curY;
         sh.angle = Math.atan2(dydt, dxdt);
-        const startScale = Math.max(0.38, 0.52 * layout.shipScale);
-        const endScale = 1.05 * camZoom;
-        sh.renderScale = startScale + (endScale - startScale) * p;
+        const startScale = Math.max(0.14, ARENA3_MORTAR_SCALE_FAR * layout.shipScale);
+        const endScale = ARENA3_MORTAR_SCALE_APEX * camZoom;
+        sh.renderScale = startScale + (endScale - startScale) * sCurve;
 
         sh.smokeTrail.push({
           x: curX,
           y: curY,
-          r: (1.9 + p * 1.9) * Math.max(layout.shipScale, camZoom),
-          alpha: 0.78
+          r: (0.75 + sCurve * 1.9) * Math.max(layout.shipScale, camZoom),
+          alpha: 0.72
         });
-        if (sh.smokeTrail.length > 36) sh.smokeTrail.shift();
+        if (sh.smokeTrail.length > 42) sh.smokeTrail.shift();
       } else {
         sh.activePhase1 = false;
       }
@@ -1055,7 +1064,7 @@ function drawArena3ShipMortars(ctx, layout) {
       }
 
       if (sh.activePhase1 && typeof sh.curX === 'number') {
-        const sc = sh.renderScale || Math.max(0.38, 0.52 * (layout.shipScale || 1));
+        const sc = sh.renderScale || Math.max(0.14, ARENA3_MORTAR_SCALE_FAR * (layout.shipScale || 1));
         drawMortarBombSprite(ctx, sh.curX, sh.curY, sh.angle ?? sh.barrelAngle ?? (-Math.PI * 0.5), sc);
       }
     }

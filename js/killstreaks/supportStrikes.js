@@ -18,7 +18,9 @@ import {
 import {
   ARENA3_SHIP_MORTAR_STAGGER,
   ARENA3_SHIP_MORTAR_ASCENT,
-  ARENA3_MORTAR_FALL_GRAVITY,
+  ARENA3_MORTAR_SCALE_APEX,
+  ARENA3_MORTAR_SCALE_IMPACT,
+  clampVal,
   computeUnifiedShipMortarArc,
   solveMortarFallTicks,
   drawMortarBombSprite
@@ -114,6 +116,7 @@ export function spawnMortarStrike(targetX, owner, options = {}) {
     shells.push({
       x: startX,
       y: startY,
+      startY,
       destX,
       destY,
       vx,
@@ -122,6 +125,7 @@ export function spawnMortarStrike(targetX, owner, options = {}) {
       angle: Math.atan2(vy, vx),
       handoffTime: fromWarship ? (i * ARENA3_SHIP_MORTAR_STAGGER + ARENA3_SHIP_MORTAR_ASCENT) : (i * 0.38),
       hasVisibleApex: fromWarship,
+      approachProg: 0,
       enteredSky: false,
       detonated: false,
       smokeTrail: []
@@ -190,11 +194,18 @@ export function updateMortarStrikes(dt = (1 / 60), combatants = []) {
       shell.y += shell.vy;
       shell.angle = Math.atan2(shell.vy, shell.vx);
 
+      if (shell.hasVisibleApex) {
+        const fallSpan = Math.max(40, shell.destY - (shell.startY || 0));
+        const fallFrac = clampVal((shell.y - (shell.startY || 0)) / fallSpan, 0, 1);
+        shell.approachProg = Math.sqrt(fallFrac);
+      }
+
       // Zapis punktów smugi dymnej tuż za ogonem bomby
       const tailX = shell.x - Math.cos(shell.angle) * 10;
       const tailY = shell.y - Math.sin(shell.angle) * 10;
-      shell.smokeTrail.push({ x: tailX, y: tailY, alpha: 0.78, r: 3.6 });
-      if (shell.smokeTrail.length > 22) shell.smokeTrail.shift();
+      const trailR = shell.hasVisibleApex ? (2.1 + (shell.approachProg || 0) * 2.1) : 3.6;
+      shell.smokeTrail.push({ x: tailX, y: tailY, alpha: 0.78, r: trailR });
+      if (shell.smokeTrail.length > 26) shell.smokeTrail.shift();
 
       // Kolizja z powierzchnią ziemi / platformy
       if (shell.y >= shell.destY) {
@@ -273,7 +284,10 @@ export function drawMortarStrikes(ctx, camera) {
       }
 
       if (!shell.detonated && shell.enteredSky) {
-        drawMortarBombSprite(ctx, shell.x, shell.y, shell.angle ?? (Math.PI * 0.5), 1.05);
+        const bombScale = shell.hasVisibleApex
+          ? (ARENA3_MORTAR_SCALE_APEX + (ARENA3_MORTAR_SCALE_IMPACT - ARENA3_MORTAR_SCALE_APEX) * (shell.approachProg || 0))
+          : 1.05;
+        drawMortarBombSprite(ctx, shell.x, shell.y, shell.angle ?? (Math.PI * 0.5), bombScale);
       }
     }
   }
