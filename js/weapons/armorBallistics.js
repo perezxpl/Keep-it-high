@@ -13,6 +13,7 @@ import { spawnRicochetSparks } from '../particles.js';
 import { spawnKnockedHelmet, spawnVestShreds } from '../world/gore.js';
 import { triggerScreenShake } from '../camera.js';
 import { playSound } from '../audio/index.js';
+import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 
 export const DEFAULT_HELMET_HITS = 2;
 export const JUGGERNAUT_HELMET_HITS = 3;
@@ -251,32 +252,42 @@ export function resolveHelmetImpact({
 }
 
 /**
- * Rozlicza pochłanianie obrażeń na tors przez kamizelkę kuloodporną / pancerz Kolosa
+ * Rozlicza pochłanianie obrażeń przez kamizelkę kuloodporną / pełny pancerz Kolosa (osobne HP pancerza)
  */
 export function resolveTorsoVestImpact({
   target,
   totalDamage = 0,
+  isHeadshot = false,
+  isTorsoShot = true,
+  forceArmorAbsorb = false,
   hitPtX = 0,
   hitPtY = 0,
   vx = 0,
   vy = 0
 } = {}) {
   if (!target || !(target.hasVest || target.visuals?.hasVest)) {
-    return { totalDamage, vestAbsorbed: false };
+    return { totalDamage, vestAbsorbed: false, armorBroken: false };
+  }
+
+  const isJugg = !!(target.isJuggernaut && !target.isZombie);
+  // Kolos nosi pełny pancerz (tors + naramienniki + karwasze + nagolenniki), więc pochłania wszystkie trafienia poza głową
+  const coveredByArmor = isJugg ? (!isHeadshot || forceArmorAbsorb) : (isTorsoShot || forceArmorAbsorb);
+  if (!coveredByArmor) {
+    return { totalDamage, vestAbsorbed: false, armorBroken: false };
   }
 
   if (target.vestHp === undefined) {
-    target.vestHp = 60;
-    target.vestMaxHp = 60;
+    target.vestHp = isJugg ? 250 : 60;
+    target.vestMaxHp = isJugg ? 250 : 60;
   }
 
   if (target.vestHp <= 0) {
-    return { totalDamage, vestAbsorbed: false };
+    return { totalDamage, vestAbsorbed: false, armorBroken: false };
   }
 
   let remainingDamage = totalDamage;
-  spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 7);
-  playSound('hit_armor', { x: hitPtX, y: hitPtY });
+  spawnBulletSparks(hitPtX, hitPtY, isJugg ? '#facc15' : '#94a3b8', isJugg ? 8 : 7);
+  playSound('hit_armor', { x: hitPtX, y: hitPtY, gainScale: isJugg ? 1.1 : 1.0 });
 
   if (target.vestHp >= remainingDamage) {
     target.vestHp -= remainingDamage;
@@ -286,16 +297,34 @@ export function resolveTorsoVestImpact({
     target.vestHp = 0;
   }
 
+  let armorBroken = false;
   if (target.vestHp <= 0) {
+    armorBroken = true;
     target.vestHp = 0;
+    target.vestMaxHp = 60;
     target.hasVest = false;
     if (target.visuals) target.visuals.hasVest = false;
-    spawnVestShreds(hitPtX, hitPtY, vx, vy, target.visuals?.vestColor || '#18181b');
-    triggerScreenShake(2.5);
+
+    if (isJugg) {
+      target.isJuggernaut = false;
+      target.juggernautDeployAnim = 0;
+      spawnVestShreds(hitPtX, hitPtY, vx, vy, '#eab308');
+      spawnVestShreds(hitPtX, hitPtY, -vx * 0.6, vy - 2.0, '#1e293b');
+      spawnBulletSparks(hitPtX, hitPtY, '#facc15', 14);
+      playSound('hit_helmet_break', { x: hitPtX, y: hitPtY, gainScale: 1.15 });
+      triggerScreenShake(4.2);
+      if (typeof window !== 'undefined' && target === window.player) {
+        triggerCombatFeedBanner('DEATH', '[KOLOS] PANCERZ JUGGERNAUTA ZNISZCZONY!');
+      }
+    } else {
+      spawnVestShreds(hitPtX, hitPtY, vx, vy, target.visuals?.vestColor || '#18181b');
+      triggerScreenShake(2.5);
+    }
+
     if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
       window.syncArmorDevButtons();
     }
   }
 
-  return { totalDamage: remainingDamage, vestAbsorbed: true };
+  return { totalDamage: remainingDamage, vestAbsorbed: true, armorBroken };
 }

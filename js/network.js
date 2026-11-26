@@ -278,6 +278,7 @@ export function sendPlayerState(localPlayer) {
       hasHelmet: !!localPlayer.hasHelmet,
       helmetHits: Math.max(0, Math.round(localPlayer.helmetHits ?? 0)),
       vestHp: Math.round(localPlayer.vestHp || 0),
+      vestMaxHp: Math.round(localPlayer.vestMaxHp || 60),
       isJuggernaut: !!localPlayer.isJuggernaut,
       isDead: !!localPlayer.isDead,
       selectedClass: localPlayer.selectedClass || localPlayer.currentClass?.id || 'STRIKER',
@@ -450,6 +451,7 @@ export function sendBotsState(activeBotsList) {
         maxHp: b.maxHp || 100,
         hasVest: !!b.hasVest,
         vestHp: Math.round(b.vestHp || 0),
+        vestMaxHp: Math.round(b.vestMaxHp || 60),
         hasHelmet: !!b.hasHelmet,
         helmetHits: Math.max(0, Math.round(b.helmetHits ?? 0)),
         isJuggernaut: !!b.isJuggernaut,
@@ -690,18 +692,18 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
     totalDamage = Math.round(totalDamage * 0.82);
   }
 
-  if (data.isTorsoShot && (player.hasVest || player.visuals?.hasVest)) {
-    const vestRes = resolveTorsoVestImpact({
-      target: player,
-      totalDamage,
-      hitPtX,
-      hitPtY,
-      vx: attackerFacing * 6,
-      vy: -3
-    });
-    totalDamage = vestRes.totalDamage;
-    vestAbsorbed = vestRes.vestAbsorbed;
-  }
+  const vestRes = resolveTorsoVestImpact({
+    target: player,
+    totalDamage,
+    isHeadshot: !!data.isHeadshot,
+    isTorsoShot: !!data.isTorsoShot,
+    hitPtX,
+    hitPtY,
+    vx: attackerFacing * 6,
+    vy: -3
+  });
+  totalDamage = vestRes.totalDamage;
+  vestAbsorbed = vestRes.vestAbsorbed;
 
   player.hp = Math.max(0, (player.hp !== undefined ? player.hp : 100) - totalDamage);
   player.lastAttacker = attacker;
@@ -853,18 +855,18 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
     dmg = Math.round(dmg * 0.82);
   }
 
-  if (data.isTorsoShot && (b.hasVest || b.visuals?.hasVest)) {
-    const vestRes = resolveTorsoVestImpact({
-      target: b,
-      totalDamage: dmg,
-      hitPtX,
-      hitPtY,
-      vx: attackerFacing * 6,
-      vy: -3
-    });
-    dmg = vestRes.totalDamage;
-    botVestAbsorbed = vestRes.vestAbsorbed;
-  }
+  const vestRes = resolveTorsoVestImpact({
+    target: b,
+    totalDamage: dmg,
+    isHeadshot: !!data.isHeadshot,
+    isTorsoShot: !!data.isTorsoShot,
+    hitPtX,
+    hitPtY,
+    vx: attackerFacing * 6,
+    vy: -3
+  });
+  dmg = vestRes.totalDamage;
+  botVestAbsorbed = vestRes.vestAbsorbed;
 
   b.hp = Math.max(0, (b.hp !== undefined ? b.hp : 100) - dmg);
   b.lastAttacker = attacker;
@@ -1197,6 +1199,9 @@ export function handleNetworkData(data, senderPeerId = null) {
       if (data.vestHp !== undefined) {
         targetRp.vestHp = data.vestHp;
       }
+      if (data.vestMaxHp !== undefined) {
+        targetRp.vestMaxHp = data.vestMaxHp;
+      }
       if (data.isJuggernaut !== undefined) {
         targetRp.isJuggernaut = !!data.isJuggernaut;
       }
@@ -1471,6 +1476,7 @@ export function handleNetworkData(data, senderPeerId = null) {
           if (localBot.visuals) localBot.visuals.hasVest = !!rBot.hasVest;
         }
         if (rBot.vestHp !== undefined) localBot.vestHp = rBot.vestHp;
+        if (rBot.vestMaxHp !== undefined) localBot.vestMaxHp = rBot.vestMaxHp;
         if (rBot.hasHelmet !== undefined) {
           localBot.hasHelmet = !!rBot.hasHelmet;
           if (localBot.visuals) localBot.visuals.hasHelmet = !!rBot.hasHelmet;

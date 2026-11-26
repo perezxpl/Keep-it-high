@@ -18,27 +18,64 @@ export function drawMobileTopLeftHUD(ctx, player, hudX, hudY, options = {}) {
   const hpBorderCol = options.hpBorderCol || '#22c55e';
 
   const hasVest = !!(player.hasVest && (player.vestHp || 0) > 0);
+  const isJuggArmor = !!(hasVest && player.isJuggernaut && !player.isZombie);
   const vestHp = Math.max(0, player.vestHp || 0);
-  const vestMaxHp = player.vestMaxHp || 60;
+  const vestMaxHp = player.vestMaxHp || (isJuggArmor ? 250 : 60);
   const vestRatio = Math.max(0, Math.min(1.0, vestHp / vestMaxHp));
   const hasHelmet = !!(player.hasHelmet || player.visuals?.hasHelmet);
 
   const hpBoxX = hudX;
   const hpBoxW = 72;
+  const armorBoxH = 11;
+  const hpBoxY = (hasVest && vestRatio > 0) ? (hudY + armorBoxH + 2) : hudY;
   const hpBoxH = 15;
+
+  // 0. OSOBNY PASEK HP PANCERZA NA MOBILNYM HUD (KOLOS LUB KAMIZELKA)
+  if (hasVest && vestRatio > 0) {
+    ctx.beginPath();
+    ctx.fillStyle = isJuggArmor ? 'rgba(28, 19, 6, 0.78)' : 'rgba(6, 12, 22, 0.74)';
+    if (ctx.roundRect) ctx.roundRect(hpBoxX, hudY, hpBoxW, armorBoxH, 2.5);
+    else ctx.rect(hpBoxX, hudY, hpBoxW, armorBoxH);
+    ctx.fill();
+
+    ctx.fillStyle = isJuggArmor ? '#eab308' : '#0284c7';
+    ctx.fillRect(hpBoxX + 1, hudY + 1, Math.max(2, (hpBoxW - 2) * vestRatio), armorBoxH - 2);
+
+    ctx.strokeStyle = isJuggArmor ? '#facc15' : '#38bdf8';
+    ctx.lineWidth = 1.0;
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(hpBoxX, hudY, hpBoxW, armorBoxH, 2.5);
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(hpBoxX, hudY, hpBoxW, armorBoxH);
+    }
+
+    ctx.save();
+    ctx.font = '900 7.5px monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    const armTxt = `ARM ${Math.round(vestHp)}`;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.8;
+    ctx.strokeText(armTxt, hpBoxX + 4, hudY + armorBoxH / 2 + 0.5);
+    ctx.fillStyle = isJuggArmor ? '#fef9c3' : '#e0f2fe';
+    ctx.fillText(armTxt, hpBoxX + 4, hudY + armorBoxH / 2 + 0.5);
+    ctx.restore();
+  }
 
   // 1. TŁO I WYPEŁNIENIE MODUŁU HP
   ctx.beginPath();
   ctx.fillStyle = 'rgba(6, 12, 22, 0.70)';
-  if (ctx.roundRect) ctx.roundRect(hpBoxX, hudY, hpBoxW, hpBoxH, 3);
-  else ctx.rect(hpBoxX, hudY, hpBoxW, hpBoxH);
+  if (ctx.roundRect) ctx.roundRect(hpBoxX, hpBoxY, hpBoxW, hpBoxH, 3);
+  else ctx.rect(hpBoxX, hpBoxY, hpBoxW, hpBoxH);
   ctx.fill();
 
   // Ślad obrażeń
   if (trailRatio > hpRatio + 0.005) {
     const trailW = Math.max(2, (hpBoxW - 2) * trailRatio);
     ctx.fillStyle = '#fb7185';
-    ctx.fillRect(hpBoxX + 1, hudY + 1, trailW, hpBoxH - 2);
+    ctx.fillRect(hpBoxX + 1, hpBoxY + 1, trailW, hpBoxH - 2);
   }
 
   // Właściwe wypełnienie aktualnego HP
@@ -49,24 +86,18 @@ export function drawMobileTopLeftHUD(ctx, player, hudX, hudY, options = {}) {
     else if (hpRatio <= 0.55) hpColor = '#f59e0b';
 
     ctx.fillStyle = hpColor;
-    ctx.fillRect(hpBoxX + 1, hudY + 1, fillW, hpBoxH - 2);
-  }
-
-  // Pancerz kamizelki: zintegrowany błękitny pasek (2px) na samej górze HP
-  if (hasVest && vestRatio > 0) {
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(hpBoxX + 1, hudY + 1, (hpBoxW - 2) * vestRatio, 2);
+    ctx.fillRect(hpBoxX + 1, hpBoxY + 1, fillW, hpBoxH - 2);
   }
 
   // Obramowanie modułu HP
-  ctx.strokeStyle = hasVest ? '#0284c7' : (hasHelmet ? '#06b6d4' : hpBorderCol);
+  ctx.strokeStyle = hasHelmet ? '#06b6d4' : hpBorderCol;
   ctx.lineWidth = 1.0;
   if (ctx.roundRect) {
     ctx.beginPath();
-    ctx.roundRect(hpBoxX, hudY, hpBoxW, hpBoxH, 3);
+    ctx.roundRect(hpBoxX, hpBoxY, hpBoxW, hpBoxH, 3);
     ctx.stroke();
   } else {
-    ctx.strokeRect(hpBoxX, hudY, hpBoxW, hpBoxH);
+    ctx.strokeRect(hpBoxX, hpBoxY, hpBoxW, hpBoxH);
   }
 
   // Tekst HP wewnątrz
@@ -74,12 +105,12 @@ export function drawMobileTopLeftHUD(ctx, player, hudX, hudY, options = {}) {
   ctx.font = '900 8.5px monospace';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  const vestIcon = hasVest ? '+' : (hasHelmet ? '^' : '');
-  const hpTxt = `HP ${Math.round(curHp)}${vestIcon}`;
+  const helmIcon = hasHelmet ? '^' : '';
+  const hpTxt = `HP ${Math.round(curHp)}${helmIcon}`;
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 2.0;
-  ctx.strokeText(hpTxt, hpBoxX + 4, hudY + hpBoxH / 2 + 0.5);
+  ctx.strokeText(hpTxt, hpBoxX + 4, hpBoxY + hpBoxH / 2 + 0.5);
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(hpTxt, hpBoxX + 4, hudY + hpBoxH / 2 + 0.5);
+  ctx.fillText(hpTxt, hpBoxX + 4, hpBoxY + hpBoxH / 2 + 0.5);
   ctx.restore();
 }

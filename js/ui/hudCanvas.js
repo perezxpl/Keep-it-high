@@ -1591,7 +1591,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   // Proximity Auto-Fade: automatyczne przenikanie HUD-u, gdy postać, wróg lub piłka zbliża się do lewego górnego rogu
   const hudRight = isMobile ? (hudX + 76) : (hudX + barW + 10);
-  const hudBottom = isMobile ? (hudY + 18) : (hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + 38);
+  const hudBottom = isMobile ? (hudY + ((player.hasVest && (player.vestHp || 0) > 0) ? 29 : 18)) : (hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + 38);
   const fadeMargin = isMobile ? 35 : 70;
 
   let minHudDist = Infinity;
@@ -1665,12 +1665,20 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   else if (hpRatio <= 0.55) hpBorderCol = '#facc15';
 
   const hasVest = !!(player.hasVest && (player.vestHp || 0) > 0);
+  const isJuggArmor = !!(hasVest && player.isJuggernaut && !player.isZombie);
   const vestHp = Math.max(0, player.vestHp || 0);
-  const vestMaxHp = player.vestMaxHp || 60;
+  const vestMaxHp = player.vestMaxHp || (isJuggArmor ? 250 : 60);
   const vestRatio = Math.max(0, Math.min(1.0, vestHp / vestMaxHp));
 
+  if (typeof player._hudTrailVestHp !== 'number' || isNaN(player._hudTrailVestHp) || player._hudTrailVestHp < vestHp) {
+    player._hudTrailVestHp = vestHp;
+  } else if (player._hudTrailVestHp > vestHp) {
+    player._hudTrailVestHp = Math.max(vestHp, player._hudTrailVestHp - Math.max(0.45, (player._hudTrailVestHp - vestHp) * 0.09));
+  }
+  const vestTrailRatio = Math.max(vestRatio, Math.min(1.0, player._hudTrailVestHp / vestMaxHp));
+
   const hasHelmet = !!(player.hasHelmet || player.visuals?.hasHelmet);
-  const vestH = hasVest ? 14 : (hasHelmet ? 13 : 0);
+  const vestH = hasVest ? (isJuggArmor ? 16 : 14) : (hasHelmet ? 13 : 0);
   const vestGap = (hasVest || hasHelmet) ? 3 : 0;
 
   const vestY = hudY;
@@ -1724,40 +1732,58 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     // -------------------------------------------------------------------------
     // WARIANT DESKTOP (PC): Pełny 4-piętrowy taktyczny HUD z sylwetką broni
     // -------------------------------------------------------------------------
-    // --- A0. PASEK PANCERZA KAMIZELKI I OCHRONY GŁOWY (HEŁM) ---
+    // --- A0. PASEK PANCERZA KAMIZELKI / PANCERZA JUGGERNAUTA ORAZ HEŁMU ---
     if (hasVest) {
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
+      ctx.fillStyle = isJuggArmor ? 'rgba(28, 19, 6, 0.94)' : 'rgba(6, 9, 17, 0.94)';
       if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
       else ctx.rect(hudX, vestY, barW, vestH);
       ctx.fill();
 
+      if (vestTrailRatio > vestRatio + 0.005) {
+        const vTrailW = Math.max(2, (barW - 3) * vestTrailRatio);
+        ctx.beginPath();
+        ctx.fillStyle = isJuggArmor ? '#ea580c' : '#38bdf8';
+        if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vTrailW, vestH - 3, 2);
+        else ctx.rect(hudX + 1.5, vestY + 1.5, vTrailW, vestH - 3);
+        ctx.fill();
+      }
+
       if (vestRatio > 0) {
         const vFillW = Math.max(2, (barW - 3) * vestRatio);
         ctx.beginPath();
-        ctx.fillStyle = '#0284c7';
+        ctx.fillStyle = isJuggArmor ? '#eab308' : '#0284c7';
         if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
         else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.24)';
+        ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, (vestH - 3) * 0.40);
         ctx.fill();
       }
 
       ctx.beginPath();
-      ctx.strokeStyle = '#0284c7';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = isJuggArmor ? '#facc15' : '#0284c7';
+      ctx.lineWidth = isJuggArmor ? 1.5 : 1.2;
       if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
       else ctx.rect(hudX, vestY, barW, vestH);
       ctx.stroke();
 
       ctx.save();
       ctx.font = 'bold 9.5px monospace';
-      ctx.fillStyle = '#e0f2fe';
+      ctx.fillStyle = isJuggArmor ? '#fef9c3' : '#e0f2fe';
       ctx.textBaseline = 'middle';
 
       ctx.textAlign = 'left';
-      ctx.fillText('PANCERZ (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
+      const armorLabel = isJuggArmor
+        ? 'PANCERZ JUGGERNAUT'
+        : (vestMaxHp >= 100 ? 'PANCERZ CIĘŻKI' : 'PANCERZ (TORS)');
+      ctx.fillText(armorLabel, hudX + 5, vestY + vestH / 2 + 0.5);
 
       ctx.textAlign = 'right';
-      const helmBadge = hasHelmet ? '[HEŁM] ' : '';
+      const helmHitsLeft = Math.max(1, player.helmetHits || (isJuggArmor ? 3 : 2));
+      const helmBadge = hasHelmet ? `[HEŁM x${helmHitsLeft}] ` : '';
       ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
       ctx.restore();
     } else if (hasHelmet) {
@@ -1783,7 +1809,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
       ctx.fillText('HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
 
       ctx.textAlign = 'right';
-      ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
+      const helmHitsLeft = Math.max(1, player.helmetHits || 2);
+      ctx.fillText(`OCHRONA (${helmHitsLeft} HIT)`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
       ctx.restore();
     }
 

@@ -346,6 +346,18 @@ function updateMeleeCollision(shooter, ms) {
         spawnBloodSpurt(hitX, hitY, facing, 0.25, 25, 1.8);
       }
 
+      const armorMeleeRes = resolveTorsoVestImpact({
+        target: t,
+        totalDamage: dmg,
+        isHeadshot,
+        isTorsoShot: !isHeadshot && !isLegshot,
+        hitPtX: hitX,
+        hitPtY: hitY,
+        vx: facing * 3,
+        vy: -2
+      });
+      dmg = armorMeleeRes.totalDamage;
+
       t.hp = Math.max(0, (t.hp !== undefined ? t.hp : 100) - dmg);
       t.lastAttacker = shooter;
       t.lastAttackerTimer = 240;
@@ -1708,20 +1720,19 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         totalDamage = Math.round(totalDamage * 0.82);
       }
 
-      // 4. PANCERZ KORPUSU (KAMIZELKA KULOODPORNA):
-      // Kamizelka posiada swoje własne HP nałożone na HP posiadacza i chroni TYLKO od obrażeń na tors!
-      if (isTorsoShot && (closestChar.hasVest || closestChar.visuals?.hasVest)) {
-        const vestRes = resolveTorsoVestImpact({
-          target: closestChar,
-          totalDamage,
-          hitPtX,
-          hitPtY,
-          vx: b.vx,
-          vy: b.vy
-        });
-        totalDamage = vestRes.totalDamage;
-        vestAbsorbed = vestRes.vestAbsorbed;
-      }
+      // 4. PANCERZ KORPUSU (KAMIZELKA KULOODPORNA / OSOBNE HP PANCERZA KOLOSA):
+      const vestRes = resolveTorsoVestImpact({
+        target: closestChar,
+        totalDamage,
+        isHeadshot,
+        isTorsoShot,
+        hitPtX,
+        hitPtY,
+        vx: b.vx,
+        vy: b.vy
+      });
+      totalDamage = vestRes.totalDamage;
+      vestAbsorbed = vestRes.vestAbsorbed;
 
       closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - totalDamage);
       if (b.shooter && b.shooter !== closestChar) {

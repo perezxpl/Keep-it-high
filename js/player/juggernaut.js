@@ -22,21 +22,24 @@ const JUGG_STEEL_MID = '#1e293b';
 const JUGG_STEEL_DARK = '#0f172a';
 const JUGG_RIM = '#05070b';
 
+export const JUGGERNAUT_ARMOR_HP = 250;
+
 /**
- * Aktywuje pełne wyposażenie Juggernauta (pancerz 250 HP + 200 kevlaru + M134 Minigun + ciężkie wejście)
+ * Aktywuje pełne wyposażenie Juggernauta (osobne 250 HP pancerza + pełne HP operatora + M134 Minigun + ciężkie wejście)
  * @param {object} target - postać (gracz / bot / zdalny gracz)
  * @param {object} [options] - { fromNetwork, skipWeaponEquip }
  */
 export function activateJuggernautMode(target, options = {}) {
   if (!target) return;
 
+  const classMaxHp = target.currentClass?.stats?.maxHp || target.currentClass?.stats?.hp || 100;
   target.isJuggernaut = true;
   target.juggernautDeployAnim = 1.0;
-  target.maxHp = 250;
-  target.hp = 250;
+  target.maxHp = classMaxHp;
+  target.hp = classMaxHp;
   target.hasVest = true;
-  target.vestHp = 200;
-  target.vestMaxHp = 200;
+  target.vestHp = JUGGERNAUT_ARMOR_HP;
+  target.vestMaxHp = JUGGERNAUT_ARMOR_HP;
   target.hasHelmet = true;
   target.helmetHits = 3;
 
@@ -118,7 +121,13 @@ export function clearJuggernautMode(target) {
   target.juggernautDeployAnim = 0;
   const classMaxHp = target.currentClass?.stats?.maxHp || target.currentClass?.stats?.hp || 100;
   target.maxHp = classMaxHp;
+  if (typeof target.hp === 'number' && target.hp > classMaxHp) {
+    target.hp = classMaxHp;
+  }
   target.vestMaxHp = 60;
+  if (typeof target.vestHp === 'number' && target.vestHp > 60) {
+    target.vestHp = 60;
+  }
   target.helmetHits = 2;
 }
 

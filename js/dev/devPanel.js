@@ -764,7 +764,7 @@ export function initModularGearDevUI() {
   const updateVestUI = () => {
     const hasV = !!(player.hasVest && (player.vestHp || 0) > 0);
     const vhp = Math.ceil(player.vestHp || (player.hasVest ? 60 : 0));
-    vestBtn.textContent = hasV ? `KAMIZELKA: ${vhp} HP` : 'KAMIZELKA: BRAK';
+    vestBtn.textContent = hasV ? `${player.isJuggernaut ? 'PANCERZ' : 'KAMIZELKA'}: ${vhp} HP` : 'KAMIZELKA: BRAK';
     vestBtn.style.borderColor = hasV ? '#10b981' : '#64748b';
     vestBtn.style.color = hasV ? '#34d399' : '#94a3b8';
     vestBtn.style.background = hasV ? 'rgba(16, 185, 129, 0.2)' : 'transparent';

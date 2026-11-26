@@ -243,8 +243,8 @@ export function activateKillstreak(streakId) {
     activateJuggernautMode(player);
     triggerKillstreakActivateAnim('JUGGERNAUT');
 
-    setKillstreakNotification('[KOLOS] PANCERZ JUGGERNAUT', 'PANCERZ EOD 250 HP + M134 MINIGUN AKTYWNE!', def.accent || '#eab308', 4.5, 'JUGGERNAUT');
-    triggerCombatFeedBanner('KILL', '[KOLOS] WYPOSAŻONO PANCERZ JUGGERNAUT (250 HP + M134 MINIGUN)!');
+    setKillstreakNotification('[KOLOS] PANCERZ JUGGERNAUT', 'OSOBNE 250 HP PANCERZA + M134 MINIGUN!', def.accent || '#eab308', 4.5, 'JUGGERNAUT');
+    triggerCombatFeedBanner('KILL', '[KOLOS] WYPOSAŻONO PANCERZ JUGGERNAUT (250 HP PANCERZA + M134 MINIGUN)!');
     if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
       window.sendKillstreakEvent({ subType: 'JUGGERNAUT' }, player);
     }

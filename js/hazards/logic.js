@@ -22,6 +22,7 @@ import {
   concreteDebrisList
 } from '../particles.js';
 import { spawnExplosionEffect } from '../projectiles.js';
+import { resolveTorsoVestImpact } from '../weapons/armorBallistics.js';
 import { addDynamicLight } from '../lighting/index.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
@@ -834,7 +835,19 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
 
     if (dist <= typeDef.radius) {
       const factor = Math.max(0.2, 1.0 - (dist / typeDef.radius));
-      const dmg = Math.round(typeDef.maxDamage * factor);
+      let dmg = Math.round(typeDef.maxDamage * factor);
+
+      if (c.isJuggernaut) {
+        dmg = resolveTorsoVestImpact({
+          target: c,
+          totalDamage: dmg,
+          forceArmorAbsorb: true,
+          hitPtX: cx,
+          hitPtY: cy,
+          vx: ((dx / (dist || 1)) * 5),
+          vy: -3
+        }).totalDamage;
+      }
 
       c.hp = Math.max(0, (c.hp !== undefined ? c.hp : 100) - dmg);
       c.lastAttacker = barrel.lastAttacker || c.lastAttacker;

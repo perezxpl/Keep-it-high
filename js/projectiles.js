@@ -14,6 +14,7 @@ import { addDynamicLight, addShockwave, LIGHT_PRESETS } from './lighting/index.j
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
 import { getRiverbankGroundY } from './arenas/arena3/state.js';
 import { isEnforcerPoiseActive } from './classes/enforcer.js';
+import { resolveTorsoVestImpact } from './weapons/armorBallistics.js';
 import {
   spawnShrapnelStreak,
   spawnRicochetSparks,
@@ -773,38 +774,6 @@ export class ThrownTomahawk {
             } else if (isTorsoShot) {
               // Trafienie w tors: wysokie obrażenia (125 dmg), kamizelka kuloodporna pochłania obrażenia
               totalDamage = Math.round(this.damage * 1.15);
-
-              if (ch.hasVest || ch.visuals?.hasVest) {
-                if (ch.vestHp === undefined) {
-                  ch.vestHp = 60;
-                  ch.vestMaxHp = 60;
-                }
-                if (ch.vestHp > 0) {
-                  vestAbsorbed = true;
-                  spawnRicochetSparks(this.x, this.y, Math.sign(this.vx || 1), -0.5, 8);
-
-                  if (ch.vestHp >= totalDamage) {
-                    ch.vestHp -= totalDamage;
-                    totalDamage = 0;
-                  } else {
-                    totalDamage -= ch.vestHp;
-                    ch.vestHp = 0;
-                  }
-
-                  if (ch.vestHp <= 0) {
-                    ch.vestHp = 0;
-                    ch.hasVest = false;
-                    if (ch.visuals) ch.visuals.hasVest = false;
-                    spawnVestShreds(this.x, this.y, this.vx * 0.6, this.vy - 2.0, ch.visuals?.vestColor || '#18181b');
-                    triggerScreenShake(10);
-                    if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
-                      window.syncArmorDevButtons();
-                    }
-                  }
-                }
-              }
-              triggerScreenShake(16);
-              triggerHitstop(5);
             } else {
               // Trafienie w nogi / kończyny: obniżone obrażenia (0.65x = ~72 dmg), ogłuszenie i wytrącenie z równowagi
               totalDamage = Math.round(this.damage * 0.65);
@@ -815,6 +784,21 @@ export class ThrownTomahawk {
 
             if (ch.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(ch)) {
               totalDamage = Math.round(totalDamage * 0.82);
+            }
+
+            if (!isHeadshot) {
+              const vestRes = resolveTorsoVestImpact({
+                target: ch,
+                totalDamage,
+                isHeadshot,
+                isTorsoShot,
+                hitPtX: this.x,
+                hitPtY: this.y,
+                vx: this.vx * 0.6,
+                vy: this.vy - 2.0
+              });
+              totalDamage = vestRes.totalDamage;
+              vestAbsorbed = vestRes.vestAbsorbed;
             }
 
             ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - totalDamage);
@@ -1266,6 +1250,18 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
       ch.vx += normX * impulse;
       ch.vy += normY * impulse - 3.8;
+
+      if (ch.isJuggernaut) {
+        damage = resolveTorsoVestImpact({
+          target: ch,
+          totalDamage: damage,
+          forceArmorAbsorb: true,
+          hitPtX: chCenterX,
+          hitPtY: chCenterY,
+          vx: normX * 5,
+          vy: normY * 5
+        }).totalDamage;
+      }
 
       ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - damage);
       if (shooter && shooter !== ch) {

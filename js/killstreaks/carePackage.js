@@ -196,6 +196,7 @@ export function awardCarePackageLoot(crate, recipient, player) {
     case 'HEAVY_ARMOR': {
       recipient.hasVest = true;
       recipient.vestHp = 100;
+      recipient.vestMaxHp = 100;
       recipient.hasHelmet = true;
       recipient.helmetHits = recipient.isJuggernaut ? 3 : 2;
       recipient.hp = recipient.maxHp || 100;
@@ -346,6 +347,7 @@ export function applyRemoteCarePackageOpened(data, owner) {
     if (data.loot === 'HEAVY_ARMOR') {
       owner.hasVest = true;
       owner.vestHp = 100;
+      owner.vestMaxHp = 100;
       owner.hasHelmet = true;
       owner.helmetHits = owner.isJuggernaut ? 3 : 2;
       if (owner.visuals) {

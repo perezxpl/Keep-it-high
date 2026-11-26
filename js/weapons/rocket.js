@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { activeProjectiles, detonateGrenadeExplosion, spawnGrenadeSmokePuff } from '../projectiles.js';
+import { resolveTorsoVestImpact } from './armorBallistics.js';
 import { addDynamicLight, LIGHT_PRESETS } from '../lighting/index.js';
 import {
   spawnJuiceExplosion,
@@ -443,32 +444,18 @@ export class RpgRocket {
         totalDamage = Math.round(totalDamage * 0.82);
       }
 
-      if (isTorsoShot && (closestChar.hasVest || closestChar.visuals?.hasVest)) {
-        if (closestChar.vestHp === undefined) {
-          closestChar.vestHp = 60;
-          closestChar.vestMaxHp = 60;
-        }
-
-        if (closestChar.vestHp > 0) {
-          vestAbsorbed = true;
-          spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 10);
-          if (closestChar.vestHp >= totalDamage) {
-            closestChar.vestHp -= totalDamage;
-            totalDamage = 0;
-          } else {
-            totalDamage -= closestChar.vestHp;
-            closestChar.vestHp = 0;
-          }
-
-          if (closestChar.vestHp <= 0) {
-            closestChar.vestHp = 0;
-            closestChar.hasVest = false;
-            if (closestChar.visuals) closestChar.visuals.hasVest = false;
-            spawnVestShreds(hitPtX, hitPtY, this.vx, this.vy, closestChar.visuals?.vestColor || '#18181b');
-            triggerScreenShake(4.0);
-          }
-        }
-      }
+      const vestRes = resolveTorsoVestImpact({
+        target: closestChar,
+        totalDamage,
+        isHeadshot,
+        isTorsoShot,
+        hitPtX,
+        hitPtY,
+        vx: this.vx,
+        vy: this.vy
+      });
+      totalDamage = vestRes.totalDamage;
+      vestAbsorbed = vestRes.vestAbsorbed;
 
       closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - totalDamage);
       if (this.shooter && this.shooter !== closestChar) {
