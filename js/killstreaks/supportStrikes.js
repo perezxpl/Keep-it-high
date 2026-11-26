@@ -13,10 +13,17 @@ import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import {
   triggerArena3ShipMortarSalvo,
-  updateArena3ShipMortars,
-  ARENA3_SHIP_MORTAR_STAGGER,
-  ARENA3_SHIP_MORTAR_ASCENT
+  updateArena3ShipMortars
 } from '../arenas/arena3/background.js';
+import {
+  ARENA3_SHIP_WORLD_X,
+  ARENA3_SHIP_MORTAR_STAGGER,
+  ARENA3_SHIP_MORTAR_ASCENT,
+  ARENA3_SHIP_APEX_HANG,
+  computeShipMortarBallistics,
+  solveMortarFallTicks,
+  drawMortarBombSprite
+} from './mortarBallistics.js';
 
 export const activeMortarStrikes = [];
 export const activeAttackDrones = [];
@@ -80,22 +87,28 @@ export function spawnMortarStrike(targetX, owner, options = {}) {
     triggerArena3ShipMortarSalvo(safeTargetX, offsets);
   }
 
-  // Salwa 5 pocisków moździerzowych o kaskadowych opóźnieniach zsynchronizowanych z okrętem
-  const apexHangDelay = 0.12;
+  // Salwa 5 pocisków moździerzowych o kaskadowych opóźnieniach i torze lotu zsynchronizowanym z okrętem
   for (let i = 0; i < 5; i++) {
     const offsetX = offsets[i];
     const destX = safeTargetX + offsetX;
     const destY = getSurfaceY(destX);
     const startY = (globalCamera?.y || 0) - (fromWarship ? 30 : (340 + i * 30));
+    const ballistics = fromWarship ? computeShipMortarBallistics(destX, ARENA3_SHIP_WORLD_X) : null;
+    const vx = ballistics ? ballistics.fallVx : (Math.random() - 0.5) * 1.5;
+    const vy = ballistics ? ballistics.fallVyStart : (17 + Math.random() * 3);
+    const gravity = ballistics ? ballistics.fallGravity : 0.12;
+    const fallTicks = solveMortarFallTicks(startY, destY, vy, gravity);
 
     shells.push({
-      x: destX + (Math.random() - 0.5) * 20,
+      x: destX - vx * fallTicks,
       y: startY,
       destX,
       destY,
-      vx: (Math.random() - 0.5) * 1.5,
-      vy: fromWarship ? (21 + Math.random() * 2.5) : (17 + Math.random() * 3),
-      delay: fromWarship ? (i * ARENA3_SHIP_MORTAR_STAGGER + ARENA3_SHIP_MORTAR_ASCENT + apexHangDelay) : (i * 0.38),
+      vx,
+      vy,
+      gravity,
+      angle: Math.atan2(vy, vx),
+      delay: fromWarship ? (i * ARENA3_SHIP_MORTAR_STAGGER + ARENA3_SHIP_MORTAR_ASCENT + ARENA3_SHIP_APEX_HANG) : (i * 0.38),
       enteredSky: false,
       detonated: false,
       smokeTrail: []
@@ -147,16 +160,25 @@ export function updateMortarStrikes(dt = (1 / 60), combatants = []) {
           shell.enteredSky = true;
           const camTop = (globalCamera && typeof globalCamera.y === 'number') ? globalCamera.y : 0;
           shell.y = Math.min(shell.destY - 220, camTop - 25);
+          const fallTicks = solveMortarFallTicks(shell.y, shell.destY, shell.vy, shell.gravity || 0);
+          shell.x = shell.destX - shell.vx * fallTicks;
+          shell.angle = Math.atan2(shell.vy, shell.vx);
         }
         continue;
       }
 
+      if (typeof shell.gravity === 'number' && shell.gravity > 0) {
+        shell.vy += shell.gravity;
+      }
       shell.x += shell.vx;
       shell.y += shell.vy;
+      shell.angle = Math.atan2(shell.vy, shell.vx);
 
-      // Zapis punktów smugi dymnej pocisku
-      shell.smokeTrail.push({ x: shell.x, y: shell.y, alpha: 0.75, r: 3.5 });
-      if (shell.smokeTrail.length > 14) shell.smokeTrail.shift();
+      // Zapis punktów smugi dymnej tuż za ogonem bomby
+      const tailX = shell.x - Math.cos(shell.angle) * 10;
+      const tailY = shell.y - Math.sin(shell.angle) * 10;
+      shell.smokeTrail.push({ x: tailX, y: tailY, alpha: 0.78, r: 3.6 });
+      if (shell.smokeTrail.length > 22) shell.smokeTrail.shift();
 
       // Kolizja z powierzchnią ziemi / platformy
       if (shell.y >= shell.destY) {
@@ -235,16 +257,7 @@ export function drawMortarStrikes(ctx, camera) {
       }
 
       if (!shell.detonated && shell.delay <= 0) {
-        // Pocisk artyleryjski (czarny czubek z ognistym ogonem)
-        ctx.fillStyle = '#f97316';
-        ctx.beginPath();
-        ctx.arc(shell.x, shell.y, 4.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.arc(shell.x, shell.y - 3, 2.8, 0, Math.PI * 2);
-        ctx.fill();
+        drawMortarBombSprite(ctx, shell.x, shell.y, shell.angle ?? (Math.PI * 0.5), 1.05);
       }
     }
   }
