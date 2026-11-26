@@ -9,8 +9,145 @@ import { isTouchDevice } from '../config.js';
 import { W as stateW, H as stateH } from '../world/state.js';
 import { camera as globalCamera, worldToScreen } from '../camera.js';
 import { drawCarePackages, getCarePackageSurfaceY } from './carePackage.js';
-import { drawMortarStrikes, drawAttackDrones } from './supportStrikes.js';
-import { drawSentryGuns } from './sentryGun.js';
+import { drawMortarStrikes, drawAttackDrones, activeAttackDrones } from './supportStrikes.js';
+import { drawSentryGuns, activeSentryGuns } from './sentryGun.js';
+import { isGamepadPrimaryInput } from '../input/gamepad.js';
+
+function drawKillstreakVectorIcon(ctx, streakId, cx, cy, radius = 8, color = '#00e5ff') {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = Math.max(1.1, radius * 0.16);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (streakId === 'UAV') {
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.88, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-radius, 0); ctx.lineTo(-radius * 0.45, 0);
+    ctx.moveTo(radius * 0.45, 0); ctx.lineTo(radius, 0);
+    ctx.moveTo(0, -radius); ctx.lineTo(0, -radius * 0.45);
+    ctx.moveTo(0, radius * 0.45); ctx.lineTo(0, radius);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.24, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (streakId === 'CARE_PACKAGE') {
+    ctx.beginPath();
+    ctx.arc(0, -radius * 0.2, radius * 0.78, Math.PI, 0);
+    ctx.stroke();
+    ctx.lineWidth = Math.max(0.9, radius * 0.11);
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.72, -radius * 0.2); ctx.lineTo(-radius * 0.35, radius * 0.28);
+    ctx.moveTo(radius * 0.72, -radius * 0.2); ctx.lineTo(radius * 0.35, radius * 0.28);
+    ctx.stroke();
+    ctx.fillRect(-radius * 0.42, radius * 0.28, radius * 0.84, radius * 0.56);
+  } else if (streakId === 'MORTAR_STRIKE') {
+    ctx.beginPath();
+    ctx.moveTo(0, radius * 0.55);
+    ctx.lineTo(-radius * 0.36, -radius * 0.05);
+    ctx.lineTo(-radius * 0.36, -radius * 0.78);
+    ctx.lineTo(radius * 0.36, -radius * 0.78);
+    ctx.lineTo(radius * 0.36, -radius * 0.05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, radius * 0.72, radius * 0.68, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+  } else if (streakId === 'SENTRY_GUN') {
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.65, radius * 0.78);
+    ctx.lineTo(0, radius * 0.12);
+    ctx.lineTo(radius * 0.65, radius * 0.78);
+    ctx.stroke();
+    ctx.fillRect(-radius * 0.42, -radius * 0.48, radius * 0.68, radius * 0.52);
+    ctx.fillRect(radius * 0.24, -radius * 0.34, radius * 0.68, radius * 0.22);
+  } else if (streakId === 'ATTACK_DRONE') {
+    ctx.fillRect(-radius * 0.88, -radius * 0.42, radius * 0.48, radius * 0.18);
+    ctx.fillRect(radius * 0.40, -radius * 0.42, radius * 0.48, radius * 0.18);
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.64, -radius * 0.24);
+    ctx.lineTo(0, -radius * 0.02);
+    ctx.lineTo(radius * 0.64, -radius * 0.24);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, radius * 0.06, radius * 0.42, radius * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, radius * 0.56, radius * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (streakId === 'JUGGERNAUT') {
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 0.85);
+    ctx.lineTo(radius * 0.72, -radius * 0.48);
+    ctx.lineTo(radius * 0.58, radius * 0.42);
+    ctx.lineTo(0, radius * 0.88);
+    ctx.lineTo(-radius * 0.58, radius * 0.42);
+    ctx.lineTo(-radius * 0.72, -radius * 0.48);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.32, -radius * 0.14);
+    ctx.lineTo(radius * 0.32, -radius * 0.14);
+    ctx.lineTo(0, radius * 0.36);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 0.75);
+    ctx.lineTo(radius * 0.75, 0);
+    ctx.lineTo(0, radius * 0.75);
+    ctx.lineTo(-radius * 0.75, 0);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function collectActiveTimedStreaks(player) {
+  const list = [];
+  if (isKillstreakActive('UAV')) {
+    const uavStreak = killstreakState.activeStreaks.find(s => s.id === 'UAV');
+    if (uavStreak && uavStreak.timeRemaining > 0) {
+      list.push({
+        id: 'UAV',
+        short: 'UAV',
+        timeRemaining: uavStreak.timeRemaining,
+        duration: uavStreak.duration || 20,
+        color: '#00e5ff'
+      });
+    }
+  }
+  if (Array.isArray(activeAttackDrones)) {
+    const pDrone = activeAttackDrones.find(d => d && d.owner === player && !d.leaving && d.life > 0);
+    if (pDrone) {
+      list.push({
+        id: 'ATTACK_DRONE',
+        short: 'DRON',
+        timeRemaining: pDrone.life,
+        duration: pDrone.totalLife || 25,
+        color: '#10b981'
+      });
+    }
+  }
+  if (Array.isArray(activeSentryGuns)) {
+    const pSentry = activeSentryGuns.find(s => s && s.owner === player && s.state === 'ACTIVE' && s.life > 0);
+    if (pSentry) {
+      list.push({
+        id: 'SENTRY_GUN',
+        short: 'SENTRY',
+        timeRemaining: pSentry.life,
+        duration: pSentry.totalLife || 30,
+        color: '#38bdf8'
+      });
+    }
+  }
+  return list;
+}
 
 function getScreenSize(canvas) {
   let sw = (typeof stateW === 'number' && stateW > 0) ? stateW : 0;
@@ -77,7 +214,20 @@ function drawMortarTargetingWorld(ctx, cam, player) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // C. Celownik krzyżowy (Crosshair) w punkcie centralnym
+  // C. Celownik krzyżowy i znaczniki strefy 5 pocisków salwy
+  const shellOffsets = [-116, -58, 0, 58, 116];
+  for (let i = 0; i < shellOffsets.length; i++) {
+    const sx = targetX + shellOffsets[i];
+    const sy = getCarePackageSurfaceY(sx);
+    ctx.strokeStyle = i === 2 ? '#ffffff' : `rgba(252, 165, 165, ${0.45 + pulse * 0.35})`;
+    ctx.lineWidth = i === 2 ? 1.5 : 1.1;
+    ctx.beginPath();
+    ctx.moveTo(sx - 5, sy - 7);
+    ctx.lineTo(sx, sy - 1);
+    ctx.lineTo(sx + 5, sy - 7);
+    ctx.stroke();
+  }
+
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -271,6 +421,86 @@ export function drawKillstreakWorld(ctx, camera, combatants, player) {
   }
 }
 
+function drawKillstreakNotificationBanner(ctx, W, H, isMobile, uiAnim) {
+  if (!killstreakState.recentNotification || !(killstreakState.notificationTimer > 0)) return;
+  const notif = killstreakState.recentNotification;
+  const rawFade = Math.min(1.0, killstreakState.notificationTimer * 1.6);
+  const enterT = Math.max(0, Math.min(1, (uiAnim && typeof uiAnim.notifEnter === 'number') ? uiAnim.notifEnter : 1));
+  const easeOut = 1 - Math.pow(1 - enterT, 3);
+  const slideY = (1 - easeOut) * (isMobile ? -8 : -12);
+  const alpha = rawFade * Math.min(1, easeOut * 1.15);
+  const accent = notif.color || '#00e5ff';
+  const totalDur = Math.max(0.5, notif.duration || 3.5);
+  const timeFrac = Math.max(0, Math.min(1, killstreakState.notificationTimer / totalDur));
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  if (isMobile) {
+    const bannerH = 18;
+    const bannerW = Math.min(238, W - 40);
+    const bannerX = Math.round((W - bannerW) / 2);
+    const bannerY = 36 + slideY;
+
+    ctx.fillStyle = 'rgba(10, 15, 26, 0.80)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 3);
+    else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+    ctx.fill();
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+
+    ctx.fillStyle = accent;
+    ctx.fillRect(bannerX + 1, bannerY + 2, 2.5, bannerH - 4);
+    ctx.fillRect(bannerX + 4, bannerY + bannerH - 2, (bannerW - 8) * timeFrac, 1.3);
+
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = '#f8fafc';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${notif.title || 'WSPARCIE'}: ${notif.text || ''}`, bannerX + bannerW / 2 + 2, bannerY + bannerH / 2 - 0.5);
+  } else {
+    const bannerW = Math.min(350, W - 32);
+    const bannerH = 42;
+    const bannerX = Math.round((W - bannerW) / 2);
+    const bannerY = 58 + slideY;
+
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 5);
+    else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+    ctx.fillStyle = 'rgba(10, 15, 26, 0.94)';
+    ctx.fill();
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Lewy pasek akcentu + dolny wskaźnik wygasania
+    ctx.fillStyle = accent;
+    ctx.fillRect(bannerX + 1.5, bannerY + 3, 3.5, bannerH - 6);
+    ctx.fillRect(bannerX + 6, bannerY + bannerH - 3.2, (bannerW - 12) * timeFrac, 1.8);
+
+    const textOffsetX = notif.streakId ? 10 : 0;
+    if (notif.streakId) {
+      drawKillstreakVectorIcon(ctx, notif.streakId, bannerX + 20, bannerY + bannerH / 2 - 1, 8.5, accent);
+    }
+
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = accent;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(notif.title || 'WSPARCIE BOJOWE', bannerX + bannerW / 2 + textOffsetX, bannerY + 6);
+
+    ctx.font = 'bold 9.5px monospace';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(notif.text || '', bannerX + bannerW / 2 + textOffsetX, bannerY + 21);
+  }
+
+  ctx.restore();
+}
+
 /**
  * Renderuje kompaktowy, wojskowy widget serii zabójstw na interfejsie HUD
  * @param {CanvasRenderingContext2D} ctx
@@ -292,84 +522,63 @@ export function drawKillstreakHUD(ctx, canvas, player) {
   const hasReadyStreak = (killstreakState.availableStreaks && killstreakState.availableStreaks.length > 0);
   const readyStreakId = hasReadyStreak ? killstreakState.availableStreaks[0] : null;
   const readyDef = readyStreakId ? getKillstreakDef(readyStreakId) : null;
+  const uiAnim = killstreakState.uiAnim || {};
+  const activeTimers = collectActiveTimedStreaks(player);
 
   // -------------------------------------------------------------------------
   // SMART-HIDE NA EKRANACH MOBILNYCH:
   // Jeśli gracz nie posiada odblokowanego wsparcia (0/3, 1/3, 2/3 fragów),
   // widget w prawym górnym rogu jest CAŁKOWICIE UKRYTY (uwalnia 100% pola gry).
-  // Pojawia się WYŁĄCZNIE wtedy, gdy nagroda jest gotowa do kliknięcia (READY TAP).
+  // Pojawia się WYŁĄCZNIE wtedy, gdy nagroda jest gotowa do kliknięcia (READY TAP)
+  // wraz ze stosikiem kolejnych zakolejkowanych nagród poniżej.
   // -------------------------------------------------------------------------
   if (isMobile && !hasReadyStreak) {
     killstreakState.hudButtonBounds = null;
 
-    // Dyskretny mikro-wskaźnik UAV obok pauzy, jeśli UAV jest aktywny
-    if (isKillstreakActive('UAV')) {
-      const uavStreak = killstreakState.activeStreaks.find(s => s.id === 'UAV');
-      if (uavStreak) {
-        const timeLeft = Math.ceil(Math.max(0, uavStreak.timeRemaining));
-        const badgeW = 68;
-        const badgeH = 16;
-        const badgeX = W - badgeW - 36;
-        const badgeY = 6;
+    // Kompaktowe pigułki aktywnych systemów wsparcia obok przycisku pauzy
+    let pillXCursor = W - 36;
+    for (let tIdx = 0; tIdx < activeTimers.length; tIdx++) {
+      const tItem = activeTimers[tIdx];
+      const timeLeft = Math.ceil(Math.max(0, tItem.timeRemaining));
+      const ratio = Math.max(0, Math.min(1, tItem.timeRemaining / Math.max(1, tItem.duration)));
+      const badgeW = 68;
+      const badgeH = 16;
+      const badgeX = pillXCursor - badgeW;
+      const badgeY = 6;
+      pillXCursor = badgeX - 5;
 
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
-        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
-        ctx.fillStyle = 'rgba(6, 24, 38, 0.60)';
-        ctx.fill();
-
-        ctx.strokeStyle = '#00e5ff';
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-
-        ctx.font = 'bold 8px monospace';
-        ctx.fillStyle = '#00e5ff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`[UAV: ${timeLeft}S]`, badgeX + badgeW / 2, badgeY + badgeH / 2);
-      }
-    }
-
-    // Powiadomienie o killstreaku dla mobile
-    if (killstreakState.recentNotification && killstreakState.notificationTimer > 0) {
-      const notif = killstreakState.recentNotification;
-      const alpha = Math.min(1.0, killstreakState.notificationTimer * 1.5);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      const bannerH = 16;
-      const bannerW = Math.min(220, W - 40);
-      const bannerX = Math.round((W - bannerW) / 2);
-      const bannerY = 28;
-
-      ctx.fillStyle = 'rgba(10, 15, 26, 0.60)';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 3);
-      else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+      if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
+      else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+      ctx.fillStyle = 'rgba(6, 20, 34, 0.72)';
       ctx.fill();
 
-      ctx.strokeStyle = notif.color || '#00e5ff';
-      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = tItem.color;
+      ctx.lineWidth = 0.9;
       ctx.stroke();
 
+      ctx.fillStyle = tItem.color;
+      ctx.fillRect(badgeX + 2, badgeY + badgeH - 2.5, (badgeW - 4) * ratio, 1.5);
+
       ctx.font = 'bold 8px monospace';
-      ctx.fillStyle = notif.color || '#00e5ff';
+      ctx.fillStyle = tItem.color;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`[${notif.title || 'WSPARCIE'}] ${notif.text || ''}`, bannerX + bannerW / 2, bannerY + bannerH / 2);
-      ctx.restore();
+      ctx.fillText(`${tItem.short} ${timeLeft}s`, badgeX + badgeW / 2, badgeY + 7);
     }
 
+    drawKillstreakNotificationBanner(ctx, W, H, true, uiAnim);
     ctx.restore();
     return;
   }
 
-  // Wymiary i ergonomiczna pozycja widgetu:
-  // Na telefonie: kompaktowy, pulsujący mikro-przycisk obok pauzy (y = 6px, h = 20px)
-  // Na PC: w prawym dolnym rogu (standard Call of Duty HUD)
-  const widgetW = isMobile ? 74 : 156;
-  const widgetH = isMobile ? 20 : 48;
+  // Wymiary i ergonomiczna pozycja głównego widgetu:
+  // Na telefonie: kompaktowy, pulsujący chip obok pauzy (y = 5px, h = 22px)
+  // Na PC: w prawym dolnym rogu ze stosem zakolejkowanych kart nad nim
+  const widgetW = isMobile ? 86 : 176;
+  const widgetH = isMobile ? 22 : 52;
   const posX = isMobile ? (W - widgetW - 36) : (W - widgetW - 20);
-  const posY = isMobile ? 6 : (H - widgetH - 24);
+  const posY = isMobile ? 5 : (H - widgetH - 22);
 
   // Zapis granic klikalnego obszaru dla obsługi kliknięcia myszą lub dotyku (współrzędne CSS)
   killstreakState.hudButtonBounds = {
@@ -379,198 +588,356 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     h: widgetH
   };
 
+  const isTargetingMortar = (readyStreakId === 'MORTAR_STRIKE' && killstreakState.mortarTargeting);
+  const nowMs = performance.now();
+  const unlockPop = Math.max(0, uiAnim.unlockPop || 0);
+  const killBump = Math.max(0, uiAnim.killBump || 0);
+  const activateFlash = Math.max(0, uiAnim.activateFlash || 0);
+  const popScale = hasReadyStreak
+    ? (1 + Math.sin(unlockPop * Math.PI) * 0.13 - activateFlash * 0.05)
+    : (1 + Math.sin(killBump * Math.PI) * 0.07);
+
+  ctx.save();
+  const cx = posX + widgetW / 2;
+  const cy = posY + widgetH / 2;
+  ctx.translate(cx, cy);
+  ctx.scale(popScale, popScale);
+  ctx.translate(-cx, -cy);
+
+  const primaryAccent = isTargetingMortar ? '#ef4444' : (readyDef?.accent || '#00e5ff');
+  const primaryBgTint = isTargetingMortar
+    ? 'rgba(60, 12, 18, 0.94)'
+    : (readyDef?.bgTint || 'rgba(8, 36, 56, 0.92)');
+
   // 1. TŁO WIDGETU (Modern Military Dark Glass)
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, isMobile ? 3.5 : 6);
+  if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, isMobile ? 4 : 6);
   else ctx.rect(posX, posY, widgetW, widgetH);
 
-  const isTargetingMortar = (readyStreakId === 'MORTAR_STRIKE' && killstreakState.mortarTargeting);
-
-  if (isTargetingMortar) {
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
-    ctx.fillStyle = `rgba(60, 12, 18, ${0.90 + pulse * 0.08})`;
-  } else if (hasReadyStreak) {
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
-    ctx.fillStyle = isMobile ? `rgba(6, 26, 42, ${0.65 + pulse * 0.15})` : `rgba(8, 36, 56, ${0.88 + pulse * 0.10})`;
+  if (hasReadyStreak) {
+    ctx.fillStyle = isMobile ? 'rgba(6, 24, 38, 0.84)' : primaryBgTint;
   } else {
     ctx.fillStyle = 'rgba(10, 18, 32, 0.90)';
   }
   ctx.fill();
 
+  // Pasek akcentowy po lewej stronie głównej karty + diagonalny błysk przy odblokowaniu
+  if (hasReadyStreak) {
+    ctx.save();
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, isMobile ? 4 : 6);
+    else ctx.rect(posX, posY, widgetW, widgetH);
+    ctx.clip();
+
+    ctx.fillStyle = primaryAccent;
+    ctx.fillRect(posX, posY, isMobile ? 3 : 4, widgetH);
+
+    const shimmerPos = uiAnim.shimmerPos;
+    if (typeof shimmerPos === 'number' && shimmerPos >= -0.35 && shimmerPos <= 1.35) {
+      const sx = posX + shimmerPos * widgetW;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(sx - 12, posY + widgetH);
+      ctx.lineTo(sx + 6, posY);
+      ctx.lineTo(sx + 22, posY);
+      ctx.lineTo(sx + 4, posY + widgetH);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // 2. RAMKA WIDGETU
-  let strokeColor = 'rgba(100, 116, 139, 0.45)';
-  if (isTargetingMortar) {
-    strokeColor = '#ef4444';
-    ctx.lineWidth = isMobile ? 1.4 : 2.4;
-  } else if (hasReadyStreak) {
-    strokeColor = '#00e5ff';
-    ctx.lineWidth = isMobile ? 1.2 : 2.0;
+  const pulse = 0.55 + 0.45 * Math.sin(nowMs * (isTargetingMortar ? 0.015 : 0.008));
+  if (hasReadyStreak) {
+    ctx.strokeStyle = primaryAccent;
+    ctx.globalAlpha = isMobile ? (0.78 + pulse * 0.22) : (0.82 + pulse * 0.18);
+    ctx.lineWidth = isMobile ? 1.3 : 1.9;
+  } else if (killBump > 0) {
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 1.6;
   } else {
+    ctx.strokeStyle = 'rgba(100, 116, 139, 0.45)';
     ctx.lineWidth = 1.2;
   }
-  ctx.strokeStyle = strokeColor;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, isMobile ? 4 : 6);
+  else ctx.rect(posX, posY, widgetW, widgetH);
   ctx.stroke();
+  ctx.globalAlpha = 1.0;
 
   // 3. TREŚĆ WIDGETU
   if (hasReadyStreak && readyDef) {
-    // STAN: NAGRODA GOTOWA DO UŻYCIA
+    const queueCount = killstreakState.availableStreaks.length;
     if (isMobile) {
-      // Jednolinijkowy, minimalistyczny chip aktywacyjny na telefonie
-      const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.01);
+      drawKillstreakVectorIcon(ctx, readyDef.id, posX + 14, posY + widgetH / 2, 5.5, primaryAccent);
+
       ctx.font = '900 8.5px monospace';
-      ctx.fillStyle = isTargetingMortar ? '#ef4444' : `rgba(0, 229, 255, ${pulse})`;
-      ctx.textAlign = 'center';
+      ctx.fillStyle = isTargetingMortar ? '#fca5a5' : '#f8fafc';
+      ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      const chipText = isTargetingMortar ? '[CELUJ]' : `[${readyDef.tag || readyDef.short}] TAP`;
-      ctx.fillText(chipText, posX + widgetW / 2, posY + widgetH / 2);
+      const chipText = isTargetingMortar ? 'CELUJ' : `${readyDef.short}`;
+      ctx.fillText(chipText, posX + 24, posY + widgetH / 2 + 0.5);
+
+      ctx.font = 'bold 7.5px monospace';
+      ctx.fillStyle = primaryAccent;
+      ctx.textAlign = 'right';
+      ctx.fillText(queueCount > 1 ? `x${queueCount}` : 'TAP', posX + widgetW - 6, posY + widgetH / 2 + 0.5);
     } else {
+      const usingPad = (typeof isGamepadPrimaryInput === 'function' && isGamepadPrimaryInput());
       const keyHint = isTargetingMortar
-        ? '[CELUJ MYSZĄ]'
-        : '[KLAWISZ 4]';
+        ? '[LPM = ODPAL // ESC]'
+        : (usingPad ? '[D-PAD GÓRA / KLIK]' : '[KLAWISZ 4 / KLIK]');
+
+      drawKillstreakVectorIcon(ctx, readyDef.id, posX + 22, posY + widgetH / 2, 10.5, primaryAccent);
 
       ctx.font = 'bold 11.5px monospace';
-      ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
+      ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 10, posY + 8);
+      ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 41, posY + 8);
 
-      ctx.font = 'bold 9.5px monospace';
-      ctx.fillStyle = isTargetingMortar ? '#fca5a5' : '#f8fafc';
-      ctx.fillText(keyHint, posX + 10, posY + 27);
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = primaryAccent;
+      ctx.fillText(keyHint, posX + 41, posY + 28);
 
-      // Ikona taktyczna po prawej
-      ctx.font = 'bold 15px monospace';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
-      ctx.fillText(readyDef.icon || '◆', posX + widgetW - 12, posY + widgetH / 2);
+      if (queueCount > 1) {
+        const pillText = `1/${queueCount}`;
+        ctx.font = 'bold 8.5px monospace';
+        ctx.fillStyle = '#facc15';
+        ctx.textAlign = 'right';
+        ctx.fillText(pillText, posX + widgetW - 8, posY + 9);
+      }
     }
   } else {
-    // STAN: POSTĘP W STRONĘ KOLEJNEGO KILLSTREAKA
+    // STAN: POSTĘP W STRONĘ KOLEJNEGO KILLSTREAKA (SEGMENTOWY WSKAŹNIK)
     const streak = killstreakState.currentStreak || 0;
     const nextGoal = getNextKillstreakGoal(streak);
     const goalReq = nextGoal ? nextGoal.killsRequired : (streak + 1);
     const goalTag = nextGoal ? nextGoal.tag : '[MAX]';
-    const goalShort = nextGoal ? nextGoal.short : '';
+    const goalShort = nextGoal ? nextGoal.short : 'SERIA';
+    const goalAccent = nextGoal?.accent || '#38bdf8';
 
-    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
-    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = killBump > 0.15 ? '#ffffff' : '#38bdf8';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(`SERIA: ${streak} / ${goalReq}`, posX + 10, posY + 7);
+    ctx.fillText(`SERIA: ${streak} / ${goalReq}`, posX + 11, posY + 7);
 
-    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 8.5px monospace';
+    ctx.font = 'bold 8.5px monospace';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`CEL: ${goalTag} ${goalShort}`, posX + 10, posY + (isMobile ? 22 : 24));
+    ctx.fillText(`CEL: ${goalTag} ${goalShort}`, posX + 11, posY + 23);
 
-    // Ikona po prawej
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(nextGoal ? nextGoal.icon : '◆', posX + widgetW - 10, posY + (isMobile ? 18 : 20));
+    drawKillstreakVectorIcon(ctx, nextGoal?.id || 'UAV', posX + widgetW - 20, posY + 19, 8.5, '#64748b');
 
-    // Pasek postępu
-    const barX = posX + 10;
-    const barY = posY + widgetH - (isMobile ? 7 : 8);
-    const barW = widgetW - 20;
-    const barH = 3.0;
-    const progress = Math.max(0, Math.min(1, streak / goalReq));
+    // Segmentowy pasek postępu z płynnym dopełnieniem
+    const barX = posX + 11;
+    const barY = posY + widgetH - 10;
+    const barW = widgetW - 22;
+    const barH = 4.0;
+    const smoothProg = (typeof uiAnim.smoothProgress === 'number')
+      ? uiAnim.smoothProgress
+      : Math.max(0, Math.min(1, streak / goalReq));
 
-    ctx.fillStyle = 'rgba(51, 65, 85, 0.70)';
+    ctx.fillStyle = 'rgba(51, 65, 85, 0.72)';
     ctx.fillRect(barX, barY, barW, barH);
 
-    ctx.fillStyle = streak > 0 ? '#00e5ff' : 'rgba(148, 163, 184, 0.40)';
-    ctx.fillRect(barX, barY, barW * progress, barH);
-  }
+    if (smoothProg > 0.005) {
+      ctx.fillStyle = killBump > 0.2 ? '#ffffff' : goalAccent;
+      ctx.fillRect(barX, barY, barW * smoothProg, barH);
+    }
 
-  // 4. WSKAŹNIK CZASU AKTYWNEGO UAV (jeśli aktualnie trwa)
-  if (isKillstreakActive('UAV')) {
-    const uavStreak = killstreakState.activeStreaks.find(s => s.id === 'UAV');
-    if (uavStreak) {
-      const timeLeft = Math.ceil(Math.max(0, uavStreak.timeRemaining));
-      const badgeW = 120;
-      const badgeH = 18;
-      const badgeX = posX + (widgetW - badgeW) / 2;
-      const badgeY = isMobile ? (posY + widgetH + 6) : (posY - badgeH - 6);
-
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
-      else ctx.rect(badgeX, badgeY, badgeW, badgeH);
-      ctx.fillStyle = 'rgba(6, 24, 38, 0.94)';
-      ctx.fill();
-
-      ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 1.0;
-      ctx.stroke();
-
-      ctx.font = 'bold 8.5px monospace';
-      ctx.fillStyle = '#00e5ff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`[UAV AKTYWNY: ${timeLeft}S]`, badgeX + badgeW / 2, badgeY + badgeH / 2);
+    // Podziałki segmentów odpowiadające liczbie wymaganych fragów
+    if (goalReq > 1 && goalReq <= 12) {
+      ctx.fillStyle = 'rgba(10, 18, 32, 0.90)';
+      for (let seg = 1; seg < goalReq; seg++) {
+        const sx = Math.round(barX + (barW * seg) / goalReq);
+        ctx.fillRect(sx - 0.5, barY, 1, barH);
+      }
     }
   }
 
-  // 5. BANNER POWIADOMIENIA (jeśli jest aktywne)
-  if (killstreakState.recentNotification && killstreakState.notificationTimer > 0) {
-    const notif = killstreakState.recentNotification;
-    const alpha = Math.min(1.0, killstreakState.notificationTimer * 1.5);
-
+  // Impuls błysku aktywacji na obramowaniu widgetu
+  if (activateFlash > 0.02) {
     ctx.save();
-    ctx.globalAlpha = alpha;
-
-    if (isMobile) {
-      // Wariant mobilny: mikro-linijka zamiast wielkiego kloca 320x38px!
-      const bannerH = 16;
-      const bannerW = Math.min(220, W - 40);
-      const bannerX = Math.round((W - bannerW) / 2);
-      const bannerY = 28;
-
-      ctx.fillStyle = 'rgba(10, 15, 26, 0.60)';
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 3);
-      else ctx.rect(bannerX, bannerY, bannerW, bannerH);
-      ctx.fill();
-
-      ctx.strokeStyle = notif.color || '#00e5ff';
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-
-      ctx.font = 'bold 8px monospace';
-      ctx.fillStyle = notif.color || '#00e5ff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`[${notif.title || 'WSPARCIE'}] ${notif.text || ''}`, bannerX + bannerW / 2, bannerY + bannerH / 2);
-    } else {
-      const bannerW = Math.min(320, W - 32);
-      const bannerH = 38;
-      const bannerX = Math.round((W - bannerW) / 2);
-      const bannerY = 54;
-
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);
-      else ctx.rect(bannerX, bannerY, bannerW, bannerH);
-      ctx.fillStyle = 'rgba(10, 15, 26, 0.95)';
-      ctx.fill();
-
-      ctx.strokeStyle = notif.color || '#00e5ff';
-      ctx.lineWidth = 1.6;
-      ctx.stroke();
-
-      ctx.font = 'bold 11px monospace';
-      ctx.fillStyle = notif.color || '#00e5ff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(notif.title || 'WSPARCIE BOJOWE', bannerX + bannerW / 2, bannerY + 6);
-
-      ctx.font = 'bold 9.5px monospace';
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillText(notif.text || '', bannerX + bannerW / 2, bannerY + 20);
-    }
-
+    ctx.globalAlpha = activateFlash * 0.45;
+    ctx.fillStyle = uiAnim.activateColor || '#ffffff';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, isMobile ? 4 : 6);
+    else ctx.rect(posX, posY, widgetW, widgetH);
+    ctx.fill();
     ctx.restore();
   }
+
+  ctx.restore();
+
+  // 3B. WIZUALNY STOS KART KOLEJNYCH GOTOWYCH NAGRÓD (gdy availableStreaks.length > 1)
+  let topOfStackY = posY;
+  if (hasReadyStreak && killstreakState.availableStreaks.length > 1 && !(isMobile && isTargetingMortar)) {
+    const queued = killstreakState.availableStreaks.slice(1);
+    const maxVisibleCards = isMobile ? 2 : 3;
+    const visibleSlice = queued.slice(0, maxVisibleCards);
+    const hiddenCount = Math.max(0, queued.length - maxVisibleCards);
+
+    if (isMobile) {
+      let curY = posY + widgetH + 3;
+      for (let qIdx = 0; qIdx < visibleSlice.length; qIdx++) {
+        const qDef = getKillstreakDef(visibleSlice[qIdx]);
+        if (!qDef) continue;
+        const cardW = widgetW - 4;
+        const cardH = 15;
+        const cardX = posX + 4;
+        const qColor = qDef.accent || '#00e5ff';
+
+        ctx.fillStyle = 'rgba(10, 18, 32, 0.80)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(cardX, curY, cardW, cardH, 3);
+        else ctx.rect(cardX, curY, cardW, cardH);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        ctx.fillStyle = qColor;
+        ctx.fillRect(cardX + 1, curY + 2, 2.5, cardH - 4);
+
+        drawKillstreakVectorIcon(ctx, qDef.id, cardX + 11, curY + cardH / 2, 3.8, qColor);
+
+        ctx.font = 'bold 7.5px monospace';
+        ctx.fillStyle = '#e2e8f0';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`#${qIdx + 2} ${qDef.short}`, cardX + 19, curY + cardH / 2 + 0.5);
+
+        if (qIdx === visibleSlice.length - 1 && hiddenCount > 0) {
+          ctx.fillStyle = '#facc15';
+          ctx.textAlign = 'right';
+          ctx.fillText(`+${hiddenCount}`, cardX + cardW - 4, curY + cardH / 2 + 0.5);
+        }
+        curY += cardH + 2;
+      }
+    } else {
+      let curY = posY - 4;
+      for (let qIdx = 0; qIdx < visibleSlice.length; qIdx++) {
+        const qDef = getKillstreakDef(visibleSlice[qIdx]);
+        if (!qDef) continue;
+        const stepShrink = (qIdx + 1) * 7;
+        const cardW = widgetW - stepShrink * 2;
+        const cardH = 21;
+        const cardX = posX + stepShrink;
+        const cardY = curY - cardH;
+        const qColor = qDef.accent || '#00e5ff';
+
+        ctx.fillStyle = 'rgba(10, 18, 32, 0.88)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(cardX, cardY, cardW, cardH, 4);
+        else ctx.rect(cardX, cardY, cardW, cardH);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.42)';
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+
+        // Kolorowy lewy pasek karty w kolejce
+        ctx.fillStyle = qColor;
+        ctx.fillRect(cardX + 1, cardY + 2, 3, cardH - 4);
+
+        drawKillstreakVectorIcon(ctx, qDef.id, cardX + 14, cardY + cardH / 2, 5.5, qColor);
+
+        ctx.font = 'bold 9.5px monospace';
+        ctx.fillStyle = '#e2e8f0';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`#${qIdx + 2} ${qDef.short}`, cardX + 24, cardY + cardH / 2 + 0.5);
+
+        if (qIdx === visibleSlice.length - 1 && hiddenCount > 0) {
+          ctx.fillStyle = '#facc15';
+          ctx.textAlign = 'right';
+          ctx.fillText(`+${hiddenCount}`, cardX + cardW - 7, cardY + cardH / 2 + 0.5);
+        } else {
+          ctx.font = 'bold 8px monospace';
+          ctx.fillStyle = qColor;
+          ctx.textAlign = 'right';
+          ctx.fillText('KOLEJKA', cardX + cardW - 7, cardY + cardH / 2 + 0.5);
+        }
+
+        curY = cardY - 3;
+      }
+      topOfStackY = curY + 1;
+    }
+  }
+
+  // 4. WSKAŹNIKI CZASU AKTYWNYCH SYSTEMÓW WSPARCIA (UAV / DRON / SENTRY)
+  if (activeTimers.length > 0 && !(isMobile && isTargetingMortar)) {
+    if (isMobile) {
+      let pillRight = posX - 5;
+      for (let tIdx = 0; tIdx < activeTimers.length; tIdx++) {
+        const tItem = activeTimers[tIdx];
+        const timeLeft = Math.ceil(Math.max(0, tItem.timeRemaining));
+        const ratio = Math.max(0, Math.min(1, tItem.timeRemaining / Math.max(1, tItem.duration)));
+        const badgeW = 62;
+        const badgeH = 16;
+        const badgeX = pillRight - badgeW;
+        const badgeY = 8;
+        pillRight = badgeX - 4;
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
+        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+        ctx.fillStyle = 'rgba(6, 20, 34, 0.78)';
+        ctx.fill();
+
+        ctx.strokeStyle = tItem.color;
+        ctx.lineWidth = 0.9;
+        ctx.stroke();
+
+        ctx.fillStyle = tItem.color;
+        ctx.fillRect(badgeX + 2, badgeY + badgeH - 2.5, (badgeW - 4) * ratio, 1.5);
+
+        ctx.font = 'bold 8px monospace';
+        ctx.fillStyle = tItem.color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${tItem.short} ${timeLeft}s`, badgeX + badgeW / 2, badgeY + 7);
+      }
+    } else {
+      let badgeBottomY = topOfStackY - 6;
+      for (let tIdx = 0; tIdx < activeTimers.length; tIdx++) {
+        const tItem = activeTimers[tIdx];
+        const timeLeft = Math.ceil(Math.max(0, tItem.timeRemaining));
+        const ratio = Math.max(0, Math.min(1, tItem.timeRemaining / Math.max(1, tItem.duration)));
+        const badgeW = 148;
+        const badgeH = 18;
+        const badgeX = posX + (widgetW - badgeW) / 2;
+        const badgeY = badgeBottomY - badgeH;
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+        ctx.fillStyle = 'rgba(6, 20, 34, 0.92)';
+        ctx.fill();
+
+        ctx.strokeStyle = tItem.color;
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+
+        ctx.fillStyle = tItem.color;
+        ctx.fillRect(badgeX + 3, badgeY + badgeH - 3, (badgeW - 6) * ratio, 1.6);
+
+        ctx.font = 'bold 8.5px monospace';
+        ctx.fillStyle = tItem.color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`[${tItem.short} AKTYWNY: ${timeLeft}S]`, badgeX + badgeW / 2, badgeY + badgeH / 2 - 1);
+
+        badgeBottomY = badgeY - 4;
+      }
+    }
+  }
+
+  // 5. BANNER POWIADOMIENIA (płynne wejście i wskaźnik pozostałego czasu)
+  drawKillstreakNotificationBanner(ctx, W, H, isMobile, uiAnim);
 
   // 6. NAKŁADKA TRYBU WYBORU CELU NALOTU (BANNER, PRZYCISK ANULUJ, RAMKI EKRANOWE)
   if (killstreakState.mortarTargeting) {

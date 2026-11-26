@@ -16,6 +16,8 @@ export const KILLSTREAKS = [
     killsRequired: 3,
     duration: 20, // czas działania w sekundach
     icon: '◆',
+    accent: '#00e5ff',
+    bgTint: 'rgba(8, 36, 56, 0.92)',
     desc: 'Skaner taktyczny ujawniający pozycje wrogów i botów przez przeszkody oraz wskazujący cele poza ekranem.',
     implemented: true
   },
@@ -26,6 +28,8 @@ export const KILLSTREAKS = [
     short: 'ZRZUT',
     killsRequired: 4,
     icon: '■',
+    accent: '#f97316',
+    bgTint: 'rgba(46, 22, 10, 0.92)',
     desc: 'Skrzynia zrzucana na spadochronie zawierająca ciężki pancerz kevlarowy, odnowienie amunicji, nalot lub wsparcie bojowe.',
     implemented: true
   },
@@ -36,6 +40,8 @@ export const KILLSTREAKS = [
     short: 'NALOT',
     killsRequired: 5,
     icon: '▲',
+    accent: '#ef4444',
+    bgTint: 'rgba(54, 14, 18, 0.94)',
     desc: 'Salwa pocisków artyleryjskich spadająca na pozycje wroga i platformy z potężną falą uderzeniową.',
     implemented: true
   },
@@ -46,6 +52,8 @@ export const KILLSTREAKS = [
     short: 'SENTRY',
     killsRequired: 7,
     icon: '◈',
+    accent: '#38bdf8',
+    bgTint: 'rgba(12, 34, 54, 0.92)',
     desc: 'Automatyczne działko obrotowe z celownikiem laserowym, prowadzące ogień zaporowy do celów w zasięgu wzroku.',
     implemented: true
   },
@@ -57,6 +65,8 @@ export const KILLSTREAKS = [
     killsRequired: 9,
     duration: 25,
     icon: '►',
+    accent: '#10b981',
+    bgTint: 'rgba(10, 42, 34, 0.92)',
     desc: 'Zaawansowany dron asystujący graczowi z powietrza ciągłym ogniem w kierunku celowania.',
     implemented: true
   },
@@ -67,6 +77,8 @@ export const KILLSTREAKS = [
     short: 'KOLOS',
     killsRequired: 11,
     icon: '■■',
+    accent: '#eab308',
+    bgTint: 'rgba(46, 34, 8, 0.94)',
     desc: 'Ciężki pancerz balistyczny (250 HP) oraz wielolufowy Minigun kosztem obniżonej mobilności operatora.',
     implemented: true
   }
@@ -98,6 +110,17 @@ export const killstreakState = {
   // Flaga ostatniego powiadomienia na HUD
   recentNotification: null,
   notificationTimer: 0,
+
+  // Mikro-animacje HUD (odblokowanie, impuls fraga, aktywacja, płynny postęp)
+  uiAnim: {
+    killBump: 0,
+    unlockPop: 0,
+    activateFlash: 0,
+    activateColor: '#00e5ff',
+    smoothProgress: 0,
+    notifEnter: 0,
+    shimmerPos: -0.35
+  },
 
   // Współrzędne klikalnego widgetu HUD na ekranie (dla myszy i dotyku)
   hudButtonBounds: null,
@@ -137,4 +160,33 @@ export function getNextKillstreakGoal(streak = killstreakState.currentStreak) {
     }
   }
   return null;
+}
+
+export function setKillstreakNotification(title, text, color = '#00e5ff', duration = 3.0, streakId = null) {
+  killstreakState.recentNotification = {
+    title,
+    text,
+    color,
+    duration,
+    streakId
+  };
+  killstreakState.notificationTimer = duration;
+  if (killstreakState.uiAnim) {
+    killstreakState.uiAnim.notifEnter = 0;
+  }
+}
+
+export function triggerKillstreakUnlockAnim(streakId = null) {
+  const def = getKillstreakDef(streakId);
+  if (!killstreakState.uiAnim) return;
+  killstreakState.uiAnim.unlockPop = 1.0;
+  killstreakState.uiAnim.shimmerPos = -0.35;
+  killstreakState.uiAnim.activateColor = def?.accent || '#00e5ff';
+}
+
+export function triggerKillstreakActivateAnim(streakId = null) {
+  const def = getKillstreakDef(streakId);
+  if (!killstreakState.uiAnim) return;
+  killstreakState.uiAnim.activateFlash = 1.0;
+  killstreakState.uiAnim.activateColor = def?.accent || '#00e5ff';
 }

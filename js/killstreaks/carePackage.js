@@ -11,7 +11,7 @@ import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } f
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { WEAPONS, getWeaponAmmo } from '../weapons/transform.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
-import { killstreakState } from './state.js';
+import { killstreakState, setKillstreakNotification, triggerKillstreakUnlockAnim, triggerKillstreakActivateAnim } from './state.js';
 import { spawnMortarStrike, spawnAttackDrone } from './supportStrikes.js';
 import { spawnSentryGun } from './sentryGun.js';
 import { addDynamicLight } from '../lighting/index.js';
@@ -256,13 +256,9 @@ export function awardCarePackageLoot(crate, recipient, player) {
 
       if (isPlayer) {
         killstreakState.availableStreaks.push('MORTAR_STRIKE');
+        triggerKillstreakUnlockAnim('MORTAR_STRIKE');
         triggerCombatFeedBanner('KILL', `[ZRZUT] ODBLOKOWANO: ${label} [KLAWISZ 4]`);
-        killstreakState.recentNotification = {
-          title: '[ZRZUT] SERIA ZABÓJSTW',
-          text: `${label} GOTOWY DO UŻYCIA [KLAWISZ 4]`,
-          color: '#f59e0b'
-        };
-        killstreakState.notificationTimer = 4.0;
+        setKillstreakNotification('[ZRZUT] SERIA ZABÓJSTW', `${label} GOTOWY DO UŻYCIA [KLAWISZ 4]`, '#ef4444', 4.0, 'MORTAR_STRIKE');
       } else {
         spawnMortarStrike(player ? player.x : crate.x, recipient);
         triggerCombatFeedBanner('DEATH', `[UWAGA] BOT WEZWAŁ: ${label}!`);
@@ -276,13 +272,9 @@ export function awardCarePackageLoot(crate, recipient, player) {
 
       if (isPlayer) {
         killstreakState.availableStreaks.push('SENTRY_GUN');
+        triggerKillstreakUnlockAnim('SENTRY_GUN');
         triggerCombatFeedBanner('KILL', `[ZRZUT] ODBLOKOWANO: ${label} [KLAWISZ 4]`);
-        killstreakState.recentNotification = {
-          title: '[ZRZUT] SERIA ZABÓJSTW',
-          text: `${label} GOTOWA DO ROZSTAWIENIA [KLAWISZ 4]`,
-          color: '#00e5ff'
-        };
-        killstreakState.notificationTimer = 4.0;
+        setKillstreakNotification('[ZRZUT] SERIA ZABÓJSTW', `${label} GOTOWA DO ROZSTAWIENIA [KLAWISZ 4]`, '#38bdf8', 4.0, 'SENTRY_GUN');
       } else {
         spawnSentryGun(recipient, recipient.x + (recipient.facing || 1) * 45);
         triggerCombatFeedBanner('DEATH', `[UWAGA] BOT ROZSTAWIŁ: ${label}!`);
@@ -297,13 +289,9 @@ export function awardCarePackageLoot(crate, recipient, player) {
       spawnAttackDrone(recipient);
 
       if (isPlayer) {
+        triggerKillstreakActivateAnim('ATTACK_DRONE');
         triggerCombatFeedBanner('KILL', `[ZRZUT] WSPARCIE POWIETRZNE: ${label}`);
-        killstreakState.recentNotification = {
-          title: '[ZRZUT] WSPARCIE POWIETRZNE',
-          text: 'DRON BOJOWY WSPIERA OPERATORA PRZEZ 25S',
-          color: '#00e5ff'
-        };
-        killstreakState.notificationTimer = 4.0;
+        setKillstreakNotification('[ZRZUT] WSPARCIE POWIETRZNE', 'DRON BOJOWY WSPIERA OPERATORA PRZEZ 25S', '#10b981', 4.0, 'ATTACK_DRONE');
       } else {
         triggerCombatFeedBanner('DEATH', `[UWAGA] BOT URUCHOMIŁ: ${label}!`);
       }
@@ -325,13 +313,9 @@ export function awardCarePackageLoot(crate, recipient, player) {
       crate.floatingNotice = { text: `[KOLOS] ${label}`, color: '#eab308', y: crate.y - 12, alpha: 1.0 };
 
       if (isPlayer) {
+        triggerKillstreakActivateAnim('JUGGERNAUT');
         triggerCombatFeedBanner('KILL', `[ZRZUT] JACKPOT! ${label}`);
-        killstreakState.recentNotification = {
-          title: '[ZRZUT] PANCERZ JUGGERNAUT',
-          text: 'CIĘŻKI PANCERZ TYTANOWY (250 HP / 200 KEVLARU)',
-          color: '#eab308'
-        };
-        killstreakState.notificationTimer = 5.0;
+        setKillstreakNotification('[ZRZUT] PANCERZ JUGGERNAUT', 'CIĘŻKI PANCERZ TYTANOWY (250 HP / 200 KEVLARU)', '#eab308', 5.0, 'JUGGERNAUT');
       } else {
         triggerCombatFeedBanner('DEATH', `[UWAGA] BOT ZDOBYŁ: ${label}!`);
       }

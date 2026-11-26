@@ -3,7 +3,15 @@
 // Obsługa liczników na jedno życie, wygasania timerów i uruchamiania wsparcia
 // =============================================================================
 
-import { KILLSTREAKS, killstreakState, getKillstreakDef, getNextKillstreakGoal } from './state.js';
+import {
+  KILLSTREAKS,
+  killstreakState,
+  getKillstreakDef,
+  getNextKillstreakGoal,
+  setKillstreakNotification,
+  triggerKillstreakUnlockAnim,
+  triggerKillstreakActivateAnim
+} from './state.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { isTouchDevice } from '../config.js';
 import { player } from '../player/state.js';
@@ -11,6 +19,17 @@ import { getActiveArena } from '../obstacles.js';
 import { initCarePackages, spawnCarePackage, updateCarePackages } from './carePackage.js';
 import { spawnMortarStrike, updateMortarStrikes, spawnAttackDrone, updateAttackDrones } from './supportStrikes.js';
 import { initSentryGuns, spawnSentryGun, updateSentryGuns } from './sentryGun.js';
+
+function resetUiAnimState() {
+  if (!killstreakState.uiAnim) killstreakState.uiAnim = {};
+  killstreakState.uiAnim.killBump = 0;
+  killstreakState.uiAnim.unlockPop = 0;
+  killstreakState.uiAnim.activateFlash = 0;
+  killstreakState.uiAnim.activateColor = '#00e5ff';
+  killstreakState.uiAnim.smoothProgress = 0;
+  killstreakState.uiAnim.notifEnter = 0;
+  killstreakState.uiAnim.shimmerPos = -0.35;
+}
 
 /**
  * Inicjalizacja / reset całego stanu sesji serii zabójstw (np. nowy mecz)
@@ -24,6 +43,7 @@ export function initKillstreaks() {
   killstreakState.uavScanPhase = 0;
   killstreakState.recentNotification = null;
   killstreakState.notificationTimer = 0;
+  resetUiAnimState();
   killstreakState.hudButtonBounds = null;
   killstreakState.mortarTargeting = false;
   killstreakState.mortarCameraX = 0;
@@ -48,6 +68,9 @@ export function registerKillstreakKill() {
   if (killstreakState.currentStreak > killstreakState.highestStreak) {
     killstreakState.highestStreak = killstreakState.currentStreak;
   }
+  if (killstreakState.uiAnim) {
+    killstreakState.uiAnim.killBump = 1.0;
+  }
 
   const streak = killstreakState.currentStreak;
   const isMobile = !!(
@@ -62,15 +85,17 @@ export function registerKillstreakKill() {
     // Dodajemy nagrodę do dostępnych zasobów gracza
     killstreakState.availableStreaks.push(awarded.id);
     killstreakState.lastAwardedThreshold = streak;
+    triggerKillstreakUnlockAnim(awarded.id);
 
     // Powiadomienie bojowe na ekranie
     const notifMsg = `SERIA ${streak}: ODBLOKOWANO ${awarded.name.toUpperCase()}! ${keyHint}`;
-    killstreakState.recentNotification = {
-      title: `SERIA ZABÓJSTW [${streak}]`,
-      text: `${awarded.tag} ${awarded.name.toUpperCase()} GOTOWY DO UŻYCIA ${keyHint}`,
-      color: '#00e5ff'
-    };
-    killstreakState.notificationTimer = 4.0;
+    setKillstreakNotification(
+      `SERIA ZABÓJSTW [${streak}]`,
+      `${awarded.tag} ${awarded.name.toUpperCase()} GOTOWY DO UŻYCIA ${keyHint}`,
+      awarded.accent || '#00e5ff',
+      4.0,
+      awarded.id
+    );
 
     // Banner w feedzie bojowym
     triggerCombatFeedBanner('KILL', notifMsg);
@@ -81,12 +106,13 @@ export function registerKillstreakKill() {
     if (nextGoal) {
       const left = nextGoal.killsRequired - streak;
       const fragUnit = left === 1 ? 'FRAG' : ((left >= 2 && left <= 4) ? 'FRAGI' : 'FRAGÓW');
-      killstreakState.recentNotification = {
-        title: `SERIA ZABÓJSTW: ${streak}`,
-        text: `CEL: ${nextGoal.tag} ${nextGoal.name.toUpperCase()} ZA ${left} ${fragUnit}`,
-        color: '#38bdf8'
-      };
-      killstreakState.notificationTimer = 2.2;
+      setKillstreakNotification(
+        `SERIA ZABÓJSTW: ${streak}`,
+        `CEL: ${nextGoal.tag} ${nextGoal.name.toUpperCase()} ZA ${left} ${fragUnit}`,
+        nextGoal.accent || '#38bdf8',
+        2.2,
+        nextGoal.id
+      );
     }
   }
 
@@ -100,6 +126,10 @@ export function registerKillstreakKill() {
 export function resetKillstreak() {
   killstreakState.currentStreak = 0;
   killstreakState.lastAwardedThreshold = 0;
+  if (killstreakState.uiAnim) {
+    killstreakState.uiAnim.smoothProgress = 0;
+    killstreakState.uiAnim.killBump = 0;
+  }
 }
 
 /**
@@ -138,12 +168,8 @@ export function activateKillstreak(streakId) {
       });
     }
 
-    killstreakState.recentNotification = {
-      title: '[UAV] RADAR TAKTYCZNY',
-      text: 'SKANOWANIE OBSZARU AKTYWNE PRZEZ 20S',
-      color: '#00e5ff'
-    };
-    killstreakState.notificationTimer = 3.0;
+    triggerKillstreakActivateAnim('UAV');
+    setKillstreakNotification('[UAV] RADAR TAKTYCZNY', 'SKANOWANIE OBSZARU AKTYWNE PRZEZ 20S', def.accent || '#00e5ff', 3.0, 'UAV');
     if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
       window.sendKillstreakEvent({ subType: 'UAV' }, player);
     }
@@ -159,13 +185,9 @@ export function activateKillstreak(streakId) {
     const dropTargetX = Math.max(minX, Math.min(maxX, (player?.x || 600) + (player?.facing || 1) * 75));
 
     spawnCarePackage(player, dropTargetX);
+    triggerKillstreakActivateAnim('CARE_PACKAGE');
 
-    killstreakState.recentNotification = {
-      title: '[ZRZUT] FLARA TAKTYCZNA',
-      text: 'TRANSPORT ZAOPATRZENIA W DRODZE',
-      color: '#f97316'
-    };
-    killstreakState.notificationTimer = 3.5;
+    setKillstreakNotification('[ZRZUT] FLARA TAKTYCZNA', 'TRANSPORT ZAOPATRZENIA W DRODZE', def.accent || '#f97316', 3.5, 'CARE_PACKAGE');
     return true;
   }
 
@@ -186,13 +208,9 @@ export function activateKillstreak(streakId) {
     killstreakState.lastTouchScreenX = null;
     killstreakState.touchStartX = null;
     killstreakState.touchStartY = null;
+    triggerKillstreakActivateAnim('MORTAR_STRIKE');
 
-    killstreakState.recentNotification = {
-      title: '[NALOT] WYBIERZ PUNKT UDERZENIA',
-      text: 'STERUJ KAMERĄ I WSKAŻ PUNKT SALWY ARTYLERYJSKIEJ',
-      color: '#ef4444'
-    };
-    killstreakState.notificationTimer = 4.0;
+    setKillstreakNotification('[NALOT] WYBIERZ PUNKT UDERZENIA', 'STERUJ KAMERĄ I WSKAŻ PUNKT SALWY ARTYLERYJSKIEJ', def.accent || '#ef4444', 4.0, 'MORTAR_STRIKE');
     return true;
   }
 
@@ -202,13 +220,9 @@ export function activateKillstreak(streakId) {
     const facing = player?.facing || 1;
     const deployX = (player?.x || 600) + facing * 42;
     spawnSentryGun(player, deployX);
+    triggerKillstreakActivateAnim('SENTRY_GUN');
 
-    killstreakState.recentNotification = {
-      title: '[SENTRY] WIEŻYCZKA STRAŻNICZA',
-      text: 'SYSTEM ROZSTAWIONY - OBRONA SEKTORA (30S)',
-      color: '#00e5ff'
-    };
-    killstreakState.notificationTimer = 3.5;
+    setKillstreakNotification('[SENTRY] WIEŻYCZKA STRAŻNICZA', 'SYSTEM ROZSTAWIONY - OBRONA SEKTORA (30S)', def.accent || '#38bdf8', 3.5, 'SENTRY_GUN');
     return true;
   }
 
@@ -216,13 +230,9 @@ export function activateKillstreak(streakId) {
   if (streakId === 'ATTACK_DRONE') {
     killstreakState.availableStreaks.splice(idx, 1);
     spawnAttackDrone(player);
+    triggerKillstreakActivateAnim('ATTACK_DRONE');
 
-    killstreakState.recentNotification = {
-      title: '[DRON] WSPARCIE POWIETRZNE',
-      text: 'DRON BOJOWY AKTYWNY PRZEZ 25S',
-      color: '#00e5ff'
-    };
-    killstreakState.notificationTimer = 3.5;
+    setKillstreakNotification('[DRON] WSPARCIE POWIETRZNE', 'DRON BOJOWY AKTYWNY PRZEZ 25S', def.accent || '#10b981', 3.5, 'ATTACK_DRONE');
     return true;
   }
 
@@ -240,13 +250,9 @@ export function activateKillstreak(streakId) {
         player.visuals.hasHelmet = true;
       }
     }
+    triggerKillstreakActivateAnim('JUGGERNAUT');
 
-    killstreakState.recentNotification = {
-      title: '[KOLOS] PANCERZ JUGGERNAUT',
-      text: 'CIĘŻKI BALISTYCZNY PANCERZ 250 HP I 200 KEVLARU',
-      color: '#eab308'
-    };
-    killstreakState.notificationTimer = 4.5;
+    setKillstreakNotification('[KOLOS] PANCERZ JUGGERNAUT', 'CIĘŻKI BALISTYCZNY PANCERZ 250 HP I 200 KEVLARU', def.accent || '#eab308', 4.5, 'JUGGERNAUT');
     triggerCombatFeedBanner('KILL', '[KOLOS] WYPOSAŻONO PANCERZ JUGGERNAUT (250 HP)!');
     if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
       window.sendKillstreakEvent({ subType: 'JUGGERNAUT' }, player);
@@ -308,13 +314,9 @@ export function confirmMortarStrikeTarget(worldX, firingPlayer = player) {
   const safeX = Math.max(minX, Math.min(maxX, (typeof worldX === 'number' && !isNaN(worldX)) ? worldX : 600));
 
   spawnMortarStrike(safeX, firingPlayer || player);
+  triggerKillstreakActivateAnim('MORTAR_STRIKE');
 
-  killstreakState.recentNotification = {
-    title: '[NALOT] CEL POTWIERDZONY',
-    text: 'SALWA 5 POCISKÓW ARTYLERYJSKICH W DRODZE',
-    color: '#ef4444'
-  };
-  killstreakState.notificationTimer = 3.5;
+  setKillstreakNotification('[NALOT] CEL POTWIERDZONY', 'SALWA 5 POCISKÓW ARTYLERYJSKICH W DRODZE', '#ef4444', 3.5, 'MORTAR_STRIKE');
   return true;
 }
 
@@ -333,12 +335,7 @@ export function cancelMortarStrikeTargeting() {
   killstreakState.mortarConfirmButtonBounds = null;
   killstreakState.mortarLeftNavBounds = null;
   killstreakState.mortarRightNavBounds = null;
-  killstreakState.recentNotification = {
-    title: '[NALOT] ANULOWANO',
-    text: 'CELOWANIE NALOTU PRZERWANE',
-    color: '#94a3b8'
-  };
-  killstreakState.notificationTimer = 2.0;
+  setKillstreakNotification('[NALOT] ANULOWANO', 'CELOWANIE NALOTU PRZERWANE', '#94a3b8', 2.0, 'MORTAR_STRIKE');
   return true;
 }
 
@@ -446,6 +443,22 @@ export function updateKillstreaks(dt = (1 / 60), playerOverride = null, combatan
     }
   }
 
+  // Aktualizacja mikro-animacji HUD (pop, flash, shimmer, smoothProgress, banner ease-out)
+  if (killstreakState.uiAnim) {
+    const anim = killstreakState.uiAnim;
+    if (anim.killBump > 0) anim.killBump = Math.max(0, anim.killBump - safeDt * 3.8);
+    if (anim.unlockPop > 0) anim.unlockPop = Math.max(0, anim.unlockPop - safeDt * 2.2);
+    if (anim.activateFlash > 0) anim.activateFlash = Math.max(0, anim.activateFlash - safeDt * 3.2);
+    if (anim.shimmerPos < 1.45) anim.shimmerPos += safeDt * 2.4;
+    if (killstreakState.notificationTimer > 0 && anim.notifEnter < 1) {
+      anim.notifEnter = Math.min(1, anim.notifEnter + safeDt * 5.8);
+    }
+    const nextGoal = getNextKillstreakGoal(killstreakState.currentStreak || 0);
+    const goalReq = nextGoal ? nextGoal.killsRequired : Math.max(1, (killstreakState.currentStreak || 0) + 1);
+    const targetProg = Math.max(0, Math.min(1, (killstreakState.currentStreak || 0) / goalReq));
+    anim.smoothProgress += (targetProg - anim.smoothProgress) * Math.min(1, safeDt * 12);
+  }
+
   // Odliczanie czasu trwania aktywnych nagród
   for (let i = killstreakState.activeStreaks.length - 1; i >= 0; i--) {
     const streak = killstreakState.activeStreaks[i];
@@ -454,12 +467,7 @@ export function updateKillstreaks(dt = (1 / 60), playerOverride = null, combatan
     if (streak.timeRemaining <= 0) {
       // Wygaśnięcie nagrody
       killstreakState.activeStreaks.splice(i, 1);
-      killstreakState.recentNotification = {
-        title: `${streak.tag} WYGASŁ`,
-        text: 'WSPARCIE TAKTYCZNE ZAKOŃCZONE',
-        color: '#94a3b8'
-      };
-      killstreakState.notificationTimer = 2.0;
+      setKillstreakNotification(`${streak.tag} WYGASŁ`, 'WSPARCIE TAKTYCZNE ZAKOŃCZONE', '#94a3b8', 2.0, streak.id);
     }
   }
 
