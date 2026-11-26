@@ -978,11 +978,14 @@ export const uiManager = {
       }
     }
 
-    // 8. Synchronizacja wybranego operatora (KROK 3)
+    // 8. Synchronizacja wybranego operatora (KROK 3) i serii zabójstw (KROK 4)
     const activeOpClass = this.selectedClassId || (typeof window !== 'undefined' && window.player?.currentClass?.id) || 'STRIKER';
     document.querySelectorAll('#briefing-operator-grid .briefing-op-card').forEach(c => {
       c.classList.toggle('active', c.dataset.opClass === activeOpClass);
     });
+    if (typeof window !== 'undefined' && typeof window.renderKillstreakSelectors === 'function') {
+      window.renderKillstreakSelectors();
+    }
 
     // 9. Aktualizacja tekstu przycisku START (KROK 4)
     const launchBtn = document.getElementById('btn-arena-launch');

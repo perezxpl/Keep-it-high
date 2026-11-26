@@ -3,7 +3,7 @@
 // Czysty styl Modern Military (ZERO EMOJIS, wektorowe ramki taktyczne i wskaźniki)
 // =============================================================================
 
-import { killstreakState, getKillstreakDef, getNextKillstreakGoal } from './state.js';
+import { killstreakState, getKillstreakDef, getEquippedKillstreakDefs, getNextKillstreakGoal } from './state.js';
 import { isKillstreakActive } from './logic.js';
 import { isTouchDevice } from '../config.js';
 import { W as stateW, H as stateH } from '../world/state.js';
@@ -13,7 +13,7 @@ import { drawMortarStrikes, drawAttackDrones, activeAttackDrones } from './suppo
 import { drawSentryGuns, activeSentryGuns } from './sentryGun.js';
 import { isGamepadPrimaryInput } from '../input/gamepad.js';
 
-function drawKillstreakVectorIcon(ctx, streakId, cx, cy, radius = 8, color = '#00e5ff') {
+export function drawKillstreakVectorIcon(ctx, streakId, cx, cy, radius = 8, color = '#00e5ff') {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.strokeStyle = color;
@@ -710,19 +710,21 @@ export function drawKillstreakHUD(ctx, canvas, player) {
       }
     }
   } else {
-    // STAN: POSTĘP W STRONĘ KOLEJNEGO KILLSTREAKA (SEGMENTOWY WSKAŹNIK)
+    // STAN: POSTĘP W STRONĘ KOLEJNEGO WYBRANEGO KILLSTREAKA (SEGMENTOWY WSKAŹNIK)
     const streak = killstreakState.currentStreak || 0;
+    const equippedDefs = getEquippedKillstreakDefs();
     const nextGoal = getNextKillstreakGoal(streak);
-    const goalReq = nextGoal ? nextGoal.killsRequired : (streak + 1);
-    const goalTag = nextGoal ? nextGoal.tag : '[MAX]';
-    const goalShort = nextGoal ? nextGoal.short : 'SERIA';
+    const hasEquipped = equippedDefs.length > 0;
+    const goalReq = nextGoal ? nextGoal.killsRequired : (hasEquipped ? Math.max(1, streak) : 0);
+    const goalTag = nextGoal ? nextGoal.tag : (hasEquipped ? '[MAX]' : '[0/3]');
+    const goalShort = nextGoal ? nextGoal.short : (hasEquipped ? 'SERIA' : 'BRAK');
     const goalAccent = nextGoal?.accent || '#38bdf8';
 
     ctx.font = 'bold 11px monospace';
     ctx.fillStyle = killBump > 0.15 ? '#ffffff' : '#38bdf8';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(`SERIA: ${streak} / ${goalReq}`, posX + 11, posY + 7);
+    ctx.fillText(hasEquipped ? `SERIA: ${streak} / ${goalReq}` : `SERIA: ${streak}`, posX + 11, posY + 7);
 
     ctx.font = 'bold 8.5px monospace';
     ctx.fillStyle = '#94a3b8';
@@ -737,7 +739,7 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     const barH = 4.0;
     const smoothProg = (typeof uiAnim.smoothProgress === 'number')
       ? uiAnim.smoothProgress
-      : Math.max(0, Math.min(1, streak / goalReq));
+      : (goalReq > 0 ? Math.max(0, Math.min(1, streak / goalReq)) : 0);
 
     ctx.fillStyle = 'rgba(51, 65, 85, 0.72)';
     ctx.fillRect(barX, barY, barW, barH);

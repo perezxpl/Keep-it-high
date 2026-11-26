@@ -7,6 +7,7 @@ import {
   KILLSTREAKS,
   killstreakState,
   getKillstreakDef,
+  getEquippedKillstreakDefs,
   getNextKillstreakGoal,
   setKillstreakNotification,
   triggerKillstreakUnlockAnim,
@@ -80,8 +81,9 @@ export function registerKillstreakKill() {
   );
   const keyHint = isMobile ? '[DOTKNIJ WIDGET]' : '[KLAWISZ 4]';
 
-  // Sprawdzamy czy osiągnięto próg którejkolwiek nagrody
-  const awarded = KILLSTREAKS.find(k => k.killsRequired === streak);
+  // Sprawdzamy czy osiągnięto próg którejkolwiek z wybranych nagród (max 3 w zestawie)
+  const equippedDefs = getEquippedKillstreakDefs();
+  const awarded = equippedDefs.find(k => k.killsRequired === streak);
   if (awarded) {
     // Dodajemy nagrodę do dostępnych zasobów gracza
     killstreakState.availableStreaks.push(awarded.id);
@@ -444,9 +446,14 @@ export function updateKillstreaks(dt = (1 / 60), playerOverride = null, combatan
     if (killstreakState.notificationTimer > 0 && anim.notifEnter < 1) {
       anim.notifEnter = Math.min(1, anim.notifEnter + safeDt * 5.8);
     }
+    const equippedCount = getEquippedKillstreakDefs().length;
     const nextGoal = getNextKillstreakGoal(killstreakState.currentStreak || 0);
-    const goalReq = nextGoal ? nextGoal.killsRequired : Math.max(1, (killstreakState.currentStreak || 0) + 1);
-    const targetProg = Math.max(0, Math.min(1, (killstreakState.currentStreak || 0) / goalReq));
+    let targetProg = 0;
+    if (equippedCount > 0) {
+      targetProg = nextGoal
+        ? Math.max(0, Math.min(1, (killstreakState.currentStreak || 0) / nextGoal.killsRequired))
+        : 1.0;
+    }
     anim.smoothProgress += (targetProg - anim.smoothProgress) * Math.min(1, safeDt * 12);
   }
 

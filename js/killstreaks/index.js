@@ -4,9 +4,18 @@
 
 export {
   KILLSTREAKS,
+  MAX_EQUIPPED_KILLSTREAKS,
+  DEFAULT_EQUIPPED_KILLSTREAKS,
   killstreakState,
   getKillstreakDef,
-  getNextKillstreakGoal
+  getNextKillstreakGoal,
+  loadEquippedKillstreaks,
+  saveEquippedKillstreaks,
+  setEquippedKillstreaks,
+  toggleEquippedKillstreak,
+  getEquippedKillstreaks,
+  getEquippedKillstreakDefs,
+  subscribeKillstreakLoadout
 } from './state.js';
 
 export {
@@ -24,8 +33,14 @@ export {
 
 export {
   drawKillstreakWorld,
-  drawKillstreakHUD
+  drawKillstreakHUD,
+  drawKillstreakVectorIcon
 } from './renderer.js';
+
+export {
+  initKillstreakSelectorUI,
+  renderKillstreakSelectors
+} from './selectorUI.js';
 
 export {
   activeCarePackages,

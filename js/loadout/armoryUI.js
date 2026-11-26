@@ -8,6 +8,7 @@ import { saveStoredLoadout, getStoredLoadout } from './state.js';
 import { equipPocket1Slot } from './logic.js';
 import { playUiClick, playUiHover } from '../uiManager.js';
 import { drawWeaponPreview } from './weaponPreviews.js';
+import { renderKillstreakSelectors } from '../killstreaks/selectorUI.js';
 
 /**
  * Katalog taktyczny uzbrojenia dla Zbrojowni
@@ -455,6 +456,7 @@ export function openArmory(playerInstance = null, onClose = null) {
 
   overlay.style.display = 'flex';
   renderArmoryUI();
+  renderKillstreakSelectors();
 }
 
 /**

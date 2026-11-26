@@ -6645,3 +6645,331 @@ button, .dev-btn {
     grid-template-columns: 1fr;
   }
 }
+
+/* ========================================================================= */
+/* SELEKTOR NAGRÓD ZA SERIE ZABÓJSTW (CALL OF DUTY // MAX 3 SLOTY)            */
+/* ========================================================================= */
+.ks-selector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ks-selector-armory {
+  margin-top: 2px;
+}
+
+.ks-selector-compact {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.briefing-killstreak-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ks-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ks-selector-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ks-selector-kicker {
+  font-family: 'Rajdhani', monospace;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.ks-selector-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 900;
+  color: #f8fafc;
+  letter-spacing: 0.9px;
+  margin: 0;
+}
+
+.ks-selector-counter {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(8, 36, 56, 0.85);
+  color: #7dd3fc;
+}
+
+.ks-selector-counter.is-full {
+  border-color: rgba(234, 179, 8, 0.65);
+  background: rgba(46, 34, 8, 0.85);
+  color: #facc15;
+}
+
+.ks-active-slots-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ks-slot-pill {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  text-align: left;
+  min-height: 40px;
+  transition: all 0.16s ease;
+}
+
+.ks-slot-pill.is-filled {
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid color-mix(in srgb, var(--ks-accent, #00e5ff) 62%, transparent);
+  box-shadow: inset 3px 0 0 var(--ks-accent, #00e5ff);
+}
+
+.ks-slot-pill.is-filled:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: var(--ks-accent, #00e5ff);
+  transform: translateY(-1px);
+}
+
+.ks-slot-pill.is-empty {
+  cursor: default;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  opacity: 0.72;
+}
+
+.ks-slot-pill * {
+  pointer-events: none;
+}
+
+.ks-slot-pill-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.ks-slot-pill-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.ks-slot-pill-meta {
+  font-family: 'Rajdhani', monospace;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  color: var(--ks-accent, #94a3b8);
+}
+
+.ks-slot-pill-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ks-slot-pill.is-empty .ks-slot-pill-name {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.ks-slot-pill-remove {
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: 900;
+  color: #94a3b8;
+  line-height: 1;
+  padding-left: 2px;
+}
+
+.ks-slot-pill.is-filled:hover .ks-slot-pill-remove {
+  color: #f87171;
+}
+
+.ks-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ks-card {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  background: rgba(10, 17, 32, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.ks-card * {
+  pointer-events: none;
+}
+
+.ks-card:hover {
+  border-color: color-mix(in srgb, var(--ks-accent, #00e5ff) 70%, transparent);
+  background: rgba(15, 28, 48, 0.94);
+  transform: translateY(-1px);
+}
+
+.ks-card.is-equipped {
+  border-color: var(--ks-accent, #00e5ff);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ks-accent, #00e5ff) 16%, rgba(10, 17, 32, 0.95)), rgba(10, 17, 32, 0.96));
+  box-shadow: inset 3px 0 0 var(--ks-accent, #00e5ff), 0 0 12px color-mix(in srgb, var(--ks-accent, #00e5ff) 20%, transparent);
+}
+
+.ks-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ks-card-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
+  background: rgba(3, 7, 18, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ks-card.is-equipped .ks-card-icon-wrap {
+  border-color: color-mix(in srgb, var(--ks-accent, #00e5ff) 60%, transparent);
+}
+
+.ks-card-canvas {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+.ks-card-head-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ks-card-cost-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.ks-card-cost {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--ks-accent, #38bdf8);
+  letter-spacing: 0.6px;
+}
+
+.ks-card-status {
+  font-family: 'Rajdhani', monospace;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.35);
+}
+
+.ks-card-status.is-on {
+  color: #020617;
+  background: var(--ks-accent, #00e5ff);
+  border-color: var(--ks-accent, #00e5ff);
+}
+
+.ks-card-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ks-card-desc {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #94a3b8;
+}
+
+.ks-cards-grid.is-compact {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.ks-cards-grid.is-compact .ks-card {
+  padding: 6px 8px;
+}
+
+@media (max-width: 820px) {
+  .ks-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ks-active-slots-bar {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .ks-active-slots-bar {
+    grid-template-columns: 1fr;
+  }
+  .ks-cards-grid,
+  .ks-cards-grid.is-compact {
+    grid-template-columns: 1fr;
+  }
+}

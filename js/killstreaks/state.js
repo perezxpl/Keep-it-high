@@ -84,10 +84,64 @@ export const KILLSTREAKS = [
   }
 ];
 
+export const MAX_EQUIPPED_KILLSTREAKS = 3;
+export const KILLSTREAKS_STORAGE_KEY = 'keep_it_high_killstreak_loadout_v1';
+export const DEFAULT_EQUIPPED_KILLSTREAKS = ['UAV', 'CARE_PACKAGE', 'MORTAR_STRIKE'];
+
+const _loadoutListeners = new Set();
+
+function normalizeEquippedKillstreakIds(ids) {
+  if (!Array.isArray(ids)) return [];
+  const validSet = new Set(KILLSTREAKS.map(k => k.id));
+  const unique = [];
+  for (const id of ids) {
+    if (typeof id === 'string' && validSet.has(id) && !unique.includes(id)) {
+      unique.push(id);
+      if (unique.length >= MAX_EQUIPPED_KILLSTREAKS) break;
+    }
+  }
+  return unique.sort((a, b) => {
+    const defA = KILLSTREAKS.find(k => k.id === a);
+    const defB = KILLSTREAKS.find(k => k.id === b);
+    return (defA?.killsRequired || 0) - (defB?.killsRequired || 0);
+  });
+}
+
+export function loadEquippedKillstreaks() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(KILLSTREAKS_STORAGE_KEY);
+      if (raw !== null) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return normalizeEquippedKillstreakIds(parsed);
+        }
+      }
+    }
+  } catch (_) {}
+  return [...DEFAULT_EQUIPPED_KILLSTREAKS];
+}
+
+export function saveEquippedKillstreaks(ids = killstreakState.equippedStreaks) {
+  const normalized = normalizeEquippedKillstreakIds(ids);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(KILLSTREAKS_STORAGE_KEY, JSON.stringify(normalized));
+    }
+  } catch (_) {}
+  return normalized;
+}
+
+const _initialEquipped = loadEquippedKillstreaks();
+
 /**
  * Obiekt stanu sesji serii zabójstw
  */
 export const killstreakState = {
+  // Wybrane przez gracza nagrody na mecz (maksymalnie 3, jak w Call of Duty)
+  equippedStreaks: [..._initialEquipped],
+  selectionHistory: [..._initialEquipped],
+
   // Bieżąca seria zabójstw gracza na bieżące życie (resetowana przy zgonie)
   currentStreak: 0,
 
@@ -151,10 +205,99 @@ export function getKillstreakDef(id) {
 }
 
 /**
- * Zwraca najbliższy killstreak do osiągnięcia na podstawie aktualnej liczby fragów
+ * Zwraca listę ID wybranych nagród za serię zabójstw (max 3)
+ */
+export function getEquippedKillstreaks() {
+  if (!Array.isArray(killstreakState.equippedStreaks)) {
+    killstreakState.equippedStreaks = loadEquippedKillstreaks();
+  }
+  return [...killstreakState.equippedStreaks];
+}
+
+/**
+ * Zwraca pełne definicje wybranych nagród posortowane po wymaganym progu fragów
+ */
+export function getEquippedKillstreakDefs() {
+  const ids = getEquippedKillstreaks();
+  return ids
+    .map(id => getKillstreakDef(id))
+    .filter(Boolean)
+    .sort((a, b) => a.killsRequired - b.killsRequired);
+}
+
+export function subscribeKillstreakLoadout(listener) {
+  if (typeof listener !== 'function') return () => {};
+  _loadoutListeners.add(listener);
+  return () => _loadoutListeners.delete(listener);
+}
+
+function notifyLoadoutListeners() {
+  for (const fn of _loadoutListeners) {
+    try { fn(getEquippedKillstreaks()); } catch (_) {}
+  }
+}
+
+/**
+ * Ustawia zestaw wybranych nagród za serię zabójstw (maksymalnie 3) i zapisuje go lokalnie
+ */
+export function setEquippedKillstreaks(ids) {
+  const normalized = normalizeEquippedKillstreakIds(ids);
+  killstreakState.equippedStreaks = normalized;
+  killstreakState.selectionHistory = [...normalized];
+  saveEquippedKillstreaks(normalized);
+  notifyLoadoutListeners();
+  return [...normalized];
+}
+
+/**
+ * Przełącza nagrodę w zestawie gracza (do 3 nagród; przy pełnych 3 zastępuje najstarszą wybraną)
+ */
+export function toggleEquippedKillstreak(streakId) {
+  const def = getKillstreakDef(streakId);
+  if (!def) return { equipped: getEquippedKillstreaks(), action: 'invalid', replacedId: null };
+
+  const cur = Array.isArray(killstreakState.equippedStreaks) ? [...killstreakState.equippedStreaks] : [];
+  let history = Array.isArray(killstreakState.selectionHistory)
+    ? killstreakState.selectionHistory.filter(id => cur.includes(id))
+    : [...cur];
+  for (const id of cur) {
+    if (!history.includes(id)) history.push(id);
+  }
+
+  let action = 'added';
+  let replacedId = null;
+  const existingIdx = cur.indexOf(streakId);
+
+  if (existingIdx !== -1) {
+    cur.splice(existingIdx, 1);
+    history = history.filter(id => id !== streakId);
+    action = 'removed';
+  } else {
+    if (cur.length >= MAX_EQUIPPED_KILLSTREAKS) {
+      replacedId = history.shift() || cur[0];
+      const remIdx = cur.indexOf(replacedId);
+      if (remIdx !== -1) cur.splice(remIdx, 1);
+      action = 'replaced';
+    }
+    cur.push(streakId);
+    history.push(streakId);
+  }
+
+  const normalized = normalizeEquippedKillstreakIds(cur);
+  killstreakState.equippedStreaks = normalized;
+  killstreakState.selectionHistory = history;
+  saveEquippedKillstreaks(normalized);
+  notifyLoadoutListeners();
+
+  return { equipped: [...normalized], action, replacedId };
+}
+
+/**
+ * Zwraca najbliższy wybrany killstreak do osiągnięcia na podstawie aktualnej liczby fragów
  */
 export function getNextKillstreakGoal(streak = killstreakState.currentStreak) {
-  for (const ks of KILLSTREAKS) {
+  const equippedDefs = getEquippedKillstreakDefs();
+  for (const ks of equippedDefs) {
     if (ks.killsRequired > streak) {
       return ks;
     }

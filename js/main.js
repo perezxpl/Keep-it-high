@@ -62,7 +62,7 @@ import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from '
 import { initAudio, setAudioGameState, updateAudio } from './audio/index.js';
 import { recordKill, recordDeath } from './progression.js';
 import { updateDeathmatch, resetDeathmatchState, refreshDeathmatchParticipants, deathmatchState } from './deathmatch/index.js';
-import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
+import { initKillstreaks, initKillstreakSelectorUI, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { initPickups, resetPickups, updatePickups, drawPickupsWorld, drawPickupPrompt } from './pickup/index.js';
 import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
 import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, isZombieModeActive, setZombieModeActive, resetZombieState, sendZombiesState } from './zombie/index.js';
@@ -573,6 +573,7 @@ initWeaponEditorUI();
 initKillstreaksDevUI();
 initNetwork();
 initKillstreaks();
+initKillstreakSelectorUI();
 initPickups();
 initLighting();
 initPlayerLoadout(player);
