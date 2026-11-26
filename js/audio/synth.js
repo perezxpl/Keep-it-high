@@ -640,6 +640,22 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
       return true;
     }
 
+    case 'mortar_ship_fire': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.65);
+      // Odlegly, gleboki wystrzal artyleryjski z okretu na morzu + krotkie echo i swist wznoszenia
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 105 * p, freqEnd: 32 * p, duration: 0.26, gain: gain * 0.95, attack: 0.004 });
+      scheduleNoise(ctx, out, { startTime: now, duration: 0.34, gain: gain * 0.58, attack: 0.006, filterType: 'lowpass', freqStart: 540 * p, freqEnd: 140 * p, Q: 0.8 });
+      scheduleNoise(ctx, out, { startTime: now + 0.08, duration: 0.38, gain: gain * 0.24, attack: 0.04, filterType: 'bandpass', freqStart: 620 * p, freqEnd: 1280 * p, Q: 2.0 });
+      return true;
+    }
+
+    case 'ui_mortar_lock': {
+      const { now, out } = createVoiceStage(ctx, destNode, 0, 0.28);
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 880 * p, freqEnd: 1175 * p, duration: 0.075, gain: gain * 0.45, attack: 0.002 });
+      scheduleTone(ctx, out, { startTime: now + 0.07, type: 'sine', freqStart: 1318 * p, freqEnd: 1318 * p, duration: 0.14, gain: gain * 0.50, attack: 0.002 });
+      return true;
+    }
+
     default:
       return false;
   }

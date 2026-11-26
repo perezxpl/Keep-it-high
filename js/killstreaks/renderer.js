@@ -162,91 +162,93 @@ function getScreenSize(canvas) {
 }
 
 /**
- * Renderuje wskaźnik i strefę rażenia nalotu moździerzowego w trybie celowania
+ * Renderuje wskaźnik i strefę rażenia nalotu moździerzowego w świecie gry
  */
 function drawMortarTargetingWorld(ctx, cam, player) {
-  if (!killstreakState.mortarTargeting) return;
+  const isTargeting = !!killstreakState.mortarTargeting;
+  const pending = killstreakState.mortarPendingLaunch;
+  if (!isTargeting && !pending) return;
 
-  const targetX = (typeof killstreakState.mortarTargetX === 'number' && !isNaN(killstreakState.mortarTargetX))
-    ? killstreakState.mortarTargetX
-    : ((player?.x || 600) + (player?.facing || 1) * 220);
+  const targetX = pending
+    ? pending.targetX
+    : ((typeof killstreakState.mortarTargetX === 'number' && !isNaN(killstreakState.mortarTargetX))
+      ? killstreakState.mortarTargetX
+      : ((player?.x || 600) + (player?.facing || 1) * 220));
 
   const surfaceY = getCarePackageSurfaceY(targetX);
   const now = performance.now();
-  const pulse = 0.5 + 0.5 * Math.sin(now * 0.008);
+  const pulse = 0.5 + 0.5 * Math.sin(now * (pending ? 0.022 : 0.008));
 
   ctx.save();
 
-  // A. Satelitarny promień celowniczy z nieba (pionowa kolumna światła laserowego)
-  const skyY = surfaceY - 800;
-  const beamGrad = ctx.createLinearGradient(targetX, skyY, targetX, surfaceY);
-  beamGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
-  beamGrad.addColorStop(0.3, 'rgba(239, 68, 68, 0.25)');
-  beamGrad.addColorStop(1, 'rgba(239, 68, 68, 0.55)');
+  // A. Linia namiaru łącząca celownik z punktem uderzenia na powierzchni
+  if (isTargeting && typeof killstreakState.mortarCrosshairScreenX === 'number' && typeof killstreakState.mortarCrosshairScreenY === 'number') {
+    const zoom = cam?.zoom || 1;
+    const crossWorldX = (cam?.x || 0) + killstreakState.mortarCrosshairScreenX / zoom;
+    const crossWorldY = (cam?.y || 0) + killstreakState.mortarCrosshairScreenY / zoom;
 
-  ctx.fillStyle = beamGrad;
-  ctx.fillRect(targetX - 6, skyY, 12, surfaceY - skyY);
-
-  // Wewnętrzny biały rdzeń
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.75 + pulse * 0.25})`;
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.moveTo(targetX, skyY);
-  ctx.lineTo(targetX, surfaceY);
-  ctx.stroke();
+    ctx.strokeStyle = `rgba(239, 68, 68, ${killstreakState.mortarDragging ? 0.65 : 0.40})`;
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(crossWorldX, crossWorldY);
+    ctx.lineTo(targetX, surfaceY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (pending) {
+    // Pionowy promień blokady celu przed wystrzałem
+    const skyY = surfaceY - 800;
+    const beamGrad = ctx.createLinearGradient(targetX, skyY, targetX, surfaceY);
+    beamGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
+    beamGrad.addColorStop(0.4, 'rgba(239, 68, 68, 0.28)');
+    beamGrad.addColorStop(1, 'rgba(239, 68, 68, 0.65)');
+    ctx.fillStyle = beamGrad;
+    ctx.fillRect(targetX - 5, skyY, 10, surfaceY - skyY);
+  }
 
   // B. Strefa rażenia na powierzchni (Blast Zone Ellipse R=130px)
   const radiusX = 130;
   const radiusY = 26;
 
-  // Czerwona półprzezroczysta strefa zagrożenia
-  ctx.fillStyle = `rgba(239, 68, 68, ${0.14 + pulse * 0.08})`;
+  ctx.fillStyle = `rgba(239, 68, 68, ${(pending ? 0.22 : 0.14) + pulse * 0.10})`;
   ctx.beginPath();
   ctx.ellipse(targetX, surfaceY, radiusX, radiusY, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Przerywana krawędź strefy uderzenia
-  ctx.strokeStyle = `rgba(239, 68, 68, ${0.8 + pulse * 0.2})`;
-  ctx.lineWidth = 2.0;
+  ctx.strokeStyle = `rgba(239, 68, 68, ${0.82 + pulse * 0.18})`;
+  ctx.lineWidth = pending ? 2.6 : 2.0;
   ctx.setLineDash([8, 6]);
   ctx.beginPath();
   ctx.ellipse(targetX, surfaceY, radiusX, radiusY, 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // C. Celownik krzyżowy i znaczniki strefy 5 pocisków salwy
+  // C. Znaczniki upadku 5 pocisków salwy na ziemi/platformach
   const shellOffsets = [-116, -58, 0, 58, 116];
   for (let i = 0; i < shellOffsets.length; i++) {
     const sx = targetX + shellOffsets[i];
     const sy = getCarePackageSurfaceY(sx);
-    ctx.strokeStyle = i === 2 ? '#ffffff' : `rgba(252, 165, 165, ${0.45 + pulse * 0.35})`;
-    ctx.lineWidth = i === 2 ? 1.5 : 1.1;
+    ctx.strokeStyle = i === 2 ? '#ffffff' : `rgba(252, 165, 165, ${0.50 + pulse * 0.35})`;
+    ctx.lineWidth = i === 2 ? 1.8 : 1.2;
     ctx.beginPath();
-    ctx.moveTo(sx - 5, sy - 7);
+    ctx.moveTo(sx - 6, sy - 8);
     ctx.lineTo(sx, sy - 1);
-    ctx.lineTo(sx + 5, sy - 7);
+    ctx.lineTo(sx + 6, sy - 8);
     ctx.stroke();
   }
 
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(targetX - 18, surfaceY); ctx.lineTo(targetX + 18, surfaceY);
   ctx.moveTo(targetX, surfaceY - 14); ctx.lineTo(targetX, surfaceY + 14);
   ctx.stroke();
 
-  ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(targetX, surfaceY, 6, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // D. Wojskowe oznaczenie strefy
-  ctx.font = '700 9px monospace';
-  ctx.fillStyle = '#ef4444';
+  ctx.font = '700 9.5px monospace';
+  ctx.fillStyle = pending ? '#fecaca' : '#ef4444';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText('[STREFA NALOTU // 130M]', targetX, surfaceY + radiusY + 8);
+  ctx.fillText(pending ? '[CEL ZABLOKOWANY // SALWA]' : '[STREFA RAŻENIA // 130M]', targetX, surfaceY + radiusY + 8);
 
   ctx.restore();
 }
@@ -686,7 +688,7 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     } else {
       const usingPad = (typeof isGamepadPrimaryInput === 'function' && isGamepadPrimaryInput());
       const keyHint = isTargetingMortar
-        ? '[LPM = ODPAL // ESC]'
+        ? '[PRZECIĄGNIJ I PUŚĆ]'
         : (usingPad ? '[D-PAD GÓRA / KLIK]' : '[KLAWISZ 4 / KLIK]');
 
       drawKillstreakVectorIcon(ctx, readyDef.id, posX + 22, posY + widgetH / 2, 10.5, primaryAccent);
@@ -938,147 +940,96 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     }
   }
 
-  // 5. BANNER POWIADOMIENIA (płynne wejście i wskaźnik pozostałego czasu)
-  drawKillstreakNotificationBanner(ctx, W, H, isMobile, uiAnim);
+  // 5. BANNER POWIADOMIENIA (ukryty w trakcie trybu celowania, by nie zasłaniał przycisku [ANULUJ X])
+  if (!killstreakState.mortarTargeting) {
+    drawKillstreakNotificationBanner(ctx, W, H, isMobile, uiAnim);
+  }
 
-  // 6. NAKŁADKA TRYBU WYBORU CELU NALOTU (BANNER, PRZYCISK ANULUJ, RAMKI EKRANOWE)
+  // 6. DUŻY CZERWONY CELOWNIK NALOTU + NAKŁADKA TRYBU CELOWANIA
+  const pendingLaunch = killstreakState.mortarPendingLaunch;
+  if (pendingLaunch && !killstreakState.mortarTargeting) {
+    const spos = worldToScreen(pendingLaunch.targetX, pendingLaunch.targetY, globalCamera);
+    const lockProg = 1 - Math.max(0, Math.min(1, pendingLaunch.timer / Math.max(0.01, pendingLaunch.totalDelay || 0.45)));
+    drawBigRedMortarCrosshair(ctx, spos.x, spos.y, false, true, lockProg, pendingLaunch.targetX, W, H, isMobile);
+  }
+
   if (killstreakState.mortarTargeting) {
-    // A. Narożniki taktyczne na krawędziach ekranu (czerwone/pomarańczowe HUD brackets)
-    const bLen = 24;
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
-    ctx.lineWidth = 2.5;
+    const cx = (typeof killstreakState.mortarCrosshairScreenX === 'number' && !isNaN(killstreakState.mortarCrosshairScreenX))
+      ? killstreakState.mortarCrosshairScreenX
+      : (W * 0.5);
+    const cy = (typeof killstreakState.mortarCrosshairScreenY === 'number' && !isNaN(killstreakState.mortarCrosshairScreenY))
+      ? killstreakState.mortarCrosshairScreenY
+      : (H * 0.5);
+    drawBigRedMortarCrosshair(ctx, cx, cy, !!killstreakState.mortarDragging, false, 0, killstreakState.mortarTargetX, W, H, isMobile);
+
+    // A. Narożniki taktyczne na krawędziach ekranu (czerwone HUD brackets)
+    const bLen = 22;
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.72)';
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
-    // Górny-lewy
     ctx.moveTo(12, 12 + bLen); ctx.lineTo(12, 12); ctx.lineTo(12 + bLen, 12);
-    // Górny-prawy
     ctx.moveTo(W - 12 - bLen, 12); ctx.lineTo(W - 12, 12); ctx.lineTo(W - 12, 12 + bLen);
-    // Dolny-lewy
     ctx.moveTo(12, H - 12 - bLen); ctx.lineTo(12, H - 12); ctx.lineTo(12 + bLen, H - 12);
-    // Dolny-prawy
     ctx.moveTo(W - 12 - bLen, H - 12); ctx.lineTo(W - 12, H - 12); ctx.lineTo(W - 12, H - 12 - bLen);
     ctx.stroke();
 
-    // B. Centralny górny baner dowodzenia
-    const bannerW = Math.min(360, W - 40);
-    const bannerH = 42;
+    // B. Kompaktowy górny baner dowodzenia
+    const bannerW = Math.min(350, W - 40);
+    const bannerH = 38;
     const bannerX = (W - bannerW) / 2;
     const bannerY = 12;
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 6);
     else ctx.rect(bannerX, bannerY, bannerW, bannerH);
     ctx.fill();
 
     ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 1.6;
     ctx.stroke();
 
-    ctx.font = 'bold 11px monospace';
+    ctx.font = 'bold 10.5px monospace';
     ctx.fillStyle = '#ef4444';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('[TRYB CELOWANIA NALOTU ARTYLERII]', W / 2, bannerY + 14);
+    ctx.fillText('[NAMIERZANIE NALOTU MOŹDZIERZOWEGO]', W / 2, bannerY + 13);
 
     ctx.font = 'bold 8.5px monospace';
     ctx.fillStyle = '#f8fafc';
-    ctx.fillText(isMobile ? 'PRZECIĄGNIJ / STRZAŁKI = RUCH KAMERY // KLIKNIJ [POTWIERDŹ]' : '[A]/[D] LUB KRAWĘDŹ = RUCH KAMERY // LPM = ODPALENIE // [ESC] = ANULUJ', W / 2, bannerY + 29);
+    ctx.fillText(
+      isMobile
+        ? 'PRZYTRZYMAJ CELOWNIK, PRZESUŃ I PUŚĆ ABY ODPALIĆ'
+        : 'PRZYTRZYMAJ LPM I PRZESUŃ CELOWNIK • PUŚĆ = ODPALENIE • [ESC] = ANULUJ',
+      W / 2,
+      bannerY + 27
+    );
 
-    // C. Przyciski taktyczne pod bannerem (ANULUJ, MOJA POZYCJA, POTWIERDŹ)
-    const btnH = isMobile ? 30 : 28;
-    const btnY = bannerY + bannerH + 7;
+    // C. Dyskretny przycisk [ANULUJ X] pod bannerem
+    const cancelW = isMobile ? 96 : 104;
+    const cancelH = isMobile ? 28 : 26;
+    const cancelX = Math.round((W - cancelW) / 2);
+    const cancelY = bannerY + bannerH + 6;
 
-    const cancelW = isMobile ? 88 : 96;
-    const playerW = isMobile ? 112 : 120;
-    const confirmW = isMobile ? 134 : 144;
-    const spacing = 8;
-    const totalW = cancelW + playerW + confirmW + spacing * 2;
-    const startX = Math.round((W - totalW) / 2);
+    killstreakState.mortarCancelButtonBounds = { x: cancelX, y: cancelY, w: cancelW, h: cancelH };
+    killstreakState.mortarPlayerButtonBounds = null;
+    killstreakState.mortarConfirmButtonBounds = null;
+    killstreakState.mortarLeftNavBounds = null;
+    killstreakState.mortarRightNavBounds = null;
 
-    const cancelX = startX;
-    const playerX = cancelX + cancelW + spacing;
-    const confirmX = playerX + playerW + spacing;
-
-    killstreakState.mortarCancelButtonBounds = { x: cancelX, y: btnY, w: cancelW, h: btnH };
-    killstreakState.mortarPlayerButtonBounds = { x: playerX, y: btnY, w: playerW, h: btnH };
-    killstreakState.mortarConfirmButtonBounds = { x: confirmX, y: btnY, w: confirmW, h: btnH };
-
-    // 1. [ANULUJ X]
-    ctx.fillStyle = 'rgba(30, 41, 59, 0.94)';
+    ctx.fillStyle = 'rgba(30, 41, 59, 0.92)';
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(cancelX, btnY, cancelW, btnH, 4);
-    else ctx.rect(cancelX, btnY, cancelW, btnH);
+    if (ctx.roundRect) ctx.roundRect(cancelX, cancelY, cancelW, cancelH, 4);
+    else ctx.rect(cancelX, cancelY, cancelW, cancelH);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.7)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.72)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
     ctx.font = 'bold 9px monospace';
-    ctx.fillStyle = '#cbd5e1';
+    ctx.fillStyle = '#e2e8f0';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('[ANULUJ X]', cancelX + cancelW / 2, btnY + btnH / 2);
-
-    // 2. [MOJA POZYCJA]
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(playerX, btnY, playerW, btnH, 4);
-    else ctx.rect(playerX, btnY, playerW, btnH);
-    ctx.fill();
-    ctx.strokeStyle = '#00e5ff';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-    ctx.font = 'bold 9px monospace';
-    ctx.fillStyle = '#00e5ff';
-    ctx.fillText('[MOJA POZYCJA]', playerX + playerW / 2, btnY + btnH / 2);
-
-    // 3. [POTWIERDŹ NALOT]
-    ctx.fillStyle = 'rgba(185, 28, 28, 0.94)';
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(confirmX, btnY, confirmW, btnH, 4);
-    else ctx.rect(confirmX, btnY, confirmW, btnH);
-    ctx.fill();
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 1.6;
-    ctx.stroke();
-    ctx.font = 'bold 9px monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('[POTWIERDŹ NALOT]', confirmX + confirmW / 2, btnY + btnH / 2);
-
-    // D. Boczne przyciski przewijania mapy (Flank Navigation)
-    const navW = isMobile ? 62 : 54;
-    const navH = isMobile ? 50 : 44;
-    const navY = Math.round((H - navH) / 2);
-    const leftNavX = 12;
-    const rightNavX = W - 12 - navW;
-
-    killstreakState.mortarLeftNavBounds = { x: leftNavX, y: navY, w: navW, h: navH };
-    killstreakState.mortarRightNavBounds = { x: rightNavX, y: navY, w: navW, h: navH };
-
-    // Przycisk [◄ LEWA]
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(leftNavX, navY, navW, navH, 4);
-    else ctx.rect(leftNavX, navY, navW, navH);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-    ctx.font = 'bold 9.5px monospace';
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText('[◄ LEWA]', leftNavX + navW / 2, navY + navH / 2);
-
-    // Przycisk [PRAWA ►]
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(rightNavX, navY, navW, navH, 4);
-    else ctx.rect(rightNavX, navY, navW, navH);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-    ctx.font = 'bold 9.5px monospace';
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText('[PRAWA ►]', rightNavX + navW / 2, navY + navH / 2);
+    ctx.fillText('[ANULUJ X]', cancelX + cancelW / 2, cancelY + cancelH / 2);
   } else {
     killstreakState.mortarCancelButtonBounds = null;
     killstreakState.mortarPlayerButtonBounds = null;
@@ -1086,6 +1037,93 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     killstreakState.mortarLeftNavBounds = null;
     killstreakState.mortarRightNavBounds = null;
   }
+
+  ctx.restore();
+}
+
+function drawBigRedMortarCrosshair(ctx, cx, cy, isDragging, isLocked, lockProgress, targetX, W, H, isMobile) {
+  const now = performance.now() * 0.001;
+  const idlePulse = isDragging ? 0 : Math.sin(now * 5.0) * 3.0;
+  const lockShrink = isLocked ? (1 - lockProgress * 0.26) : (isDragging ? 0.92 : 1.0);
+  const outerR = ((isMobile ? 44 : 52) + idlePulse) * lockShrink;
+  const innerR = ((isMobile ? 24 : 28) + idlePulse * 0.4) * lockShrink;
+  const rot = isLocked ? (now * 4.2) : (isDragging ? (now * 1.4) : (now * 0.55));
+  const mainRed = isLocked ? '#ff3b3b' : (isDragging ? '#ef4444' : '#f87171');
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  // Delikatne czerwone przyciemnienie wnętrza celownika
+  ctx.fillStyle = isLocked ? 'rgba(239, 68, 68, 0.22)' : (isDragging ? 'rgba(239, 68, 68, 0.14)' : 'rgba(239, 68, 68, 0.08)');
+  ctx.beginPath();
+  ctx.arc(0, 0, outerR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Zewnętrzny segmentowany pierścień z ciemnym konturem (Dual-Stroke)
+  ctx.save();
+  ctx.rotate(rot);
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass === 0 ? 'rgba(10, 15, 26, 0.85)' : mainRed;
+    ctx.lineWidth = pass === 0 ? 5.2 : 2.8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let q = 0; q < 4; q++) {
+      const a0 = q * (Math.PI / 2) + 0.22;
+      const a1 = (q + 1) * (Math.PI / 2) - 0.22;
+      ctx.moveTo(Math.cos(a0) * outerR, Math.sin(a0) * outerR);
+      ctx.arc(0, 0, outerR, a0, a1);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Wewnętrzny cienki okrąg i krzyż celowniczy
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass === 0 ? 'rgba(10, 15, 26, 0.85)' : (isLocked ? '#ffffff' : mainRed);
+    ctx.lineWidth = pass === 0 ? 4.2 : 2.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, innerR, 0, Math.PI * 2);
+
+    const armOuter = outerR + 12;
+    const armInner = 11;
+    // 4 ramiona krzyża
+    ctx.moveTo(-armOuter, 0); ctx.lineTo(-armInner, 0);
+    ctx.moveTo(armInner, 0); ctx.lineTo(armOuter, 0);
+    ctx.moveTo(0, -armOuter); ctx.lineTo(0, -armInner);
+    ctx.moveTo(0, armInner); ctx.lineTo(0, armOuter);
+    ctx.stroke();
+  }
+
+  // Jasny punkt centralny
+  ctx.fillStyle = '#0a0f1a';
+  ctx.beginPath();
+  ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath();
+  ctx.arc(0, 0, 4.0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(0, 0, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Etykieta pod celownikiem
+  const labelY = (cy + outerR + 28 > H) ? -(outerR + 22) : (outerR + 20);
+  const labelText = isLocked
+    ? '[CEL ZABLOKOWANY // ODPALANIE]'
+    : (isDragging
+      ? `[CEL: ${Math.round((targetX || 0) / 40)}m • PUŚĆ ABY ODPALIĆ]`
+      : '[PRZYTRZYMAJ I PRZESUŃ]');
+
+  ctx.font = 'bold 9.5px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.strokeStyle = 'rgba(5, 8, 16, 0.92)';
+  ctx.lineWidth = 3.0;
+  ctx.strokeText(labelText, 0, labelY);
+  ctx.fillStyle = isLocked ? '#fecaca' : '#fca5a5';
+  ctx.fillText(labelText, 0, labelY);
 
   ctx.restore();
 }

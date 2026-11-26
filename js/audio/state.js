@@ -58,6 +58,8 @@ export const SOUND_CATALOG = {
   explosion_rpg: { bus: 'sfx', volume: 0.78, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2500 },
   explosion_heavy: { bus: 'sfx', volume: 0.80, pitchJitter: 0.04, cooldownMs: 70, spatial: true, maxDistance: 2500 },
   explosion_toxic: { bus: 'sfx', volume: 0.72, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2300 },
+  mortar_ship_fire: { bus: 'sfx', volume: 0.56, pitchJitter: 0.05, cooldownMs: 90, spatial: false, allowInAnyState: false },
+  ui_mortar_lock: { bus: 'ui', volume: 0.45, pitchJitter: 0.02, cooldownMs: 120, spatial: false, allowInAnyState: false },
 
   // --- Trafienia, Pancerz i Rykoszety ---
   hit_flesh: { bus: 'sfx', volume: 0.48, pitchJitter: 0.05, cooldownMs: 55, spatial: true, maxDistance: 1200 },

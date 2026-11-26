@@ -835,7 +835,9 @@ export function updateCamera(player, ball, options = {}) {
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   if (killstreakState && killstreakState.mortarTargeting) {
-    targetCamY = baseFloorY - (viewHeight * 0.70);
+    targetCamY = (typeof killstreakState.mortarCameraY === 'number' && !isNaN(killstreakState.mortarCameraY))
+      ? (killstreakState.mortarCameraY - (viewHeight * 0.5))
+      : (baseFloorY - (viewHeight * 0.70));
     targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
   }
 

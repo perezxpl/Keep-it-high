@@ -27,6 +27,9 @@ export {
   isKillstreakActive,
   getKillstreakTimeRemaining,
   updateKillstreaks,
+  beginMortarCrosshairDrag,
+  moveMortarCrosshairDrag,
+  endMortarCrosshairDrag,
   confirmMortarStrikeTarget,
   cancelMortarStrikeTargeting
 } from './logic.js';

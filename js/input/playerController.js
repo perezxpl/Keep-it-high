@@ -15,7 +15,7 @@ import { leftStick, rightStick, pockets, btnCluster, updateMobileControlStates, 
 import { keys, mouseState, inputSession } from './keyboardMouse.js';
 import { updateDoubleFlickDetection } from './touchHandlers.js';
 import { pollGamepadInput, gamepadState } from './gamepad.js';
-import { activateNextAvailableStreak } from '../killstreaks/index.js';
+import { activateNextAvailableStreak, killstreakState } from '../killstreaks/index.js';
 import { isDeathmatchCountdown } from '../deathmatch/index.js';
 
 export function triggerPlayerShoot(p, wep) {
@@ -100,6 +100,14 @@ export function updatePlayerInputAndCombat(activeArenaId) {
 
     player.aimX = hipX + player.aimOffsetX;
     player.aimY = hipY + player.aimOffsetY;
+  }
+
+  // Podczas trybu namierzania nalotu moździerzowego gracz nie strzela z broni palnej ani białej
+  if (killstreakState && killstreakState.mortarTargeting) {
+    player.isShooting = false;
+    player.isAiming = false;
+    mouseState.lmbDown = false;
+    return;
   }
 
   // Podczas odliczania przedmeczowego (Lockdown 3s) gracz może swobodnie celować celownikiem / bronią,

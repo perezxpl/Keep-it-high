@@ -40,7 +40,9 @@ import { toggleWeaponEditor } from '../dev/weaponEditor.js';
 import {
   killstreakState,
   activateNextAvailableStreak,
-  confirmMortarStrikeTarget,
+  beginMortarCrosshairDrag,
+  moveMortarCrosshairDrag,
+  endMortarCrosshairDrag,
   cancelMortarStrikeTargeting
 } from '../killstreaks/index.js';
 import { deathmatchState } from '../deathmatch/index.js';
@@ -692,8 +694,8 @@ export function initKeyboardMouseHandlers({
     mouseState.screenY = e.clientY;
     setCameraMouseScreenPos(e.clientX, e.clientY);
 
-    if (killstreakState.mortarTargeting) {
-      killstreakState.mortarTargetX = camera.x + mouseState.screenX / camera.zoom;
+    if (killstreakState.mortarTargeting && killstreakState.mortarDragging && killstreakState.mortarDragMode === 'mouse') {
+      moveMortarCrosshairDrag(mouseState.screenX, mouseState.screenY);
     }
 
     if (GAME_STATE.current === 'CLASS_SELECT' || GAME_STATE.current === GAME_STATES.CLASS_SELECT) {
@@ -862,57 +864,31 @@ export function initKeyboardMouseHandlers({
       }
     }
 
-    // 00. Obsługa celowania nalotu moździerzowego (kliknięcie lewym przyciskiem myszy)
-    if (killstreakState.mortarTargeting && e.button === 0) {
-      const cb = killstreakState.mortarCancelButtonBounds;
-      const pb = killstreakState.mortarPlayerButtonBounds;
-      const cfb = killstreakState.mortarConfirmButtonBounds;
-      const lb = killstreakState.mortarLeftNavBounds;
-      const rb = killstreakState.mortarRightNavBounds;
-      const kb = killstreakState.hudButtonBounds;
-
-      if (cb && e.clientX >= cb.x && e.clientX <= (cb.x + cb.w) &&
-          e.clientY >= cb.y && e.clientY <= (cb.y + cb.h)) {
+    // 00. Obsługa celowania nalotu moździerzowego (przytrzymanie i przesuwanie dużego celownika)
+    if (killstreakState.mortarTargeting) {
+      if (e.button === 2) {
         cancelMortarStrikeTargeting();
         return;
       }
+      if (e.button === 0) {
+        const cb = killstreakState.mortarCancelButtonBounds;
+        const kb = killstreakState.hudButtonBounds;
 
-      if (pb && e.clientX >= pb.x && e.clientX <= (pb.x + pb.w) &&
-          e.clientY >= pb.y && e.clientY <= (pb.y + pb.h)) {
-        killstreakState.mortarCameraX = player?.x || 600;
-        killstreakState.mortarTargetX = player?.x || 600;
+        if (cb && e.clientX >= cb.x && e.clientX <= (cb.x + cb.w) &&
+            e.clientY >= cb.y && e.clientY <= (cb.y + cb.h)) {
+          cancelMortarStrikeTargeting();
+          return;
+        }
+
+        if (kb && e.clientX >= kb.x && e.clientX <= (kb.x + kb.w) &&
+            e.clientY >= kb.y && e.clientY <= (kb.y + kb.h)) {
+          cancelMortarStrikeTargeting();
+          return;
+        }
+
+        beginMortarCrosshairDrag(e.clientX, e.clientY, 'mouse', null);
         return;
       }
-
-      if (cfb && e.clientX >= cfb.x && e.clientX <= (cfb.x + cfb.w) &&
-          e.clientY >= cfb.y && e.clientY <= (cfb.y + cfb.h)) {
-        confirmMortarStrikeTarget(killstreakState.mortarTargetX, player);
-        return;
-      }
-
-      if (lb && e.clientX >= lb.x && e.clientX <= (lb.x + lb.w) &&
-          e.clientY >= lb.y && e.clientY <= (lb.y + lb.h)) {
-        killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) - 450;
-        killstreakState.mortarTargetX = (killstreakState.mortarTargetX || (player?.x || 600)) - 450;
-        return;
-      }
-
-      if (rb && e.clientX >= rb.x && e.clientX <= (rb.x + rb.w) &&
-          e.clientY >= rb.y && e.clientY <= (rb.y + rb.h)) {
-        killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) + 450;
-        killstreakState.mortarTargetX = (killstreakState.mortarTargetX || (player?.x || 600)) + 450;
-        return;
-      }
-
-      if (kb && e.clientX >= kb.x && e.clientX <= (kb.x + kb.w) &&
-          e.clientY >= kb.y && e.clientY <= (kb.y + kb.h)) {
-        cancelMortarStrikeTargeting();
-        return;
-      }
-
-      const worldX = camera.x + e.clientX / camera.zoom;
-      confirmMortarStrikeTarget(worldX, player);
-      return;
     }
 
     // 0a. Obsługa kliknięcia myszą w widget serii zabójstw
@@ -987,6 +963,12 @@ export function initKeyboardMouseHandlers({
 
   window.addEventListener('mouseup', (e) => {
     pickupPromptState.isHoldingMouse = false;
+    if (e.button === 0 && killstreakState.mortarTargeting && killstreakState.mortarDragging && killstreakState.mortarDragMode === 'mouse') {
+      mouseState.lmbDown = false;
+      mouseState.semiFired = false;
+      endMortarCrosshairDrag(player);
+      return;
+    }
     if (e.button === 0 && pockets.firearm && pockets.firearm.active && pockets.firearm.id === 'mouse') {
       if (pockets.firearm.holdTimerId) {
         clearTimeout(pockets.firearm.holdTimerId);

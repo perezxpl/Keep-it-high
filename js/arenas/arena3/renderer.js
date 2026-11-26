@@ -33,7 +33,7 @@ import {
   setArena3CliffDirty
 } from './state.js';
 
-import { drawArena3Background } from './background.js';
+import { drawArena3Background, resetArena3ShipMortars } from './background.js';
 export { drawArena3Background };
 
 import {
@@ -3135,6 +3135,7 @@ export function resetArena3RenderCache() {
   _cachedRightOvalPoints = null;
   _cachedUpperTowerBlocksLeft = null;
   _cachedUpperTowerBlocksRight = null;
+  resetArena3ShipMortars();
 }
 
 // Pomocnicze funkcje przecięcia promienia pocisku (swept segment)

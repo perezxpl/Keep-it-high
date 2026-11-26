@@ -179,10 +179,19 @@ export const killstreakState = {
   // Współrzędne klikalnego widgetu HUD na ekranie (dla myszy i dotyku)
   hudButtonBounds: null,
 
-  // Tryb celowania nalotu moździerzowego (dotyk / mysz na ekranie)
+  // Tryb celowania nalotu moździerzowego (duży czerwony celownik, przytrzymanie i przeciąganie)
   mortarTargeting: false,
+  mortarDragging: false,
+  mortarDragMode: null,
+  mortarDragOffsetX: 0,
+  mortarDragOffsetY: 0,
+  mortarCrosshairScreenX: null,
+  mortarCrosshairScreenY: null,
   mortarCameraX: 0,
+  mortarCameraY: null,
   mortarTargetX: 0,
+  mortarTargetY: 0,
+  mortarPendingLaunch: null,
   mortarTargetTouchId: null,
   lastTouchScreenX: null,
   touchStartX: null,

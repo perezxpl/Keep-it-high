@@ -21,6 +21,54 @@ import { initCarePackages, spawnCarePackage, updateCarePackages } from './carePa
 import { spawnMortarStrike, updateMortarStrikes, spawnAttackDrone, updateAttackDrones } from './supportStrikes.js';
 import { initSentryGuns, spawnSentryGun, updateSentryGuns } from './sentryGun.js';
 import { activateJuggernautMode } from '../player/juggernaut.js';
+import { playSound } from '../audio/index.js';
+
+function getViewportSize() {
+  if (typeof document !== 'undefined') {
+    const c = document.getElementById('game') || document.getElementById('gameCanvas') || document.querySelector('canvas');
+    if (c && c.clientWidth > 0 && c.clientHeight > 0) {
+      return { W: c.clientWidth, H: c.clientHeight };
+    }
+  }
+  return {
+    W: (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280,
+    H: (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 720
+  };
+}
+
+function getArenaTargetBounds() {
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const rawMinX = (typeof curArena?.bounds?.minX === 'number') ? curArena.bounds.minX : 40;
+  const rawMaxX = (typeof curArena?.bounds?.maxX === 'number')
+    ? curArena.bounds.maxX
+    : ((typeof curArena?.width === 'number') ? curArena.width : 2800);
+  return {
+    rawMinX,
+    rawMaxX,
+    minX: rawMinX + 80,
+    maxX: rawMaxX - 80
+  };
+}
+
+function resetMortarTargetingState() {
+  killstreakState.mortarTargeting = false;
+  killstreakState.mortarDragging = false;
+  killstreakState.mortarDragMode = null;
+  killstreakState.mortarDragOffsetX = 0;
+  killstreakState.mortarDragOffsetY = 0;
+  killstreakState.mortarCrosshairScreenX = null;
+  killstreakState.mortarCrosshairScreenY = null;
+  killstreakState.mortarCameraY = null;
+  killstreakState.mortarTargetTouchId = null;
+  killstreakState.lastTouchScreenX = null;
+  killstreakState.touchStartX = null;
+  killstreakState.touchStartY = null;
+  killstreakState.mortarCancelButtonBounds = null;
+  killstreakState.mortarPlayerButtonBounds = null;
+  killstreakState.mortarConfirmButtonBounds = null;
+  killstreakState.mortarLeftNavBounds = null;
+  killstreakState.mortarRightNavBounds = null;
+}
 
 function resetUiAnimState() {
   if (!killstreakState.uiAnim) killstreakState.uiAnim = {};
@@ -47,16 +95,11 @@ export function initKillstreaks() {
   killstreakState.notificationTimer = 0;
   resetUiAnimState();
   killstreakState.hudButtonBounds = null;
-  killstreakState.mortarTargeting = false;
   killstreakState.mortarCameraX = 0;
   killstreakState.mortarTargetX = 0;
-  killstreakState.mortarTargetTouchId = null;
-  killstreakState.lastTouchScreenX = null;
-  killstreakState.mortarCancelButtonBounds = null;
-  killstreakState.mortarPlayerButtonBounds = null;
-  killstreakState.mortarConfirmButtonBounds = null;
-  killstreakState.mortarLeftNavBounds = null;
-  killstreakState.mortarRightNavBounds = null;
+  killstreakState.mortarTargetY = 0;
+  killstreakState.mortarPendingLaunch = null;
+  resetMortarTargetingState();
   initCarePackages();
   initSentryGuns();
 }
@@ -202,18 +245,26 @@ export function activateKillstreak(streakId) {
       return false;
     }
 
-    // Przejście w tryb wyboru miejsca nalotu na ekranie
+    // Przejście w tryb wyboru miejsca nalotu: duży czerwony celownik pojawia się na środku ekranu
+    const { W, H } = getViewportSize();
+    const cam = (typeof window !== 'undefined' && window.camera) ? window.camera : null;
+    const zoom = cam?.zoom || 1;
+    const viewW = (cam && typeof cam.viewWidth === 'number' && cam.viewWidth > 0) ? cam.viewWidth : (W / zoom);
+    const viewH = (cam && typeof cam.viewHeight === 'number' && cam.viewHeight > 0) ? cam.viewHeight : (H / zoom);
+    const centerWorldX = cam ? (cam.x + viewW * 0.5) : (player?.x || 600);
+    const centerWorldY = cam ? (cam.y + viewH * 0.5) : (player?.y || 600);
+
+    resetMortarTargetingState();
     killstreakState.mortarTargeting = true;
-    const defaultX = (player?.x || 600) + (player?.facing || 1) * 220;
-    killstreakState.mortarTargetX = defaultX;
-    killstreakState.mortarCameraX = player?.x || defaultX;
-    killstreakState.mortarTargetTouchId = null;
-    killstreakState.lastTouchScreenX = null;
-    killstreakState.touchStartX = null;
-    killstreakState.touchStartY = null;
+    killstreakState.mortarCrosshairScreenX = W * 0.5;
+    killstreakState.mortarCrosshairScreenY = H * 0.5;
+    killstreakState.mortarCameraX = centerWorldX;
+    killstreakState.mortarCameraY = centerWorldY;
+    killstreakState.mortarTargetX = centerWorldX;
+    killstreakState.mortarTargetY = centerWorldY;
     triggerKillstreakActivateAnim('MORTAR_STRIKE');
 
-    setKillstreakNotification('[NALOT] WYBIERZ PUNKT UDERZENIA', 'STERUJ KAMERĄ I WSKAŻ PUNKT SALWY ARTYLERYJSKIEJ', def.accent || '#ef4444', 4.0, 'MORTAR_STRIKE');
+    setKillstreakNotification('[NALOT] NAMIERZ CEL', 'PRZYTRZYMAJ CELOWNIK, PRZESUŃ I PUŚĆ ABY ODPALIĆ', def.accent || '#ef4444', 4.0, 'MORTAR_STRIKE');
     return true;
   }
 
@@ -275,6 +326,94 @@ export function activateNextAvailableStreak() {
 }
 
 /**
+ * Rozpoczyna przytrzymanie i przeciąganie dużego czerwonego celownika nalotu
+ */
+export function beginMortarCrosshairDrag(screenX, screenY, mode = 'mouse', touchId = null) {
+  if (!killstreakState.mortarTargeting) return false;
+  const { W, H } = getViewportSize();
+  const curX = (typeof killstreakState.mortarCrosshairScreenX === 'number') ? killstreakState.mortarCrosshairScreenX : (W * 0.5);
+  const curY = (typeof killstreakState.mortarCrosshairScreenY === 'number') ? killstreakState.mortarCrosshairScreenY : (H * 0.5);
+
+  const dist = Math.hypot(screenX - curX, screenY - curY);
+  if (dist <= 95) {
+    killstreakState.mortarDragOffsetX = curX - screenX;
+    killstreakState.mortarDragOffsetY = curY - screenY;
+  } else {
+    killstreakState.mortarDragOffsetX = 0;
+    killstreakState.mortarDragOffsetY = 0;
+    killstreakState.mortarCrosshairScreenX = Math.max(36, Math.min(W - 36, screenX));
+    killstreakState.mortarCrosshairScreenY = Math.max(36, Math.min(H - 36, screenY));
+  }
+
+  killstreakState.mortarDragging = true;
+  killstreakState.mortarDragMode = mode;
+  killstreakState.mortarTargetTouchId = touchId;
+  killstreakState.lastTouchScreenX = screenX;
+  syncMortarWorldTargetFromCrosshair();
+  return true;
+}
+
+/**
+ * Aktualizuje pozycję celownika podczas przytrzymania i przesuwania po ekranie
+ */
+export function moveMortarCrosshairDrag(screenX, screenY) {
+  if (!killstreakState.mortarTargeting || !killstreakState.mortarDragging) return false;
+  const { W, H } = getViewportSize();
+  const nextX = screenX + (killstreakState.mortarDragOffsetX || 0);
+  const nextY = screenY + (killstreakState.mortarDragOffsetY || 0);
+  killstreakState.mortarCrosshairScreenX = Math.max(36, Math.min(W - 36, nextX));
+  killstreakState.mortarCrosshairScreenY = Math.max(36, Math.min(H - 36, nextY));
+  killstreakState.lastTouchScreenX = screenX;
+  syncMortarWorldTargetFromCrosshair();
+  return true;
+}
+
+function syncMortarWorldTargetFromCrosshair() {
+  const { W, H } = getViewportSize();
+  const cx = (typeof killstreakState.mortarCrosshairScreenX === 'number') ? killstreakState.mortarCrosshairScreenX : (W * 0.5);
+  const cy = (typeof killstreakState.mortarCrosshairScreenY === 'number') ? killstreakState.mortarCrosshairScreenY : (H * 0.5);
+  const cam = (typeof window !== 'undefined' && window.camera) ? window.camera : null;
+  const zoom = cam?.zoom || 1;
+  const { minX, maxX } = getArenaTargetBounds();
+  const worldX = cam ? (cam.x + cx / zoom) : cx;
+  const worldY = cam ? (cam.y + cy / zoom) : cy;
+  killstreakState.mortarTargetX = Math.max(minX, Math.min(maxX, worldX));
+  killstreakState.mortarTargetY = worldY;
+}
+
+/**
+ * Kończy przytrzymanie celownika: blokuje cel i odpala moździerze po krótkiej chwili
+ */
+export function endMortarCrosshairDrag(firingPlayer = player) {
+  if (!killstreakState.mortarTargeting || !killstreakState.mortarDragging) return false;
+  syncMortarWorldTargetFromCrosshair();
+
+  const idx = killstreakState.availableStreaks.indexOf('MORTAR_STRIKE');
+  if (idx === -1) {
+    resetMortarTargetingState();
+    return false;
+  }
+
+  const { minX, maxX } = getArenaTargetBounds();
+  const safeX = Math.max(minX, Math.min(maxX, (typeof killstreakState.mortarTargetX === 'number' && !isNaN(killstreakState.mortarTargetX)) ? killstreakState.mortarTargetX : 600));
+  const safeY = (typeof killstreakState.mortarTargetY === 'number' && !isNaN(killstreakState.mortarTargetY)) ? killstreakState.mortarTargetY : 800;
+
+  killstreakState.availableStreaks.splice(idx, 1);
+  resetMortarTargetingState();
+  killstreakState.mortarPendingLaunch = {
+    targetX: safeX,
+    targetY: safeY,
+    timer: 0.45,
+    totalDelay: 0.45,
+    owner: firingPlayer || player
+  };
+
+  playSound('ui_mortar_lock');
+  setKillstreakNotification('[NALOT] CEL ZABLOKOWANY', 'ODPALANIE SALWY MOŹDZIERZOWEJ...', '#ef4444', 2.2, 'MORTAR_STRIKE');
+  return true;
+}
+
+/**
  * Potwierdza i uruchamia nalot moździerzowy we wskazanym punkcie świata X
  * @param {number} worldX
  * @param {object} firingPlayer
@@ -284,26 +423,15 @@ export function confirmMortarStrikeTarget(worldX, firingPlayer = player) {
 
   const idx = killstreakState.availableStreaks.indexOf('MORTAR_STRIKE');
   if (idx === -1) {
-    killstreakState.mortarTargeting = false;
+    resetMortarTargetingState();
     return false;
   }
 
   // Usunięcie nagrody z ekwipunku serii zabójstw
   killstreakState.availableStreaks.splice(idx, 1);
-  killstreakState.mortarTargeting = false;
-  killstreakState.mortarTargetTouchId = null;
-  killstreakState.lastTouchScreenX = null;
-  killstreakState.touchStartX = null;
-  killstreakState.touchStartY = null;
-  killstreakState.mortarCancelButtonBounds = null;
-  killstreakState.mortarPlayerButtonBounds = null;
-  killstreakState.mortarConfirmButtonBounds = null;
-  killstreakState.mortarLeftNavBounds = null;
-  killstreakState.mortarRightNavBounds = null;
+  resetMortarTargetingState();
 
-  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const minX = (typeof curArena?.bounds?.minX === 'number') ? (curArena.bounds.minX + 80) : 120;
-  const maxX = (typeof curArena?.bounds?.maxX === 'number') ? (curArena.bounds.maxX - 80) : ((typeof curArena?.width === 'number') ? (curArena.width - 80) : 2800);
+  const { minX, maxX } = getArenaTargetBounds();
   const safeX = Math.max(minX, Math.min(maxX, (typeof worldX === 'number' && !isNaN(worldX)) ? worldX : 600));
 
   spawnMortarStrike(safeX, firingPlayer || player);
@@ -318,16 +446,7 @@ export function confirmMortarStrikeTarget(worldX, firingPlayer = player) {
  */
 export function cancelMortarStrikeTargeting() {
   if (!killstreakState.mortarTargeting) return false;
-  killstreakState.mortarTargeting = false;
-  killstreakState.mortarTargetTouchId = null;
-  killstreakState.lastTouchScreenX = null;
-  killstreakState.touchStartX = null;
-  killstreakState.touchStartY = null;
-  killstreakState.mortarCancelButtonBounds = null;
-  killstreakState.mortarPlayerButtonBounds = null;
-  killstreakState.mortarConfirmButtonBounds = null;
-  killstreakState.mortarLeftNavBounds = null;
-  killstreakState.mortarRightNavBounds = null;
+  resetMortarTargetingState();
   setKillstreakNotification('[NALOT] ANULOWANO', 'CELOWANIE NALOTU PRZERWANE', '#94a3b8', 2.0, 'MORTAR_STRIKE');
   return true;
 }
@@ -350,68 +469,83 @@ export function getKillstreakTimeRemaining(id) {
 }
 
 /**
- * Obsługa płynnego przesuwania kamery w trybie wyboru celu nalotu (PC: klawisze A/D, strzałki, panning krawędziowy; Mobile: panning krawędziowy dotyku)
+ * Obsługa płynnego podążania kamery za dużym celownikiem podczas przytrzymania i przesuwania
  */
 export function updateMortarTargetingControls(safeDt, activePlayer) {
   if (!killstreakState.mortarTargeting) return;
 
-  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const minX = (typeof curArena?.bounds?.minX === 'number') ? (curArena.bounds.minX + 80) : 120;
-  const maxX = (typeof curArena?.bounds?.maxX === 'number') ? (curArena.bounds.maxX - 80) : ((typeof curArena?.width === 'number') ? (curArena.width - 80) : 2800);
+  const { W, H } = getViewportSize();
+  const { rawMinX, rawMaxX, minX, maxX } = getArenaTargetBounds();
+  const cam = (typeof window !== 'undefined' && window.camera) ? window.camera : null;
+  const zoom = cam?.zoom || 1;
+  const viewW = (cam && typeof cam.viewWidth === 'number' && cam.viewWidth > 0) ? cam.viewWidth : (W / zoom);
+  const viewH = (cam && typeof cam.viewHeight === 'number' && cam.viewHeight > 0) ? cam.viewHeight : (H / zoom);
 
+  if (typeof killstreakState.mortarCrosshairScreenX !== 'number' || isNaN(killstreakState.mortarCrosshairScreenX)) {
+    killstreakState.mortarCrosshairScreenX = W * 0.5;
+  }
+  if (typeof killstreakState.mortarCrosshairScreenY !== 'number' || isNaN(killstreakState.mortarCrosshairScreenY)) {
+    killstreakState.mortarCrosshairScreenY = H * 0.5;
+  }
+
+  const cx = killstreakState.mortarCrosshairScreenX;
+  const cy = killstreakState.mortarCrosshairScreenY;
+
+  // 1. Płynne podążanie kamery za przesuwanym celownikiem (kierunek od środka ekranu)
+  if (killstreakState.mortarDragging) {
+    const offX = (cx - W * 0.5) / Math.max(1, W * 0.5); // -1..1
+    const offY = (cy - H * 0.5) / Math.max(1, H * 0.5); // -1..1
+    const deadzoneX = 0.08;
+    const deadzoneY = 0.14;
+
+    if (Math.abs(offX) > deadzoneX) {
+      const magX = Math.min(1, (Math.abs(offX) - deadzoneX) / (1 - deadzoneX));
+      const panSpeedX = 240 + Math.pow(magX, 1.35) * 1650;
+      const baseCamX = (typeof killstreakState.mortarCameraX === 'number' && !isNaN(killstreakState.mortarCameraX))
+        ? killstreakState.mortarCameraX
+        : (cam ? cam.x + viewW * 0.5 : (activePlayer?.x || 600));
+      killstreakState.mortarCameraX = baseCamX + Math.sign(offX) * panSpeedX * safeDt;
+    }
+
+    if (Math.abs(offY) > deadzoneY) {
+      const magY = Math.min(1, (Math.abs(offY) - deadzoneY) / (1 - deadzoneY));
+      const panSpeedY = 160 + Math.pow(magY, 1.35) * 820;
+      const baseCamY = (typeof killstreakState.mortarCameraY === 'number' && !isNaN(killstreakState.mortarCameraY))
+        ? killstreakState.mortarCameraY
+        : (cam ? cam.y + viewH * 0.5 : (activePlayer?.y || 600));
+      killstreakState.mortarCameraY = baseCamY + Math.sign(offY) * panSpeedY * safeDt;
+    }
+  }
+
+  // 2. Opcjonalne wsparcie klawiatury PC (A / D, Strzałki)
   const activeKeys = (typeof window !== 'undefined' && window.keys) ? window.keys : null;
   const isShift = !!activeKeys?.shift;
-  const panSpeed = isShift ? 2200 : 1300;
-
-  // 1. Klawiatura PC (A / D, Strzałki w lewo / w prawo)
+  const keyPanSpeed = isShift ? 2000 : 1200;
   if (activeKeys?.left || activeKeys?.KeyA || activeKeys?.ArrowLeft) {
-    killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) - panSpeed * safeDt;
+    killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) - keyPanSpeed * safeDt;
   }
   if (activeKeys?.right || activeKeys?.KeyD || activeKeys?.ArrowRight) {
-    killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) + panSpeed * safeDt;
+    killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) + keyPanSpeed * safeDt;
   }
 
-  // 2. Panning krawędziowy myszą na PC
-  const isTouch = !!(
-    isTouchDevice ||
-    (typeof window !== 'undefined' && (window.innerWidth <= 850 || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
-  );
-
-  const activeMouse = (typeof window !== 'undefined' && window.mouseState) ? window.mouseState : null;
-  if (!isTouch && activeMouse && typeof activeMouse.screenX === 'number') {
-    const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
-    const edgeMargin = Math.max(90, winW * 0.16);
-
-    if (activeMouse.screenX < edgeMargin && activeMouse.screenX >= 0) {
-      const edgeFactor = Math.min(1.0, (edgeMargin - activeMouse.screenX) / edgeMargin);
-      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) - (450 + edgeFactor * 1350) * safeDt;
-    } else if (activeMouse.screenX > winW - edgeMargin && activeMouse.screenX <= winW) {
-      const edgeFactor = Math.min(1.0, (activeMouse.screenX - (winW - edgeMargin)) / edgeMargin);
-      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) + (450 + edgeFactor * 1350) * safeDt;
-    }
-  }
-
-  // 3. Panning krawędziowy dotykiem na ekranie mobilnym
-  if (killstreakState.mortarTargetTouchId !== null && typeof killstreakState.lastTouchScreenX === 'number') {
-    const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 800;
-    const touchEdgeMargin = Math.max(70, winW * 0.18);
-
-    if (killstreakState.lastTouchScreenX < touchEdgeMargin) {
-      const edgeFactor = Math.min(1.0, (touchEdgeMargin - killstreakState.lastTouchScreenX) / touchEdgeMargin);
-      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) - (400 + edgeFactor * 1200) * safeDt;
-    } else if (killstreakState.lastTouchScreenX > winW - touchEdgeMargin) {
-      const edgeFactor = Math.min(1.0, (killstreakState.lastTouchScreenX - (winW - touchEdgeMargin)) / touchEdgeMargin);
-      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) + (400 + edgeFactor * 1200) * safeDt;
-    }
-  }
-
-  // Ograniczenie współrzędnych do areny
+  // Ograniczenie środka kamery do zakresu ruchu kamery (brak "pustego" przewijania przy krawędziach)
+  const arenaW = rawMaxX - rawMinX;
   if (typeof killstreakState.mortarCameraX === 'number' && !isNaN(killstreakState.mortarCameraX)) {
-    killstreakState.mortarCameraX = Math.max(minX, Math.min(maxX, killstreakState.mortarCameraX));
+    if (viewW < arenaW) {
+      const minCamCenter = rawMinX + viewW * 0.5;
+      const maxCamCenter = rawMaxX - viewW * 0.5;
+      killstreakState.mortarCameraX = Math.max(minCamCenter, Math.min(maxCamCenter, killstreakState.mortarCameraX));
+    } else {
+      killstreakState.mortarCameraX = (rawMinX + rawMaxX) * 0.5;
+    }
   }
-  if (typeof killstreakState.mortarTargetX === 'number' && !isNaN(killstreakState.mortarTargetX)) {
-    killstreakState.mortarTargetX = Math.max(minX, Math.min(maxX, killstreakState.mortarTargetX));
+
+  if (typeof killstreakState.mortarCameraY === 'number' && !isNaN(killstreakState.mortarCameraY)) {
+    killstreakState.mortarCameraY = Math.max(-400, Math.min(1800, killstreakState.mortarCameraY));
   }
+
+  // Synchronizacja punktu uderzenia na świecie z aktualną pozycją celownika na ekranie
+  syncMortarWorldTargetFromCrosshair();
 }
 
 /**
@@ -475,6 +609,18 @@ export function updateKillstreaks(dt = (1 / 60), playerOverride = null, combatan
     : (activePlayer ? [activePlayer] : []);
 
   updateMortarTargetingControls(safeDt, activePlayer);
+
+  if (killstreakState.mortarPendingLaunch) {
+    killstreakState.mortarPendingLaunch.timer -= safeDt;
+    if (killstreakState.mortarPendingLaunch.timer <= 0) {
+      const pending = killstreakState.mortarPendingLaunch;
+      killstreakState.mortarPendingLaunch = null;
+      spawnMortarStrike(pending.targetX, pending.owner || activePlayer);
+      triggerKillstreakActivateAnim('MORTAR_STRIKE');
+      setKillstreakNotification('[NALOT] SALWA ODPALONA', 'POCISKI MOŹDZIERZOWE W DRODZE NA CEL', '#ef4444', 3.0, 'MORTAR_STRIKE');
+    }
+  }
+
   updateCarePackages(safeDt, activePlayer, combatantsList);
   updateMortarStrikes(safeDt, combatantsList);
   updateAttackDrones(safeDt, combatantsList);
