@@ -390,7 +390,7 @@ function updateMeleeCollision(shooter, ms) {
           triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ŚCIĘTY BRONIĄ BIAŁĄ!');
           if (typeof window !== 'undefined') {
             if (typeof window.recordKill === 'function' && shooter === window.player) {
-              window.recordKill();
+              window.recordKill(t);
             }
             if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
               window.registerKillstreakKill();
@@ -506,9 +506,9 @@ function updateMeleeCollision(shooter, ms) {
           }
         }
 
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && t.isZombie) {
           if (typeof window.recordKill === 'function' && shooter === window.player) {
-            window.recordKill();
+            window.recordKill(t);
           }
           if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
             window.registerKillstreakKill();
@@ -1853,7 +1853,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
           if (typeof window !== 'undefined') {
             if (typeof window.recordKill === 'function' && b.shooter === window.player) {
-              window.recordKill();
+              window.recordKill(closestChar);
             }
             if (typeof window.registerKillstreakKill === 'function' && b.shooter === window.player) {
               window.registerKillstreakKill();
@@ -1882,7 +1882,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
             if (typeof window !== 'undefined') {
               if (typeof window.recordKill === 'function' && b.shooter === window.player) {
-                window.recordKill();
+                window.recordKill(closestChar);
               }
               if (typeof window.registerKillstreakKill === 'function' && b.shooter === window.player) {
                 window.registerKillstreakKill();
@@ -2020,9 +2020,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             closestChar.reviveTimer = 0;
             triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE UŚMIERCONY STRZAŁEM W GŁOWĘ!');
           }
-          if (typeof window !== 'undefined') {
+          if (typeof window !== 'undefined' && closestChar.isZombie) {
             if (typeof window.recordKill === 'function' && b.shooter === window.player) {
-              window.recordKill();
+              window.recordKill(closestChar);
             }
             if (typeof window.registerKillstreakKill === 'function' && b.shooter === window.player) {
               window.registerKillstreakKill();

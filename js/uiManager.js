@@ -81,7 +81,7 @@ const DEFAULT_SETTINGS = {
   deathmatchMode: 'TDM',    // 'TDM' (Drużynowy) lub 'FFA' (Każdy na Każdego)
   playerTeam: 'CYAN',       // 'CYAN' (Niebiescy) lub 'ORANGE' (Czerwoni)
   botDifficulty: 'normal',  // 'easy', 'normal', 'hard'
-  botCount: 3,              // Liczba aktywnych botów AI (1 - 7)
+  botCount: 5,              // Domyślny backfill botów AI w otwartym pokoju (do 6 miejsc)
   zombieMode: 'off',        // 'off' (Wyłączony) lub 'on' (Plaga Zombie)
 
   // Audio i Dźwięk
@@ -320,7 +320,6 @@ export const uiManager = {
     }
   ],
   currentBriefingIndex: 0,
-  currentBriefingMode: 'solo', // 'solo' | 'multi'
   _isSwitchingArena: false,
 
   init(callbacks) {
@@ -410,8 +409,10 @@ export const uiManager = {
       window.player.name = savedNick;
     }
 
-    // Aktualizacja statystyk Karty Gracza
+    // Aktualizacja statystyk Karty Gracza (z rozroznieniem Gracz PvP vs Bot AI)
     const stats = getPlayerStatsSummary();
+    const elPlayerKills = document.getElementById('menu-stat-player-kills');
+    const elBotKills = document.getElementById('menu-stat-bot-kills');
     const elKills = document.getElementById('menu-stat-kills');
     const elDeaths = document.getElementById('menu-stat-deaths');
     const elKd = document.getElementById('menu-stat-kd');
@@ -420,9 +421,11 @@ export const uiManager = {
     const elMatches = document.getElementById('menu-stat-matches');
     const elWinRate = document.getElementById('menu-stat-winrate');
 
+    if (elPlayerKills) elPlayerKills.textContent = stats.playerKills || 0;
+    if (elBotKills) elBotKills.textContent = stats.botKills || 0;
     if (elKills) elKills.textContent = stats.kills;
     if (elDeaths) elDeaths.textContent = stats.deaths;
-    if (elKd) elKd.textContent = stats.kdRatio;
+    if (elKd) elKd.textContent = stats.pvpKdRatio || stats.kdRatio;
     if (elWins) elWins.textContent = stats.matchesWon;
     if (elLosses) elLosses.textContent = stats.matchesLost;
     if (elMatches) elMatches.textContent = stats.matchesPlayed;
@@ -742,7 +745,12 @@ export const uiManager = {
     if (this.settings.deathmatchMode) setDeathmatchMode(this.settings.deathmatchMode);
     if (this.settings.playerTeam) setDeathmatchPlayerTeam(this.settings.playerTeam);
     if (this.settings.botDifficulty) setBotDifficulty(this.settings.botDifficulty);
-    if (this.settings.botCount !== undefined) setBotCount(this.settings.botCount);
+    const isWsOnlineMatch = (typeof window !== 'undefined' && window.wsState && window.wsState.connected);
+    const isAiTestUrl = (typeof window !== 'undefined' && window.location && new URLSearchParams(window.location.search).has('aiTest'));
+    if (!isWsOnlineMatch && !isAiTestUrl && this.settings.botCount !== undefined) {
+      // Domyslnie 5 botow (pelne 3v3 / 6 FFA z backfillem do momentu dolaczenia graczy)
+      setBotCount(Math.max(1, this.settings.botCount), { skipStorage: true });
+    }
     if (this.settings.zombieMode !== undefined) {
       setZombieModeActive(this.settings.zombieMode === 'on' || this.settings.zombieMode === true);
       if (typeof syncDevZombieButtonUI === 'function') syncDevZombieButtonUI();
@@ -921,32 +929,12 @@ export const uiManager = {
       dot.classList.toggle('active', idx === this.currentBriefingIndex);
     });
 
-    // 3. Nagłówek trybu Solo / Multi
-    const soloTabBtn = document.getElementById('briefing-tab-solo');
-    const multiTabBtn = document.getElementById('briefing-tab-multi');
-    if (soloTabBtn) soloTabBtn.classList.toggle('active', this.currentBriefingMode === 'solo');
-    if (multiTabBtn) multiTabBtn.classList.toggle('active', this.currentBriefingMode === 'multi');
+    // 3. Synchronizacja panelu odprawy ONLINE oraz wspolnych zasad bitwy
+    const panelOnline = document.getElementById('briefing-panel-online');
+    if (panelOnline) panelOnline.style.display = 'flex';
 
-    const panelSolo = document.getElementById('briefing-panel-solo');
-    const panelMulti = document.getElementById('briefing-panel-multi');
-    if (panelSolo) panelSolo.style.display = (this.currentBriefingMode === 'solo') ? 'flex' : 'none';
-    if (panelMulti) panelMulti.style.display = (this.currentBriefingMode === 'multi') ? 'flex' : 'none';
-
-    // 4. Widoczność opcji poszczególnych map
-    const optMap2 = document.getElementById('arena-opts-ARENA_2');
-    const optMap3 = document.getElementById('arena-opts-ARENA_3');
-    const optMap4 = document.getElementById('arena-opts-ARENA_4');
-    const optMap5 = document.getElementById('arena-opts-ARENA_5');
-    if (optMap2) optMap2.style.display = (arena.id === 'ARENA_2') ? 'flex' : 'none';
-    if (optMap3) optMap3.style.display = (arena.id === 'ARENA_3') ? 'flex' : 'none';
-    if (optMap4) optMap4.style.display = (arena.id === 'ARENA_4') ? 'flex' : 'none';
-    if (optMap5) optMap5.style.display = (arena.id === 'ARENA_5') ? 'flex' : 'none';
-
-    // 5. Synchronizacja stanu Deathmatch (Arena 2 & Arena 5)
+    // 4. Synchronizacja stanu Deathmatch oraz trudności botów uzupełniających
     this.syncDeathmatchUI();
-
-    // 6. Synchronizacja liczby botów, poziomu trudności i stanu AI
-    this.syncBotCountUI();
     this.syncBotDiffUI();
     this.syncBotActiveUI();
 
@@ -972,25 +960,21 @@ export const uiManager = {
       window.renderKillstreakSelectors();
     }
 
-    // 9. Aktualizacja tekstu przycisku START (KROK 4)
+    // 9. Aktualizacja tekstu przycisku START (ONLINE)
     const launchBtn = document.getElementById('btn-arena-launch');
     if (launchBtn) {
       const btnText = launchBtn.querySelector('.btn-text');
       if (btnText) {
-        if (this.currentBriefingMode === 'multi') {
-          const ws = (typeof window !== 'undefined' && window.wsState);
-          const isMatched = (ws && (ws.status === 'matched' || ws.status === 'in_game'));
-          const isSearching = (ws && ws.status === 'searching');
-          const isP2P = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
-          if (isSearching) {
-            btnText.textContent = 'SZUKANIE MECZU...';
-          } else if (isMatched || isP2P) {
-            btnText.textContent = '▶ WEJDŹ DO BITWY (START)';
-          } else {
-            btnText.textContent = '▶ SZUKAJ MECZU (GRAJ ONLINE)';
-          }
+        const ws = (typeof window !== 'undefined' && window.wsState);
+        const isMatched = (ws && (ws.status === 'matched' || ws.status === 'in_game'));
+        const isSearching = (ws && (ws.status === 'searching' || ws.status === 'connecting'));
+        const isP2P = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
+        if (isSearching) {
+          btnText.textContent = 'SZUKANIE MECZU ONLINE...';
+        } else if (isMatched || isP2P) {
+          btnText.textContent = '▶ WEJDŹ DO BITWY (START)';
         } else {
-          btnText.textContent = '▶ ROZPOCZNIJ ROZGRYWKĘ';
+          btnText.textContent = '▶ SZUKAJ MECZU ONLINE';
         }
       }
     }
@@ -1568,42 +1552,10 @@ export const uiManager = {
       }, { passive: true });
     }
 
-    // Przełącznik trybów: Solo (Boty) vs Multi (P2P)
-    const tabSoloBtn = document.getElementById('briefing-tab-solo');
-    const tabMultiBtn = document.getElementById('briefing-tab-multi');
-
-    if (tabSoloBtn) {
-      tabSoloBtn.addEventListener('mouseenter', () => playUiHover());
-      tabSoloBtn.addEventListener('click', () => {
-        playUiClick();
-        this.currentBriefingMode = 'solo';
-        this.syncBriefingUI();
-      });
-    }
-
-    if (tabMultiBtn) {
-      tabMultiBtn.addEventListener('mouseenter', () => playUiHover());
-      tabMultiBtn.addEventListener('click', () => {
-        playUiClick();
-        this.currentBriefingMode = 'multi';
-        this.syncBriefingUI();
-      });
-    }
-
     // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Wspólne przełączniki botów (Areny 3, 4, 5)
+    // PARAMETRY BITWY: Trudność botów uzupełniających
     // -------------------------------------------------------------------------
-    document.querySelectorAll('#a3-bot-toggle-group button, #a4-bot-toggle-group button, #a5-bot-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        const isActive = (btn.dataset.botState === 'active');
-        setBotEnabled(isActive);
-        this.syncBotActiveUI(isActive);
-      });
-    });
-
-    document.querySelectorAll('#dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#dm-diff-toggle-group button, .dm-diff-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
@@ -1694,29 +1646,8 @@ export const uiManager = {
     });
 
     // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 2, 3, 4, 5)
+    // PARAMETRY BITWY: Trudność i Tryb Zombie
     // -------------------------------------------------------------------------
-    document.querySelectorAll('.dm-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        const count = parseInt(btn.dataset.botCount, 10) || 1;
-        setBotEnabled(true);
-        setBotCount(count);
-        this.syncBotCountUI(count);
-        this.syncBotActiveUI(true);
-      });
-    });
-
-    document.querySelectorAll('.dm-diff-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        const diff = btn.dataset.botDiff || 'medium';
-        setBotDifficulty(diff);
-        this.syncBotDiffUI(diff);
-      });
-    });
 
     document.querySelectorAll('.dm-zombie-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
@@ -1760,8 +1691,9 @@ export const uiManager = {
         } else {
           const currentArena = this.briefingArenas[this.currentBriefingIndex];
           const arenaId = currentArena ? currentArena.id : 'ARENA_2';
+          const matchMode = (deathmatchConfig.mode === 'FFA') ? 'FFA' : 'TEAMS';
           if (typeof window.startDedicatedMatchmaking === 'function') {
-            window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId });
+            window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId, mode: matchMode });
           }
         }
       });
@@ -1894,75 +1826,45 @@ export const uiManager = {
         playUiClick();
         const currentArena = this.briefingArenas[this.currentBriefingIndex];
         const arenaId = currentArena ? currentArena.id : 'ARENA_2';
+        const matchMode = (deathmatchConfig.mode === 'FFA') ? 'FFA' : 'TEAMS';
 
-        if (this.currentBriefingMode === 'multi') {
-          const ws = (typeof window !== 'undefined' && window.wsState);
-          // Jeśli już dopasowano do pokoju lub jesteśmy w trakcie gry
-          if (ws && (ws.status === 'matched' || ws.status === 'in_game')) {
-            if (typeof window.enterMultiplayerMatch === 'function') {
-              window.enterMultiplayerMatch();
-            } else if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
-              window.setGameState('PLAYING');
-            }
-            return;
-          }
-
-          // Jeśli połączono przez P2P WebRTC
-          const isP2PConnected = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
-          if (isP2PConnected) {
-            if (typeof window !== 'undefined' && window.networkState && window.networkState.conn) {
-              try { window.networkState.conn.send({ type: 'start_game' }); } catch (_) {}
-            }
-            if (typeof window !== 'undefined' && typeof window.startRound === 'function') {
-              window.startRound();
-            }
-            if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
-              window.setGameState('PLAYING');
-            }
-            return;
-          }
-
-          // Jeśli szukamy meczu, kliknięcie launchBtn anuluje szukanie
-          if (ws && (ws.status === 'searching' || ws.status === 'connecting')) {
-            if (typeof window.cancelDedicatedMatchmaking === 'function') {
-              window.cancelDedicatedMatchmaking();
-            }
-            return;
-          }
-
-          // Rozpocznij natychmiastowy matchmaking na serwerze dedykowanym (bez kodów!)
-          if (typeof window.startDedicatedMatchmaking === 'function') {
-            window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId });
-            return;
+        const ws = (typeof window !== 'undefined' && window.wsState);
+        // Jeśli już dopasowano do otwartego pokoju online lub jesteśmy w grze
+        if (ws && (ws.status === 'matched' || ws.status === 'in_game')) {
+          if (typeof window.enterMultiplayerMatch === 'function') {
+            window.enterMultiplayerMatch({ arenaId });
+          } else if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+            window.setGameState('PLAYING');
           }
           return;
         }
 
-        // SOLO MODE:
-        const targetClassId = this.selectedClassId || (typeof window !== 'undefined' && window.player?.currentClass?.id) || 'STRIKER';
-
-        // Jeśli to Arena 2 (Deathmatch w pojedynkę), a boty były wyłączone, automatycznie aktywujemy przeciwników
-        if (arenaId === 'ARENA_2' && !isBotEnabled()) {
-          setBotEnabled(true);
-          this.syncBotActiveUI(true);
-        }
-
-        if (this.callbacks && typeof this.callbacks.onSelectArena === 'function') {
-          this.callbacks.onSelectArena(arenaId, targetClassId);
-        } else if (typeof window !== 'undefined') {
-          if (typeof window.switchArena === 'function') {
-            try { window.switchArena(arenaId); } catch (_) {}
+        // Jeśli połączono przez P2P WebRTC
+        const isP2PConnected = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
+        if (isP2PConnected) {
+          if (typeof window !== 'undefined' && window.networkState && window.networkState.conn) {
+            try { window.networkState.conn.send({ type: 'start_game' }); } catch (_) {}
           }
-          if (typeof window.selectPlayerClass === 'function' && window.CLASSES) {
-            const cls = window.CLASSES[targetClassId] || window.CLASSES.STRIKER || window.CLASSES.RAPTOR;
-            window.selectPlayerClass(cls);
-          }
-          if (typeof window.startRound === 'function') {
+          if (typeof window !== 'undefined' && typeof window.startRound === 'function') {
             window.startRound();
           }
-          if (typeof window.setGameState === 'function') {
+          if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
             window.setGameState('PLAYING');
           }
+          return;
+        }
+
+        // Jeśli szukamy meczu, kliknięcie launchBtn anuluje szukanie
+        if (ws && (ws.status === 'searching' || ws.status === 'connecting')) {
+          if (typeof window.cancelDedicatedMatchmaking === 'function') {
+            window.cancelDedicatedMatchmaking();
+          }
+          return;
+        }
+
+        // Rozpocznij automatyczny matchmaking online na serwerze dedykowanym (z backfillem botów)
+        if (typeof window.startDedicatedMatchmaking === 'function') {
+          window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId, mode: matchMode });
         }
       };
 
@@ -2476,18 +2378,6 @@ export const uiManager = {
         this.saveSettings();
         this.applySettings();
       });
-    }
-
-    const botCountSlider = document.getElementById('setting-bot-count');
-    if (botCountSlider) {
-      botCountSlider.addEventListener('input', (e) => {
-        const val = parseInt(e.target.value, 10);
-        this.settings.botCount = val;
-        const valSpan = document.getElementById('val-bot-count');
-        if (valSpan) valSpan.textContent = String(val);
-        this.applySettings();
-      });
-      botCountSlider.addEventListener('change', () => this.saveSettings());
     }
 
     const zombieModeSelect = document.getElementById('setting-zombie-mode');

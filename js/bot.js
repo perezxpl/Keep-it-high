@@ -128,7 +128,7 @@ export function applyBotClassAndConfig(botTarget, classKey, team = 'ORANGE') {
  *   automat dobiera 2 pozostałe dla botów bez duplikatów.
  * - W trybie FFA (Każdy na Każdego): zróżnicowane klasy z minimalną powtarzalnością.
  */
-export function balanceBotClasses(humanPlayer = player, activeBotsList = null, mode = null) {
+export function balanceBotClasses(humanPlayer = player, activeBotsList = null, mode = null, explicitBotTeams = null) {
   const bList = Array.isArray(activeBotsList) ? activeBotsList : getActiveBots();
   if (!bList || bList.length === 0) return;
 
@@ -141,12 +141,19 @@ export function balanceBotClasses(humanPlayer = player, activeBotsList = null, m
   const ALL_CLASSES = ['RAPTOR', 'STRIKER', 'ENFORCER'];
   const remainingClasses = ALL_CLASSES.filter(c => c !== pClassId);
 
+  const wsBotTeams = (Array.isArray(explicitBotTeams) && explicitBotTeams.length > 0)
+    ? explicitBotTeams
+    : ((typeof window !== 'undefined' && window.wsState?.connected && Array.isArray(window.wsState.botTeams))
+        ? window.wsState.botTeams
+        : null);
+
   if (isFFA) {
     // Tryb FFA: Minimalna powtarzalność. Rotacja: 2 pozostałe klasy, następnie klasa gracza
     const ffaRoster = [remainingClasses[0], remainingClasses[1], pClassId];
     bList.forEach((b, idx) => {
       const targetClassKey = ffaRoster[idx % ffaRoster.length];
-      applyBotClassAndConfig(b, targetClassKey, b.team || 'ORANGE');
+      const assignedTeam = (wsBotTeams && wsBotTeams[idx]) ? wsBotTeams[idx] : (b.team || `FFA_BOT_${idx + 1}`);
+      applyBotClassAndConfig(b, targetClassKey, assignedTeam);
     });
   } else {
     // Tryb Drużynowy (TDM):
@@ -158,10 +165,10 @@ export function balanceBotClasses(humanPlayer = player, activeBotsList = null, m
     const enemies = [];
 
     const isMpActive = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active);
-    const mpBotTeams = isMpActive ? getMpBotTeamsList() : null;
+    const mpBotTeams = wsBotTeams || (isMpActive ? getMpBotTeamsList() : null);
 
     bList.forEach((b, idx) => {
-      if (isMpActive && mpBotTeams && mpBotTeams[idx]) {
+      if (mpBotTeams && mpBotTeams[idx]) {
         b.team = mpBotTeams[idx];
       }
       if (b.team === pTeam) {
@@ -525,11 +532,12 @@ export function setBotCount(count, options = {}) {
     } catch (_) {}
   }
   if (num > 0 && botEnabled) {
-    balanceBotClasses(player, bots.slice(0, num));
+    balanceBotClasses(player, bots.slice(0, num), null, options.botTeams || null);
   }
   if (typeof window !== 'undefined' && window.deathmatchState && window.deathmatchState.active) {
     if (typeof window.refreshDeathmatchParticipants === 'function') {
-      window.refreshDeathmatchParticipants(player, getActiveBots(), window.remotePlayer);
+      const rPlayers = (typeof window.getActiveRemotePlayers === 'function') ? window.getActiveRemotePlayers() : window.remotePlayer;
+      window.refreshDeathmatchParticipants(player, getActiveBots(), rPlayers);
     }
   }
   return botCount;

@@ -1227,7 +1227,7 @@ export function handleZombieFireDeath(z, killer, groundY, wasDowned = false) {
 
   if (typeof window !== 'undefined') {
     if (typeof window.recordKill === 'function' && killer === window.player) {
-      window.recordKill();
+      window.recordKill(z);
     }
     if (typeof window.registerKillstreakKill === 'function' && killer === window.player) {
       window.registerKillstreakKill();

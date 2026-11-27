@@ -337,7 +337,8 @@ export function killByHazard(entity, reason = "JEZIORO MAGMY // OBSIDIAN CALDERA
       killerTeam: null,
       victimId: entity.isRemote ? (entity.peerId || 'remotePlayer') : 'player',
       victimName: entity.name || 'OPERATOR',
-      victimTeam: entity.team || null
+      victimTeam: entity.team || null,
+      victimType: entity.isBot ? 'BOT' : 'PLAYER'
     });
   }
 

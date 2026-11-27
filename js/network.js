@@ -20,6 +20,7 @@ import {
   spawnAttackDrone
 } from './killstreaks/index.js';
 import { registerCalloutKill, onPlayerDeathCallout } from './callouts/index.js';
+import { recordKill } from './progression.js';
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
 import { spawnAeroSuperGrenade, spawnThrownTomahawk, spawnMolotovCocktail } from './projectiles.js';
 import { getLocalPlayerCustomVisuals } from './player/hair.js';
@@ -588,6 +589,7 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
         victimId: myNetId || 'player',
         victimName: localName,
         victimTeam: player.team || null,
+        victimType: 'PLAYER',
         bulletId: null,
         x: player.x,
         y: player.y - 52
@@ -750,6 +752,7 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
         victimId: b.id || `bot_${data.botIdx + 1}`,
         victimName: b.name || 'BOT AI',
         victimTeam: b.team || null,
+        victimType: b.isZombie ? 'ZOMBIE' : 'BOT',
         bulletId: null,
         x: b.x,
         y: b.y - 52
@@ -863,6 +866,7 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
       victimId: b.id || `bot_${data.botIdx + 1}`,
       victimName: b.name || 'BOT AI',
       victimTeam: b.team || null,
+      victimType: b.isZombie ? 'ZOMBIE' : 'BOT',
       bulletId: data.bulletId || null,
       isHeadshot: fatalHeadshot,
       x: b.x,
@@ -1468,6 +1472,13 @@ export function handleNetworkData(data, senderPeerId = null) {
           killerTeam: data.killerTeam || null
         });
       } else if (isKillerMe) {
+        const victimObj = (data.victimId && remotePlayers.has(data.victimId)) ? remotePlayers.get(data.victimId) : null;
+        const resolvedVictimType = data.victimType || (data.isZombie ? 'ZOMBIE' : (victimObj && victimObj.isBot ? 'BOT' : 'PLAYER'));
+        recordKill({
+          targetType: resolvedVictimType,
+          victim: victimObj,
+          victimId: data.victimId || null
+        });
         registerKillstreakKill();
         registerCalloutKill(player, null, {
           killerIsLocal: true,

@@ -722,9 +722,9 @@ export function executeEnforcerGroundSlamImpact(player, impactY = null) {
         t.respawnTimer = 180;
         t.bleedTimer = 90;
         t.corpseFloorY = floorY;
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && t.isZombie) {
           if (typeof window.recordKill === 'function' && player === window.player) {
-            window.recordKill();
+            window.recordKill(t);
           }
           if (typeof window.registerKillstreakKill === 'function' && player === window.player) {
             window.registerKillstreakKill();

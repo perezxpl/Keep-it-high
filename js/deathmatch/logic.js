@@ -77,6 +77,10 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
   const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
   const enemyTeam = (deathmatchState.playerTeam === TEAMS.CYAN ? TEAMS.ORANGE : TEAMS.CYAN);
 
+  const wsBotTeams = (typeof window !== 'undefined' && window.wsState?.connected && Array.isArray(window.wsState.botTeams))
+    ? window.wsState.botTeams
+    : null;
+
   // Aktywacja i konfiguracja botów
   botList.forEach((b, idx) => {
     if (!b) return;
@@ -86,14 +90,16 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
     b.lastAttacker = null;
     b.lastAttackerTimer = 0;
     b._dmDeathRecorded = false;
+    b._progKillRecorded = false;
 
     if (!isFFA) {
-      if (remotePlayer && remotePlayer.active) {
+      if (wsBotTeams && wsBotTeams[idx]) {
+        b.team = wsBotTeams[idx];
+      } else if (remotePlayer && remotePlayer.active) {
         const mpBotTeams = getMpBotTeamsList();
         b.team = (mpBotTeams && mpBotTeams[idx]) ? mpBotTeams[idx] : (b.team || enemyTeam);
       } else {
-        // W TDM przy 3 botach: 1 sojusznik (CYAN), 2 wrogów (ORANGE) -> mecz 2 vs 2!
-        // Przy 5 botach: 2 sojuszników (CYAN), 3 wrogów (ORANGE) -> mecz 3 vs 3!
+        // W TDM przy 5 botach: 2 sojuszników (CYAN), 3 wrogów (ORANGE) -> pełne 3 vs 3!
         let isAlly = false;
         if (botList.length === 3 && idx === 0) isAlly = true;
         else if (botList.length >= 4 && idx < Math.floor(botList.length / 2)) isAlly = true;
@@ -101,7 +107,7 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
         b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
       }
     } else {
-      b.team = `FFA_BOT_${idx + 1}`;
+      b.team = (wsBotTeams && wsBotTeams[idx]) ? wsBotTeams[idx] : `FFA_BOT_${idx + 1}`;
     }
   });
 
@@ -176,10 +182,16 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
   const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
   const enemyTeam = (deathmatchState.playerTeam === TEAMS.CYAN ? TEAMS.ORANGE : TEAMS.CYAN);
 
+  const wsBotTeams = (typeof window !== 'undefined' && window.wsState?.connected && Array.isArray(window.wsState.botTeams))
+    ? window.wsState.botTeams
+    : null;
+
   botList.forEach((b, idx) => {
     if (!b) return;
     if (!isFFA) {
-      if (remotePlayer && remotePlayer.active) {
+      if (wsBotTeams && wsBotTeams[idx]) {
+        b.team = wsBotTeams[idx];
+      } else if (remotePlayer && remotePlayer.active) {
         const mpBotTeams = getMpBotTeamsList();
         b.team = (mpBotTeams && mpBotTeams[idx]) ? mpBotTeams[idx] : (b.team || enemyTeam);
       } else {
@@ -189,7 +201,7 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
         b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
       }
     } else {
-      b.team = `FFA_BOT_${idx + 1}`;
+      b.team = (wsBotTeams && wsBotTeams[idx]) ? wsBotTeams[idx] : `FFA_BOT_${idx + 1}`;
     }
   });
 
@@ -439,7 +451,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
           const killerTeam = killerRef?.team || killerData?.team || null;
 
           if (killerRef === player) {
-            recordKill();
+            recordKill(c);
             registerKillstreakKill();
             registerCalloutKill(player, c, {
               bulletId: c.killerBulletId || null,
@@ -544,6 +556,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
       }
     } else {
       c._dmDeathRecorded = false;
+      c._progKillRecorded = false;
       c.killer = null;
       c.killerBulletId = null;
       c.killedByHeadshot = false;

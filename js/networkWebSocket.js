@@ -6,10 +6,12 @@
 
 import {
   getOrCreateRemotePlayer,
+  getActiveRemotePlayers,
   removeRemotePlayer,
   clearAllRemotePlayers,
   MAX_MATCH_PLAYERS
 } from './networkPlayers.js';
+import { getActiveBots, setBotCount, setBotEnabled } from './bot.js';
 import { player } from './player.js';
 import { getLocalPlayerCustomVisuals } from './player/hair.js';
 import { switchArena, activeArenaId } from './obstacles.js';
@@ -34,7 +36,8 @@ export const wsState = {
   ping: 0,
   lastPingSent: 0,
   serverUrl: null,
-  arenaId: null
+  arenaId: null,
+  botTeams: null
 };
 
 if (typeof window !== 'undefined') {
@@ -127,6 +130,7 @@ export function handleWsConnectionFailure(errorMessage) {
   wsState.status = 'disconnected';
   wsState.roomId = null;
   wsState.playersCount = 1;
+  wsState.botTeams = null;
 
   if (wsState.socket) {
     try { wsState.socket.close(); } catch (_) {}
@@ -148,7 +152,7 @@ export function handleWsConnectionFailure(errorMessage) {
 
   const launchBtn = document.getElementById('btn-arena-launch');
   const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
-  if (btnText && typeof window !== 'undefined' && window.uiManager && window.uiManager.currentBriefingMode === 'multi') {
+  if (btnText) {
     btnText.textContent = '▶ SPRÓBUJ PONOWNIE';
   }
 
@@ -204,7 +208,7 @@ export function startDedicatedMatchmaking(playerName, options = {}) {
   }
   const launchBtn = document.getElementById('btn-arena-launch');
   const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
-  if (btnText && typeof window !== 'undefined' && window.uiManager && window.uiManager.currentBriefingMode === 'multi') {
+  if (btnText) {
     btnText.textContent = 'SZUKANIE MECZU ONLINE...';
   }
 
@@ -321,6 +325,7 @@ export function cancelDedicatedMatchmaking() {
   wsState.status = 'disconnected';
   wsState.roomId = null;
   wsState.playersCount = 1;
+  wsState.botTeams = null;
   clearAllRemotePlayers();
   clearNetworkQueue();
 
@@ -346,8 +351,8 @@ export function cancelDedicatedMatchmaking() {
   }
   const launchBtn = document.getElementById('btn-arena-launch');
   const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
-  if (btnText && typeof window !== 'undefined' && window.uiManager && window.uiManager.currentBriefingMode === 'multi') {
-    btnText.textContent = '▶ SZUKAJ MECZU (GRAJ ONLINE)';
+  if (btnText) {
+    btnText.textContent = '▶ SZUKAJ MECZU ONLINE';
   }
 }
 
@@ -385,6 +390,14 @@ export function enterMultiplayerMatch(options = {}) {
   // 4. Wejście do stanu gry PLAYING (ukrycie ekranów menu/odprawy)
   if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
     window.setGameState('PLAYING');
+  }
+
+  if (wsState.isHost && wsState.connected) {
+    sendWsPacket({
+      type: 'start_game',
+      arenaId: targetArena,
+      zombieMode: isZombieModeActive()
+    });
   }
 
   // 5. Powiadomienie audio i baner desantu
@@ -465,18 +478,13 @@ function handleServerMessage(rawData) {
         }
       }
 
-      // Synchronizacja liczby botow wyznaczonej przez serwer
-      const matchBotCount = (typeof msg.botCount === 'number') ? msg.botCount : 0;
-      if (typeof window !== 'undefined') {
-        if (typeof window.setBotCount === 'function') {
-          window.setBotCount(matchBotCount, { isRemote: true });
-        }
-        if (typeof window.setBotEnabled === 'function') {
-          window.setBotEnabled(matchBotCount > 0);
-        }
-      }
+      // Synchronizacja liczby oraz druzyn botow wyznaczonych przez serwer (backfill do 6 miejsc)
+      const matchBotCount = (typeof msg.botCount === 'number') ? msg.botCount : Math.max(0, wsState.maxPlayers - wsState.playersCount);
+      wsState.botTeams = Array.isArray(msg.botTeams) ? msg.botTeams : null;
+      setBotCount(matchBotCount, { isRemote: true, skipStorage: true, botTeams: wsState.botTeams });
+      setBotEnabled(matchBotCount > 0, { isRemote: true, skipStorage: true });
 
-      refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
+      refreshDeathmatchParticipants(player, getActiveBots(), getActiveRemotePlayers());
 
       const briefingMmBtn = document.getElementById('briefing-matchmake-btn');
       const briefingStatus = document.getElementById('briefing-matchmake-status');
@@ -492,7 +500,7 @@ function handleServerMessage(rawData) {
 
         if (briefingStatus) {
           briefingStatus.style.color = '#4ade80';
-          briefingStatus.innerHTML = `<span style="font-weight: 800; color: #4ade80;">ZNALEZIONO PRZECIWNIKA!</span> [${wsState.playersCount}/${wsState.maxPlayers}]<br><span style="color: #38bdf8;">Desant na arenę za 1.5s...</span>`;
+          briefingStatus.innerHTML = `<span style="font-weight: 800; color: #4ade80;">ZNALEZIONO GRACZY!</span> [${wsState.playersCount}/${wsState.maxPlayers}] + ${matchBotCount} BOTÓW<br><span style="color: #38bdf8;">Desant na arenę za 1.2s...</span>`;
         }
         if (briefingMmBtn) {
           briefingMmBtn.textContent = 'DESANT ZA CHWILĘ...';
@@ -501,7 +509,7 @@ function handleServerMessage(rawData) {
           btnText.textContent = 'DESANT ZA CHWILĘ...';
         }
         if (mmBtn) {
-          mmBtn.textContent = `START ZA 1.5s [${wsState.playersCount}/${wsState.maxPlayers}]`;
+          mmBtn.textContent = `START ZA 1.2s [${wsState.playersCount}/${wsState.maxPlayers}]`;
           mmBtn.classList.remove('mp-btn-searching');
         }
         if (mmStatus) {
@@ -516,27 +524,33 @@ function handleServerMessage(rawData) {
         }, 1200);
 
       } else {
-        // Pierwszy gracz w pokoju (1/6) - czekamy w lobby na dołączenie drugiego gracza!
-        triggerCombatFeedBanner('SYSTEM', `UTWORZONO POKÓJ // ${msg.roomId} [1/${wsState.maxPlayers}]. OCZEKIWANIE NA GRACZY...`);
+        // Pierwszy gracz w otwartym pokoju online (1/6) - boty uzupelniaja braki, inni gracze dolaczaja w locie
+        triggerCombatFeedBanner('SYSTEM', `OTWARTY POKÓJ ONLINE // ${msg.roomId} [1/${wsState.maxPlayers}] • ${matchBotCount} BOTÓW AI`);
 
         if (briefingStatus) {
           briefingStatus.style.color = '#38bdf8';
-          briefingStatus.innerHTML = `<span style="font-weight: 800; color: #38bdf8;">POKÓJ: ${msg.roomId} [1/${wsState.maxPlayers}]</span><br><span style="color: #fbbf24;">Oczekiwanie na dołączenie drugiego gracza...</span>`;
+          briefingStatus.innerHTML = `<span style="font-weight: 800; color: #38bdf8;">OTWARTY POKÓJ: ${msg.roomId} [1/${wsState.maxPlayers}]</span><br><span style="color: #fbbf24;">Boty (${matchBotCount}) uzupełniają skład — inni gracze dołączą w trakcie gry.</span>`;
         }
         if (briefingMmBtn) {
-          briefingMmBtn.textContent = '▶ WEJDŹ TERAZ (SOLO Z BOTAMI)';
+          briefingMmBtn.textContent = '▶ WEJDŹ DO BITWY (OTWARTY POKÓJ)';
         }
         if (btnText) {
-          btnText.textContent = '▶ WEJDŹ TERAZ (SOLO)';
+          btnText.textContent = '▶ WEJDŹ DO BITWY (1/6 + BOTY)';
         }
         if (mmBtn) {
-          mmBtn.textContent = '▶ WEJDŹ TERAZ (SOLO Z BOTAMI)';
+          mmBtn.textContent = '▶ WEJDŹ DO BITWY (OTWARTY POKÓJ)';
           mmBtn.classList.remove('mp-btn-searching');
         }
         if (mmStatus) {
           mmStatus.style.display = 'block';
-          mmStatus.textContent = `Pokój utworzony: ${msg.roomId} [1/${wsState.maxPlayers}]. Oczekiwanie na rywala...`;
+          mmStatus.textContent = `Otwarty pokój: ${msg.roomId} [1/${wsState.maxPlayers}] + ${matchBotCount} botów AI.`;
         }
+
+        wsLaunchTimeout = setTimeout(() => {
+          if (wsState.status === 'matched') {
+            enterMultiplayerMatch({ arenaId: msg.arenaId });
+          }
+        }, 2000);
       }
       break;
     }
@@ -547,8 +561,13 @@ function handleServerMessage(rawData) {
       if (wsState.socketId && msg.player.id === wsState.socketId) return;
       getOrCreateRemotePlayer(msg.player.id, msg.player.slotIndex, msg.player.name, msg.player.team, msg.player.customVisuals, msg.player.classId);
       wsState.playersCount = msg.playersCount || (wsState.playersCount + 1);
+      if (typeof msg.botCount === 'number') {
+        wsState.botTeams = Array.isArray(msg.botTeams) ? msg.botTeams : null;
+        setBotCount(msg.botCount, { isRemote: true, skipStorage: true, botTeams: wsState.botTeams });
+        setBotEnabled(msg.botCount > 0, { isRemote: true, skipStorage: true });
+      }
 
-      refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
+      refreshDeathmatchParticipants(player, getActiveBots(), getActiveRemotePlayers());
       triggerCombatFeedBanner('SYSTEM', `${msg.player.name} DOŁĄCZYŁ DO BITWY [${wsState.playersCount}/${wsState.maxPlayers}]`);
       if (typeof playUiClick === 'function') playUiClick();
 
@@ -637,7 +656,12 @@ function handleServerMessage(rawData) {
     case 'PLAYER_LEFT': {
       removeRemotePlayer(msg.senderId);
       wsState.playersCount = msg.playersCount || Math.max(1, wsState.playersCount - 1);
-      refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
+      if (typeof msg.botCount === 'number') {
+        wsState.botTeams = Array.isArray(msg.botTeams) ? msg.botTeams : null;
+        setBotCount(msg.botCount, { isRemote: true, skipStorage: true, botTeams: wsState.botTeams });
+        setBotEnabled(msg.botCount > 0, { isRemote: true, skipStorage: true });
+      }
+      refreshDeathmatchParticipants(player, getActiveBots(), getActiveRemotePlayers());
       triggerCombatFeedBanner('SYSTEM', `GRACZ OPUSCIL GRE [${wsState.playersCount}/${wsState.maxPlayers}]`);
       break;
     }

@@ -164,7 +164,10 @@ export const RANKS = [
 ];
 
 export const XP_REWARDS = {
-  ENEMY_KILL: 10,
+  PLAYER_KILL: 25,
+  BOT_KILL: 5,
+  ZOMBIE_KILL: 3,
+  ENEMY_KILL: 5, // Alias wstecznej kompatybilności
   ONE_SHOT_DOUBLE: 30,
   ONE_SHOT_TRIPLE: 45,
   DOUBLE_KILL: 15,
@@ -179,53 +182,73 @@ export const XP_REWARDS = {
 export const XP_RULES = [
   {
     id: 'DM_1ST',
-    title: '1. Miejsce — Deathmatch (5 min)',
-    category: 'Deathmatch 5 Min',
+    title: '1. Miejsce — Deathmatch Online',
+    category: 'Deathmatch Online',
     xp: 100,
     icon: '#1',
     badgeClass: 'xp-badge-goal',
-    desc: 'Najwięcej eliminacji w 5-minutowej bitwie na Arenie 2 (Sektor X).',
-    tip: 'Zdominuj platformy, unikaj kwasu i eliminuj rywali seriami.'
+    desc: 'Najwięcej eliminacji w meczu online na Arenie.',
+    tip: 'Zdominuj platformy, unikaj zagrożeń i eliminuj żywych rywali.'
   },
   {
     id: 'DM_2ND',
-    title: '2. Miejsce — Deathmatch (5 min)',
-    category: 'Deathmatch 5 Min',
+    title: '2. Miejsce — Deathmatch Online',
+    category: 'Deathmatch Online',
     xp: 80,
     icon: '#2',
     badgeClass: 'xp-badge-win',
-    desc: 'Drugi wynik eliminacji w 5-minutowym starciu na Arenie 2.',
+    desc: 'Drugi wynik eliminacji w meczu Deathmatch Online.',
     tip: 'Wicemistrzostwo bitwy z wysoką premią doświadczenia.'
   },
   {
     id: 'DM_3RD',
-    title: '3. Miejsce — Deathmatch (5 min)',
-    category: 'Deathmatch 5 Min',
+    title: '3. Miejsce — Deathmatch Online',
+    category: 'Deathmatch Online',
     xp: 60,
     icon: '#3',
     badgeClass: 'xp-badge-kill',
-    desc: 'Trzecie miejsce na podium w 5-minutowej bitwie na Arenie 2.',
+    desc: 'Trzecie miejsce na podium w starciu Deathmatch Online.',
     tip: 'Utrzymanie się na podium w dynamicznym starciu wielu rywali.'
   },
   {
     id: 'DM_PARTICIPATION',
-    title: 'Udział w Deathmatch (5 min)',
-    category: 'Deathmatch 5 Min',
+    title: 'Udział w Meczu Online',
+    category: 'Deathmatch Online',
     xp: 40,
     icon: 'DM',
     badgeClass: 'xp-badge-win',
-    desc: 'Ukończenie 5-minutowej bitwy Deathmatch poza podium.',
-    tip: 'Gwarantowana premia bojowa za rozegranie pełnego 5-minutowego meczu.'
+    desc: 'Ukończenie pełnego meczu Deathmatch poza podium.',
+    tip: 'Gwarantowana premia bojowa za rozegranie pełnego spotkania.'
   },
   {
-    id: 'KILL',
-    title: 'Eliminacja Wroga (Frag)',
-    category: 'Walka',
-    xp: 10,
-    icon: 'FRAG',
+    id: 'KILL_PLAYER',
+    title: 'Eliminacja Gracza (PvP)',
+    category: 'Walka PvP',
+    xp: 25,
+    icon: 'PVP',
+    badgeClass: 'xp-badge-goal',
+    desc: 'Zlikwidowanie żywego gracza online — 5x więcej XP niż za bota AI.',
+    tip: 'Poluj na prawdziwych operatorów drużyny przeciwnej, aby szybko awansować.'
+  },
+  {
+    id: 'KILL_BOT',
+    title: 'Eliminacja Bota (AI)',
+    category: 'Walka AI',
+    xp: 5,
+    icon: 'BOT',
     badgeClass: 'xp-badge-kill',
-    desc: 'Zlikwidowanie wrogiego bota lub przeciwnika bronią lub granatem.',
-    tip: 'Prowadź ogień ciągły lub eliminuj cele jednym strzałem snajperki.'
+    desc: 'Zlikwidowanie bota uzupełniającego braki w składzie drużyny.',
+    tip: 'Boty dopełniają składy i dają bazowe wsparcie punktowe (+5 XP).'
+  },
+  {
+    id: 'KILL_ZOMBIE',
+    title: 'Eliminacja Zombie',
+    category: 'Plaga Zombie',
+    xp: 3,
+    icon: 'ZMB',
+    badgeClass: 'xp-badge-melee',
+    desc: 'Ostateczne uśmiercenie zombie w trybie Plagi Zombie.',
+    tip: 'Celuj w głowę lub użyj maczety / ognia, aby zombie nie wstał.'
   },
   {
     id: 'one_shot_collateral',
@@ -356,21 +379,47 @@ export const DEFAULT_PLAYER_STATS = {
   matchesWon: 0,
   matchesLost: 0,
   kills: 0,
+  playerKills: 0,
+  botKills: 0,
+  zombieKills: 0,
   deaths: 0
 };
 
 const STATS_STORAGE_KEY = 'fragball_player_stats_v1';
+const _recentKillRecords = new Map();
+const KILL_DEDUPE_WINDOW_MS = 1200;
+
+export function classifyVictimTargetType(victim) {
+  if (!victim) return 'BOT';
+  if (typeof victim === 'string') {
+    const up = victim.toUpperCase();
+    if (up === 'PLAYER' || up === 'HUMAN' || up === 'PVP') return 'PLAYER';
+    if (up === 'ZOMBIE') return 'ZOMBIE';
+    return 'BOT';
+  }
+  if (victim.isZombie) return 'ZOMBIE';
+  if (victim.isRemote || victim.isHuman || (Boolean(victim.peerId) && !victim.isBot)) return 'PLAYER';
+  if (victim.isBot) return 'BOT';
+  return 'BOT';
+}
 
 export function getPlayerStats() {
   try {
     const raw = localStorage.getItem(STATS_STORAGE_KEY);
     if (!raw) return { ...DEFAULT_PLAYER_STATS };
     const p = JSON.parse(raw);
+    const totalKills = Number.isFinite(p.kills) && p.kills >= 0 ? p.kills : 0;
+    const pKills = Number.isFinite(p.playerKills) && p.playerKills >= 0 ? p.playerKills : 0;
+    const bKills = Number.isFinite(p.botKills) && p.botKills >= 0 ? p.botKills : Math.max(0, totalKills - pKills);
+    const zKills = Number.isFinite(p.zombieKills) && p.zombieKills >= 0 ? p.zombieKills : 0;
     return {
       matchesPlayed: Number.isFinite(p.matchesPlayed) && p.matchesPlayed >= 0 ? p.matchesPlayed : 0,
       matchesWon: Number.isFinite(p.matchesWon) && p.matchesWon >= 0 ? p.matchesWon : 0,
       matchesLost: Number.isFinite(p.matchesLost) && p.matchesLost >= 0 ? p.matchesLost : 0,
-      kills: Number.isFinite(p.kills) && p.kills >= 0 ? p.kills : 0,
+      kills: Math.max(totalKills, pKills + bKills),
+      playerKills: pKills,
+      botKills: bKills,
+      zombieKills: zKills,
       deaths: Number.isFinite(p.deaths) && p.deaths >= 0 ? p.deaths : 0
     };
   } catch (e) {
@@ -400,15 +449,87 @@ export function recordMatchResult(result) {
   return stats;
 }
 
-export function recordKill(amount = 1) {
+export function recordKill(targetOrOpts = 'BOT', amountOverride = 1) {
   if (typeof window !== 'undefined' && window.isMenuShowcase) return getPlayerStats();
+
+  let targetType = 'BOT';
+  let victim = null;
+  let victimId = null;
+  let count = 1;
+
+  if (typeof targetOrOpts === 'number') {
+    count = Math.max(1, parseInt(targetOrOpts, 10) || 1);
+    targetType = 'BOT';
+  } else if (typeof targetOrOpts === 'string') {
+    targetType = classifyVictimTargetType(targetOrOpts);
+    count = Math.max(1, parseInt(amountOverride, 10) || 1);
+  } else if (targetOrOpts && typeof targetOrOpts === 'object') {
+    const isOptionsObj = ('targetType' in targetOrOpts || 'victim' in targetOrOpts || 'victimId' in targetOrOpts || 'count' in targetOrOpts) && !('hp' in targetOrOpts) && !('x' in targetOrOpts);
+    if (isOptionsObj) {
+      victim = targetOrOpts.victim || null;
+      victimId = targetOrOpts.victimId || victim?.peerId || victim?.id || null;
+      targetType = targetOrOpts.targetType ? classifyVictimTargetType(targetOrOpts.targetType) : classifyVictimTargetType(victim);
+      count = Math.max(1, parseInt(targetOrOpts.count ?? amountOverride, 10) || 1);
+    } else {
+      victim = targetOrOpts;
+      victimId = victim.peerId || victim.id || null;
+      targetType = classifyVictimTargetType(victim);
+      count = Math.max(1, parseInt(amountOverride, 10) || 1);
+    }
+  }
+
+  // Ochrona przed podwojnym naliczeniem tego samego zgonu (np. z deathmatch i kill_event)
+  if (victim && victim._progKillRecorded) {
+    return getPlayerStats();
+  }
+  if (victimId) {
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    for (const [k, ts] of _recentKillRecords.entries()) {
+      if ((now - ts) > KILL_DEDUPE_WINDOW_MS) _recentKillRecords.delete(k);
+    }
+    const prevTs = _recentKillRecords.get(String(victimId));
+    if (prevTs !== undefined && (now - prevTs) <= KILL_DEDUPE_WINDOW_MS) {
+      return getPlayerStats();
+    }
+    _recentKillRecords.set(String(victimId), now);
+  }
+  if (victim) {
+    victim._progKillRecorded = true;
+  }
+
   const stats = getPlayerStats();
-  const count = Math.max(1, parseInt(amount, 10) || 1);
-  stats.kills = (stats.kills || 0) + count;
+  let xpPerKill = XP_REWARDS.BOT_KILL;
+  let notifyText = '';
+  let notifyColor = '#38bdf8';
+
+  if (targetType === 'PLAYER') {
+    stats.playerKills = (stats.playerKills || 0) + count;
+    stats.kills = (stats.kills || 0) + count;
+    xpPerKill = XP_REWARDS.PLAYER_KILL;
+    notifyColor = '#facc15';
+  } else if (targetType === 'ZOMBIE') {
+    stats.zombieKills = (stats.zombieKills || 0) + count;
+    xpPerKill = XP_REWARDS.ZOMBIE_KILL;
+    notifyColor = '#4ade80';
+  } else {
+    stats.botKills = (stats.botKills || 0) + count;
+    stats.kills = (stats.kills || 0) + count;
+    xpPerKill = XP_REWARDS.BOT_KILL;
+    notifyColor = '#38bdf8';
+  }
+
   savePlayerStats(stats);
-  const xpEarned = XP_REWARDS.ENEMY_KILL * count;
+  const xpEarned = xpPerKill * count;
   addPlayerXP(xpEarned);
-  notifyXpGained(`+${xpEarned} XP ELIMINACJA!`, xpEarned, '#38bdf8');
+
+  if (targetType === 'PLAYER') {
+    notifyText = `+${xpEarned} XP GRACZ (PvP)!`;
+  } else if (targetType === 'ZOMBIE') {
+    notifyText = `+${xpEarned} XP ZOMBIE`;
+  } else {
+    notifyText = `+${xpEarned} XP BOT (AI)`;
+  }
+  notifyXpGained(notifyText, xpEarned, notifyColor);
   return stats;
 }
 
@@ -428,11 +549,19 @@ export function resetPlayerStats() {
 
 export function getPlayerStatsSummary() {
   const s = getPlayerStats();
+  const pKills = s.playerKills || 0;
   let kdRatio = '0.00';
   if (s.deaths === 0) {
     kdRatio = s.kills > 0 ? s.kills.toFixed(2) : '0.00';
   } else {
     kdRatio = (s.kills / s.deaths).toFixed(2);
+  }
+
+  let pvpKdRatio = '0.00';
+  if (s.deaths === 0) {
+    pvpKdRatio = pKills > 0 ? pKills.toFixed(2) : '0.00';
+  } else {
+    pvpKdRatio = (pKills / s.deaths).toFixed(2);
   }
 
   const winRate = s.matchesPlayed === 0 
@@ -442,6 +571,7 @@ export function getPlayerStatsSummary() {
   return {
     ...s,
     kdRatio,
+    pvpKdRatio,
     winRate
   };
 }

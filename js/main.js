@@ -391,18 +391,11 @@ export function concludeMatchAndReturnToLobby(options = {}) {
     }
   }
 
-  // 3. Przełączenie do widoku lobby (ODPRAWA TAKTYCZNA)
+  // 3. Przełączenie do widoku lobby (ODPRAWA TAKTYCZNA ONLINE)
   setGameState('ARENA_SELECT');
 
-  if (isMultiplayer) {
-    const tabMultiBtn = document.getElementById('briefing-tab-multi');
-    if (tabMultiBtn) tabMultiBtn.click();
-    if (typeof syncMpRosterUI === 'function') {
-      syncMpRosterUI();
-    }
-  } else {
-    const tabSoloBtn = document.getElementById('briefing-tab-solo');
-    if (tabSoloBtn) tabSoloBtn.click();
+  if (typeof syncMpRosterUI === 'function') {
+    syncMpRosterUI();
   }
 
   setTimeout(() => {
@@ -1502,7 +1495,7 @@ if (typeof window !== 'undefined') {
     const autostartClass = urlParams.get('class') || urlParams.get('autostart');
     const isAiTest = urlParams.get('aiTest') === '1' || urlParams.has('aiTest');
     if (autostartClass) {
-      selectPlayerClass(CLASSES[String(autostartClass).toUpperCase()] || CLASSES.PLAYMAKER);
+      selectPlayerClass(CLASSES[String(autostartClass).toUpperCase()] || CLASSES.STRIKER);
     } else if (isAiTest) {
       selectPlayerClass(CLASSES.STRIKER);
     } else {

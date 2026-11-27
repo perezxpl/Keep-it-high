@@ -520,7 +520,7 @@ export class RpgRocket {
 
         if (typeof window !== 'undefined') {
           if (typeof window.recordKill === 'function' && this.shooter === window.player) {
-            window.recordKill();
+            window.recordKill(closestChar);
           }
           if (typeof window.registerKillstreakKill === 'function' && this.shooter === window.player) {
             window.registerKillstreakKill();
@@ -569,9 +569,9 @@ export class RpgRocket {
             closestChar.reviveTimer = 0;
             triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ROZTRZASKANY RAKIETĄ!');
           }
-          if (typeof window !== 'undefined') {
+          if (typeof window !== 'undefined' && closestChar.isZombie) {
             if (typeof window.recordKill === 'function' && this.shooter === window.player) {
-              window.recordKill();
+              window.recordKill(closestChar);
             }
             if (typeof window.registerKillstreakKill === 'function' && this.shooter === window.player) {
               window.registerKillstreakKill();

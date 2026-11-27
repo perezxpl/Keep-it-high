@@ -98,6 +98,35 @@ class GameRoom {
     }
     return list;
   }
+
+  /**
+   * Oblicza liczbe oraz przydzial druzynowy botow uzupelniajacych braki graczy (backfill do 6 miejsc)
+   */
+  computeBotFillAllocation() {
+    const humanCount = this.players.size;
+    if (this.mode === 'FFA') {
+      const totalBots = Math.max(0, this.maxPlayers - humanCount);
+      const botTeams = Array.from({ length: totalBots }, (_, i) => `FFA_BOT_${i + 1}`);
+      this.botCount = totalBots;
+      return { totalBots, botTeams };
+    }
+
+    let cyanHumans = 0;
+    let orangeHumans = 0;
+    for (const p of this.players.values()) {
+      if (p.team === 'ORANGE' || p.slotIndex >= 3) orangeHumans++;
+      else cyanHumans++;
+    }
+    const perTeamTarget = Math.max(1, Math.floor(this.maxPlayers / 2));
+    const botsCyan = Math.max(0, perTeamTarget - cyanHumans);
+    const botsOrange = Math.max(0, perTeamTarget - orangeHumans);
+    const botTeams = [
+      ...Array.from({ length: botsCyan }, () => 'CYAN'),
+      ...Array.from({ length: botsOrange }, () => 'ORANGE')
+    ];
+    this.botCount = botTeams.length;
+    return { totalBots: botTeams.length, botTeams };
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -168,12 +197,20 @@ wss.on('connection', (ws) => {
           : `Gracz ${Math.floor(Math.random() * 900 + 100)}`;
         const classId = msg.classId || 'STRIKER';
 
-        // Szukaj otwartego pokoju z wolnym miejscem (< 6 graczy)
+        // Szukaj otwartego pokoju z wolnym miejscem (< 6 graczy) - preferuj ten sam tryb i arene
         let room = null;
         for (const r of rooms.values()) {
-          if (r.mode === mode && !r.isFull && r.status !== 'CLOSED') {
+          if (r.mode === mode && r.arenaId === preferredArena && !r.isFull && r.status !== 'CLOSED') {
             room = r;
             break;
+          }
+        }
+        if (!room) {
+          for (const r of rooms.values()) {
+            if (r.mode === mode && !r.isFull && r.status !== 'CLOSED') {
+              room = r;
+              break;
+            }
           }
         }
 
@@ -218,6 +255,7 @@ wss.on('connection', (ws) => {
         room.players.set(socketId, playerEntry);
         currentRoom = room;
         currentSlot = slotIndex;
+        const botFill = room.computeBotFillAllocation();
 
         // Potwierdzenie dolaczenia do pokoju
         ws.send(JSON.stringify({
@@ -232,7 +270,8 @@ wss.on('connection', (ws) => {
           maxPlayers: MAX_PLAYERS_PER_MATCH,
           playersCount: room.count,
           players: room.getPlayersSummary(),
-          botCount: room.botCount,
+          botCount: botFill.totalBots,
+          botTeams: botFill.botTeams,
           zombieMode: !!room.zombieMode
         }));
 
@@ -250,6 +289,8 @@ wss.on('connection', (ws) => {
           },
           playersCount: room.count,
           maxPlayers: MAX_PLAYERS_PER_MATCH,
+          botCount: botFill.totalBots,
+          botTeams: botFill.botTeams,
           zombieMode: !!room.zombieMode
         }, socketId);
 
@@ -342,6 +383,7 @@ wss.on('connection', (ws) => {
       case 'start_game': {
         if (!currentRoom) return;
         if (msg.type === 'start_game') {
+          currentRoom.status = 'PLAYING';
           if (msg.arenaId) currentRoom.arenaId = msg.arenaId;
           if (typeof msg.zombieMode === 'boolean') currentRoom.zombieMode = msg.zombieMode;
         }
@@ -434,12 +476,15 @@ wss.on('connection', (ws) => {
   function cleanupPlayer() {
     if (currentRoom) {
       currentRoom.players.delete(socketId);
+      const botFill = currentRoom.computeBotFillAllocation();
       currentRoom.broadcast({
         type: 'PLAYER_LEFT',
         senderId: socketId,
         slotIndex: currentSlot,
         playersCount: currentRoom.count,
-        maxPlayers: MAX_PLAYERS_PER_MATCH
+        maxPlayers: MAX_PLAYERS_PER_MATCH,
+        botCount: botFill.totalBots,
+        botTeams: botFill.botTeams
       });
 
       if (currentRoom.count === 0) {

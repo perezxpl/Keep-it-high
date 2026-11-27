@@ -807,7 +807,7 @@ export class ThrownTomahawk {
                 triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ŚCIĘTY TOPOREM!');
                 if (typeof window !== 'undefined') {
                   if (typeof window.recordKill === 'function' && this.shooter === window.player) {
-                    window.recordKill();
+                    window.recordKill(ch);
                   }
                   if (typeof window.registerKillstreakKill === 'function' && this.shooter === window.player) {
                     window.registerKillstreakKill();
@@ -903,9 +903,9 @@ export class ThrownTomahawk {
                 );
               }
 
-              if (typeof window !== 'undefined') {
+              if (typeof window !== 'undefined' && ch.isZombie) {
                 if (typeof window.recordKill === 'function' && this.shooter === window.player) {
-                  window.recordKill();
+                  window.recordKill(ch);
                 }
                 if (typeof window.registerKillstreakKill === 'function' && this.shooter === window.player) {
                   window.registerKillstreakKill();
@@ -1296,7 +1296,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
           triggerCombatFeedBanner('KILL', '[DEKAPITACJA] LEŻĄCY ZOMBIE ROZSZARPANY WYBUCHEM!');
           if (typeof window !== 'undefined') {
             if (typeof window.recordKill === 'function' && shooter === window.player) {
-              window.recordKill();
+              window.recordKill(ch);
             }
             if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
               window.registerKillstreakKill();
@@ -1315,7 +1315,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
             triggerCombatFeedBanner('KILL', '[ROZSZARPANY] LEŻĄCY ZOMBIE ROZSZARPANY WYBUCHEM!');
             if (typeof window !== 'undefined') {
               if (typeof window.recordKill === 'function' && shooter === window.player) {
-                window.recordKill();
+                window.recordKill(ch);
               }
               if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
                 window.registerKillstreakKill();
