@@ -6,16 +6,115 @@
 
 import { triggerScreenShake } from '../camera.js';
 import { GROUND_Y, spawnGroundPuff, spawnJetpackSparks } from '../world/state.js';
-import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } from '../obstacles.js';
+import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY, hasClearLineOfSight } from '../obstacles.js';
+import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { detonateGrenadeExplosion } from '../projectiles.js';
 import { bullets } from '../weapons/transform.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
-import { getCarePackageSurfaceY } from './carePackage.js';
 import { killstreakState } from './state.js';
 import { getSentryTurretSheet, SENTRY_SHEET_RECTS } from './droneModel.js';
 import { isArena3ActiveForDrones, spawnShipDroneTransport } from './droneTransports.js';
 
 export const activeSentryGuns = [];
+
+/**
+ * Wyznacza aktualne podparcie pod wieżyczką (z uwzględnieniem zawalonych mostów, kładek i kraterów)
+ */
+function getSentryArenaSupportInfo(x, curY) {
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const aid = curArena?.id || activeArenaId;
+  const isA2 = (aid === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' || activeArenaId === 'ARENA_2_PANDORA');
+  const isA3 = (aid === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isA4 = (aid === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER');
+  const isA5 = (aid === 'arena-5' || activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
+
+  let groundY = GROUND_Y || 960;
+  let hazardY = null;
+
+  if (isA2) {
+    const acidY = (typeof curArena?.acidSurge?.currentY === 'number')
+      ? curArena.acidSurge.currentY
+      : (curArena?.hazardZoneY ?? 1440);
+    groundY = acidY;
+    hazardY = acidY;
+  } else if (isA3) {
+    groundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(x) : 1200;
+    hazardY = 1315;
+  } else if (isA4) {
+    groundY = 1400;
+    hazardY = 1380;
+  } else if (isA5) {
+    const a5Floor = (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number')
+      ? window.arena5State.currentFloorY
+      : 1400;
+    groundY = a5Floor;
+    hazardY = a5Floor + 20;
+  }
+
+  let bestY = groundY;
+  const plats = ARENA_PLATFORMS || [];
+  for (const plat of plats) {
+    if (!plat || plat.solid === false || plat.isWall || plat.isPlatform === false || plat.type === 'water' || plat.destroyed) continue;
+    if (plat.intact === false) continue;
+    if ((plat.isBridgeBlock || plat.isRampBlock || plat.isCanopyBlock || plat.isSniperSlab || plat.isTowerBlock) && plat.y >= 1295) continue;
+    if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval')) continue;
+
+    const minX = (plat._minX !== undefined) ? plat._minX : (plat.x !== undefined ? plat.x : 0);
+    const maxX = (plat._maxX !== undefined) ? plat._maxX : (minX + (plat.w || 0));
+    if (x >= minX - 8 && x <= maxX + 8) {
+      const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
+        ? getPlatformSurfaceY(plat, x, groundY)
+        : ((plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0)));
+      if (typeof topY === 'number' && !isNaN(topY) && topY >= curY - 16 && topY < bestY) {
+        bestY = topY;
+      }
+    }
+  }
+
+  return {
+    supportY: bestY,
+    effectiveGroundY: groundY,
+    hazardY,
+    isA2,
+    isA3,
+    isA4,
+    isA5
+  };
+}
+
+function updateSentryGravity(sentry, supportInfo, safeDt) {
+  const { supportY, hazardY, isA3 } = supportInfo;
+  const frameStep = safeDt * 60;
+
+  if (supportY > sentry.y + 1.5) {
+    sentry.isFalling = true;
+    sentry.vy = Math.min(20, (sentry.vy || 0) + 0.55 * frameStep);
+    sentry.y += sentry.vy * frameStep;
+    if (sentry.y >= supportY) {
+      const impactVy = sentry.vy;
+      sentry.y = supportY;
+      sentry.vy = 0;
+      sentry.isFalling = false;
+      if (impactVy > 5) {
+        spawnGroundPuff(sentry.x, sentry.y);
+        triggerScreenShake(Math.min(3.5, impactVy * 0.22));
+      }
+    }
+  } else {
+    sentry.isFalling = false;
+    sentry.vy = 0;
+    if (Math.abs(supportY - sentry.y) <= 16) {
+      sentry.y = supportY;
+    }
+  }
+
+  if (hazardY !== null && sentry.y >= hazardY) {
+    if (isA3 && typeof window !== 'undefined' && typeof window.spawnArena3WaterSplash === 'function') {
+      window.spawnArena3WaterSplash(sentry.x, 1308);
+    }
+    sentry.hp = 0;
+  }
+}
 
 /**
  * Płynna interpolacja kątowa z obsługą zawijania wokół PI
@@ -46,7 +145,8 @@ export function spawnSentryGun(owner, targetX, options = {}) {
   const minX = (typeof curArena?.bounds?.minX === 'number') ? (curArena.bounds.minX + 60) : 100;
   const maxX = (typeof curArena?.bounds?.maxX === 'number') ? (curArena.bounds.maxX - 60) : ((typeof curArena?.width === 'number') ? (curArena.width - 60) : 2800);
   const safeX = Math.max(minX, Math.min(maxX, (typeof targetX === 'number' && !isNaN(targetX)) ? targetX : owner.x));
-  const surfaceY = getCarePackageSurfaceY(safeX);
+  const spawnRefY = (typeof owner.y === 'number' && !isNaN(owner.y)) ? (owner.y - 24) : 0;
+  const surfaceY = getSentryArenaSupportInfo(safeX, spawnRefY).supportY;
 
   const facing = (typeof options.facing === 'number') ? options.facing : (owner.facing || 1);
   const initialYaw = facing > 0 ? 0 : Math.PI;
@@ -59,6 +159,9 @@ export function spawnSentryGun(owner, targetX, options = {}) {
     team: owner.team || null,
     x: safeX,
     y: surfaceY,
+    spawnRefY,
+    vy: 0,
+    isFalling: false,
     w: 36,
     h: 42,
     facing,
@@ -197,6 +300,7 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
 
     // 1.5. Oczekiwanie na zrzut przez drona transportowego z okrętu
     if (sentry.state === 'INBOUND') {
+      sentry.y = getSentryArenaSupportInfo(sentry.x, sentry.spawnRefY ?? 0).supportY;
       sentry.inboundTimer = (sentry.inboundTimer || 0) - safeDt;
       sentry.laserScanTimer += safeDt;
       if (sentry.inboundTimer <= -0.35) {
@@ -208,8 +312,16 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
       continue;
     }
 
+    const supportInfo = getSentryArenaSupportInfo(sentry.x, sentry.y);
+    updateSentryGravity(sentry, supportInfo, safeDt);
+
     // 2. Faza rozstawiania statywu hydraulicznego
     if (sentry.state === 'DEPLOYING') {
+      if (sentry.hp <= 0) {
+        sentry.state = 'DESTROYED';
+        sentry.deathTimer = 2.0;
+        continue;
+      }
       sentry.deployTimer -= safeDt;
       if (sentry.deployTimer <= 0) {
         sentry.state = 'ACTIVE';
@@ -311,7 +423,7 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
       continue;
     }
 
-    // 4. Wyszukiwanie wrogów w zasięgu wzroku (560px)
+    // 4. Wyszukiwanie wrogów w zasięgu wzroku (560px) i z czystą linią strzału (brak przeszkód)
     let nearestEnemy = null;
     let nearestDist = 560;
     const targets = Array.isArray(combatants) ? combatants : [];
@@ -321,10 +433,10 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
       if (!c || c === sentry.owner || c.isDead || c.active === false) continue;
       if (!isFFA && !c.isZombie && sentry.team && c.team && sentry.team === c.team) continue;
 
-      const tx = c.x + c.w / 2;
-      const ty = c.y + c.h * 0.45;
+      const tx = c.x + (c.w || 24) / 2;
+      const ty = c.y + (c.h || 60) * 0.45;
       const dist = Math.hypot(tx - pivotX, ty - pivotY);
-      if (dist < nearestDist) {
+      if (dist < nearestDist && hasClearLineOfSight(pivotX, pivotY, tx, ty, supportInfo.effectiveGroundY)) {
         nearestDist = dist;
         nearestEnemy = c;
       }

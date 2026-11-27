@@ -151,7 +151,15 @@ export function getSegmentSegmentIntersection(x1, y1, x2, y2, sx1, sy1, sx2, sy2
   return null;
 }
 
+export function hasClearLineOfSight(x1, y1, x2, y2, groundY = 1200) {
+  return !_traceRayObstacles(x1, y1, x2, y2, groundY, null, null, true);
+}
+
 export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacles = null, bulletObj = null) {
+  return _traceRayObstacles(x1, y1, x2, y2, groundY, extraObstacles, bulletObj, false);
+}
+
+function _traceRayObstacles(x1, y1, x2, y2, groundY, extraObstacles = null, bulletObj = null, pureSight = false) {
   let closestHit = null;
 
   // Granice AABB promienia do błyskawicznego odrzucania obiektów poza zasięgiem (Broadphase)
@@ -262,6 +270,9 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
       if (!plat) continue;
+      if (pureSight && (plat.solid === false || plat.intact === false || plat.destroyed || plat.type === 'water')) {
+        continue;
+      }
 
       // W Arenie 3 zniszczalne segmenty (most, kładki w koronach, rampy, płyty snajperskie, podesty wież)
       // są delegowane do activeArena.onBulletHit() dla pocisków (bulletObj),
@@ -275,6 +286,17 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
       const isA5 = (curArenaObj?.id === 'arena-5' || activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
       if (isA5 && bulletObj && plat.isA5Block) {
         continue;
+      }
+
+      if (pureSight && plat.hangingPhysics) {
+        const pw = plat.w || 0;
+        const ph = plat.h || plat.thickness || 16;
+        const topY = plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0));
+        if (Math.abs(plat.angle || 0) <= 0.005) {
+          const hit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + pw, topY + ph);
+          if (hit) recordHit(hit, plat.id || 'canopy_plank');
+          continue;
+        }
       }
 
       let pMinX, pMaxX, pMinY, pMaxY;
@@ -412,8 +434,9 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         continue;
       }
 
-      // 4. Lite platformy przemysłowe areny oraz platformy blokujące pociski (np. Arena 2 bastiony, center hub, belki sufitowe)
-      if (plat.solid && (!plat.oneWay || plat.blocksBullets)) {
+      // 4. Lite platformy przemysłowe areny oraz platformy blokujące pociski (np. Arena 2 bastiony, center hub, belki sufitowe, lub segmenty blokujące na Arenie 3/5)
+      const blocksLoS = pureSight && (plat.isBridgeBlock || plat.isRampBlock || plat.isCanopyBlock || plat.isSniperSlab || plat.isTowerBlock || plat.isA5Block);
+      if (plat.solid && (!plat.oneWay || plat.blocksBullets || blocksLoS)) {
         const topY = plat.y !== undefined ? plat.y : (plat.relY !== undefined ? groundY - plat.relY : null);
         const thick = plat.h || plat.thickness || 20;
         if (topY !== null) {
@@ -507,7 +530,7 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         const r = 20;
         const hit = getSegmentCircleIntersection(x1, y1, x2, y2, cx, cy, r);
         if (hit) {
-          obs.hitTimer = 10;
+          if (!pureSight) obs.hitTimer = 10;
           recordHit(hit, 'custom_cyber_bumper');
         }
       } else if (obs.type === 'metal_ramp_left') {
@@ -525,10 +548,11 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         const botHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY + obs.h, obs.x + obs.w, topY + obs.h);
         if (botHit) recordHit(botHit, 'custom_metal_ramp_right');
       } else if (obs.type === 'explosive_barrel') {
+        if (obs.exploded || (typeof obs.hp === 'number' && obs.hp <= 0)) continue;
         const hit = getSegmentAABBIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, bottomY);
         if (hit) {
           recordHit(hit, 'custom_explosive_barrel');
-          explodeBarrel(obs, groundY);
+          if (!pureSight) explodeBarrel(obs, groundY);
         }
       } else if (obs.type === 'laser_gate') {
         const hit = getSegmentAABBIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, bottomY);
@@ -554,6 +578,15 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         const hit = getSegmentAABBIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, bottomY);
         recordHit(hit, 'custom_' + obs.type);
       }
+    }
+  }
+
+  if (isA3 && pureSight && typeof window !== 'undefined' && window.ARENA_3_TOWER_PILLARS) {
+    for (const side of ['left', 'right']) {
+      const pillar = window.ARENA_3_TOWER_PILLARS[side];
+      if (!pillar || !pillar.intact) continue;
+      const pHit = getSegmentAABBIntersection(x1, y1, x2, y2, pillar.stemX - 4, pillar.topY + 22, pillar.stemX + pillar.w + 4, pillar.baseY);
+      recordHit(pHit, 'tower_pillar_' + side);
     }
   }
 
