@@ -11,6 +11,7 @@ import { camera as globalCamera, worldToScreen } from '../camera.js';
 import { drawCarePackages, getCarePackageSurfaceY } from './carePackage.js';
 import { drawMortarStrikes, drawAttackDrones, activeAttackDrones } from './supportStrikes.js';
 import { drawSentryGuns, activeSentryGuns } from './sentryGun.js';
+import { drawForegroundShipDrones } from './droneTransports.js';
 import { isGamepadPrimaryInput } from '../input/gamepad.js';
 
 export function drawKillstreakVectorIcon(ctx, streakId, cx, cy, radius = 8, color = '#00e5ff') {
@@ -274,6 +275,7 @@ export function drawKillstreakWorld(ctx, camera, combatants, player) {
   drawMortarStrikes(ctx, cam);
   drawAttackDrones(ctx, cam);
   drawSentryGuns(ctx, cam);
+  drawForegroundShipDrones(ctx);
   drawMortarTargetingWorld(ctx, cam, player);
 
   ctx.restore();

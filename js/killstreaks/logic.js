@@ -20,6 +20,7 @@ import { getActiveArena } from '../obstacles.js';
 import { initCarePackages, spawnCarePackage, updateCarePackages } from './carePackage.js';
 import { spawnMortarStrike, updateMortarStrikes, spawnAttackDrone, updateAttackDrones } from './supportStrikes.js';
 import { initSentryGuns, spawnSentryGun, updateSentryGuns } from './sentryGun.js';
+import { resetDroneTransports, updateDroneTransports } from './droneTransports.js';
 import { activateJuggernautMode } from '../player/juggernaut.js';
 import { playSound } from '../audio/index.js';
 
@@ -102,6 +103,7 @@ export function initKillstreaks() {
   resetMortarTargetingState();
   initCarePackages();
   initSentryGuns();
+  resetDroneTransports();
 }
 
 /**
@@ -621,6 +623,7 @@ export function updateKillstreaks(dt = (1 / 60), playerOverride = null, combatan
     }
   }
 
+  updateDroneTransports(safeDt);
   updateCarePackages(safeDt, activePlayer, combatantsList);
   updateMortarStrikes(safeDt, combatantsList);
   updateAttackDrones(safeDt, combatantsList);

@@ -12,6 +12,8 @@ import { bullets } from '../weapons/transform.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { getCarePackageSurfaceY } from './carePackage.js';
 import { killstreakState } from './state.js';
+import { getSentryTurretSheet, SENTRY_SHEET_RECTS } from './droneModel.js';
+import { isArena3ActiveForDrones, spawnShipDroneTransport } from './droneTransports.js';
 
 export const activeSentryGuns = [];
 
@@ -49,6 +51,7 @@ export function spawnSentryGun(owner, targetX, options = {}) {
   const facing = (typeof options.facing === 'number') ? options.facing : (owner.facing || 1);
   const initialYaw = facing > 0 ? 0 : Math.PI;
   const sentryId = options.sentryId || `sentry_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const shipDelivery = isArena3ActiveForDrones();
 
   const sentry = {
     id: sentryId,
@@ -56,8 +59,8 @@ export function spawnSentryGun(owner, targetX, options = {}) {
     team: owner.team || null,
     x: safeX,
     y: surfaceY,
-    w: 32,
-    h: 30,
+    w: 36,
+    h: 42,
     facing,
     yaw: initialYaw,
     targetYaw: initialYaw,
@@ -65,28 +68,59 @@ export function spawnSentryGun(owner, targetX, options = {}) {
     maxHp: 120,
     life: 30.0,
     totalLife: 30.0,
-    state: 'DEPLOYING', // 'DEPLOYING', 'ACTIVE', 'DESTROYED'
-    deployTimer: 0.75,
-    fireCooldown: 0.25,
+    state: shipDelivery ? 'INBOUND' : 'DEPLOYING', // 'INBOUND', 'DEPLOYING', 'ACTIVE', 'DESTROYED'
+    inboundTimer: shipDelivery ? 0.90 : 0,
+    deployTimer: 0.65,
+    fireCooldown: 0.20,
     burstCount: 0,
-    burstMax: 4,
-    burstInterval: 0.08,
-    burstCooldown: 0.58,
+    burstMax: 6,
+    burstInterval: 0.065,
+    burstCooldown: 0.52,
     lockedTarget: null,
     laserScanTimer: 0,
     muzzleFlashTimer: 0,
     gunRecoil: 0,
+    barrelSpin: 0,
+    barrelHeat: 0,
     shells: [],
     deathTimer: 0
   };
 
   activeSentryGuns.push(sentry);
 
-  spawnGroundPuff(safeX, surfaceY);
-  triggerScreenShake(1.6);
+  if (shipDelivery) {
+    spawnShipDroneTransport({
+      cargoType: 'SENTRY',
+      showTurret: false,
+      targetX: safeX,
+      targetY: surfaceY - 40,
+      approachDuration: 0.90,
+      returnDuration: 0.95,
+      arcLift: 112,
+      returnOnArrive: true,
+      owner,
+      onArrive: () => {
+        if (sentry.state === 'INBOUND') {
+          sentry.state = 'DEPLOYING';
+          sentry.deployTimer = 0.65;
+          spawnGroundPuff(sentry.x, sentry.y);
+          spawnJetpackSparks(sentry.x, sentry.y - 14, 1, 10, ['#38bdf8', '#fbbf24', '#ffffff'], 0, -2.5);
+          triggerScreenShake(2.2);
+        }
+      }
+    });
+  } else {
+    spawnGroundPuff(safeX, surfaceY);
+    triggerScreenShake(1.6);
+  }
 
   if (!owner.isBot && !owner.isRemote) {
-    triggerCombatFeedBanner('KILL', '[SENTRY] WIEŻYCZKA STRAŻNICZA ROZSTAWIONA - SEKTOR ZABEZPIECZONY');
+    triggerCombatFeedBanner(
+      'KILL',
+      shipDelivery
+        ? '[SENTRY] DRON DOSTAWCZY WYLATUJE Z WIEŻYCZKĄ MINIGUN'
+        : '[SENTRY] WIEŻYCZKA AUTO-MINIGUN ROZSTAWIONA - SEKTOR ZABEZPIECZONY'
+    );
   }
 
   const isHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function') ? window.isMatchHost() : true;
@@ -161,6 +195,19 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
       continue;
     }
 
+    // 1.5. Oczekiwanie na zrzut przez drona transportowego z okrętu
+    if (sentry.state === 'INBOUND') {
+      sentry.inboundTimer = (sentry.inboundTimer || 0) - safeDt;
+      sentry.laserScanTimer += safeDt;
+      if (sentry.inboundTimer <= -0.35) {
+        // Zabezpieczenie na wypadek przerwania lotu drona
+        sentry.state = 'DEPLOYING';
+        sentry.deployTimer = 0.65;
+        spawnGroundPuff(sentry.x, sentry.y);
+      }
+      continue;
+    }
+
     // 2. Faza rozstawiania statywu hydraulicznego
     if (sentry.state === 'DEPLOYING') {
       sentry.deployTimer -= safeDt;
@@ -168,7 +215,7 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
         sentry.state = 'ACTIVE';
         spawnGroundPuff(sentry.x, sentry.y);
         if (sentry.owner && !sentry.owner.isBot && !sentry.owner.isRemote) {
-          triggerCombatFeedBanner('KILL', '[SENTRY] WIEŻYCZKA STRAŻNICZA ONLINE - OBRONA AKTYWNA');
+          triggerCombatFeedBanner('KILL', '[SENTRY] AUTO-MINIGUN ONLINE - OBRONA AKTYWNA');
         }
       }
       continue;
@@ -187,8 +234,20 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
       continue;
     }
 
-    if (sentry.gunRecoil > 0) sentry.gunRecoil = Math.max(0, sentry.gunRecoil - safeDt * 22);
+    if (sentry.gunRecoil > 0) sentry.gunRecoil = Math.max(0, sentry.gunRecoil - safeDt * 24);
     if (sentry.muzzleFlashTimer > 0) sentry.muzzleFlashTimer -= safeDt;
+
+    // Obrót i nagrzewanie luf gatlinga auto-miniguna
+    if (sentry.lockedTarget) {
+      sentry.barrelSpin = (sentry.barrelSpin || 0) + safeDt * 34;
+    } else {
+      sentry.barrelSpin = (sentry.barrelSpin || 0) + safeDt * 5;
+    }
+    if (sentry.muzzleFlashTimer > 0) {
+      sentry.barrelHeat = Math.min(1, (sentry.barrelHeat || 0) + safeDt * 1.45);
+    } else {
+      sentry.barrelHeat = Math.max(0, (sentry.barrelHeat || 0) - safeDt * 0.24);
+    }
 
     // Aktualizacja wyrzuconych mosiężnych łusek
     for (let sIdx = sentry.shells.length - 1; sIdx >= 0; sIdx--) {
@@ -203,8 +262,8 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
 
     // Kolizje pocisków wroga z pancerzem wieżyczki
     const pivotX = sentry.x;
-    const pivotY = sentry.y - 18;
-    const hitBox = { x: sentry.x - 14, y: sentry.y - 30, w: 28, h: 30 };
+    const pivotY = sentry.y - 36;
+    const hitBox = { x: sentry.x - 18, y: sentry.y - 44, w: 36, h: 44 };
 
     if (Array.isArray(bullets)) {
       for (let bIdx = bullets.length - 1; bIdx >= 0; bIdx--) {
@@ -296,10 +355,10 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
 
         const aimCos = Math.cos(sentry.yaw);
         const aimSin = Math.sin(sentry.yaw);
-        const barrelLen = 17;
+        const barrelLen = 36;
         const muzzleX = pivotX + aimCos * barrelLen;
         const muzzleY = pivotY + aimSin * barrelLen;
-        const spd = 28;
+        const spd = 30;
 
         // Wyrzut łuski nabojowej w górę i w bok
         if (sentry.shells.length < 18) {
@@ -327,9 +386,9 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
             weaponId: 'SENTRY_MINIGUN',
             vx: aimCos * spd,
             vy: aimSin * spd,
-            damage: 10,
-            ballPush: 0.16,
-            bodyPush: 0.05,
+            damage: 7.5,
+            ballPush: 0.14,
+            bodyPush: 0.04,
             ragdollPushMult: 1.15,
             color: (sentry.owner?.isBot) ? '#f43f5e' : '#00e5ff',
             shooter: sentry.owner,
@@ -365,16 +424,38 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
 export function drawSentryGuns(ctx, camera) {
   if (activeSentryGuns.length === 0) return;
 
+  const sheet = getSentryTurretSheet();
   ctx.save();
 
   for (const sentry of activeSentryGuns) {
     const sx = sentry.x;
     const sy = sentry.y;
-    const pivotX = sx;
-    const pivotY = sy - 18;
+
+    // 0. ZNACZNIK STREFY ZRZUTU PODCZAS LOTU DRONA Z OKRĘTU
+    if (sentry.state === 'INBOUND') {
+      const pulse = 0.5 + 0.5 * Math.sin((sentry.laserScanTimer || 0) * 12);
+      ctx.save();
+      ctx.strokeStyle = `rgba(56, 189, 248, ${(0.45 + pulse * 0.45).toFixed(2)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx - 20, sy - 2); ctx.lineTo(sx + 20, sy - 2);
+      ctx.moveTo(sx - 12, sy - 8); ctx.lineTo(sx - 12, sy - 2);
+      ctx.moveTo(sx + 12, sy - 8); ctx.lineTo(sx + 12, sy - 2);
+      ctx.stroke();
+
+      ctx.font = '700 8px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.fillText('[SENTRY // ZRZUT]', sx, sy - 13);
+      ctx.restore();
+      continue;
+    }
+
     const deployProg = (sentry.state === 'DEPLOYING')
-      ? Math.max(0.1, 1 - (sentry.deployTimer / 0.75))
+      ? Math.max(0.18, 1 - (sentry.deployTimer / 0.65))
       : 1.0;
+    const pivotX = sx;
+    const pivotY = sy - 36 * deployProg;
 
     // 1. ŁUSKI NABOJOWE NA ZIEMI
     if (sentry.shells && sentry.shells.length > 0) {
@@ -396,8 +477,8 @@ export function drawSentryGuns(ctx, camera) {
     if (sentry.state === 'ACTIVE') {
       const aimCos = Math.cos(sentry.yaw);
       const aimSin = Math.sin(sentry.yaw);
-      const muzzleX = pivotX + aimCos * 17;
-      const muzzleY = pivotY + aimSin * 17;
+      const muzzleX = pivotX + aimCos * 36;
+      const muzzleY = pivotY + aimSin * 36;
 
       if (sentry.lockedTarget) {
         const target = sentry.lockedTarget;
@@ -406,7 +487,6 @@ export function drawSentryGuns(ctx, camera) {
         const laserColor = sentry.owner?.isBot ? 'rgba(244, 63, 94, 0.3)' : 'rgba(0, 229, 255, 0.3)';
         const coreColor = sentry.owner?.isBot ? '#f43f5e' : '#ffffff';
 
-        // Szeroka poświata lasera
         ctx.strokeStyle = laserColor;
         ctx.lineWidth = 3.2;
         ctx.beginPath();
@@ -414,7 +494,6 @@ export function drawSentryGuns(ctx, camera) {
         ctx.lineTo(tx, ty);
         ctx.stroke();
 
-        // Ostra linia rdzenia
         ctx.strokeStyle = coreColor;
         ctx.lineWidth = 1.0;
         ctx.beginPath();
@@ -422,13 +501,11 @@ export function drawSentryGuns(ctx, camera) {
         ctx.lineTo(tx, ty);
         ctx.stroke();
 
-        // Punkt skupienia lasera
         ctx.fillStyle = sentry.owner?.isBot ? '#f43f5e' : '#00e5ff';
         ctx.beginPath();
         ctx.arc(tx, ty, 3.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Ramka namierzania [SENTRY // ACQUIRED]
         const bx = target.x - 4;
         const by = target.y - 4;
         const bw = target.w + 8;
@@ -448,7 +525,6 @@ export function drawSentryGuns(ctx, camera) {
         ctx.fillStyle = sentry.owner?.isBot ? '#f43f5e' : '#00e5ff';
         ctx.fillText('[SENTRY // LOCK]', bx, by - 3);
       } else {
-        // Tryb skanowania LIDAR
         const scanDist = 85;
         const scanEndX = muzzleX + aimCos * scanDist;
         const scanEndY = muzzleY + aimSin * scanDist;
@@ -468,144 +544,109 @@ export function drawSentryGuns(ctx, camera) {
       }
     }
 
-    // 3. PODSTAWA STATYWU (TRIPOD BASE)
-    const legSpread = 16 * deployProg;
-    const legHeight = 12 * deployProg;
-
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 3.2;
-    ctx.beginPath();
-    // Lewa noga
-    ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx - legSpread, sy);
-    // Prawa noga
-    ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx + legSpread, sy);
-    // Środkowa noga
-    ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx, sy);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx - legSpread, sy);
-    ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx + legSpread, sy);
-    ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx, sy);
-    ctx.stroke();
-
-    // Stopki statywu zakotwiczone w podłożu
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(sx - legSpread - 3, sy - 2, 6, 2.5);
-    ctx.fillRect(sx + legSpread - 3, sy - 2, 6, 2.5);
-    ctx.fillRect(sx - 2, sy - 2, 4, 2.5);
-
-    // Kolumna pionowa hydrauliczna
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(sx - 3, sy - 18 * deployProg, 6, 12 * deployProg);
-
-    // Magazynek bębnowy na amunicję pod wieżyczką
-    ctx.fillStyle = '#0f172a';
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(sx - 7, sy - 14 * deployProg, 14, 8, 2) : ctx.rect(sx - 7, sy - 14 * deployProg, 14, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    // 4. OBROTOWA GŁOWICA WIEŻYCZKI I PANCERZ MANTLET
+    // 3. PODSTAWA STATYWU HYDRAULICZNEGO ZE SPRITE SHEETU (TRIPOD BASE)
     if (sentry.state !== 'DESTROYED') {
+      if (sheet) {
+        const rt = SENTRY_SHEET_RECTS.tripod;
+        const tripodH = 42 * deployProg;
+        const tripodW = (tripodH * (rt.w / rt.h)) * (0.72 + 0.28 * deployProg);
+        ctx.drawImage(
+          sheet,
+          rt.x, rt.y, rt.w, rt.h,
+          sx - tripodW * 0.5, sy - tripodH, tripodW, tripodH
+        );
+      } else {
+        const legSpread = 16 * deployProg;
+        const legHeight = 14 * deployProg;
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx - legSpread, sy);
+        ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx + legSpread, sy);
+        ctx.moveTo(sx, sy - legHeight); ctx.lineTo(sx, sy);
+        ctx.stroke();
+      }
+
+      // 4. OBROTOWA GŁOWICA AUTO-MINIGUNA I ROTACYJNE LUFY GATLINGA
       ctx.save();
       ctx.translate(pivotX, pivotY);
       ctx.rotate(sentry.yaw);
+      if (Math.cos(sentry.yaw) < 0) {
+        ctx.scale(1, -1);
+      }
 
-      // A. Płyta pancerna mantletu (odporna na ogień z przodu)
-      ctx.fillStyle = '#090d16';
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(-6, -9);
-      ctx.lineTo(8, -8);
-      ctx.lineTo(6, 8);
-      ctx.lineTo(-6, 9);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      const recoilPx = Math.min(3.5, (sentry.gunRecoil || 0) * 0.72);
+      if (sheet) {
+        const rb = SENTRY_SHEET_RECTS.body;
+        const bodyW = 35;
+        const bodyH = bodyW * (rb.h / rb.w); // ~26.25px
+        const heat = sentry.barrelHeat || 0;
+        const heatIdx = heat >= 0.70 ? 2 : (heat >= 0.34 ? 1 : 0);
+        const rBar = SENTRY_SHEET_RECTS.barrels[heatIdx];
+        const barW = 29;
+        const barH = barW * (rBar.h / rBar.w); // ~8.2px
+        const spinVib = Math.sin(sentry.barrelSpin || 0) * (sentry.lockedTarget ? 0.55 : 0.15);
 
-      // B. Korpus mechanizmu ryglowego
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(-8, -5, 12, 10);
+        // Lufy Gatlinga wychodzące z kołnierza wieżyczki + rotacyjna animacja
+        ctx.drawImage(
+          sheet,
+          rBar.x, rBar.y, rBar.w, rBar.h,
+          9 - recoilPx, -barH * 0.5 + spinVib, barW, barH
+        );
 
-      // C. Podwójna lufa działka z odrzutem
-      const barrelLen = Math.max(6, 17 - (sentry.gunRecoil || 0));
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 2.0;
+        // Subtelny błysk rotacji na żebrach luf podczas ognia
+        if (sentry.lockedTarget && Math.sin((sentry.barrelSpin || 0) * 1.5) > 0.25) {
+          ctx.fillStyle = 'rgba(226, 232, 240, 0.28)';
+          ctx.fillRect(15 - recoilPx, -barH * 0.22 + spinVib, 18, 1.3);
+        }
 
-      // Górna lufa
-      ctx.beginPath();
-      ctx.moveTo(2, -2.5); ctx.lineTo(2 + barrelLen, -2.5);
-      ctx.stroke();
+        // Korpus pancerza i głowica FLIR
+        ctx.drawImage(
+          sheet,
+          rb.x, rb.y, rb.w, rb.h,
+          -19, -bodyH * 0.47, bodyW, bodyH
+        );
 
-      // Dolna lufa
-      ctx.beginPath();
-      ctx.moveTo(2, 2.5); ctx.lineTo(2 + barrelLen, 2.5);
-      ctx.stroke();
+        // Aktywny błysk źrenicy FLIR na górnym celowniku
+        ctx.fillStyle = sentry.lockedTarget ? '#f43f5e' : '#00e5ff';
+        ctx.beginPath();
+        ctx.arc(-1, -bodyH * 0.33, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-12, -7, 22, 14);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(8 - recoilPx, -3, 24, 6);
+      }
 
-      // Hamulce wylotowe (muzzle brakes)
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(2 + barrelLen - 3, -3.8, 3, 2.6);
-      ctx.fillRect(2 + barrelLen - 3, 1.2, 3, 2.6);
-
-      // D. Głowica optoelektroniczna FLIR na szczycie
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.arc(0, -9, 3.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 1.0;
-      ctx.stroke();
-
-      // Źrenica sensora FLIR
-      ctx.fillStyle = sentry.lockedTarget ? '#f43f5e' : '#10b981';
-      ctx.beginPath();
-      ctx.arc(1.2, -9, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // E. Błysk wylotowy przy wystrzale
+      // Błysk wylotowy z obrotowych luf miniguna
       if (sentry.muzzleFlashTimer > 0) {
-        const flashX = 2 + barrelLen + 2;
-
+        const flashX = 37 - recoilPx;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.moveTo(flashX, 0);
-        ctx.lineTo(flashX + 10, 0);
-        ctx.lineTo(flashX + 2, -3);
-        ctx.lineTo(flashX + 2, -8);
-        ctx.lineTo(flashX + 2, -3);
-        ctx.lineTo(flashX + 10, 0);
-        ctx.lineTo(flashX + 2, 3);
-        ctx.lineTo(flashX + 2, 8);
-        ctx.lineTo(flashX + 2, 3);
+        ctx.lineTo(flashX + 13, 0);
+        ctx.lineTo(flashX + 2, -3.5);
+        ctx.lineTo(flashX + 2, -9);
+        ctx.lineTo(flashX + 2, -3.5);
+        ctx.lineTo(flashX + 13, 0);
+        ctx.lineTo(flashX + 2, 3.5);
+        ctx.lineTo(flashX + 2, 9);
+        ctx.lineTo(flashX + 2, 3.5);
         ctx.closePath();
         ctx.fill();
 
-        ctx.fillStyle = sentry.owner?.isBot ? 'rgba(244, 63, 94, 0.45)' : 'rgba(0, 229, 255, 0.45)';
+        ctx.fillStyle = sentry.owner?.isBot ? 'rgba(244, 63, 94, 0.50)' : 'rgba(251, 146, 60, 0.50)';
         ctx.beginPath();
-        ctx.arc(flashX + 3, 0, 6.5, 0, Math.PI * 2);
+        ctx.arc(flashX + 4, 0, 7.5, 0, Math.PI * 2);
         ctx.fill();
-
-        // Przedmuchy gazu
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.moveTo(flashX - 2, -2.5); ctx.lineTo(flashX - 5, -6);
-        ctx.moveTo(flashX - 2, 2.5); ctx.lineTo(flashX - 5, 6);
-        ctx.stroke();
       }
 
       ctx.restore();
     } else {
       // Zgliszcza zniszczonej wieżyczki
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(sx - 8, sy - 14, 16, 8);
-      // Dym ze zgliszcz
+      ctx.fillRect(sx - 10, sy - 14, 20, 8);
       ctx.fillStyle = 'rgba(100, 116, 139, 0.35)';
       ctx.beginPath();
       ctx.arc(sx + Math.sin(sentry.deathTimer * 5) * 4, sy - 20 - (2.4 - sentry.deathTimer) * 8, 8, 0, Math.PI * 2);
@@ -614,8 +655,8 @@ export function drawSentryGuns(ctx, camera) {
 
     // 5. PASEK HP I IDENTYFIKATOR TAKTYCZNY
     if (sentry.state === 'ACTIVE') {
-      const hudY = sy - 34;
-      const barW = 26;
+      const hudY = sy - 56;
+      const barW = 30;
       const barH = 3.5;
       const hpPct = Math.max(0, sentry.hp / sentry.maxHp);
 
@@ -629,12 +670,12 @@ export function drawSentryGuns(ctx, camera) {
       ctx.fillStyle = hpColor;
       ctx.fillRect(sx - barW / 2, hudY, barW * hpPct, barH);
 
-      // Oznaczenie i czas pozostały
       ctx.font = '700 7px monospace';
       ctx.fillStyle = sentry.owner?.isBot ? '#f43f5e' : '#00e5ff';
-      ctx.fillText('[SENTRY]', sx - 13, hudY - 3);
+      ctx.textAlign = 'left';
+      ctx.fillText('[MINIGUN]', sx - 17, hudY - 3);
       const lifeSec = Math.ceil(sentry.life);
-      ctx.fillText(`${lifeSec}S`, sx + 7, hudY - 3);
+      ctx.fillText(`${lifeSec}S`, sx + 11, hudY - 3);
     }
   }
 

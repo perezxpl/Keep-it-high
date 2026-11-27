@@ -25,6 +25,8 @@ import {
   solveMortarFallTicks,
   drawMortarBombSprite
 } from './mortarBallistics.js';
+import { drawDroneBody } from './droneModel.js';
+import { isArena3ActiveForDrones, spawnShipDroneTransport } from './droneTransports.js';
 
 export const activeMortarStrikes = [];
 export const activeAttackDrones = [];
@@ -324,7 +326,8 @@ export function spawnAttackDrone(owner, options = {}) {
   }
 
   const facing = owner.facing || 1;
-  activeAttackDrones.push({
+  const shipDelivery = isArena3ActiveForDrones();
+  const drone = {
     owner,
     x: owner.x - facing * 35,
     y: owner.y - 75,
@@ -342,11 +345,37 @@ export function spawnAttackDrone(owner, options = {}) {
     facing: facing,
     muzzleFlashTimer: 0,
     shells: [],
+    awaitingShipArrival: shipDelivery,
     leaving: false
-  });
+  };
+  activeAttackDrones.push(drone);
+
+  if (shipDelivery) {
+    spawnShipDroneTransport({
+      cargoType: 'NONE',
+      showTurret: true,
+      approachDuration: 0.92,
+      arcLift: 120,
+      returnOnArrive: false,
+      owner,
+      getTargetPos: () => (!owner || owner.isDead)
+        ? null
+        : { x: owner.x - (owner.facing || 1) * 36, y: owner.y - 68 },
+      onArrive: (tr) => {
+        drone.awaitingShipArrival = false;
+        drone.x = tr.x;
+        drone.y = tr.y;
+        drone.facing = owner.facing || tr.facing || 1;
+        drone.aimAngle = drone.facing > 0 ? 0.1 : (Math.PI - 0.1);
+      }
+    });
+  }
 
   if (!owner.isBot && !owner.isRemote) {
-    triggerCombatFeedBanner('KILL', '[DRON] DRON BOJOWY W POZYCJI - WSPARCIE 25S');
+    triggerCombatFeedBanner(
+      'KILL',
+      shipDelivery ? '[DRON] DRON BOJOWY WYLATUJE Z OKRĘTU - WSPARCIE 25S' : '[DRON] DRON BOJOWY W POZYCJI - WSPARCIE 25S'
+    );
   }
 
   const isHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function') ? window.isMatchHost() : true;
@@ -372,15 +401,34 @@ export function updateAttackDrones(dt = (1 / 60), combatants = []) {
       continue;
     }
 
+    if (drone.awaitingShipArrival) {
+      continue;
+    }
+
     drone.life -= safeDt;
     if (drone.life <= 0) {
       activeAttackDrones.splice(i, 1);
       continue;
     }
 
-    // Ostatnie 1.8 sekundy - sekwencja odlotu (departure sequence)
-    if (drone.life < 1.8) {
+    // Ostatnie 1.8 sekundy - odlot z powrotem na okręt (Arena 3) lub w górę ekranu
+    if (drone.life < 1.8 && !drone.leaving) {
       drone.leaving = true;
+      if (isArena3ActiveForDrones()) {
+        spawnShipDroneTransport({
+          cargoType: 'NONE',
+          showTurret: true,
+          startPhase: 'RETURN',
+          initialX: drone.x,
+          initialY: drone.y,
+          initialFacing: drone.facing,
+          returnDuration: 1.05,
+          arcLift: 130,
+          owner
+        });
+        activeAttackDrones.splice(i, 1);
+        continue;
+      }
     }
 
     drone.rotorAngle += safeDt * 52;
@@ -532,6 +580,7 @@ export function drawAttackDrones(ctx, camera) {
   ctx.save();
 
   for (const drone of activeAttackDrones) {
+    if (drone.awaitingShipArrival) continue;
     const dx = drone.x;
     const dy = drone.y;
     const facing = drone.facing || 1;
@@ -671,257 +720,25 @@ export function drawAttackDrones(ctx, camera) {
     }
 
     // -------------------------------------------------------------------------
-    // 4. LOKALNY TRANSFORM KADŁUBA DRONA (Pochylenie i pozycja)
+    // 4. WSPÓLNY MODEL KADŁUBA DRONA I WIEŻYCZKI (DRONEMODEL.JS)
     // -------------------------------------------------------------------------
-    ctx.save();
-    ctx.translate(dx, dy);
-    ctx.rotate(tilt);
-
-    // Odlot: Płomień dopalaczy pionowych
-    if (drone.leaving) {
-      const plumeH = 14 + Math.random() * 8;
-      ctx.fillStyle = '#38bdf8';
-      ctx.beginPath();
-      ctx.moveTo(-16, 4); ctx.lineTo(-12, 4 + plumeH); ctx.lineTo(-8, 4);
-      ctx.moveTo(8, 4); ctx.lineTo(12, 4 + plumeH); ctx.lineTo(16, 4);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(-14, 4); ctx.lineTo(-12, 4 + plumeH * 0.5); ctx.lineTo(-10, 4);
-      ctx.moveTo(10, 4); ctx.lineTo(12, 4 + plumeH * 0.5); ctx.lineTo(14, 4);
-      ctx.fill();
-    }
-
-    // A. Ramiona wspornikowe wirników (karbonowe belki)
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(-23, -2); ctx.lineTo(23, -2);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-23, -2); ctx.lineTo(23, -2);
-    ctx.stroke();
-
-    // B. Lewa i Prawa Gondola Wirnika (Ducted Fan Housings)
-    for (const rx of [-23, 23]) {
-      // Pierścień obudowy turbiny (cowl ring)
-      ctx.fillStyle = '#0f172a';
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(rx - 11, -5, 22, 6, 2) : ctx.rect(rx - 11, -5, 22, 6);
-      ctx.fill();
-      ctx.stroke();
-
-      // Dysk rozmycia wirnika (cyjanowa poświata)
-      const blurAlpha = 0.38 + 0.18 * Math.sin(drone.rotorAngle + rx);
-      ctx.fillStyle = `rgba(56, 189, 248, ${blurAlpha})`;
-      ctx.beginPath();
-      ctx.ellipse(rx, -4, 9.5, 2.8, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Kręcące się łopatki wirnika
-      const spinAngle = drone.rotorAngle * (rx < 0 ? 1 : -1);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.lineWidth = 1.0;
-      const bladeSpan = 8;
-      const bCos = Math.cos(spinAngle) * bladeSpan;
-      const bSin = Math.sin(spinAngle) * 2.2;
-      ctx.beginPath();
-      ctx.moveTo(rx - bCos, -4 - bSin);
-      ctx.lineTo(rx + bCos, -4 + bSin);
-      ctx.stroke();
-
-      // Stożek piasty silnika (center spinner hub)
-      ctx.fillStyle = '#94a3b8';
-      ctx.beginPath();
-      ctx.arc(rx, -4, 2.0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // C. Oświetlenie pozycyjne (Strobe Navigation Lights na skrajach)
-    const strobeBlink = (Math.floor(drone.life * 4) % 2 === 0);
-    if (strobeBlink) {
-      // Lewy koniec: czerwony błysk
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.arc(-33, -2, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Prawy koniec: zielony błysk
-      ctx.fillStyle = '#10b981';
-      ctx.beginPath();
-      ctx.arc(33, -2, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // D. Kadłub główny (Stealth Carbon Fuselage)
-    ctx.fillStyle = '#090d16';
-    ctx.beginPath();
-    if (facing > 0) {
-      ctx.moveTo(-16, -2);
-      ctx.lineTo(-12, -7);
-      ctx.lineTo(8, -7);
-      ctx.lineTo(17, -2);
-      ctx.lineTo(14, 5);
-      ctx.lineTo(-12, 5);
-    } else {
-      ctx.moveTo(16, -2);
-      ctx.lineTo(12, -7);
-      ctx.lineTo(-8, -7);
-      ctx.lineTo(-17, -2);
-      ctx.lineTo(-14, 5);
-      ctx.lineTo(12, 5);
-    }
-    ctx.closePath();
-    ctx.fill();
-
-    // Pancerz wierzchni i krawędzie fazowane (chamfer edges)
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    // Górna płyta pancerza (kompozyt węglowy)
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(-10, -6, 20, 4, 1.5) : ctx.rect(-10, -6, 20, 4);
-    ctx.fill();
-
-    // Pasek akcentowy w technologii neon cyber (cyan stripe)
-    ctx.strokeStyle = '#00e5ff';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(-8, -2); ctx.lineTo(8, -2);
-    ctx.stroke();
-
-    // E. Wskaźnik energii / czasu baterii (5-segmentowy pasek LED)
-    const totalPips = 5;
-    const litPips = Math.max(1, Math.ceil((drone.life / (drone.totalLife || 25)) * totalPips));
-    let ledColor = '#00e5ff';
-    if (drone.life < 5) {
-      ledColor = (Math.floor(drone.life * 6) % 2 === 0) ? '#ef4444' : '#7f1d1d';
-    } else if (drone.life < 10) {
-      ledColor = '#f59e0b';
-    }
-
-    for (let p = 0; p < totalPips; p++) {
-      ctx.fillStyle = (p < litPips) ? ledColor : '#0f172a';
-      ctx.fillRect(-7 + p * 3, -5, 2, 1.5);
-    }
-
-    // F. Oznaczenie taktyczne stencil
-    ctx.font = '600 5px monospace';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('UAV-9', -7, 3);
-
-    // G. Anteny telemetryczne z tyłu kadłuba
-    const rearX = facing > 0 ? -13 : 13;
-    const antDir = facing > 0 ? -1 : 1;
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(rearX, -5); ctx.lineTo(rearX + antDir * 5, -12);
-    ctx.moveTo(rearX + (facing > 0 ? 3 : -3), -5); ctx.lineTo(rearX + antDir * 2, -13);
-    ctx.stroke();
-
-    // H. Oko sensora FLIR / Głowica optoelektroniczna na nosie
-    const noseX = facing > 0 ? 15 : -15;
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.arc(noseX, 0, 3.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.0;
-    ctx.stroke();
-
-    // Źrenica kamery FLIR (czerwona IR przy namierzeniu wroga, cyjanowa przy skanowaniu)
-    ctx.fillStyle = drone.lockedTarget ? '#f43f5e' : '#00e5ff';
-    ctx.beginPath();
-    ctx.arc(noseX + (facing * 0.8), 0, 1.6, 0, Math.PI * 2);
-    ctx.fill();
-    // Błysk szkiełka obiektywu
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(noseX + (facing * 0.4), -0.6, 0.6, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore(); // Koniec transformu kadłuba
-
-    // -------------------------------------------------------------------------
-    // 5. WIEŻYCZKA AUTOCANNON I WYLOT LUF (Obrót w osi celu)
-    // -------------------------------------------------------------------------
-    ctx.save();
-    ctx.translate(turretWorldX, turretWorldY);
-    ctx.rotate(drone.aimAngle);
-
-    // A. Kulista podstawa montażowa wieżyczki
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.arc(0, 0, 3.8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.0;
-    ctx.stroke();
-
-    // B. Podwójna lufa działka z odrzutem mechanicznym
-    const barrelLen = Math.max(5, 12 - (drone.gunRecoil || 0));
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1.8;
-    // Górna lufa
-    ctx.beginPath();
-    ctx.moveTo(2, -1.8);
-    ctx.lineTo(2 + barrelLen, -1.8);
-    ctx.stroke();
-    // Dolna lufa
-    ctx.beginPath();
-    ctx.moveTo(2, 1.8);
-    ctx.lineTo(2 + barrelLen, 1.8);
-    ctx.stroke();
-
-    // Hamulce wylotowe (muzzle brake caps)
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(2 + barrelLen - 2, -2.8, 2.2, 2.0);
-    ctx.fillRect(2 + barrelLen - 2, 0.8, 2.2, 2.0);
-
-    // C. Błysk wylotowy z lufy przy strzale
-    if (drone.muzzleFlashTimer > 0) {
-      const flashX = 2 + barrelLen + 2;
-
-      // 4-ramienna gwiazda płomienia wylotowego
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(flashX, 0);
-      ctx.lineTo(flashX + 8, 0);
-      ctx.lineTo(flashX + 1, -2.5);
-      ctx.lineTo(flashX + 1, -6);
-      ctx.lineTo(flashX + 1, -2.5);
-      ctx.lineTo(flashX + 8, 0);
-      ctx.lineTo(flashX + 1, 2.5);
-      ctx.lineTo(flashX + 1, 6);
-      ctx.lineTo(flashX + 1, 2.5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Błękitna aureola plazmowa
-      ctx.fillStyle = 'rgba(0, 229, 255, 0.45)';
-      ctx.beginPath();
-      ctx.arc(flashX + 2, 0, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Boczne przedmuchy gazu z hamulca wylotowego
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.lineWidth = 1.0;
-      ctx.beginPath();
-      ctx.moveTo(flashX - 2, -2); ctx.lineTo(flashX - 5, -5);
-      ctx.moveTo(flashX - 2, 2); ctx.lineTo(flashX - 5, 5);
-      ctx.stroke();
-    }
-
-    ctx.restore();
+    drawDroneBody(ctx, {
+      x: dx,
+      y: dy,
+      scale: 1.0,
+      facing,
+      tilt,
+      rotorAngle: drone.rotorAngle,
+      aimAngle: drone.aimAngle,
+      gunRecoil: drone.gunRecoil || 0,
+      muzzleFlashTimer: drone.muzzleFlashTimer || 0,
+      lockedTarget: drone.lockedTarget,
+      life: drone.life,
+      totalLife: drone.totalLife || 25,
+      leaving: drone.leaving,
+      cargoType: 'NONE',
+      showTurret: true
+    });
   }
 
   ctx.restore();

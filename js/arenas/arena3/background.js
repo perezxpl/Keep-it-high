@@ -25,6 +25,11 @@ import {
   computeShipTurretAimAngle,
   drawMortarBombSprite
 } from '../../killstreaks/mortarBallistics.js';
+import {
+  setWarshipHelipadScreenAnchor,
+  drawBackgroundShipDrones,
+  resetDroneTransports
+} from '../../killstreaks/droneTransports.js';
 
 export { ARENA3_SHIP_MORTAR_STAGGER, ARENA3_SHIP_MORTAR_ASCENT };
 
@@ -107,6 +112,7 @@ export function resetArena3ShipMortars() {
   arena3ShipMortarState.recoilAft = 0;
   arena3ShipMortarState.muzzleFlashForward = 0;
   arena3ShipMortarState.muzzleFlashAft = 0;
+  resetDroneTransports();
 }
 
 /**
@@ -190,6 +196,8 @@ function getArena3WarshipLayout(W_screen, H_screen, camera, time) {
 
   const fwdPivot = uvToScreen(WARSHIP_TURRET_FWD.u, WARSHIP_TURRET_FWD.v);
   const aftPivot = uvToScreen(WARSHIP_TURRET_AFT.u, WARSHIP_TURRET_AFT.v);
+  const padPos = uvToScreen(0.085, 0.728);
+  setWarshipHelipadScreenAnchor(padPos.x, padPos.y, shipScale);
 
   const fwdAngle = arena3ShipMortarState.turretAngleFwd + pitch;
   const aftAngle = arena3ShipMortarState.turretAngleAft + pitch;
@@ -1181,6 +1189,7 @@ export function drawArena3Background(ctx, camera) {
   // WARSTWA 5.5: WZNOSZĄCE SIĘ POCISKI MOŹDZIERZOWE Z OKRĘTU PONAD EKRAN
   // -----------------------------------------------------------------------
   drawArena3ShipMortars(ctx, warshipLayout);
+  drawBackgroundShipDrones(ctx, camera);
 
   // -----------------------------------------------------------------------
   // WARSTWA 6: ELEMENTY W PRZESTRZENI ŚWIATA (TRANSFORMACJA KAMERY)

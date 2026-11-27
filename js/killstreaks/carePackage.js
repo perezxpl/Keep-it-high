@@ -17,6 +17,7 @@ import { spawnSentryGun } from './sentryGun.js';
 import { addDynamicLight } from '../lighting/index.js';
 import { cureInfection, isZombieModeActive } from '../zombie/index.js';
 import { activateJuggernautMode } from '../player/juggernaut.js';
+import { isArena3ActiveForDrones, spawnShipDroneTransport } from './droneTransports.js';
 
 function getKeys() {
   if (typeof window !== 'undefined' && window.keys) return window.keys;
@@ -90,16 +91,19 @@ export function spawnCarePackage(owner, targetX, options = {}) {
     particles: []
   });
 
-  // 2. Utworzenie skrzyni spadającej z powietrza na spadochronie
-  activeCarePackages.push({
+  // 2. Utworzenie skrzyni (na Arenie 3 dostarczanej przez drona transportowego z okrętu)
+  const shipDelivery = isArena3ActiveForDrones();
+  const dropAltitudeY = Math.max(95, landingY - (shipDelivery ? 255 : 480));
+  const crate = {
     id: crateId,
     owner,
     x: safeX - 19,
-    y: landingY - 480,
+    y: dropAltitudeY,
     w: 38,
     h: 28,
-    vy: 2.8,
-    isFalling: true,
+    vy: shipDelivery ? 3.4 : 2.8,
+    awaitingDrone: shipDelivery,
+    isFalling: !shipDelivery,
     isGrounded: false,
     parachuteAlpha: 1.0,
     swayTimer: Math.random() * Math.PI * 2,
@@ -109,7 +113,28 @@ export function spawnCarePackage(owner, targetX, options = {}) {
     openedTimer: 0,
     floatingNotice: null,
     landingY
-  });
+  };
+  activeCarePackages.push(crate);
+
+  if (shipDelivery) {
+    spawnShipDroneTransport({
+      cargoType: 'CRATE',
+      showTurret: false,
+      targetX: safeX,
+      targetY: dropAltitudeY - 15,
+      approachDuration: 1.25,
+      returnDuration: 1.05,
+      arcLift: 135,
+      returnOnArrive: true,
+      owner,
+      onArrive: (tr) => {
+        crate.awaitingDrone = false;
+        crate.isFalling = true;
+        crate.x = tr.x - crate.w * 0.5;
+        crate.y = tr.y + 15;
+      }
+    });
+  }
 
   if (owner && !owner.isBot && !owner.isRemote) {
     triggerCombatFeedBanner('KILL', '[ZRZUT] FLARA TAKTYCZNA AKTYWNA - SKRZYNIA W DRODZE');
@@ -418,6 +443,7 @@ export function updateCarePackages(dt = (1 / 60), player = null, combatants = []
   // 2. Aktualizacja skrzyń zrzutowych
   for (let i = activeCarePackages.length - 1; i >= 0; i--) {
     const crate = activeCarePackages[i];
+    if (crate.awaitingDrone) continue;
 
     if (crate.isOpen) {
       crate.openedTimer -= safeDt;
@@ -559,6 +585,7 @@ export function drawCarePackages(ctx, camera, player) {
 
   // 2. Rysowanie skrzyń zrzutowych i spadochronów
   for (const crate of activeCarePackages) {
+    if (crate.awaitingDrone) continue;
     const cx = crate.x + crate.w / 2;
     const cy = crate.y + crate.h / 2;
 
