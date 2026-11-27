@@ -74,8 +74,6 @@ export const BARREL_CONFIG = {
   MIN_BARREL_DISTANCE: 140,   // Minimalny dystans między beczkami (px)
   KICK_IMPULSE_X: 14.5,       // Prędkość pozioma po Spartan Kicku [E]
   KICK_IMPULSE_Y: -4.8,       // Lekkie uniesienie w powietrze przy wykopie
-  SLIDE_IMPULSE_X: 12.0,      // Prędkość pozioma po wjechaniu wślizgiem
-  SLIDE_IMPULSE_Y: -3.2,
   BOUNCE_RESTITUTION: 0.38,   // Sprężystość odbić od ścian i podłoża
   FRICTION: 0.94              // Tarcie toczącej się beczki
 };
@@ -86,14 +84,6 @@ export const BARREL_CONFIG = {
  * Arena 5 (Tetris) ma pustą tablicę: beczki pojawiają się tam wyłącznie dynamicznie na klockach wieży!
  */
 export const ARENA_BARREL_SPAWNS = {
-  // Arena 1 - Soldat Night Ops / Baza Wojskowa
-  'arena-1': [
-    { type: 'EXPLOSIVE', x: 1040, y: 454, id: 'a1_barrel_overlook_w' }, // Wysoki pomost snajperski lewy
-    { type: 'EXPLOSIVE', x: 2380, y: 454, id: 'a1_barrel_overlook_e' }, // Wysoki pomost snajperski prawy
-    { type: 'EXPLOSIVE', x: 650,  y: 644, id: 'a1_barrel_gate_w' },     // Kładka podejściowa bramkowa lewa
-    { type: 'EXPLOSIVE', x: 2950, y: 644, id: 'a1_barrel_gate_e' },     // Kładka podejściowa bramkowa prawa
-    { type: 'EXPLOSIVE', x: 1800, y: 684, id: 'a1_barrel_center' }      // Za centralnym ołtarzem
-  ],
   // Arena 2 - Toksyczna Rafineria / Sektor X
   'arena-2': [
     { type: 'TOXIC',     x: 450,  y: 384, id: 'a2_barrel_bastion_a' }, // Bastion Górny A (Lewy)

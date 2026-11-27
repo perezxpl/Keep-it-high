@@ -175,22 +175,6 @@
       "volume": 0.88,
       "pitchJitter": 0.05
     },
-    "ball_kick": {
-      "src": ["ball_kick_1.ogg", "ball_kick_2.ogg"],
-      "volume": 0.92
-    },
-    "ball_bounce": {
-      "src": ["ball_bounce_1.ogg", "ball_bounce_2.ogg"],
-      "volume": 0.85
-    },
-    "ball_post_clang": {
-      "src": ["ball_post_clang_1.ogg", "ball_post_clang_2.ogg"],
-      "volume": 0.90
-    },
-    "goal_horn": {
-      "src": "goal_horn.wav",
-      "volume": 0.85
-    },
     "acid_siren": {
       "src": "acid_siren.ogg",
       "volume": 0.88

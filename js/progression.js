@@ -164,8 +164,6 @@ export const RANKS = [
 ];
 
 export const XP_REWARDS = {
-  MATCH_WIN: 40,
-  GOAL_SCORED: 15,
   ENEMY_KILL: 10,
   ONE_SHOT_DOUBLE: 30,
   ONE_SHOT_TRIPLE: 45,
@@ -216,28 +214,8 @@ export const XP_RULES = [
     xp: 40,
     icon: 'DM',
     badgeClass: 'xp-badge-win',
-    desc: 'Ukończenie 5-minutowej bitwy na Arenie 2 poza podium.',
+    desc: 'Ukończenie 5-minutowej bitwy Deathmatch poza podium.',
     tip: 'Gwarantowana premia bojowa za rozegranie pełnego 5-minutowego meczu.'
-  },
-  {
-    id: 'WIN',
-    title: 'Zwycięstwo w Meczu (Fragball)',
-    category: 'Turniej',
-    xp: 40,
-    icon: 'WIN',
-    badgeClass: 'xp-badge-win',
-    desc: 'Wygranie meczu piłkarskiego (3 bramki na Arenie 1).',
-    tip: 'Zgranie taktyczne i obrona prowadzą do pewnego triumfu.'
-  },
-  {
-    id: 'GOAL',
-    title: 'Zdobycie Bramki',
-    category: 'Cel Meczu',
-    xp: 15,
-    icon: 'GOL',
-    badgeClass: 'xp-badge-goal',
-    desc: 'Celny strzał umieszczający piłkę bezpośrednio w siatce rywali.',
-    tip: 'Uderzenia z woleja, Spartan Kick lub rykoszety sufitowe.'
   },
   {
     id: 'KILL',
@@ -281,13 +259,13 @@ export const XP_RULES = [
   },
   {
     id: 'SPARTAN',
-    title: 'Spartan Kick / Wślizg',
+    title: 'Spartan Kick',
     category: 'Walka Wręcz',
     xp: 10,
     icon: 'KICK',
     badgeClass: 'xp-badge-melee',
-    desc: 'Wepchnięcie rywala potężnym kopnięciem lub wślizgiem w kwas lub przepaść.',
-    tip: 'Użyj klawisza F lub X, aby odrzucić nacierającego wroga.'
+    desc: 'Wepchnięcie rywala potężnym kopnięciem w kwas, lawę lub przepaść.',
+    tip: 'Użyj Spacji lub PPM, aby odrzucić nacierającego wroga.'
   },
   {
     id: 'LOSS',
@@ -378,8 +356,7 @@ export const DEFAULT_PLAYER_STATS = {
   matchesWon: 0,
   matchesLost: 0,
   kills: 0,
-  deaths: 0,
-  goalsScored: 0
+  deaths: 0
 };
 
 const STATS_STORAGE_KEY = 'fragball_player_stats_v1';
@@ -394,8 +371,7 @@ export function getPlayerStats() {
       matchesWon: Number.isFinite(p.matchesWon) && p.matchesWon >= 0 ? p.matchesWon : 0,
       matchesLost: Number.isFinite(p.matchesLost) && p.matchesLost >= 0 ? p.matchesLost : 0,
       kills: Number.isFinite(p.kills) && p.kills >= 0 ? p.kills : 0,
-      deaths: Number.isFinite(p.deaths) && p.deaths >= 0 ? p.deaths : 0,
-      goalsScored: Number.isFinite(p.goalsScored) && p.goalsScored >= 0 ? p.goalsScored : 0
+      deaths: Number.isFinite(p.deaths) && p.deaths >= 0 ? p.deaths : 0
     };
   } catch (e) {
     console.warn('[PROG] Błąd odczytu statystyk gracza:', e);
@@ -444,18 +420,6 @@ export function recordDeath(amount = 1) {
   return stats;
 }
 
-export function recordGoal(amount = 1) {
-  if (typeof window !== 'undefined' && window.isMenuShowcase) return getPlayerStats();
-  const stats = getPlayerStats();
-  const count = Math.max(1, parseInt(amount, 10) || 1);
-  stats.goalsScored = (stats.goalsScored || 0) + count;
-  savePlayerStats(stats);
-  const xpEarned = XP_REWARDS.GOAL_SCORED * count;
-  addPlayerXP(xpEarned);
-  notifyXpGained(`+${xpEarned} XP GOL!`, xpEarned, '#facc15');
-  return stats;
-}
-
 export function resetPlayerStats() {
   const def = { ...DEFAULT_PLAYER_STATS };
   savePlayerStats(def);
@@ -500,7 +464,6 @@ if (typeof window !== 'undefined') {
     recordMatchResult,
     recordKill,
     recordDeath,
-    recordGoal,
     resetPlayerStats,
     getPlayerStatsSummary
   };

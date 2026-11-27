@@ -25,7 +25,7 @@ export function normalizeObstacleType(type) {
 }
 
 export const OBSTACLE_PALETTE = {
-  ARENA_1: [
+  DEFAULT: [
     { type: 'catwalk', name: 'Stalowa Kładka', label: 'Kładka', category: 'platforms', w: 200, h: 14, isPlatform: true, oneWay: true, anchor: 'top' },
     { type: 'sniper_tower', name: 'Wieża Snajperska', label: 'Ambona', category: 'platforms', w: 90, h: 160, isPlatform: true, oneWay: true, anchor: 'bottom' },
     { type: 'metal_ramp_left', name: 'Rampa Lewa', label: 'Rampa L', category: 'platforms', w: 80, h: 40, isPlatform: true, anchor: 'bottom' },
@@ -63,7 +63,7 @@ export const OBSTACLE_PALETTE = {
 export function getObstacleDef(type) {
   if (!type) return null;
   const norm = normalizeObstacleType(type);
-  for (const arenaKey of ['ARENA_1', 'ARENA_2', 'ARENA_3']) {
+  for (const arenaKey of ['DEFAULT', 'ARENA_2', 'ARENA_3']) {
     if (!OBSTACLE_PALETTE[arenaKey]) continue;
     const found = OBSTACLE_PALETTE[arenaKey].find(
       d => d.type === type || d.type === norm || normalizeObstacleType(d.type) === norm

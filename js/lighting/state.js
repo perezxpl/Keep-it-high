@@ -31,8 +31,6 @@ export const lightingState = {
   vignetteAlpha: 0.38,
   // Domyślna jasność otoczenia dla aren (0.0 = pełna czerń, 1.0 = pełne słońce)
   ambientByArena: {
-    'ARENA_1': 0.78,            // Neonowe Miasto (jasne neony)
-    'arena-1': 0.78,
     'ARENA_2': 0.65,            // Toksyczna Rafineria (klimatyczny półmrok)
     'arena-2': 0.65,
     'ARENA_2_SECTOR_X': 0.65,

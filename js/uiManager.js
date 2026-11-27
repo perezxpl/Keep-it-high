@@ -283,18 +283,9 @@ export const uiManager = {
   // Dane karuzeli map w odprawie taktycznej (DOKŁADNIE 1 MAPA NA RAZ)
   briefingArenas: [
     {
-      id: 'ARENA_1',
-      badge: 'SEKTOR 01',
-      counter: 'MAPA 1 / 5',
-      name: 'NEONOWE MIASTO',
-      tag: 'COMBAT BALL',
-      desc: 'Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.',
-      img: './assets/arena1_preview.png?v=v216_neon_stadium_preview'
-    },
-    {
       id: 'ARENA_2',
       badge: 'SEKTOR 02',
-      counter: 'MAPA 2 / 5',
+      counter: 'MAPA 1 / 4',
       name: 'TOKSYCZNA RAFINERIA',
       tag: 'DEATHMATCH 5 MIN',
       desc: 'Ciężki przemysłowy kompleks, centralny wentylator i okresowe zrzuty żrącego kwasu.',
@@ -303,7 +294,7 @@ export const uiManager = {
     {
       id: 'ARENA_3',
       badge: 'SEKTOR 03',
-      counter: 'MAPA 3 / 5',
+      counter: 'MAPA 2 / 4',
       name: 'TAJEMNICZA DŻUNGLA',
       tag: 'ARENA TAKTYCZNA',
       desc: 'Gęsta roślinność, organiczne platformy i starcia na zróżnicowanych wysokościach.',
@@ -312,7 +303,7 @@ export const uiManager = {
     {
       id: 'ARENA_4',
       badge: 'SEKTOR 04',
-      counter: 'MAPA 4 / 5',
+      counter: 'MAPA 3 / 4',
       name: 'OBSIDIAN CALDERA',
       tag: 'MAGMA // GEJZERY TERMICZNE',
       desc: 'KRATER WULKANICZNY // ERUPCJE GAZU I LAWY // BAZALTOWE RAMPY // JEZIORO MAGMY NA DNIE',
@@ -321,7 +312,7 @@ export const uiManager = {
     {
       id: 'ARENA_5',
       badge: 'SEKTOR 05',
-      counter: 'MAPA 5 / 5',
+      counter: 'MAPA 4 / 4',
       name: 'PREFABRYKATOR ORBITALNY',
       tag: 'DYNAMICZNA WIEŻA // ZMIAŻDŻENIE',
       desc: 'SPADAJĄCE KONTENERY // DETONACJA LINII // UCIECZKA W GÓRĘ // SURVIVAL DM',
@@ -428,7 +419,6 @@ export const uiManager = {
     const elLosses = document.getElementById('menu-stat-losses');
     const elMatches = document.getElementById('menu-stat-matches');
     const elWinRate = document.getElementById('menu-stat-winrate');
-    const elGoals = document.getElementById('menu-stat-goals');
 
     if (elKills) elKills.textContent = stats.kills;
     if (elDeaths) elDeaths.textContent = stats.deaths;
@@ -437,7 +427,6 @@ export const uiManager = {
     if (elLosses) elLosses.textContent = stats.matchesLost;
     if (elMatches) elMatches.textContent = stats.matchesPlayed;
     if (elWinRate) elWinRate.textContent = stats.winRate;
-    if (elGoals) elGoals.textContent = stats.goalsScored;
   },
 
   openRanksModal() {
@@ -883,8 +872,7 @@ export const uiManager = {
   updateMpArenaUI(arenaId) {
     const norm = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER') ? 'arena-5' :
                  (arenaId === 'ARENA_4' || arenaId === 'arena-4') ? 'arena-4' :
-                 (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'arena-3' :
-                 (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') ? 'arena-2' : 'arena-1';
+                 (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'arena-3' : 'arena-2';
     document.querySelectorAll('.mp-arena-card').forEach(b => {
       const isTarget = b.dataset.arena === norm;
       b.classList.toggle('active', isTarget);
@@ -894,8 +882,7 @@ export const uiManager = {
   updateArenaSelectUI(arenaId) {
     const norm = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER') ? 'ARENA_5' :
                  (arenaId === 'ARENA_4' || arenaId === 'arena-4') ? 'ARENA_4' :
-                 (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'ARENA_3' :
-                 (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') ? 'ARENA_2' : 'ARENA_1';
+                 (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'ARENA_3' : 'ARENA_2';
     const foundIdx = this.briefingArenas.findIndex(a => a.id === norm);
     if (foundIdx !== -1) {
       this.currentBriefingIndex = foundIdx;
@@ -946,12 +933,10 @@ export const uiManager = {
     if (panelMulti) panelMulti.style.display = (this.currentBriefingMode === 'multi') ? 'flex' : 'none';
 
     // 4. Widoczność opcji poszczególnych map
-    const optMap1 = document.getElementById('arena-opts-ARENA_1');
     const optMap2 = document.getElementById('arena-opts-ARENA_2');
     const optMap3 = document.getElementById('arena-opts-ARENA_3');
     const optMap4 = document.getElementById('arena-opts-ARENA_4');
     const optMap5 = document.getElementById('arena-opts-ARENA_5');
-    if (optMap1) optMap1.style.display = (arena.id === 'ARENA_1') ? 'flex' : 'none';
     if (optMap2) optMap2.style.display = (arena.id === 'ARENA_2') ? 'flex' : 'none';
     if (optMap3) optMap3.style.display = (arena.id === 'ARENA_3') ? 'flex' : 'none';
     if (optMap4) optMap4.style.display = (arena.id === 'ARENA_4') ? 'flex' : 'none';
@@ -1090,25 +1075,23 @@ export const uiManager = {
 
   syncBotCountUI(count = getBotCount()) {
     const c = parseInt(count, 10) || 1;
-    document.querySelectorAll('.dm-bot-count-toggle-group button, #ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
+    document.querySelectorAll('.dm-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.dataset.botCount, 10) === c);
     });
   },
 
   syncBotDiffUI(diff = getBotDifficulty()) {
     const d = (diff === 'easy' || diff === 'hard') ? diff : 'medium';
-    document.querySelectorAll('.dm-diff-toggle-group button, #ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
+    document.querySelectorAll('.dm-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.botDiff === d);
     });
   },
 
   syncBotActiveUI(isActive = isBotEnabled()) {
     const active = !!isActive;
-    document.querySelectorAll('#ball-bot-toggle-group button, #a3-bot-toggle-group button, #a4-bot-toggle-group button, #a5-bot-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#a3-bot-toggle-group button, #a4-bot-toggle-group button, #a5-bot-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', (btn.dataset.botState === 'active') === active);
     });
-    const ballCountRow = document.getElementById('ball-bot-count-row');
-    if (ballCountRow) ballCountRow.style.display = active ? 'flex' : 'none';
     const a3CountRow = document.getElementById('a3-bot-count-row');
     if (a3CountRow) a3CountRow.style.display = active ? 'flex' : 'none';
     const a4CountRow = document.getElementById('a4-bot-count-row');
@@ -1608,20 +1591,9 @@ export const uiManager = {
     }
 
     // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Opcje Areny 1 (Combat Ball)
+    // PARAMETRY BITWY: Wspólne przełączniki botów (Areny 3, 4, 5)
     // -------------------------------------------------------------------------
-    document.querySelectorAll('#ball-goals-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        document.querySelectorAll('#ball-goals-toggle-group button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const limit = parseInt(btn.dataset.goalLimit, 10) || 5;
-        if (typeof window !== 'undefined') window.currentGoalLimit = limit;
-      });
-    });
-
-    document.querySelectorAll('#ball-bot-toggle-group button, #a3-bot-toggle-group button, #a4-bot-toggle-group button, #a5-bot-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#a3-bot-toggle-group button, #a4-bot-toggle-group button, #a5-bot-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
@@ -1631,7 +1603,7 @@ export const uiManager = {
       });
     });
 
-    document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
@@ -1722,9 +1694,9 @@ export const uiManager = {
     });
 
     // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 1, 2, 3, 4, 5)
+    // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 2, 3, 4, 5)
     // -------------------------------------------------------------------------
-    document.querySelectorAll('.dm-bot-count-toggle-group button, #ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
+    document.querySelectorAll('.dm-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
@@ -1787,7 +1759,7 @@ export const uiManager = {
           }
         } else {
           const currentArena = this.briefingArenas[this.currentBriefingIndex];
-          const arenaId = currentArena ? currentArena.id : 'ARENA_1';
+          const arenaId = currentArena ? currentArena.id : 'ARENA_2';
           if (typeof window.startDedicatedMatchmaking === 'function') {
             window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId });
           }
@@ -1921,7 +1893,7 @@ export const uiManager = {
         }
         playUiClick();
         const currentArena = this.briefingArenas[this.currentBriefingIndex];
-        const arenaId = currentArena ? currentArena.id : 'ARENA_1';
+        const arenaId = currentArena ? currentArena.id : 'ARENA_2';
 
         if (this.currentBriefingMode === 'multi') {
           const ws = (typeof window !== 'undefined' && window.wsState);
@@ -3639,8 +3611,6 @@ export const uiManager = {
         vy: 0,
         onGround: true,
         isJumping: false,
-        isSliding: false,
-        isIntro: false,
         isProne: false,
         isCrouching: false,
         state: 'STAND',

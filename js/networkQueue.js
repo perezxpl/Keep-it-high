@@ -16,7 +16,6 @@ export function registerNetworkDataHandler(handler) {
 }
 
 const inboundBuffer = {
-  latestBallState: null,
   latestPlayerStates: new Map(), // key: senderId -> { data, senderId }
   latestBotsState: null,
   latestZombiesState: null,
@@ -29,7 +28,7 @@ const MAX_DISCRETE_EVENTS = 64;
 
 /**
  * Przyjmuje pakiet sieciowy z WebSocket lub P2P DataChannel.
- * Ciagle stany klatek (p_state, b_state, bots_state, zombies_state) sa deduplikowane O(1),
+ * Ciagle stany klatek (p_state, bots_state, zombies_state) sa deduplikowane O(1),
  * a dyskretne zdarzenia bojowe (shoot, deal_dmg, kill) trafiaja do bezpiecznej kolejki FIFO.
  * @param {Object} data
  * @param {string|null} senderId
@@ -43,10 +42,6 @@ export function enqueueNetworkPacket(data, senderId = null) {
   if (type === 'p_state') {
     const key = data.senderId || senderId || 'remote_1';
     inboundBuffer.latestPlayerStates.set(key, { data, senderId });
-    return;
-  }
-  if (type === 'b_state') {
-    inboundBuffer.latestBallState = { data, senderId };
     return;
   }
   if (type === 'bots_state') {
@@ -98,16 +93,7 @@ export function flushNetworkQueue() {
     events.length = 0;
   }
 
-  // 2. Zastosowanie najswiezszego stanu pilki (zrzut zbednych posrednich klatek):
-  if (inboundBuffer.latestBallState) {
-    const b = inboundBuffer.latestBallState;
-    inboundBuffer.latestBallState = null;
-    try {
-      _networkDataHandler(b.data, b.senderId);
-    } catch (_) {}
-  }
-
-  // 3. Zastosowanie najswiezszego stanu kazdego ze zdalnych graczy:
+  // 2. Zastosowanie najswiezszego stanu kazdego ze zdalnych graczy:
   if (inboundBuffer.latestPlayerStates.size > 0) {
     for (const p of inboundBuffer.latestPlayerStates.values()) {
       try {
@@ -158,7 +144,6 @@ export function flushNetworkQueue() {
  * Czysci cala kolejke i bufory stanow przy rozlaczeniu lub powrocie do lobby
  */
 export function clearNetworkQueue() {
-  inboundBuffer.latestBallState = null;
   inboundBuffer.latestPlayerStates.clear();
   inboundBuffer.latestBotsState = null;
   inboundBuffer.latestZombiesState = null;

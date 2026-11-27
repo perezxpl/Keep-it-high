@@ -11,7 +11,6 @@ import {
   isGroundAt
 } from '../world.js';
 import { getActiveArena } from '../arenas/index.js';
-import { centerX } from '../arenas/arena1.js';
 import { ACID_SURGE_SYSTEM } from '../arenas/arena2.js';
 import {
   customObstacles,
@@ -30,7 +29,7 @@ import { executeEnforcerGroundSlamImpact } from '../classes/enforcer.js';
 // OBSŁUGA LĄDOWANIA I ZESKOKU (DROP-THROUGH)
 // =========================================================================
 export function checkPlayerPlatformLanding(p, groundY) {
-  if (!p || p.isIntro) return;
+  if (!p) return;
 
   if (p.boostCooldown > 0) p.boostCooldown--;
   if (p.laserCooldown > 0) p.laserCooldown--;
@@ -586,17 +585,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
       executeEnforcerGroundSlamImpact(p, landedSurface);
     }
 
-    if (!wasGrounded && impactVy > 1.8 && !(p.staggerTimer > 0) && !p.isSliding) {
+    if (!wasGrounded && impactVy > 1.8 && !(p.staggerTimer > 0)) {
       p.landingSquatIntensity = Math.min(1.0, impactVy / 8.5);
       p.landingSquatTimer = Math.min(5, Math.max(2, Math.round(p.landingSquatIntensity * 5)));
     }
 
-    // Obsługa nachylenia (slopes physics): ślizganie i dynamiczny bieg po pochyłym terenie
+    // Obsługa nachylenia (slopes physics): dynamiczny bieg po pochyłym terenie
     if (Math.abs(landedSlope) > 0.01) {
-      if (p.isSliding) {
-        // Pęd grawitacyjny w dół zbocza (downhill slide boost)
-        p.vx -= landedSlope * 0.28;
-      }
       p.slopeAngle = Math.atan(-landedSlope) * 0.6;
     } else {
       p.slopeAngle = 0;

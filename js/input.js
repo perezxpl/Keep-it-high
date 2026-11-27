@@ -6,9 +6,9 @@
 // - Klawisz skoku / W / Spacja w locie: Dedykowane sterowanie jetpackiem (bez PPM)
 // =========================================================================
 
-import { performKick, kick, playerSlide, throwTacticalGrenade } from './player/actions.js';
+import { performKick, kick, throwTacticalGrenade } from './player/actions.js';
 
-export { performKick, kick, playerSlide, throwTacticalGrenade };
+export { performKick, kick, throwTacticalGrenade };
 
 export const mouseState = {
   lmbDown: false,
@@ -23,7 +23,6 @@ export const keys = {
   up: false,
   space: false,
   shift: false,
-  slide: false,
   ctrl: false,
   crouch: false,
   grenade: false
@@ -95,46 +94,6 @@ export function handleControlKeyUp(e) {
 }
 
 /**
- * Obsługa zdarzenia keydown dla klawiszy Shift / Slide (Wślizg WYŁĄCZNIE w biegu)
- * @param {KeyboardEvent} e
- * @param {Object} [player]
- * @param {Function} [spawnGrass]
- * @param {number} [groundY]
- * @returns {boolean}
- */
-export function handleSlideKeyDown(e, player, spawnGrass, groundY) {
-  if (!e) return false;
-  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') {
-    if (typeof e.preventDefault === 'function') {
-      e.preventDefault();
-    }
-    keys.shift = true;
-    keys.slide = true;
-    const minSpeed = 2.5;
-    if (player && player.onGround && Math.abs(player.vx) > minSpeed) {
-      return playerSlide(spawnGrass, groundY, player);
-    }
-    return false;
-  }
-  return false;
-}
-
-/**
- * Obsługa zdarzenia keyup dla klawiszy Shift / Slide
- * @param {KeyboardEvent} e
- * @returns {boolean}
- */
-export function handleSlideKeyUp(e) {
-  if (!e) return false;
-  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') {
-    keys.shift = false;
-    keys.slide = false;
-    return true;
-  }
-  return false;
-}
-
-/**
  * Wywołuje akcję kopnięcia postaci w kierunku pozycji kursora myszy.
  * Całkowicie uniezależnione od jetpacka.
  *
@@ -144,7 +103,7 @@ export function handleSlideKeyUp(e) {
  * @param {Object} camera - Obiekt kamery { x, y, zoom }
  * @param {number} W - Szerokość canvasa
  * @param {number} H - Wysokość canvasa
- * @param {Object} extraOptions - Opcje (ball, targets, obstacles, spawnGrass)
+ * @param {Object} extraOptions - Opcje (targets, obstacles, spawnGrass)
  */
 export function triggerMouseKick(player, mouseScreenX, mouseScreenY, camera, W, H, extraOptions = {}) {
   if (!player || player.isDead) return false;
@@ -159,7 +118,6 @@ export function triggerMouseKick(player, mouseScreenX, mouseScreenY, camera, W, 
   return performKick(player, {
     aimX: worldMouseX,
     aimY: worldMouseY,
-    ball: extraOptions.ball,
     targets: extraOptions.targets,
     obstacles: extraOptions.obstacles,
     spawnGrass: extraOptions.spawnGrass,

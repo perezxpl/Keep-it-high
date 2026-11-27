@@ -1,26 +1,10 @@
 // =========================================================================
-// PLAYER/LOCOMOTION.JS - TRAJEKTORIE LOKOMOCJI I FREESTYLE
-// Odpowiada za cykle chodu, truchtu, sprintu oraz sekwencję freestyle.
+// PLAYER/LOCOMOTION.JS - TRAJEKTORIE LOKOMOCJI
+// Odpowiada za cykle chodu, truchtu i sprintu.
 // =========================================================================
 
 import { CONFIG } from '../config.js';
 import { ease, parabola, lerp } from './ik.js';
-
-export const MIN_RUN_SPEED = 2.5; // Minimalna prędkość pozioma (~150 px/s przy 60 FPS) wymagana do ślizgu
-
-/**
- * Sprawdza, czy postać może wykonać ślizg (Slide):
- * Ślizg możliwy WYŁĄCZNIE w pełnym biegu (na ziemi i z prędkością > MIN_RUN_SPEED).
- *
- * @param {Object} player - Obiekt gracza
- * @returns {boolean}
- */
-export function canSlide(player) {
-  if (!player || player.isDead || player.isIntro) return false;
-  const isGrounded = (player.onGround !== undefined) ? (player.onGround && !player.isJumping) : (!player.isJumping);
-  const minSpeed = CONFIG.MIN_RUN_SPEED || MIN_RUN_SPEED;
-  return isGrounded && Math.abs(player.vx) > minSpeed;
-}
 
 /**
  * Sprawdza stan kucania lub leżenia pod wejściem klawisza Ctrl / przycisku kucania na podstawie czasu trzymania:
@@ -34,7 +18,7 @@ export function canSlide(player) {
  * @returns {'CROUCH' | 'PRONE' | 'STAND'}
  */
 export function evaluateCrouchState(player, crouchInputHeld, holdDurationMs = 0) {
-  if (!player || player.isDead || player.isIntro) return 'STAND';
+  if (!player || player.isDead) return 'STAND';
   if (!crouchInputHeld) return 'STAND';
 
   const isGrounded = (player.onGround !== undefined) ? (player.onGround && !player.isJumping) : (!player.isJumping);
@@ -44,155 +28,6 @@ export function evaluateCrouchState(player, crouchInputHeld, holdDurationMs = 0)
     return 'PRONE';
   }
   return 'CROUCH';
-}
-
-/**
- * Sekwencja żonglerki i podbicia piłki w intro przed startem
- */
-export function getFreestyleChoreography(timer, hipBaseX, hipBaseY, groundY, facing, ballRadius) {
-  let loopTimer = timer;
-  if (timer > 60) {
-    loopTimer = 60 + ((timer - 60) % 150);
-  }
-
-  const sweetSpotX = hipBaseX + 16 * facing;
-  const plantY = groundY - 3.5;
-
-  let ballX = sweetSpotX;
-  let ballY = groundY - ballRadius;
-  let footFrontX = sweetSpotX;
-  let footFrontY = plantY;
-  let footFrontAnkle = 0;
-  let footBackX = hipBaseX - 5 * facing;
-  let footBackY = plantY;
-  let footBackAnkle = 0;
-  let hipShiftX = 0;
-  let pelvisDip = 0;
-  let torsoLean = 0.03;
-  let frontLegOverBall = false;
-  let trickName = 'PODBICIE Z ZIEMI';
-
-  if (loopTimer < 60) {
-    trickName = 'PODBICIE Z ZIEMI';
-    hipShiftX = -3 * facing;
-
-    if (loopTimer < 18) {
-      const u = ease(loopTimer / 18);
-      ballX = hipBaseX + 26 * facing;
-      ballY = groundY - ballRadius;
-
-      footFrontX = hipBaseX + (12 + u * 14) * facing;
-      footFrontY = plantY - 2;
-      footFrontAnkle = 0.18 * u * facing;
-      torsoLean = 0.05 * u;
-    } else if (loopTimer < 38) {
-      const u = ease((loopTimer - 18) / 20);
-      ballX = hipBaseX + (26 - u * 10) * facing;
-      ballY = groundY - ballRadius;
-
-      footFrontX = ballX + 2 * facing;
-      footFrontY = plantY - 1;
-      footFrontAnkle = 0.15 * facing;
-      frontLegOverBall = true;
-    } else {
-      const u = (loopTimer - 38) / 22;
-      const lift = parabola(u);
-      ballX = sweetSpotX;
-      ballY = (groundY - ballRadius) - (lift * 32);
-
-      const footSnap = Math.sin(u * Math.PI);
-      footFrontX = sweetSpotX;
-      footFrontY = plantY - (footSnap * 15);
-      footFrontAnkle = -0.28 * footSnap * facing;
-      pelvisDip = -footSnap * 1.5;
-    }
-
-    footBackX = hipBaseX - 5 * facing;
-    footBackY = plantY;
-  } else if (loopTimer < 150) {
-    const subTimer = loopTimer - 60;
-    const rep = Math.floor(subTimer / 22);
-    const u = (subTimer % 22) / 22;
-    const isRightFoot = (rep % 2 === 0);
-
-    trickName = isRightFoot ? 'KAPKOWANIE: PRAWA' : 'KAPKOWANIE: LEWA';
-
-    const ballArc = parabola(u);
-    ballX = sweetSpotX;
-    ballY = (groundY - ballRadius - 8) - (ballArc * 26);
-
-    if (isRightFoot) {
-      hipShiftX = -4 * facing;
-      pelvisDip = Math.sin(u * Math.PI) * 1.5;
-
-      const kickSnap = Math.max(0, Math.sin(u * Math.PI * 1.8));
-      footFrontX = sweetSpotX;
-      footFrontY = plantY - 2 - (kickSnap * 14);
-      footFrontAnkle = (0.12 - (kickSnap * 0.35)) * facing;
-
-      footBackX = hipBaseX - 5 * facing;
-      footBackY = plantY;
-      footBackAnkle = 0;
-    } else {
-      hipShiftX = 2 * facing;
-      pelvisDip = Math.sin(u * Math.PI) * 1.5;
-
-      footFrontX = hipBaseX + 6 * facing;
-      footFrontY = plantY;
-      footFrontAnkle = 0;
-
-      const kickSnap = Math.max(0, Math.sin(u * Math.PI * 1.8));
-      footBackX = sweetSpotX - (2 * facing) + (kickSnap * 2 * facing);
-      footBackY = plantY - 2 - (kickSnap * 14);
-      footBackAnkle = (0.12 - (kickSnap * 0.35)) * facing;
-    }
-  } else {
-    trickName = 'AROUND THE WORLD';
-    const u = (loopTimer - 150) / 60;
-    hipShiftX = -4 * facing;
-
-    const ballArc = parabola(u);
-    ballX = sweetSpotX;
-    ballY = (groundY - ballRadius - 10) - (ballArc * 36);
-
-    if (u < 0.20) {
-      const snap = Math.sin((u / 0.20) * Math.PI);
-      footFrontX = sweetSpotX;
-      footFrontY = plantY - (snap * 16);
-      footFrontAnkle = -0.25 * facing;
-      frontLegOverBall = false;
-    } else if (u < 0.45) {
-      const upU = (u - 0.20) / 0.25;
-      footFrontX = sweetSpotX - (2 * facing);
-      footFrontY = (plantY - 16) - upU * (plantY - ballY);
-      footFrontAnkle = -0.15 * facing;
-      frontLegOverBall = false;
-    } else if (u < 0.72) {
-      const downU = (u - 0.45) / 0.27;
-      footFrontX = sweetSpotX + (1 * facing);
-      footFrontY = (ballY - 16) + downU * 36;
-      footFrontAnkle = 0.28 * downU * facing;
-      frontLegOverBall = true;
-      pelvisDip = -Math.sin(downU * Math.PI) * 2;
-    } else {
-      const landU = (u - 0.72) / 0.28;
-      footFrontX = sweetSpotX;
-      footFrontY = plantY - ((1 - landU) * 6);
-      footFrontAnkle = 0.10 * facing;
-      frontLegOverBall = false;
-    }
-
-    footBackX = hipBaseX - 5 * facing;
-    footBackY = plantY;
-  }
-
-  return {
-    ballX, ballY,
-    footFrontX, footFrontY, footFrontAnkle,
-    footBackX, footBackY, footBackAnkle,
-    hipShiftX, pelvisDip, torsoLean,
-    frontLegOverBall, trickName
-  };
 }
 
 /**

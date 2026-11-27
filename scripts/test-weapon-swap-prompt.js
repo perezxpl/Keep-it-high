@@ -141,6 +141,7 @@ const {
   updatePickups,
   drawPickupPrompt
 } = await import('../js/pickup/index.js');
+const { ARENA_PLATFORMS } = await import('../js/obstacles/state.js');
 const { drawHUD } = await import('../js/ui/hudCanvas.js');
 
 initAllInputHandlers({
@@ -166,6 +167,17 @@ const cam = { x: 0, y: 400, zoom: 1, viewWidth: 1280, viewHeight: 720 };
 // =========================================================================
 setTouchDevice(false);
 resetPickupState();
+const testSwapPlat = {
+  id: 'test_swap_floor',
+  x: 500,
+  y: 1000,
+  w: 300,
+  h: 40,
+  solid: true,
+  isPlatform: true,
+  intact: true
+};
+ARENA_PLATFORMS.push(testSwapPlat);
 const dw1 = spawnDroppedWeapon(
   600 + (player.w || 28) * 0.5,
   996,
@@ -177,6 +189,8 @@ const dw1 = spawnDroppedWeapon(
   null
 );
 dw1.isGrounded = true;
+dw1.stuckPlatform = testSwapPlat;
+dw1.stuckOffsetX = dw1.x - testSwapPlat.x;
 dw1.vy = 0;
 
 for (let i = 0; i < 10; i++) {
@@ -291,7 +305,7 @@ assert.strictEqual(pFarm.swapIntent, true, 'Kieszen powinna wykryc intencje zami
 
 // Uplywa 600ms -> NIE wolno wywolac przeladowania zamiast zamiany!
 fakeNow = 5600;
-updatePlayerInputAndCombat('arena1');
+updatePlayerInputAndCombat('ARENA_2');
 assert.strictEqual(pFarm.reloadTriggered, false, 'Przy intencji zamiany przytrzymanie NIE moze wywolac przeladowania');
 assert.strictEqual(!!player.isReloading, false, 'Gracz nie powinien zaczac przeladowania podczas zamiany');
 
@@ -315,6 +329,8 @@ assert(
 
 // Przywracamy stan
 resetPickupState();
+const swapPlatIdx = ARENA_PLATFORMS.indexOf(testSwapPlat);
+if (swapPlatIdx !== -1) ARENA_PLATFORMS.splice(swapPlatIdx, 1);
 setTouchDevice(false);
 
 console.log('[OK] Wszystkie testy ikony zamiany broni (PC / Pad / Touch Pocket) zakonczone sukcesem.');

@@ -5,7 +5,6 @@
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, MAP_WIDTH, isTouchDevice, setTouchDevice, ARENA_2_PANDORA } from '../config.js';
 import { spawnConcreteDebris, spawnRicochetSparks } from '../particles.js';
 import { drawPandoraBackground } from '../background.js';
-import { goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS } from '../arenas/arena1.js';
 import {
   camera,
   updateCamera,
@@ -31,7 +30,7 @@ import {
   updateCanvasDimensionsCache
 } from '../camera.js';
 import { playSound } from '../audio/index.js';
-export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS, MAP_WIDTH };
+export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, MAP_WIDTH };
 
 export const centerX = MAP_WIDTH / 2; // 1800
 
@@ -51,13 +50,12 @@ export function resetColliders() {
   _worldCustomObstacles = [];
 }
 
-export var activeArenaId = 'ARENA_1';
+export var activeArenaId = 'ARENA_2';
 export const ladders = [];
 export let _worldArenaState = {
   get activeArenaId() { return activeArenaId; },
   set activeArenaId(val) { activeArenaId = val; },
-  arenaScore: { cyan: 0, orange: 0 },
-  arena1State: null
+  arenaScore: { cyan: 0, orange: 0 }
 };
 
 export function registerWorldObstacles(platforms, obstacles, arenaState) {
@@ -69,7 +67,6 @@ export function registerWorldObstacles(platforms, obstacles, arenaState) {
       if (typeof setCameraArenaId === 'function') setCameraArenaId(activeArenaId);
     }
     if (arenaState.arenaScore) _worldArenaState.arenaScore = arenaState.arenaScore;
-    if (arenaState.arena1State) _worldArenaState.arena1State = arenaState.arena1State;
   }
 }
 
@@ -78,21 +75,6 @@ export function setActiveArenaId(id) {
   if (typeof setCameraArenaId === 'function') {
     setCameraArenaId(id);
   }
-}
-
-export const goalCelebration = {
-  active: false,
-  timer: 0,
-  team: '',
-  color: '#00F0FF'
-};
-
-export function triggerGoalCelebration(team, color) {
-  goalCelebration.active = true;
-  goalCelebration.timer = 110;
-  goalCelebration.team = team;
-  goalCelebration.color = color || (team === 'CYAN' ? '#00F0FF' : '#FF8800');
-  playSound('goal_horn');
 }
 
 export function getOptimizedDPR() {

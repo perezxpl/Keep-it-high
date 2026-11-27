@@ -487,40 +487,6 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
     }
 
     // =========================================================================
-    // PILKA I BRAMKI
-    // =========================================================================
-    case 'ball_kick': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.16);
-      const pwr = Math.max(0.75, Math.min(1.4, power));
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 165 * p * pwr, freqEnd: 52, duration: 0.11, gain: gain * 1.15 * pwr });
-      scheduleNoise(ctx, out, { startTime: now, duration: 0.06, gain: gain * 0.8 * pwr, filterType: 'bandpass', freqStart: 1200, freqEnd: 460, Q: 1.1 });
-      return true;
-    }
-
-    case 'ball_bounce': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.11);
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 138 * p, freqEnd: 74 * p, duration: 0.075, gain: gain * 0.8 });
-      return true;
-    }
-
-    case 'ball_post_clang': {
-      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.38);
-      // Metaliczny dzwon poprzeczki bramki
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 540 * p, freqEnd: 532 * p, duration: 0.32, gain: gain * 0.68 });
-      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 1095 * p, freqEnd: 1080 * p, duration: 0.24, gain: gain * 0.42 });
-      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 1740 * p, freqEnd: 1715 * p, duration: 0.16, gain: gain * 0.28 });
-      return true;
-    }
-
-    case 'goal_horn': {
-      const { now, out } = createVoiceStage(ctx, destNode, 0, 1.15);
-      // Dwudzwiekowy rog stadionowy
-      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 185, freqEnd: 183, duration: 0.95, gain: gain * 0.58, attack: 0.04, filterType: 'lowpass', filterFreq: 980, filterQ: 1.5 });
-      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 277.18, freqEnd: 274, duration: 0.95, gain: gain * 0.46, attack: 0.04, filterType: 'lowpass', filterFreq: 1150, filterQ: 1.5 });
-      return true;
-    }
-
-    // =========================================================================
     // SYRENA ARENY 2 I UI
     // =========================================================================
     case 'acid_siren': {

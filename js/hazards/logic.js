@@ -70,8 +70,8 @@ export function spawnBarrelShrapnel(x, y, barrelType = 'EXPLOSIVE') {
  */
 export function getBarrelSurfaceY(x, y, baseGroundY, arenaKeyOverride = null) {
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const rawId = arenaKeyOverride || curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
-  const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
+  const rawId = arenaKeyOverride || curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-2');
+  const arenaKey = String(rawId || 'arena-2').toLowerCase().replace(/_/g, '-');
   const isA5 = (arenaKey === 'arena-5' || arenaKey === 'prefab-tower');
   const isA4 = (arenaKey === 'arena-4' || arenaKey === 'armored-train');
   const isA3 = (arenaKey === 'arena-3' || arenaKey === 'arena-foundry');
@@ -182,7 +182,6 @@ export function getBarrelSurfaceY(x, y, baseGroundY, arenaKeyOverride = null) {
  */
 export function getValidBarrelSpawnSurfaceY(midX, testY, groundY, arenaId) {
   const normArena = String(arenaId || '').toLowerCase().replace(/_/g, '-');
-  const isA1 = (normArena === 'arena-1' || normArena === 'cyber-stadium');
   const isA2 = (normArena === 'arena-2' || normArena === 'refinery');
   const isA3 = (normArena === 'arena-3' || normArena === 'arena-foundry');
   const isA4 = (normArena === 'arena-4' || normArena === 'obsidian-caldera');
@@ -616,7 +615,6 @@ export function initHazardsForArena(arenaId, groundY = 800) {
   hazardsState.airdropTimer = 0;
 
   const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const isA1 = (normalizedId === 'arena-1' || normalizedId === 'cyber-stadium');
   const isA2 = (normalizedId === 'arena-2' || normalizedId === 'refinery');
   const isA3 = (normalizedId === 'arena-3' || normalizedId === 'arena-foundry');
   const isA4 = (normalizedId === 'arena-4' || normalizedId === 'obsidian-caldera');
@@ -709,14 +707,14 @@ export function initHazardsForArena(arenaId, groundY = 800) {
 }
 
 /**
- * Kopię beczkę Spartan Kickiem [E] lub wślizgiem
+ * Kopie beczkę Spartan Kickiem [E] / [PPM] / [Spacja]
  */
-export function kickBarrel(barrel, kicker, isSlide = false) {
+export function kickBarrel(barrel, kicker) {
   if (!barrel || barrel.isDead) return false;
 
   const facing = kicker?.facing || 1;
-  const kickVx = facing * (isSlide ? BARREL_CONFIG.SLIDE_IMPULSE_X : BARREL_CONFIG.KICK_IMPULSE_X);
-  const kickVy = isSlide ? BARREL_CONFIG.SLIDE_IMPULSE_Y : BARREL_CONFIG.KICK_IMPULSE_Y;
+  const kickVx = facing * BARREL_CONFIG.KICK_IMPULSE_X;
+  const kickVy = BARREL_CONFIG.KICK_IMPULSE_Y;
 
   barrel.vx = kickVx;
   barrel.vy = kickVy;
@@ -726,7 +724,7 @@ export function kickBarrel(barrel, kicker, isSlide = false) {
   barrel.kickerGraceTimer = 0.20;
   barrel.isKicked = true;
 
-  triggerScreenShake(isSlide ? 6.0 : 10.0);
+  triggerScreenShake(10.0);
   spawnRicochetSparks(barrel.x + barrel.w / 2, barrel.y + barrel.h / 2, kickVx * 0.4, kickVy * 0.4, 8);
   return true;
 }
@@ -939,8 +937,8 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
   // 5. Dla beczek kwasowych: utworzenie kałuży kwasu na podłożu
   if (isToxic) {
     const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-    const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
-    const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
+    const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-2');
+    const arenaKey = String(rawId || 'arena-2').toLowerCase().replace(/_/g, '-');
     const surfaceY = getBarrelSurfaceY(bx, by, groundY);
     const inRiverA3 = (arenaKey === 'arena-3' && surfaceY >= 1280);
     const inLavaA4 = (arenaKey === 'arena-4' && surfaceY >= 1390);
@@ -980,8 +978,8 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
  */
 export function updateHazards(dt, combatants = [], groundY = 800) {
   const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const rawArenaId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
-  const arenaId = String(rawArenaId || 'arena-1').toLowerCase().replace(/_/g, '-');
+  const rawArenaId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-2');
+  const arenaId = String(rawArenaId || 'arena-2').toLowerCase().replace(/_/g, '-');
 
   // Automatyczna inicjalizacja przy zmianie areny
   if (hazardsState.currentArenaId !== arenaId) {
@@ -1355,13 +1353,13 @@ export function spawnAirdropBarrel(arenaId, groundY = 800, combatants = []) {
 /**
  * Sprawdza czy gracz lub bot znajduje się w zasięgu kopnięcia beczki
  */
-export function checkBarrelKickInteraction(char, isSlide = false) {
+export function checkBarrelKickInteraction(char) {
   if (!char || char.isDead) return null;
 
   const charMidX = char.x + (char.w || 24) * 0.5;
   const charFeetY = char.y + (char.h || 70);
   const facing = char.facing || 1;
-  const reachX = isSlide ? 48 : 55;
+  const reachX = 55;
 
   for (const b of hazardsState.barrels) {
     if (!b || b.isDead) continue;
@@ -1374,7 +1372,7 @@ export function checkBarrelKickInteraction(char, isSlide = false) {
     // Beczka musi znajdować się przed postacią w kierunku facing
     const isAhead = (dx * facing) >= -8 && (dx * facing) <= reachX;
     if (isAhead && Math.abs(dy) <= 32) {
-      kickBarrel(b, char, isSlide);
+      kickBarrel(b, char);
       return b;
     }
   }

@@ -249,7 +249,6 @@ try {
   const botMod = evalModules.get(botPathNorm);
   if (botMod && botMod.namespace && typeof botMod.namespace.updateBotBrain === 'function') {
     const dummyHuman = { x: 500, y: 500, w: 24, h: 70, vx: 0, vy: 0, isDead: false, team: 'CYAN' };
-    const dummyBall = { x: 520, y: 500, vx: 0, vy: 0 };
     for (const classKey of ['ENFORCER', 'STRIKER', 'RAPTOR']) {
       for (const inAir of [false, true]) {
         const dummyBot = {
@@ -258,7 +257,6 @@ try {
           currentClass: { id: classKey },
           onGround: !inAir,
           isJumping: inAir,
-          isSliding: false,
           isGroundSlamming: false,
           jetFuel: 100,
           jetMax: 100,
@@ -267,9 +265,9 @@ try {
           enforcerGroundSlamCooldown: 0,
           grenadeCooldown: 0,
           shootCooldown: 0,
-          botKeys: { left: false, right: false, up: false, down: false, space: false, slide: false }
+          botKeys: { left: false, right: false, up: false, down: false, space: false }
         };
-        botMod.namespace.updateBotBrain(dummyBall, dummyHuman, 570, null, dummyBot, [dummyHuman, dummyBot]);
+        botMod.namespace.updateBotBrain(null, dummyHuman, 570, null, dummyBot, [dummyHuman, dummyBot]);
       }
     }
   }
@@ -311,7 +309,6 @@ try {
     const xpBefore = progMod.namespace.getPlayerXP();
     progMod.namespace.addPlayerXP(100);
     progMod.namespace.recordKill(1);
-    progMod.namespace.recordGoal(1);
     progMod.namespace.recordMatchResult('WIN');
     const xpAfter = progMod.namespace.getPlayerXP();
     if (xpBefore !== xpAfter) {

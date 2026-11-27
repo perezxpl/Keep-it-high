@@ -9,7 +9,7 @@ import { arena5State } from './arenas/arena5/state.js';
 
 let _cameraCanvas = null;
 let _cameraGroundY = null;
-let _cameraArenaId = 'ARENA_1';
+let _cameraArenaId = 'ARENA_2';
 let _cachedIsMobile = null;
 
 export function isMobileDevice(forceRefresh = false) {
@@ -78,12 +78,12 @@ const ARENA2_ALIASES = new Set([
 ]);
 
 export function normalizeCameraArenaKey(arenaId) {
-  const key = String(arenaId || 'ARENA_1').trim().toUpperCase();
+  const key = String(arenaId || 'ARENA_2').trim().toUpperCase();
   if (ARENA5_ALIASES.has(key)) return 'ARENA_5';
   if (ARENA4_ALIASES.has(key)) return 'ARENA_4';
   if (ARENA3_ALIASES.has(key)) return 'ARENA_3';
   if (ARENA2_ALIASES.has(key)) return 'ARENA_2';
-  return 'ARENA_1';
+  return 'ARENA_2';
 }
 
 export function getArenaCameraProfile(arenaId = getCameraArenaId()) {
@@ -180,62 +180,32 @@ export function getArenaCameraProfile(arenaId = getCameraArenaId()) {
     };
   }
 
-  if (key === 'ARENA_2') {
-    return {
-      key: 'ARENA_2',
-      minX: 0,
-      maxX: 4000,
-      width: 4000,
-      minY: 0,
-      maxY: 1600,
-      height: 1600,
-      baseFloorY: 1150,
-      isVerticalTower: false,
-      hardBottomY: 1600,
-      lockTopZero: true,
-      minZoomHeightLimit: 1720,
-      elevAnchorDeltaPC: 0.23,
-      elevAnchorDeltaMobile: 0.25,
-      safeMarginTopRatio: 0.20,
-      safeMarginBottomRatio: 0.18,
-      safeMarginBottomMin: 75,
-      getMinCamY: () => 0,
-      getMaxCamY: (viewHeight) => Math.max(0, 1600 - viewHeight),
-      getMenuTarget: (isMobile) => ({
-        centerX: 2000,
-        targetBottomY: isMobile ? 1515 : 1485,
-        targetWorldHeight: isMobile ? 1220 : 1270.588,
-        targetWorldWidth: isMobile ? 2200 : 2260
-      })
-    };
-  }
-
-  // ARENA_1 (Neonowe Miasto)
+  // Domyślny profil: ARENA_2 (Toksyczna Rafineria / Sektor X)
   return {
-    key: 'ARENA_1',
-    minX: CFG_ARENA_LEFT,
-    maxX: CFG_ARENA_RIGHT,
-    width: CFG_ARENA_RIGHT - CFG_ARENA_LEFT,
+    key: 'ARENA_2',
+    minX: 0,
+    maxX: 4000,
+    width: 4000,
     minY: 0,
-    maxY: 1300,
-    height: 1300,
-    baseFloorY: groundFloor,
+    maxY: 1600,
+    height: 1600,
+    baseFloorY: 1150,
     isVerticalTower: false,
-    hardBottomY: null,
-    lockTopZero: false,
-    minZoomHeightLimit: null,
+    hardBottomY: 1600,
+    lockTopZero: true,
+    minZoomHeightLimit: 1720,
     elevAnchorDeltaPC: 0.23,
     elevAnchorDeltaMobile: 0.25,
     safeMarginTopRatio: 0.20,
     safeMarginBottomRatio: 0.18,
     safeMarginBottomMin: 75,
-    getMinCamY: (viewHeight, gf) => Math.min(-360, (typeof gf === 'number' ? gf : groundFloor) - viewHeight * 0.72),
-    getMaxCamY: (viewHeight, gf) => Math.max(-360, (typeof gf === 'number' ? gf : groundFloor) - viewHeight * 0.72),
+    getMinCamY: () => 0,
+    getMaxCamY: (viewHeight) => Math.max(0, 1600 - viewHeight),
     getMenuTarget: (isMobile) => ({
-      centerX: 1800,
-      targetBottomY: isMobile ? 1180 : 1150,
-      targetWorldHeight: isMobile ? 1050 : 1120,
-      targetWorldWidth: isMobile ? 2100 : 2260
+      centerX: 2000,
+      targetBottomY: isMobile ? 1515 : 1485,
+      targetWorldHeight: isMobile ? 1220 : 1270.588,
+      targetWorldWidth: isMobile ? 2200 : 2260
     })
   };
 }
@@ -353,7 +323,7 @@ export function setCameraArenaId(id) {
 }
 
 export function getCameraArenaId() {
-  return camera.activeArenaId || _cameraArenaId || 'ARENA_1';
+  return camera.activeArenaId || _cameraArenaId || 'ARENA_2';
 }
 
 /**
@@ -377,7 +347,7 @@ export const camera = {
   shakeDecay: 0.82,
   shakeX: 0,
   shakeY: 0,
-  activeArenaId: 'ARENA_1',
+  activeArenaId: 'ARENA_2',
   mouseScreenX: null,
   mouseScreenY: null,
   aimLeadX: 0,

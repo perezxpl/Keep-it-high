@@ -23,8 +23,8 @@ let _activeZombiesCache = [];
  */
 function getArenaContext() {
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
-  const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
+  const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-2');
+  const arenaKey = String(rawId || 'arena-2').toLowerCase().replace(/_/g, '-');
   return {
     curArena,
     arenaId: rawId,
@@ -65,8 +65,6 @@ function checkZombieEnvironmentalHazard(z) {
   } else if (arenaKey === 'arena-5' || arenaKey === 'prefab-tower') {
     const a5Floor = (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200;
     if (feetY >= a5Floor + 90) return true;
-  } else if (arenaKey === 'arena-1') {
-    if (feetY >= 1450) return true;
   }
   if (z.y > 2400) return true;
   return false;
@@ -137,8 +135,8 @@ function checkPlatformList(list, x, y, baseGroundY, isA3, currentFloor, isA5 = f
  */
 export function getZombieSurfaceY(x, y, baseGroundY) {
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
-  const arenaKey = String(rawId || 'arena-1').toLowerCase().replace(/_/g, '-');
+  const rawId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-2');
+  const arenaKey = String(rawId || 'arena-2').toLowerCase().replace(/_/g, '-');
   const isA5 = (arenaKey === 'arena-5' || arenaKey === 'prefab-tower');
   const isA4 = (arenaKey === 'arena-4' || arenaKey === 'armored-train');
   const isA3 = (arenaKey === 'arena-3' || arenaKey === 'arena-foundry');
@@ -783,7 +781,6 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       newZombie.crouchToggled = false;
       newZombie.crouchHoldTimer = 0;
       newZombie.sliding = false;
-      newZombie.isSliding = false;
       newZombie.slideTimer = 0;
       newZombie.rollTimer = 0;
       newZombie.isProne = false;
@@ -964,7 +961,6 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.crouchToggled = false;
         z.crouchHoldTimer = 0;
         z.sliding = false;
-        z.isSliding = false;
         z.slideTimer = 0;
         z.rollTimer = 0;
         z.isProne = false;
@@ -1047,7 +1043,6 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         z.crouchToggled = false;
         z.crouchHoldTimer = 0;
         z.sliding = false;
-        z.isSliding = false;
         z.slideTimer = 0;
         z.rollTimer = 0;
         z.isProne = false;
@@ -1082,7 +1077,6 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.crouchToggled = false;
       z.crouchHoldTimer = 0;
       z.sliding = false;
-      z.isSliding = false;
       z.slideTimer = 0;
       z.rollTimer = 0;
       z.isProne = false;
@@ -1106,7 +1100,6 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.crouchToggled = false;
       z.crouchHoldTimer = 0;
       z.sliding = false;
-      z.isSliding = false;
       z.slideTimer = 0;
       z.rollTimer = 0;
       z.isProne = false;

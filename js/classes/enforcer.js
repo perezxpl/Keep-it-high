@@ -27,7 +27,6 @@ export function isEnforcerPoiseActive(p) {
   if (!p || p.currentClass?.id !== 'ENFORCER') return false;
   return !!(
     p.isGroundSlamming ||
-    p.isSliding ||
     p.isSprinting ||
     p.sprintDuration > 10 ||
     Math.abs(p.vx || 0) > 3.2
@@ -40,7 +39,7 @@ export function getEnforcerFlameColor(player) {
 }
 
 export function isEnforcerFirmlyGrounded(player) {
-  if (!player || player.isDead || player.isJumping || player.isSliding || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) {
+  if (!player || player.isDead || player.isJumping || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) {
     return false;
   }
   // Gracz stojący na powierzchni (ziemia, platforma, klocki Areny 5, opadająca suwnica) ma pełne oparcie pod stopami
@@ -79,21 +78,14 @@ export const EnforcerClass = {
     sprintMax: 5.6,
     accel: 0.15,            // Duża bezwładność przy ruszaniu
     decel: 0.88,            // Trudno go wyhamować
-    slideDecel: 0.958,      // Ciężki wślizg taranujący z mocnym tarciem o grunt (zwarty, taranujący zasięg)
     jumpForce: 9.3,         // Podwyższony zwykły skok (umożliwia wskakiwanie na klocki 100px Areny 5)
-    slideDashSpeed: 12.8,   // Zwarte, dynamiczne wbicie korków w darń zamiast nadmiernego wystrzału
     chargeSpeed: 0.024,
     hitReach: 64,           // Duży zasięg dzięki długości kończyn
     whiffReach: 94,
-    baseKickSpeed: 30.0,
-    kickPowerMult: 1.65,    // Najpotężniejsze uderzenie w grze
-    spinMult: 0.30,         // Prawie czysta trajektoria balistyczna
     jetMax: 0,              // Brak plecaka odrzutowego (posiada Tłoki Pneumatyczne na łydkach)
     spartanKnockback: 19.0, // Potężny odrzut kinetyczny i twardy knockback
     spartanStagger: 28,     // Długi czas oszołomienia przeciwnika (~460ms)
     spartanDamage: 24,      // Druzgocący cios kolosa (24 pkt obrażeń)
-    kickForce: 1.70,        // Najwyższa siła uderzenia wręcz i piłki
-    kickForceMultiplier: 1.70,
     knockback: 1.65,
     knockbackMultiplier: 1.65,
     kickCooldown: 0.70
@@ -206,36 +198,6 @@ export const EnforcerClass = {
   },
 
   onJump(player, spawnGrass) {},
-
-  // Taranujący wślizg wzbijający pył
-  onSlide(player, spawnGrass) {
-    triggerScreenShake(5.0);
-    if (spawnGrass && player.groundY) {
-      for (let i = 0; i < 7; i++) {
-        spawnGrass(
-          player.x + player.w / 2 + (player.facing * 22),
-          player.groundY,
-          player.facing
-        );
-      }
-    }
-  },
-
-  // Potężne uderzenie piłki (pocisk balistyczny z niską grawitacją)
-  onKick(player, ball, context) {
-    triggerScreenShake(8.0);
-    ball.lowGravityFrames = Math.max(ball.lowGravityFrames || 0, 20);
-    ball.vx *= 1.18;
-  },
-
-  // Efekt taranu: uderzenie korpusem odpycha piłkę w biegu
-  onBallPassiveContact(player, ball) {
-    if (player.vx * player.facing > 0.5) {
-      ball.vx = player.facing * (Math.abs(player.vx) * 1.6 + 4.8);
-      ball.vy = -3.2;
-      triggerScreenShake(3.5);
-    }
-  },
 
   // Rysowanie standardowych wojskowych ładownic taktycznych na pasie (bez bomb i ognia)
   onDrawBelt(ctx, player, v, fDir, waistHalfW, beltTopY, beltBotY) {
@@ -433,8 +395,6 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   player.isProne = false;
   player.isCrouching = false;
   player.crouchToggled = false;
-  player.isSliding = false;
-  player.slideTimer = 0;
   player.isJumpCharging = false;
   player.jumpChargePower = 0;
   player.state = 'STAND';
@@ -543,7 +503,6 @@ export function triggerEnforcerGroundSlam(player) {
   player.isProne = false;
   player.isCrouching = false;
   player.crouchToggled = false;
-  player.isSliding = false;
   player.isJumping = true;
 
   const isLocalHumanSlam = (typeof window !== 'undefined' && window.player === player);

@@ -352,7 +352,6 @@ export function updateAllRemotePlayers(groundY) {
       remotePlayer.isHolstered = firstActive.isHolstered;
       remotePlayer.isCrouching = firstActive.isCrouching;
       remotePlayer.isProne = firstActive.isProne;
-      remotePlayer.isSliding = firstActive.isSliding;
       remotePlayer.isJumping = firstActive.isJumping;
       remotePlayer.isJetpacking = firstActive.isJetpacking;
       remotePlayer.onGround = firstActive.onGround;

@@ -1077,13 +1077,12 @@ export function triggerPlayerAcidDeath(p, hazardZoneY) {
   p.isAiming = false;
   p.isCrouching = false;
   p.isProne = false;
-  p.isSliding = false;
   p.isCharging = false;
   p.isJumpCharging = false;
   if (p.keys) {
     p.keys.left = false; p.keys.right = false; p.keys.up = false; p.keys.down = false;
     p.keys.KeyA = false; p.keys.KeyD = false; p.keys.KeyW = false; p.keys.KeyS = false;
-    p.keys.space = false; p.keys.slide = false;
+    p.keys.space = false;
   }
 
   const deathX = p.x + (p.w || 24) / 2;
@@ -1148,13 +1147,12 @@ export function updateArena2(dt, players) {
       p.isAiming = false;
       p.isCrouching = false;
       p.isProne = false;
-      p.isSliding = false;
       p.isCharging = false;
       p.isJumpCharging = false;
       if (p.keys) {
         p.keys.left = false; p.keys.right = false; p.keys.up = false; p.keys.down = false;
         p.keys.KeyA = false; p.keys.KeyD = false; p.keys.KeyW = false; p.keys.KeyS = false;
-        p.keys.space = false; p.keys.slide = false;
+        p.keys.space = false;
       }
 
       // Płynny spadek życia w trakcie rozpuszczania

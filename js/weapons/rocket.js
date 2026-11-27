@@ -28,8 +28,6 @@ import { checkRayObstacleCollision, obstacles } from '../obstacles.js';
 import { spawnBulletSparks, spawnHitSparks } from './transform.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
-import { arena1State } from '../arenas/arena1.js';
-import { spawnAltarShockwave } from '../obstacles/renderer.js';
 import { activeSentryGuns } from '../killstreaks/sentryGun.js';
 import { ARENA_LEFT, ARENA_RIGHT } from '../config.js';
 import { DEFAULT_VISUALS } from '../player/hair.js';
@@ -192,30 +190,7 @@ export class RpgRocket {
     const endX = mapHit ? mapHit.x : this.x;
     const endY = mapHit ? mapHit.y : this.y;
 
-    // 2. Kolizja kinetyczna z piłką (Spike / Rocket Blast Push)
-    if (ball) {
-      const cR = ball.colRadius || 5.2;
-      const distToBall = distPointToSegment(ball.x, ball.y, this.prevX, this.prevY, endX, endY);
-      if (distToBall <= cR + this.radius + 4) {
-        ball.isLevitating = false;
-        if (arena1State && arena1State.waitingForKickoff) {
-          arena1State.waitingForKickoff = false;
-          triggerScreenShake(8);
-          if (typeof spawnAltarShockwave === 'function') {
-            spawnAltarShockwave(ball.x, ball.y);
-          }
-        }
-        ball.vx += this.vx * 1.6;
-        ball.vy += this.vy * 1.6 - 4.5;
-        ball.spin += (this.vx > 0 ? 0.9 : -0.9);
-        this.x = ball.x;
-        this.y = ball.y;
-        this.detonate(groundY, platforms, customObs, combatants, ball);
-        return false;
-      }
-    }
-
-    // 3. Przechwycenie trafienia pocisku w unikalne elementy mapy (Arena Lifecycle Hook: np. zniszczalne rampy, mosty, ołtarz)
+    // 2. Przechwycenie trafienia pocisku w unikalne elementy mapy (Arena Lifecycle Hook: np. zniszczalne rampy, mosty)
     if (curArena && typeof curArena.onBulletHit === 'function') {
       const bulletProxy = {
         x: this.x,

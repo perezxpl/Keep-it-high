@@ -16,21 +16,14 @@ export const StrikerClass = {
     sprintMax: 6.8,
     accel: 0.25,
     decel: 0.84,
-    slideDecel: 0.972,
     jumpForce: 9.8,
-    slideDashSpeed: 12.0,
     chargeSpeed: 0.048,
     hitReach: 60,
     whiffReach: 90,
-    baseKickSpeed: 21.4,
-    kickPowerMult: 1.15,
-    spinMult: 1.65,
     jetMax: 90,
     spartanKnockback: 10.0,
     spartanStagger: 15,
     spartanDamage: 9,
-    kickForce: 1.30,
-    kickForceMultiplier: 1.30,
     knockback: 1.00,
     knockbackMultiplier: 1.00,
     kickCooldown: 0.50
@@ -86,18 +79,6 @@ export const StrikerClass = {
 
   // Efekt / modyfikator skoku
   onJump(player, spawnGrass) {},
-
-  // Efekt / modyfikator wślizgu
-  onSlide(player, spawnGrass) {},
-
-  // Wykop (nx, ny, baseSpeed, isSpinVolley, chargePower)
-  onKick(player, ball, context) {
-    // Wirtuoz nakłada wyjątkowo silny efekt rotacyjny
-    ball.spin *= 1.4;
-  },
-
-  // Pasywny kontakt ciała z piłką (bez aktywnego kopnięcia)
-  onBallPassiveContact(player, ball) {},
 
   // Rysowanie efektów POD postacią (przed torsem)
   onDrawUnder(ctx, player) {},

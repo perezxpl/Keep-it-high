@@ -22,7 +22,6 @@ export const WEAPONS = {
     crouchRecoilMult: 0.45,
     muzzleRise: 0.045,      // Podrzut lufy w górę na strzał (rad)
     kickbackDistance: 2.8,  // Cofnięcie samej broni w tył (px)
-    ballPush: 0.18,         // Pchnięcie piłki
     bodyPush: 0.032,        // Subtelne wytrącenie z równowagi żywej postaci
     ragdollPushMult: 0.85,  // Standardowy, realistyczny impuls śmierci
     pellets: 1,
@@ -49,7 +48,6 @@ export const WEAPONS = {
     crouchRecoilMult: 0.42,
     muzzleRise: 0.185,      // Skok lufy ku górze (rad)
     kickbackDistance: 5.8,  // Silne cofnięcie broni ku barkowi
-    ballPush: 0.38,
     bodyPush: 0.095,        // Silny odrzut kinetyczny żywej postaci od każdego śrutu
     ragdollPushMult: 2.20,  // Potężne katapultowanie bezwładnego ciała w tył
     pellets: 6,
@@ -79,7 +77,6 @@ export const WEAPONS = {
     screenShake: 12,        // Wstrząs ekranu przy wystrzale
     muzzleRise: 0.22,       // Podrzut lufy
     kickbackDistance: 7.8,  // Silne cofnięcie broni
-    ballPush: 0.85,         // Potężne pchnięcie piłki
     bodyPush: 0.22,         // Odrzut trafionego przeciwnika
     ragdollPushMult: 3.5,   // Katapultowanie zwłok
     pellets: 1,
@@ -112,7 +109,6 @@ export const WEAPONS = {
     screenShake: 1.2,
     muzzleRise: 0.04,
     kickbackDistance: 1.2,
-    ballPush: 0.35,
     bodyPush: 0.04,
     ragdollPushMult: 1.2,
     pellets: 1,
@@ -142,7 +138,6 @@ export const WEAPONS = {
     crouchRecoilMult: 0.40,
     muzzleRise: 0.008,      // Subtelna wibracja luf bez znoszenia celowania
     kickbackDistance: 1.6,  // Delikatne cofniecie broni
-    ballPush: 0.22,         // Wyrazne spychanie pilki
     bodyPush: 0.045,        // Spowolnienie/odpychanie trafionego wroga
     ragdollPushMult: 1.35,  // Solidny impuls na zwloki
     pellets: 1,
@@ -172,7 +167,6 @@ export const WEAPONS = {
     crouchRecoilMult: 0.50,
     muzzleRise: 0.075,
     kickbackDistance: 2.0,
-    ballPush: 0.14,
     bodyPush: 0.026,
     ragdollPushMult: 0.90,
     pellets: 1,
@@ -201,7 +195,6 @@ export const WEAPONS = {
     crouchRecoilMult: 0.45,
     muzzleRise: 0.16,
     kickbackDistance: 4.2,
-    ballPush: 0.35,
     bodyPush: 0.08,
     ragdollPushMult: 1.8,
     pellets: 1,
@@ -232,7 +225,6 @@ export const WEAPONS = {
     crouchRecoilMult: 0.50,
     muzzleRise: 0.20,
     kickbackDistance: 5.5,
-    ballPush: 0.45,
     bodyPush: 0.12,
     ragdollPushMult: 2.4,
     pellets: 8,
@@ -263,7 +255,6 @@ export const WEAPONS = {
     screenShake: 15,         // Wstrząs ekranu przy wystrzale
     muzzleRise: 0.22,        // Podrzut wyrzutni na ramieniu
     kickbackDistance: 6.5,   // Silne cofnięcie broni
-    ballPush: 1.15,          // Ekstremalny impuls kinetyczny w piłkę
     bodyPush: 0.35,
     ragdollPushMult: 3.8,    // Katapultowanie zwłok po wybuchu
     pellets: 1,
@@ -290,7 +281,6 @@ export const WEAPONS = {
     range: 58,
     bulletSpeed: 0, pellets: 0, magSize: 0, currentAmmo: 0, reserveAmmo: 0,
     reloadTime: 0, reloadDuration: 0, recoil: 0,
-    ballPush: 0.65,
     bodyPush: 3.2,
     ragdollPushMult: 1.5
   },
@@ -306,7 +296,6 @@ export const WEAPONS = {
     range: 72,
     bulletSpeed: 0, pellets: 0, magSize: 0, currentAmmo: 0, reserveAmmo: 0,
     reloadTime: 0, reloadDuration: 0, recoil: 0,
-    ballPush: 0.85,
     bodyPush: 5.5,
     ragdollPushMult: 2.0
   },
@@ -322,7 +311,6 @@ export const WEAPONS = {
     range: 64,
     bulletSpeed: 0, pellets: 0, magSize: 0, currentAmmo: 0, reserveAmmo: 0,
     reloadTime: 0, reloadDuration: 0, recoil: 0,
-    ballPush: 1.0,
     bodyPush: 8.0,
     ragdollPushMult: 2.8
   },
@@ -338,7 +326,6 @@ export const WEAPONS = {
     range: 85,
     bulletSpeed: 0, pellets: 0, magSize: 0, currentAmmo: 0, reserveAmmo: 0,
     reloadTime: 0, reloadDuration: 0, recoil: 0,
-    ballPush: 1.0,
     bodyPush: 6.0,
     ragdollPushMult: 2.2
   },
@@ -577,19 +564,19 @@ export const KNIFE_COMBO_MOVES = [
     step: 0, name: 'FOREHAND_SLASH', label: 'Cięcie ukośne z góry', type: 'SLASH',
     totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8, cooldownFrames: 12,
     arcStart: -0.90, arcEnd: 1.05, reach: 58, width: 28, damage: 30, backstabMultiplier: 1.8,
-    lungeForce: 2.0, bodyPush: 3.2, hitstopFrames: 2, screenShake: 4, ballPush: { vx: 12.0, vy: -4.0, spin: 0.4 }
+    lungeForce: 2.0, bodyPush: 3.2, hitstopFrames: 2, screenShake: 4
   },
   {
     step: 1, name: 'BACKHAND_SLICE', label: 'Cięcie powrotne z dołu', type: 'BACKHAND',
     totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8, cooldownFrames: 12,
     arcStart: 0.95, arcEnd: -0.85, reach: 58, width: 28, damage: 34, backstabMultiplier: 2.0,
-    lungeForce: 2.2, bodyPush: 3.6, hitstopFrames: 2, screenShake: 5, ballPush: { vx: 13.5, vy: -5.5, spin: -0.5 }
+    lungeForce: 2.2, bodyPush: 3.6, hitstopFrames: 2, screenShake: 5
   },
   {
     step: 2, name: 'LETHAL_THRUST', label: 'Śmiertelne pchnięcie sztychem', type: 'THRUST',
     totalFrames: 25, windupFrames: 7, activeFrames: 7, recoveryFrames: 11, cooldownFrames: 22,
     reach: 66, width: 24, damage: 42, backstabMultiplier: 2.0,
-    lungeForce: 3.8, bodyPush: 6.0, hitstopFrames: 4, screenShake: 8, ballPush: { vx: 17.0, vy: -2.5, spin: 0.2 }
+    lungeForce: 3.8, bodyPush: 6.0, hitstopFrames: 4, screenShake: 8
   }
 ];
 
@@ -601,13 +588,13 @@ export const MACHETE_COMBO_MOVES = [
     step: 0, name: 'OVERHEAD_CLEAVE', label: 'Zamaszyste cięcie z góry na dół', type: 'OVERHEAD_CLEAVE',
     totalFrames: 36, windupFrames: 12, activeFrames: 10, recoveryFrames: 14, cooldownFrames: 22,
     arcStart: -1.90, arcEnd: 1.20, reach: 80, width: 44, damage: 42, backstabMultiplier: 1.6,
-    lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true, ballPush: { vx: 20.0, vy: -5.0, spin: 0.8 }
+    lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true
   },
   {
     step: 1, name: 'UNDERHAND_CLEAVE', label: 'Zamaszyste cięcie powrotne z dołu w górę', type: 'UNDERHAND_CLEAVE',
     totalFrames: 34, windupFrames: 10, activeFrames: 10, recoveryFrames: 14, cooldownFrames: 34,
     arcStart: 1.55, arcEnd: -1.45, reach: 80, width: 44, damage: 46, backstabMultiplier: 1.7,
-    lungeForce: 1.4, bodyPush: 6.0, hitstopFrames: 4, screenShake: 10, cleave: true, ballPush: { vx: 21.0, vy: -8.0, spin: -0.8 }
+    lungeForce: 1.4, bodyPush: 6.0, hitstopFrames: 4, screenShake: 10, cleave: true
   }
 ];
 
@@ -623,7 +610,6 @@ export const MELEE_CONFIGS = {
     totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8,
     reach: 58, width: 28, damage: 35, backstabMultiplier: 1.8,
     lungeForce: 2.2, bodyPush: 3.5, hitstopFrames: 2, screenShake: 5,
-    ballPush: { vx: 14.0, vy: -4.5, spin: 0.3 }
   },
   MACHETE: {
     id: 'MACHETE',
@@ -634,7 +620,6 @@ export const MELEE_CONFIGS = {
     arcStart: -1.90, arcEnd: 1.20,
     reach: 80, width: 44, damage: 44, backstabMultiplier: 1.6,
     lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true,
-    ballPush: { vx: 20.0, vy: -5.0, spin: 0.8 }
   },
   AXE: {
     id: 'AXE',
@@ -646,7 +631,6 @@ export const MELEE_CONFIGS = {
     reach: 64, width: 32, damage: 55, backstabMultiplier: 1.4,
     lungeForce: 3.0, downwardImpact: 1.8, bodyPush: 8.0, staggerDuration: 22,
     hitstopFrames: 6, screenShake: 14,
-    ballPush: { vx: 21.0, vy: 5.0, spin: 0.4 },
     cleave: false
   },
   NANO_SABER: {
@@ -658,7 +642,6 @@ export const MELEE_CONFIGS = {
     arcStart: -2.10, arcEnd: 1.40,
     reach: 85, width: 50, damage: 50, backstabMultiplier: 1.8,
     lungeForce: 3.2, bodyPush: 6.0, hitstopFrames: 3, screenShake: 6, cleave: true,
-    ballPush: { vx: 22.0, vy: -5.0, spin: 0.8 },
     plasmaBlade: true
   }
 };
@@ -788,7 +771,7 @@ export function getWeaponHoldTransform(p) {
 
   // W marszu (WALK) i w spoczynku (IDLE) ręce z bronią jednoręczną są opuszczone lub w gardzie,
   // a w tempie szybszym niż chód (JOG i SPRINT) dynamicznie ugięte w łokciach z asymetrią pompowania
-  const isFasterThanWalk = (isSprint || isJog || (speed > 2.2)) && !p.isCrouching && !p.isProne && !p.isSliding;
+  const isFasterThanWalk = (isSprint || isJog || (speed > 2.2)) && !p.isCrouching && !p.isProne;
   const isOneHandRunWeapon = (isAxe || isPistol || isKnife || isMachete) && !p.meleeState;
   const targetRunWeight = (isOneHandRunWeapon && isFasterThanWalk) ? 1.0 : 0.0;
   p.axeRunWeight = (typeof p.axeRunWeight === 'number')

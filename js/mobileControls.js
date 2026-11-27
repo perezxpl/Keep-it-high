@@ -5,18 +5,11 @@
 // =========================================================================
 
 import { CONFIG } from './config.js';
-import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget, prepareTomahawkThrow, releaseTomahawkThrow } from './player/actions.js';
+import { performKick, kick, triggerSpartanKick, findMeleeTarget, prepareTomahawkThrow, releaseTomahawkThrow } from './player/actions.js';
 import { triggerEnforcerGroundSlam } from './classes/enforcer.js';
 import { startMeleeAttack, WEAPONS, cancelReload } from './weapons.js';
-import { ball } from './ball.js';
 import { activeArenaId as obstacleArenaId } from './obstacles.js';
 import { getActiveArena } from './arenas/index.js';
-
-export function isArena1() {
-  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const cur = curArena?.id || ((typeof window !== 'undefined' && window.activeArenaId) ? window.activeArenaId : obstacleArenaId);
-  return (cur === 'ARENA_1' || cur === 'arena-1' || cur === '1');
-}
 
 export const leftStick = {
   active: false,
@@ -134,7 +127,6 @@ export const btnCluster = {
   throwable: pockets.throwable,
   action: pockets.action,
   melee: pockets.melee,
-  slide: pockets.action,
   prone: pockets.action,
   crouch: pockets.action,
   grenade: pockets.throwable,
@@ -213,61 +205,34 @@ export function updateButtonLayout(W, H) {
 export function updateMobileControlStates(player, lStick = leftStick, bCluster = btnCluster, extraOptions = {}) {
   if (!player) return;
 
-  const jogMax = player.currentClass?.stats?.jogMax || CONFIG.JOG_MAX || 4.2;
-  const sprintMax = player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX || 6.8;
-  const minSprintSpeed = Math.max(jogMax + 0.15, sprintMax * 0.80);
-  const isSprinting = (
-    player.onGround &&
-    !player.isJumping &&
-    player.gaitMode === 'SPRINT' &&
-    Math.abs(player.vx) >= minSprintSpeed &&
-    (player.sprintDuration || 0) >= 8 &&
-    !(player.rocketBoots && player.rocketBoots.dashing)
-  );
-  const cooldownOk = (!player.slideCooldown || player.slideCooldown <= 0);
-  const ballArena = isArena1();
-
   if (player.isProne) {
     pockets.action.currentMode = 'STAND';
   } else if (player.isCrouching) {
     // Tryb leżenia jest dostępny WYŁĄCZNIE kiedy gracz kuca!
     pockets.action.currentMode = 'PRONE';
-  } else if (ballArena && isSprinting && cooldownOk) {
-    // Wślizg dozwolony WYŁĄCZNIE w trybie z piłką (Arena 1)
-    // Jeśli jednak piłka znajduje się bezpośrednio w zasięgu – priorytet ma natychmiastowy KICK!
-    const activeBall = extraOptions.ball || ball;
-    const canKickBall = activeBall && activeBall.active !== false && isBallInKickReach(player, activeBall);
-    pockets.action.currentMode = canKickBall ? 'KICK' : 'SLIDE';
   } else {
-    // W pozostałych stanach oraz ZAWSZE w trybach bojowych (Arena 2 i 3): KOPNIAK (KICK)
     pockets.action.currentMode = 'KICK';
   }
 }
 
 /**
  * Obsługa wciśnięcia zunifikowanego przycisku akcji dynamicznej:
- * - 'SLIDE': wślizg po rozpędzeniu do sprintu (wyłącznie w trybach z piłką)
  * - 'PRONE': położenie się na ziemi (dostępne TYLKO podczas kucania)
  * - 'STAND': wstanie na równe nogi
- * - 'KICK': wykop piłki w Arenie 1 LUB Spartan Kick w starciu wręcz / Arenach 2 i 3
+ * - 'KICK': Spartan Kick w starciu wręcz / niszczeniu otoczenia
  *
  * @param {Object} player - Obiekt gracza
- * @param {Function} spawnGrass - Funkcja spawnu cząsteczek
+ * @param {Function} spawnGrass - Funkcja spawnu cząstzek
  * @param {number} GROUND_Y - Poziom podłoża
- * @param {Object} [extraOptions] - Dodatkowe opcje (ball, targets, obstacles)
+ * @param {Object} [extraOptions] - Dodatkowe opcje (targets, obstacles)
  * @returns {boolean|string}
  */
 export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, extraOptions = {}) {
-  if (!player || player.isDead || player.isIntro) return false;
+  if (!player || player.isDead) return false;
 
-  const ballArena = isArena1();
   const mode = pockets.action.currentMode || 'KICK';
 
-  if (mode === 'SLIDE' && ballArena) {
-    if (player.onGround && !(player.rocketBoots && player.rocketBoots.dashing)) {
-      return playerSlide(spawnGrass, GROUND_Y, player);
-    }
-  } else if (mode === 'PRONE') {
+  if (mode === 'PRONE') {
     // Tryb leżenia ma być dostępny TYLKO kiedy gracz kuca
     if (!player.isCrouching) return false;
 
@@ -287,14 +252,6 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
     pockets.action.currentMode = 'KICK';
     return true;
   } else {
-    // Mode KICK: wykop piłki w Arenie 1 LUB przywrócony SPARTAN KICK w walce
-    // Przerwanie wślizgu wykopem (Slide-Cancel into Kick)
-    if (player.isSliding) {
-      player.isSliding = false;
-      player.slideTimer = 0;
-      player.slideCooldown = Math.max(player.slideCooldown || 0, 16);
-    }
-
     // Sprawdzenie czy Enforcer w locie wykonuje Tąpnięcie z powietrza (Ground Slam):
     // Wymóg: lewy drążek wychylony w dół (axisY > 0.42) ORAZ wciśnięcie przycisku kopania
     if (player.currentClass?.id === 'ENFORCER' && !player.onGround && !player.isGroundSlamming) {
@@ -311,18 +268,6 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
     player.isCrouching = false;
     player.crouchToggled = false;
 
-    // Jeśli Arena 1 i piłka jest w zasięgu – wykop piłki
-    const activeBall = extraOptions.ball || ball;
-    if (ballArena && activeBall && activeBall.active !== false && isBallInKickReach(player, activeBall)) {
-      return triggerRightStickKick(player, rightStick, {
-        ball: activeBall,
-        targets: extraOptions.targets,
-        obstacles: extraOptions.obstacles,
-        spawnGrass: spawnGrass
-      });
-    }
-
-    // W pozostałych przypadkach (Areny 2 i 3 oraz Arena 1 poza piłką) – SPARTAN KICK!
     const activeTargets = extraOptions.targets || [
       (typeof window !== 'undefined' && window.bot?.active ? window.bot : null),
       (typeof window !== 'undefined' && window.remotePlayer?.active ? window.remotePlayer : null)
@@ -330,7 +275,6 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
     const meleeTarget = findMeleeTarget(player, activeTargets);
     return triggerSpartanKick(player, meleeTarget) || false;
   }
-  return false;
 }
 
 export function handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, bCluster = btnCluster) {
@@ -338,72 +282,17 @@ export function handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, bClust
 }
 
 /**
- * Wyzwala kopnięcie z prawego drążka (Right Stick Kick):
- * - Wektor siły wyliczany wzdłuż kąta wychylenia prawego drążka (w stronę celowania)
- * - Wywołuje performKick z fizycznym kontaktem stopy z piłką LUB Spartan Kick w walce
+ * Wyzwala kopnięcie Spartan Kick z prawego drążka / akcji dotykowej.
  *
  * @param {Object} player - Obiekt gracza
  * @param {Object} [rStick] - Prawy drążek
- * @param {Object} [extraOptions] - Dodatkowe opcje (ball, targets, obstacles, spawnGrass)
+ * @param {Object} [extraOptions] - Dodatkowe opcje (targets, obstacles, spawnGrass)
  * @returns {string|null}
  */
 export function triggerRightStickKick(player, rStick = rightStick, extraOptions = {}) {
-  if (!player || player.isDead || player.isSliding || player.staggerTimer > 0) return null;
+  if (!player || player.isDead || player.staggerTimer > 0) return null;
   if (player.kickState !== 'IDLE' || (player.kickCooldown && player.kickCooldown > 0)) return null;
 
-  const currentFloor = player.currentGroundY || player.groundY || 500;
-  const isAirborne = player.isJumping || (currentFloor > 0 && player.y < currentFloor - player.h - 4);
-
-  // W Arenie 1 przy aktywnej piłce w zasięgu: wykop piłki
-  const canKickBall = isArena1() && extraOptions.ball && extraOptions.ball.active !== false && isBallInKickReach(player, extraOptions.ball);
-  if (canKickBall) {
-    const hipX = player.x + player.w / 2;
-    const hipY = player.y + player.h - 40 + (player.pelvisY || 0);
-
-    let dirX = rStick ? rStick.axisX : 0;
-    let dirY = rStick ? rStick.axisY : 0;
-    const mag = Math.hypot(dirX, dirY);
-
-    let aimX, aimY;
-    if (mag > 0.08) {
-      dirX /= mag;
-      dirY /= mag;
-      aimX = hipX + dirX * 160;
-      aimY = hipY + dirY * 160;
-    } else {
-      dirX = player.facing || 1;
-      dirY = -0.15;
-      aimX = hipX + dirX * 160;
-      aimY = hipY - 20;
-    }
-
-    const pwr = (rStick && rStick.power > 0.15)
-      ? Math.min(1.0, Math.max(0.70, rStick.power))
-      : 0.85;
-
-    return performKick(player, {
-      aimX: aimX,
-      aimY: aimY,
-      power: extraOptions.power || pwr,
-      ball: extraOptions.ball,
-      targets: extraOptions.targets,
-      obstacles: extraOptions.obstacles,
-      spawnGrass: extraOptions.spawnGrass
-    });
-  }
-
-  // W powietrzu: nożyce (SCISSOR)
-  if (isAirborne) {
-    const classCooldownSec = player.kickCooldownTime ?? player.currentClass?.stats?.kickCooldown ?? player.classConfig?.stats?.kickCooldown ?? 0.50;
-    player.kickCooldown = Math.max(24, Math.round(classCooldownSec * 60));
-    player.kickMode = 'SCISSOR';
-    player.scissorTimer = 0;
-    player.scissorDuration = 22;
-    player.kickState = 'SWING';
-    return 'SCISSOR';
-  }
-
-  // Na ziemi w walce / niszczeniu otoczenia: SPARTAN KICK!
   const activeTargets = extraOptions.targets || [
     (typeof window !== 'undefined' && window.bot?.active ? window.bot : null),
     (typeof window !== 'undefined' && window.remotePlayer?.active ? window.remotePlayer : null)
@@ -485,7 +374,7 @@ export function restorePreviousFirearm(player) {
  * @returns {boolean}
  */
 export function handleMeleeButtonPress(player) {
-  if (!player || player.isDead || player.isIntro) return false;
+  if (!player || player.isDead) return false;
 
   const isHoldingMelee = !player.isHolstered && (player.currentWeapon?.isMelee || player.currentWeapon?.id === 'AXE' || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE');
 

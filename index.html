@@ -6,14 +6,13 @@
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>MODERN MILITARY // Cyber Arena</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%230b1220'/%3E%3Cpolygon points='50,14 86,50 50,86 14,50' fill='none' stroke='%2300e5ff' stroke-width='8'/%3E%3Ccircle cx='50' cy='50' r='10' fill='%23f97316'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script type="importmap">
   {
     "imports": {
-      "./js/arenas/arena1.js": "./js/arenas/arena1.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
       "./js/arenas/arena2.js": "./js/arenas/arena2.js?v=v531_weapon_swap_prompt_and_a2_fixes",
       "./js/arenas/arena2/renderer.js": "./js/arenas/arena2/renderer.js?v=v531_weapon_swap_prompt_and_a2_fixes",
       "./js/arenas/arena2/sewerPipes.js": "./js/arenas/arena2/sewerPipes.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -45,7 +44,6 @@
       "./js/audio/state.js": "./js/audio/state.js?v=v541_arena3_warship_mortar_unified_arc",
       "./js/audio/synth.js": "./js/audio/synth.js?v=v541_arena3_warship_mortar_unified_arc",
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/ball.js": "./js/ball.js?v=v459_stage1_hybrid_audio",
       "./js/bot.js": "./js/bot.js?v=v531_weapon_swap_prompt_and_a2_fixes",
       "./js/callouts/index.js": "./js/callouts/index.js?v=v463_combat_callouts_revenge",
       "./js/callouts/logic.js": "./js/callouts/logic.js?v=v532_headshot_callout_and_decapitation_tuning",
@@ -110,7 +108,6 @@
       "./js/networkUI.js": "./js/networkUI.js?v=v449_direct_matchmaking_no_codes",
       "./js/networkWebSocket.js": "./js/networkWebSocket.js?v=v518_ws_gamestate_sync_fix",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
-      "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v459_stage1_hybrid_audio",
       "./js/obstacles/materials.js": "./js/obstacles/materials.js?v=v347_dynamic_lighting_and_materials",
       "./js/obstacles/palette.js": "./js/obstacles/palette.js?v=v162_remove_emojis_streamline_ui",
       "./js/obstacles/playerPhysics.js": "./js/obstacles/playerPhysics.js?v=v533_remove_invisible_edge_walls",
@@ -295,20 +292,12 @@
               <div id="mp-matchmake-status" style="font-size: 11px; color: #38bdf8; margin-top: 8px; text-align: center; display: none;"></div>
             </div>
 
-            <!-- WYBÓR ARENY MULTIPLAYER (3 ARENY) -->
+            <!-- WYBÓR ARENY MULTIPLAYER (4 ARENY) -->
             <div class="mp-card mp-card-purple" id="mp-arena-select-card">
               <div class="mp-card-title">WYBIERZ ARENĘ BITWY</div>
               <p class="mp-card-desc">Wybierz mapę dla pojedynku wieloosobowego:</p>
               <div class="mp-arena-selector-grid">
-                <button type="button" class="mp-arena-card active" data-arena="arena-1" title="Wybierz Arenę 1: Neonowe Miasto">
-                  <div class="mp-arena-card-top">
-                    <span class="mp-arena-badge">ARENA 1</span>
-                    <span class="mp-arena-active-indicator">WYBRANA</span>
-                  </div>
-                  <div class="mp-arena-name">Neonowe Miasto</div>
-                  <div class="mp-arena-desc">Futurystyczne wieżowce, dynamiczne linie strzału i miejski klimat.</div>
-                </button>
-                <button type="button" class="mp-arena-card" data-arena="arena-2" title="Wybierz Arenę 2: Toksyczna Rafineria (Sektor X)">
+                <button type="button" class="mp-arena-card active" data-arena="arena-2" title="Wybierz Arenę 2: Toksyczna Rafineria (Sektor X)">
                   <div class="mp-arena-card-top">
                     <span class="mp-arena-badge">ARENA 2</span>
                     <span class="mp-arena-active-indicator">WYBRANA</span>
@@ -556,7 +545,7 @@
               <div class="mp-feature-bullets" style="margin-top: 10px;">
                 <div>Pełna synchronizacja postaci, botów, broni i jetpacka w czasie rzeczywistym</div>
                 <div>Wspólne stawianie i usuwanie przeszkód w edytorze DEV na żywo</div>
-                <div>Wspólne mecze piłki nożnej (Bramka Cyan vs Orange)</div>
+                <div>Zespołowe starcia TDM / FFA i wsparcie trybu Plaga Zombie</div>
               </div>
               <div class="mp-connected-actions-row" style="margin-top: 12px; display: flex; gap: 8px;">
                 <button id="mp-launch-game-btn" class="mp-action-btn mp-btn-cyan" type="button" style="flex: 2; font-size: 13px; font-weight: 800; padding: 10px 14px;">▶ WEJDŹ DO GRY (START)</button>
@@ -626,7 +615,7 @@
             </div>
             <div class="ranks-rules-footer-note">
               <div class="note-text">
-                <strong>Taktyka Awansu:</strong> Punkty XP sumują się po każdej akcji i zapisują automatycznie w profilu gracza. Najszybszą ścieżką awansu jest połączenie agresywnej gry bramkowej (+15 XP) z likwidacją wrogów (+10 XP) oraz wygrywaniem całych meczów (+40 XP). Porażka w meczu nie odejmuje Twojego dotychczasowego XP.
+                <strong>Taktyka Awansu:</strong> Punkty XP sumują się po każdej akcji i zapisują automatycznie w profilu gracza. Najszybszą ścieżką awansu jest wysoka pozycja w bitwach Deathmatch (do +100 XP), seria eliminacji i medale bojowe (+15 do +45 XP) oraz likwidacja wrogów (+10 XP). Porażka w meczu nie odejmuje Twojego dotychczasowego XP.
               </div>
             </div>
           </div>
@@ -820,10 +809,6 @@
                     <span class="stat-mini-lbl">MECZE</span>
                     <span class="stat-mini-val text-sky" id="menu-stat-matches">0</span>
                   </div>
-                  <div class="stat-pill-mini" title="Strzelone bramki">
-                    <span class="stat-mini-lbl">GOLE</span>
-                    <span class="stat-mini-val text-yellow" id="menu-stat-goals">0</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -858,17 +843,17 @@
                       
                       <div class="carousel-active-view" id="briefing-arena-card">
                         <div class="carousel-badge-bar">
-                          <span class="briefing-badge" id="briefing-arena-badge">SEKTOR 01</span>
-                          <span class="briefing-counter" id="briefing-arena-counter">MAPA 1 / 3</span>
+                          <span class="briefing-badge" id="briefing-arena-badge">SEKTOR 02</span>
+                          <span class="briefing-counter" id="briefing-arena-counter">MAPA 1 / 4</span>
                         </div>
                         <div class="briefing-preview-frame">
-                          <img src="./assets/arena1_preview.png?v=v216_neon_stadium_preview" alt="Podgląd Areny" class="briefing-preview-img" id="briefing-arena-img">
+                          <img src="./assets/arena2_preview.png?v=clean_no_hud" alt="Podgląd Areny" class="briefing-preview-img" id="briefing-arena-img">
                           <div class="briefing-preview-overlay">
-                            <span class="briefing-tag" id="briefing-arena-tag">COMBAT BALL</span>
+                            <span class="briefing-tag" id="briefing-arena-tag">DEATHMATCH 5 MIN</span>
                           </div>
                         </div>
-                        <div class="briefing-arena-name" id="briefing-arena-name">NEONOWE MIASTO</div>
-                        <div class="briefing-arena-desc" id="briefing-arena-desc">Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.</div>
+                        <div class="briefing-arena-name" id="briefing-arena-name">TOKSYCZNA RAFINERIA</div>
+                        <div class="briefing-arena-desc" id="briefing-arena-desc">Ciężki przemysłowy kompleks, centralny wentylator i okresowe zrzuty żrącego kwasu.</div>
                       </div>
 
                       <button type="button" class="carousel-arrow-btn" id="briefing-arena-next" title="Następna mapa (D / →)">›</button>
@@ -876,11 +861,10 @@
 
                     <!-- Kropki paginacji karuzeli -->
                     <div class="carousel-dots-row" id="briefing-carousel-dots">
-                      <button type="button" class="carousel-dot active" data-index="0" title="Neonowe Miasto"></button>
-                      <button type="button" class="carousel-dot" data-index="1" title="Toksyczna Rafineria"></button>
-                      <button type="button" class="carousel-dot" data-index="2" title="Tajemnicza Dżungla"></button>
-                      <button type="button" class="carousel-dot" data-index="3" title="Platforma Wiertnicza // Tyfon"></button>
-                      <button type="button" class="carousel-dot" data-index="4" title="Prefabrykator Orbitalny"></button>
+                      <button type="button" class="carousel-dot active" data-index="0" title="Toksyczna Rafineria"></button>
+                      <button type="button" class="carousel-dot" data-index="1" title="Tajemnicza Dżungla"></button>
+                      <button type="button" class="carousel-dot" data-index="2" title="Obsidian Caldera"></button>
+                      <button type="button" class="carousel-dot" data-index="3" title="Prefabrykator Orbitalny"></button>
                     </div>
                   </div>
                 </div>
@@ -892,60 +876,8 @@
                   </div>
                   <!-- Panel A: Opcje dla trybu Solo (Boty AI) -->
                   <div class="briefing-options-panel active" id="briefing-panel-solo">
-                    <!-- Opcje Areny 1 (Neonowe Miasto) -->
-                    <div class="briefing-map-opts active" id="arena-opts-ARENA_1">
-                    <div class="briefing-opt-row">
-                      <span class="opt-label">TRYB OPERACJI:</span>
-                      <span class="opt-val-badge text-cyan">COMBAT BALL (MECZ BRAMKOWY)</span>
-                    </div>
-
-                    <div class="briefing-opt-row">
-                      <span class="opt-label">LIMIT BRAMEK:</span>
-                      <div class="briefing-toggle-group" id="ball-goals-toggle-group">
-                        <button type="button" class="briefing-toggle-btn" data-goal-limit="3">3 GOLE</button>
-                        <button type="button" class="briefing-toggle-btn active" data-goal-limit="5">5 GOLI</button>
-                        <button type="button" class="briefing-toggle-btn" data-goal-limit="10">10 GOLI</button>
-                      </div>
-                    </div>
-
-                    <div class="briefing-opt-row">
-                      <span class="opt-label">PRZECIWNIK AI:</span>
-                      <div class="briefing-toggle-group" id="ball-bot-toggle-group">
-                        <button type="button" class="briefing-toggle-btn active" data-bot-state="active">BOT: WŁĄCZONY</button>
-                        <button type="button" class="briefing-toggle-btn" data-bot-state="inactive">BOT: BRAK (SOLO)</button>
-                      </div>
-                    </div>
-
-                    <div class="briefing-opt-row" id="ball-bot-count-row">
-                      <span class="opt-label">LICZBA BOTÓW:</span>
-                      <div class="briefing-toggle-group" id="ball-bot-count-toggle-group">
-                        <button type="button" class="briefing-toggle-btn active" data-bot-count="1">1 BOT</button>
-                        <button type="button" class="briefing-toggle-btn" data-bot-count="2">2 BOTY</button>
-                        <button type="button" class="briefing-toggle-btn" data-bot-count="3">3 BOTY</button>
-                        <button type="button" class="briefing-toggle-btn" data-bot-count="5">5 BOTÓW</button>
-                      </div>
-                    </div>
-
-                    <div class="briefing-opt-row">
-                      <span class="opt-label">TRUDNOŚĆ AI:</span>
-                      <div class="briefing-toggle-group" id="ball-diff-toggle-group">
-                        <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
-                        <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
-                        <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>
-                      </div>
-                    </div>
-
-                    <div class="briefing-opt-row briefing-zombie-row">
-                      <span class="opt-label">TRYB ZOMBIE:</span>
-                      <div class="briefing-toggle-group dm-zombie-toggle-group">
-                        <button type="button" class="briefing-toggle-btn active" data-zombie-val="off">WYŁĄCZONY</button>
-                        <button type="button" class="briefing-toggle-btn" data-zombie-val="on" style="color: #4ade80; border-color: #22c55e;">PLAGA ZOMBIE</button>
-                      </div>
-                    </div>
-                  </div>
-
                   <!-- Opcje Areny 2 (Toksyczna Rafineria - Deathmatch) -->
-                  <div class="briefing-map-opts" id="arena-opts-ARENA_2" style="display: none;">
+                  <div class="briefing-map-opts active" id="arena-opts-ARENA_2">
                     <div class="briefing-opt-row">
                       <span class="opt-label">TRYB BITWY:</span>
                       <div class="briefing-toggle-group dm-mode-toggle-group" id="dm-mode-toggle-group">
@@ -1565,7 +1497,7 @@
               <div class="setting-row">
                 <div class="setting-label-col">
                   <div class="setting-name">Efekty Dźwiękowe (SFX)</div>
-                  <div class="setting-desc">Dźwięki interfejsu, strzałów i wykopów piłki</div>
+                  <div class="setting-desc">Dźwięki interfejsu, strzałów, eksplozji i kopnięć</div>
                 </div>
                 <div class="setting-control-col">
                   <input type="range" id="setting-sfx-vol" min="0" max="100" value="85" class="ui-slider">
@@ -1672,7 +1604,7 @@
               <div class="setting-row">
                 <div class="setting-label-col">
                   <div class="setting-name">Pokaż Obrysy Kolizji (Debug Colliders)</div>
-                  <div class="setting-desc">Zielone obrysy hitboxów graczy, piłki i platform [F1]</div>
+                  <div class="setting-desc">Zielone obrysy hitboxów graczy, przeszkód i platform [F1]</div>
                 </div>
                 <div class="setting-control-col">
                   <label class="ui-switch">
@@ -1688,8 +1620,8 @@
               <div class="keybinds-grid">
                 <div class="keybind-card"><kbd>A</kbd><kbd>D</kbd><span>Bieg lewo / prawo</span></div>
                 <div class="keybind-card"><kbd>W</kbd><span>Skok / Przytrzymaj: Jetpack</span></div>
-                <div class="keybind-card"><kbd>S</kbd> / <kbd>SHIFT</kbd><span>Wślizg bojowy / Kucanie</span></div>
-                <div class="keybind-card"><kbd>SPACJA</kbd><span>Wykop piłki / Atak wręcz</span></div>
+                <div class="keybind-card"><kbd>S</kbd> / <kbd>CTRL</kbd><span>Kucanie / Leżenie</span></div>
+                <div class="keybind-card"><kbd>SPACJA</kbd><span>Spartan Kick (Kopnięcie bojowe)</span></div>
                 <div class="keybind-card"><kbd>LPM</kbd><span>Strzał z wybranej broni</span></div>
                 <div class="keybind-card"><kbd>PPM</kbd> / <kbd>1-3</kbd><span>Zmiana broni palnej</span></div>
                 <div class="keybind-card"><kbd>G</kbd><span>Rzut granatem taktycznym</span></div>

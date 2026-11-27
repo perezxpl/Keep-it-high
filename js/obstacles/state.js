@@ -4,7 +4,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X, ARENA_WIDTH } from '../config.js';
 import {
-  triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks,
+  triggerScreenShake, spawnJetpackSparks,
   resolveSegmentCollision, distToSegment, triggerHitstop,
   spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon, spawnGroundPuff,
   registerWorldObstacles, setActiveArenaId, GROUND_Y, world,
@@ -24,11 +24,10 @@ export function registerArenaResetCallback(cb) {
   }
 }
 import { getActiveArena, setActiveArena, ARENAS, onArenaChange } from '../arenas/index.js';
-import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX } from '../arenas/arena1.js';
 import arena2, {
-  ARENA_2_PLATFORMS, ARENA_2_CONFIG, ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS,
+  ARENA_2_PLATFORMS, ARENA_2_CONFIG, ARENA_2_PANDORA_PLATFORMS,
   applyPandoraUpdraft, checkPandoraUpdraft, ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES,
-  ARENA_CYBER_STADIUM_GOALS, ARENA_2_BRIDGES, resetArena2Bridges, ARENA_2_COVERS, ARENA_2_BARRELS,
+  ARENA_2_BRIDGES, resetArena2Bridges, ARENA_2_COVERS, ARENA_2_BARRELS,
   ARENA_2_SUPPLY, ACID_SURGE_SYSTEM
 } from '../arenas/arena2.js';
 import arena3, {
@@ -43,9 +42,8 @@ import { restorePlayerArmoryLoadout } from '../loadout/index.js';
 import { resetZombieState } from '../zombie/index.js';
 
 export {
-  ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
-  ARENA_2_PLATFORMS, ARENA_2_CONFIG, ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
-  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS, ARENA_2_BRIDGES, resetArena2Bridges,
+  ARENA_2_PLATFORMS, ARENA_2_CONFIG, ARENA_2_PANDORA_PLATFORMS, applyPandoraUpdraft, checkPandoraUpdraft,
+  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_2_BRIDGES, resetArena2Bridges,
   ARENA_2_COVERS, ARENA_2_BARRELS, ARENA_2_SUPPLY, ACID_SURGE_SYSTEM, ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
   getActiveArena, setActiveArena, ARENAS, onArenaChange,
   getSafeArena3Spawn, isArena3SpawnSafe, getSafeSurfaceBelow
@@ -54,12 +52,10 @@ export {
 export const obstacles = [];
 export const customObstacles = [];
 export let _activePlayer = null;
-export let _activeBall = null;
 export let _activeBot = null;
 export function setActiveBot(b) { _activeBot = b; }
-export function setActiveEntities(ball, p, botObj) {
-  _activeBall = ball;
-  _activePlayer = p;
+export function setActiveEntities(_ballUnused, p, botObj) {
+  if (p) _activePlayer = p;
   if (botObj) _activeBot = botObj;
 }
 
@@ -72,7 +68,6 @@ export function spawnObstacleSparks(x, y, nx = 0, ny = -1, count = 4) {
 }
 
 import { normalizeObstacleType, isBottomAnchored } from './palette.js';
-import { spawnAltarShockwave } from './renderer.js';
 
 /**
  * Znajduje najbliższą powierzchnię (platformę, grunt lub przeszkodę) pod dolną krawędzią obiektu w zasięgu snapThreshold.
@@ -300,7 +295,7 @@ export function setCustomObstacles(newList) {
   }
 }
 
-// ARENA 1 & ARENA 2 geometrie i obiekty zaimportowane autonomicznie z js/arenas/arena1.js i arena2.js
+// ARENA 2 & ARENA 3 geometrie i obiekty zaimportowane autonomicznie z js/arenas/arena2.js i arena3.js
 export const ARENA_FOUNDRY_WALLS = [
   // 1. Lewa pionowa ściana mostu skalnego przy wejściu do lewego szybu / rampy
   // Od szczytu mostu (y: 580) w dół do stropu pieczary (y: 780). Poniżej y: 780 przestrzeń otwarta!
@@ -349,28 +344,22 @@ export const ladders = [];
 
 export const ARENA_FOUNDRY_BARRICADES = [];
 
-export const ARENA_FOUNDRY_GOALS = ARENA_3_CUSTOM_OBJECTS.filter(o => o.team);
-
 const _initArena = getActiveArena();
 export let activeArenaId = (_initArena && (_initArena.id === 'arena-5' || _initArena.id === 'ARENA_5'))
   ? 'ARENA_5'
   : ((_initArena && (_initArena.id === 'arena-4' || _initArena.id === 'ARENA_4'))
     ? 'ARENA_4'
-    : ((_initArena && _initArena.id === 'arena-3')
-      ? 'ARENA_3'
-      : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1')));
+    : ((_initArena && _initArena.id === 'arena-3') ? 'ARENA_3' : 'ARENA_2'));
 setActiveArenaId(activeArenaId);
-export const ARENA_PLATFORMS = [...(_initArena?.platforms || ARENA_1_PLATFORMS)];
+export const ARENA_PLATFORMS = [...(_initArena?.platforms || ARENA_2_PLATFORMS)];
 if (typeof window !== 'undefined') {
   window.ARENA_PLATFORMS = ARENA_PLATFORMS;
 }
-export const GROUND_BARRICADES = (activeArenaId === 'ARENA_5' || activeArenaId === 'ARENA_4' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_2') ? [] : [...ARENA_1_BARRICADES];
-export const GOALS = [...((_initArena && (_initArena.id === 'arena-5' || _initArena.id === 'arena-4')) ? [] : ((_initArena && (_initArena.id === 'arena-3')) ? ARENA_FOUNDRY_GOALS : ((_initArena && _initArena.id === 'arena-2') ? ARENA_CYBER_STADIUM_GOALS : ARENA_1_GOALS)))];
+export const GROUND_BARRICADES = [];
 if (_initArena && Array.isArray(_initArena.customObjects)) {
   customObstacles.push(..._initArena.customObjects);
 }
 export const arenaScore = { cyan: 0, orange: 0 };
-export let goalCelebrationTimer = 0;
 
 // Subskrypcja zmian areny dla natychmiastowej synchronizacji platform i obiektów
 onArenaChange((newArena) => {
@@ -380,10 +369,8 @@ onArenaChange((newArena) => {
     activeArenaId = 'ARENA_4';
   } else if (newArena && (newArena.id === 'arena-3' || newArena.id === 'ARENA_3')) {
     activeArenaId = 'ARENA_3';
-  } else if (newArena && (newArena.id === 'arena-2' || newArena.id === 'ARENA_2')) {
-    activeArenaId = 'ARENA_2';
   } else {
-    activeArenaId = 'ARENA_1';
+    activeArenaId = 'ARENA_2';
   }
   setActiveArenaId(activeArenaId);
   if (typeof window !== 'undefined' && window.camera && !window.isMenuShowcase) {
@@ -401,34 +388,15 @@ onArenaChange((newArena) => {
     customObstacles.push(...newArena.customObjects);
   }
 
-  GOALS.length = 0;
   GROUND_BARRICADES.length = 0;
-  if (activeArenaId === 'ARENA_3') {
-    const a3Goals = (newArena && newArena.customObjects) ? newArena.customObjects.filter(o => o.team) : ARENA_FOUNDRY_GOALS;
-    GOALS.push(...(a3Goals.length > 0 ? a3Goals : ARENA_FOUNDRY_GOALS));
-  } else if (activeArenaId === 'ARENA_2') {
-    const a2Goals = (newArena && newArena.customObjects) ? newArena.customObjects.filter(o => o.team) : ARENA_CYBER_STADIUM_GOALS;
-    GOALS.push(...(a2Goals.length > 0 ? a2Goals : ARENA_CYBER_STADIUM_GOALS));
-  } else if (activeArenaId === 'ARENA_4' || activeArenaId === 'ARENA_5') {
-    // W Arenie 4 i Arenie 5 brak bramek i barykad piłkarskich - czysty tryb taktyczny
-  } else {
-    GROUND_BARRICADES.push(...ARENA_1_BARRICADES);
-    GOALS.push(...ARENA_1_GOALS);
-  }
 });
 
 registerWorldObstacles(ARENA_PLATFORMS, customObstacles, {
   get activeArenaId() { return activeArenaId; },
-  arenaScore,
-  arena1State
+  arenaScore
 });
 
-export function setGoalCelebrationTimer(val) {
-  goalCelebrationTimer = val;
-}
-
 export let arenaSnapshot = {
-  arena1Platforms: JSON.parse(JSON.stringify(ARENA_1_PLATFORMS)),
   arena2Platforms: JSON.parse(JSON.stringify(ARENA_2_PLATFORMS)),
   arena3Platforms: JSON.parse(JSON.stringify(ARENA_FOUNDRY_PLATFORMS)),
   customObstacles: []
@@ -436,7 +404,6 @@ export let arenaSnapshot = {
 
 export function saveArenaSnapshot() {
   arenaSnapshot = {
-    arena1Platforms: JSON.parse(JSON.stringify(ARENA_1_PLATFORMS)),
     arena2Platforms: JSON.parse(JSON.stringify(ARENA_2_PLATFORMS)),
     arena3Platforms: JSON.parse(JSON.stringify(ARENA_FOUNDRY_PLATFORMS)),
     customObstacles: JSON.parse(JSON.stringify(customObstacles))
@@ -467,7 +434,6 @@ export function resetArena() {
     customObstacles.length = 0;
     obstacles.length = 0;
     GROUND_BARRICADES.length = 0;
-    GOALS.length = 0;
   } else if (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN') {
     const curArena = getActiveArena();
     if (typeof curArena?.reset === 'function') {
@@ -479,17 +445,14 @@ export function resetArena() {
     customObstacles.length = 0;
     obstacles.length = 0;
     GROUND_BARRICADES.length = 0;
-    GOALS.length = 0;
   } else if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
     if (typeof arena3 !== 'undefined' && typeof arena3.reset === 'function') {
       arena3.reset();
     }
     ARENA_PLATFORMS.push(...ARENA_3_PLATFORMS);
-  } else if (activeArenaId === 'ARENA_2') {
+  } else {
     ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena2Platforms)));
     if (typeof resetArena2Bridges === 'function') resetArena2Bridges();
-  } else {
-    ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena1Platforms)));
   }
 
   for (const cb of _arenaResetCallbacks) {
@@ -504,34 +467,7 @@ export function resetArena() {
     resetGroundSegments();
   }
 
-  if (activeArenaId === 'ARENA_1') {
-    if (_activePlayer) {
-      const isClient = isLocalClientPlayer(_activePlayer);
-      _activePlayer.x = isClient ? 3360 : 240;
-      _activePlayer.y = 580;
-      _activePlayer.vx = 0;
-      _activePlayer.vy = 0;
-      _activePlayer.facing = isClient ? -1 : 1;
-      _activePlayer.isIntro = false;
-      _activePlayer.gaitMode = 'IDLE';
-    }
-    const botsList = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
-      ? window.getActiveBots()
-      : (_activeBot ? [_activeBot] : []);
-
-    botsList.forEach((b, idx) => {
-      const isCyan = (b.team === 'CYAN');
-      const baseX = isCyan
-        ? 240 + ((Math.floor(idx / 2) + 1) * 60)
-        : 3360 - ((Math.floor(idx / 2) + 1) * 60);
-      b.x = baseX;
-      b.y = 580;
-      b.vx = 0;
-      b.vy = 0;
-      b.facing = isCyan ? 1 : -1;
-      b.gaitMode = 'IDLE';
-    });
-  } else if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3') {
     if (_activePlayer) {
       const isClient = isLocalClientPlayer(_activePlayer);
       const spawnIdx = isClient ? 1 : 0;
@@ -616,7 +552,7 @@ function isLocalClientPlayer(playerObj) {
   return false;
 }
 
-export function switchArena(arenaId, playerObj, botObj, ballObj) {
+export function switchArena(arenaId, playerObj, botObj) {
   setActiveArena(arenaId);
   const currentArena = getActiveArena();
   if (currentArena.id === 'arena-5' || currentArena.id === 'ARENA_5') {
@@ -625,10 +561,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     activeArenaId = 'ARENA_4';
   } else if (currentArena.id === 'arena-3') {
     activeArenaId = 'ARENA_3';
-  } else if (currentArena.id === 'arena-2') {
-    activeArenaId = 'ARENA_2';
   } else {
-    activeArenaId = 'ARENA_1';
+    activeArenaId = 'ARENA_2';
   }
   setActiveArenaId(activeArenaId);
   if (typeof window !== 'undefined' && window.camera && !window.isMenuShowcase) {
@@ -639,8 +573,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   const gravMult = (typeof currentArena?.gravityMultiplier === 'number') ? currentArena.gravityMultiplier : 1.0;
   CONFIG.GRAVITY = 0.38 * gravMult;
   if (playerObj) {
-    playerObj.isHolstered = (activeArenaId === 'ARENA_1');
-    playerObj.holsterWeight = (activeArenaId === 'ARENA_1' ? 1.0 : 0.0);
+    playerObj.isHolstered = false;
+    playerObj.holsterWeight = 0.0;
   }
 
   // Całkowity reset i czyszczenie koliderów fizyki, aby nie zostały niewidzialne przeszkody
@@ -653,7 +587,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   }
   ARENA_PLATFORMS.length = 0;
   GROUND_BARRICADES.length = 0;
-  GOALS.length = 0;
   customObstacles.length = 0;
 
   if (currentArena && Array.isArray(currentArena.platforms)) {
@@ -705,11 +638,9 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
   if (activeArenaId === 'ARENA_5') {
     resetDeathmatchState();
-    GOALS.length = 0;
     GROUND_BARRICADES.length = 0;
     customObstacles.length = 0;
     obstacles.length = 0;
-    arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
 
@@ -749,9 +680,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = isClient ? -1 : 1;
-      playerObj.isIntro = false;
       playerObj.isJumping = false;
-      playerObj.isSliding = false;
       playerObj.isDead = false;
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
@@ -776,7 +705,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.vy = 0;
       b.facing = (idx % 2 === 0) ? -1 : 1;
       b.isJumping = false;
-      b.isSliding = false;
       b.isDead = false;
       b.hp = b.maxHp || 100;
       b.respawnTimer = 0;
@@ -786,17 +714,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.currentGroundY = floorY;
     });
     balanceBotClasses(playerObj, activeBots, 'FFA');
-
-    if (ballObj) {
-      ballObj.active = false;
-      ballObj.isLevitating = false;
-      ballObj.x = -9999;
-      ballObj.y = -9999;
-    }
   } else if (activeArenaId === 'ARENA_4') {
     resetDeathmatchState();
-    GOALS.length = 0;
-    arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
 
@@ -818,9 +737,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = isClient ? -1 : 1;
-      playerObj.isIntro = false;
       playerObj.isJumping = false;
-      playerObj.isSliding = false;
       playerObj.isDead = false;
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
@@ -858,7 +775,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.vy = 0;
       b.facing = isCyan ? 1 : -1;
       b.isJumping = false;
-      b.isSliding = false;
       b.isDead = false;
       b.hp = b.maxHp || 100;
       b.respawnTimer = 0;
@@ -868,17 +784,9 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.currentGroundY = deckY;
     });
     balanceBotClasses(playerObj, activeBots, 'TDM');
-    if (ballObj) {
-      ballObj.active = false;
-      ballObj.isLevitating = false;
-      ballObj.x = -9999;
-      ballObj.y = -9999;
-    }
   } else if (activeArenaId === 'ARENA_3') {
     resetDeathmatchState();
     GROUND_BARRICADES.push(...ARENA_FOUNDRY_BARRICADES);
-    GOALS.length = 0; // W militarnej dżungli brak piłki i bramek - czysty tryb taktyczny / Deathmatch
-    arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
 
@@ -908,9 +816,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.knockbackVx = 0;
       playerObj.knockbackVy = 0;
       playerObj.facing = isClient ? -1 : 1;
-      playerObj.isIntro = false;
       playerObj.isJumping = false;
-      playerObj.isSliding = false;
       playerObj.isDead = false;
       playerObj.onGround = true;
       playerObj.currentGroundY = playerObj.y + (playerObj.h || 72);
@@ -948,7 +854,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.knockbackVy = 0;
       b.facing = isCyan ? 1 : -1;
       b.isJumping = false;
-      b.isSliding = false;
       b.isDead = false;
       b.onGround = true;
       b.currentGroundY = b.y + (b.h || 72);
@@ -957,12 +862,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.ragdoll = null;
       b.gaitMode = 'IDLE';
     });
-    if (ballObj) {
-      ballObj.active = false;
-    }
-  } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
-    GOALS.length = 0; // W Sektorze X brak bramek i piłki - 5-minutowy Deathmatch
-    arena1State.waitingForKickoff = false;
+  } else {
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
 
@@ -976,9 +876,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = isClient ? -1 : 1;
-      playerObj.isIntro = false;
       playerObj.isJumping = false;
-      playerObj.isSliding = false;
       playerObj.isDead = false;
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
@@ -1016,104 +914,12 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.vx = 0;
       b.vy = 0;
       b.isJumping = false;
-      b.isSliding = false;
       b.isDead = false;
       b.hp = b.maxHp || 100;
       b.respawnTimer = 0;
       b.ragdoll = null;
       b.gaitMode = 'IDLE';
     });
-    if (ballObj) {
-      ballObj.active = false;
-      ballObj.isLevitating = false;
-      ballObj.goalAnimation = null;
-      ballObj.x = -9999;
-      ballObj.y = -9999;
-      ballObj.prevX = -9999;
-      ballObj.prevY = -9999;
-      ballObj.vx = 0;
-      ballObj.vy = 0;
-      ballObj.spin = 0;
-      ballObj.trail = [];
-    }
-
-    // Inicjalizacja 5-minutowego Deathmatch na Arenie 2
-    initDeathmatch(playerObj, activeBots, rPlayer);
-  } else {
-    resetDeathmatchState();
-    GROUND_BARRICADES.push(...ARENA_1_BARRICADES);
-    GOALS.push(...ARENA_1_GOALS);
-
-    arena1State.waitingForKickoff = true;
-    arena1State.kickoffCooldown = 0;
-
-    const _cX = ARENA_WIDTH / 2; // 1800
-    const _altarX = arena1State.altarX || _cX;
-    const _altarY = arena1State.altarY || 570;
-    const _spawnBallY = _altarY;
-
-    const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
-
-    if (playerObj) {
-      const isClient = isLocalClientPlayer(playerObj);
-      const s0 = (currentArena.spawns && currentArena.spawns[isClient ? 1 : 0]) || { x: isClient ? 3380 : 220, y: 420, facing: isClient ? -1 : 1 };
-      playerObj.x = s0.x;
-      playerObj.y = s0.y;
-      playerObj.vx = 0;
-      playerObj.vy = 0;
-      playerObj.facing = isClient ? -1 : 1;
-      playerObj.isIntro = false;
-      playerObj.juggleTimer = 0;
-      playerObj.isJumping = false;
-      playerObj.isSliding = false;
-      playerObj.isDead = false;
-      playerObj.hp = playerObj.maxHp || 100;
-      playerObj.respawnTimer = 0;
-      restorePlayerArmoryLoadout(playerObj);
-      playerObj.ragdoll = null;
-      playerObj.gaitMode = 'IDLE';
-    }
-    activeBots.forEach((b, idx) => {
-      b.active = true;
-      b.isHolstered = true;
-      b.holsterWeight = 1.0;
-      if (rPlayer) {
-        b.team = (idx % 2 === 0) ? 'CYAN' : 'ORANGE';
-      } else {
-        b.team = 'ORANGE';
-      }
-      const isCyan = (b.team === 'CYAN');
-      const baseX = isCyan
-        ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 220) + ((Math.floor(idx / 2) + 1) * 60)
-        : ((currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3380) - ((Math.floor(idx / 2) + 1) * 60);
-      const baseY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 1]) ? currentArena.spawns[isCyan ? 0 : 1].y : 420;
-      b.x = baseX;
-      b.y = baseY;
-      b.vx = 0;
-      b.vy = 0;
-      b.facing = isCyan ? 1 : -1;
-      b.isJumping = false;
-      b.isSliding = false;
-      b.isDead = false;
-      b.hp = b.maxHp || 100;
-      b.respawnTimer = 0;
-      b.ragdoll = null;
-      b.gaitMode = 'IDLE';
-    });
-    balanceBotClasses(playerObj, activeBots, 'TDM');
-    if (ballObj) {
-      ballObj.active = true;
-      ballObj.isLevitating = false;
-      ballObj.goalAnimation = null;
-      ballObj.x = _altarX;
-      ballObj.y = _spawnBallY;
-      ballObj.prevX = ballObj.x;
-      ballObj.prevY = ballObj.y;
-      ballObj.vx = 0;
-      ballObj.vy = 0;
-      ballObj.spin = 0;
-      ballObj.trail = [];
-    }
   }
 
   return activeArenaId;
@@ -1342,7 +1148,6 @@ export function spawnBarrelExplosion(cx, cy) {
       color: '#334155'
     });
   }
-  spawnAltarShockwave(cx, cy);
 }
 
 export function updateBarrelExplosionParticles() {
@@ -1472,19 +1277,7 @@ export function explodeBarrel(barrel, groundY) {
     applyExplosionToEntity(_activeBot, cx, cy, radius, maxDmg, groundY);
   }
 
-  // 3. Silne odrzucenie piłki
-  if (_activeBall) {
-    const distBall = Math.hypot(_activeBall.x - cx, _activeBall.y - cy);
-    if (distBall <= radius) {
-      const nx = distBall > 0.001 ? (_activeBall.x - cx) / distBall : (Math.random() - 0.5);
-      const push = (1 - distBall / radius) * 20 + 10;
-      _activeBall.vx += nx * push;
-      _activeBall.vy = -Math.abs(push * 0.75) - 6.5;
-      _activeBall.spin = (_activeBall.vx > 0 ? 1 : -1) * 1.1;
-    }
-  }
-
-  // 4. Detonacja łańcuchowa kolejnych beczek
+  // 3. Detonacja łańcuchowa kolejnych beczek
   for (let i = customObstacles.length - 1; i >= 0; i--) {
     const other = customObstacles[i];
     if (other && other.type === 'explosive_barrel' && !other.exploded) {
@@ -1566,14 +1359,6 @@ export function updateMovableObstacles(groundY = 500) {
             const px = _activePlayer.x + (_activePlayer.w || 24) / 2;
             const py = _activePlayer.y + (_activePlayer.h || 70) / 2;
             if (Math.hypot(ocx - px, ocy - py) <= hitRadius + 18) {
-              explodeBarrel(obs, groundY);
-              continue;
-            }
-          }
-
-          // Trafienie w piłkę
-          if (_activeBall) {
-            if (Math.hypot(ocx - _activeBall.x, ocy - _activeBall.y) <= hitRadius + (_activeBall.colRadius || 12)) {
               explodeBarrel(obs, groundY);
               continue;
             }

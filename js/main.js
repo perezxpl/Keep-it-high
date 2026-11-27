@@ -16,8 +16,8 @@ import {
   spawnKnockedHelmet, spawnVestShreds, triggerScreenShake
 } from './world.js';
 import {
-  player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
-  startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
+  player, playerJump, initiatePlayerJump, startJumpCharge, executeReleaseJump,
+  startKickCharge, executeReleaseKick, findMeleeTarget,
   performKick, kick,
   updatePlayer, drawPlayer, drawPlayerMarker, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
@@ -26,15 +26,12 @@ import {
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import { renderArenaBackground, renderArenaForeground, getActiveArena, DEBUG_COLLIDERS, drawDebugColliders, isDebugCollidersEnabled } from './renderer.js';
 import {
-  ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js';
-import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
   customObstacles, OBSTACLE_PALETTE, getObstacleDef, clearCustomObstacles, undoCustomObstacle,
-  drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
+  drawSingleObstacleByType, arenaScore, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
-  updateMovableObstacles, resetArena, spawnAltarShockwave, getSafeArena3Spawn
+  updateMovableObstacles, resetArena, getSafeArena3Spawn
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses, isBotEnabled, setBotEnabled, getBotDifficulty, setBotDifficulty, getBotCount, setBotCount } from './bot.js';
@@ -44,7 +41,7 @@ import { extinguishCombatant } from './weapons/flamethrower.js';
 import { evaluateSpawnSafety, findDynamicSafeSpawns } from './player/spawnSafety.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
-  remotePlayer, networkState, initNetwork, sendPlayerState, sendBallState, sendShootEvent,
+  remotePlayer, networkState, initNetwork, sendPlayerState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer, sendBotsState, updateRemoteBots, sendReturnToLobby,
   isChatActive, openChat, closeChat, updateCursorVisibility, getActiveRemotePlayers,
@@ -55,7 +52,7 @@ import { syncMpRosterUI } from './networkUI.js';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
-  handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
+  handleDynamicActionButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
 } from './mobileControls.js';
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
@@ -67,7 +64,6 @@ import { initPickups, resetPickups, updatePickups, drawPickupsWorld, drawPickupP
 import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
 import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, isZombieModeActive, setZombieModeActive, resetZombieState, sendZombiesState } from './zombie/index.js';
 import { updateHazards, drawHazards, initHazardsForArena, checkBarrelKickInteraction } from './hazards/index.js';
-import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import { initMenuShowcase, updateMenuShowcase, drawMenuShowcase, stopMenuShowcase } from './menuShowcase.js';
 import { initCallouts, resetCalloutMatchState, onPlayerDeathCallout, registerCalloutKill, updateCallouts, drawCallouts } from './callouts/index.js';
@@ -192,10 +188,10 @@ if (typeof window !== 'undefined') {
   window.refreshDeathmatchParticipants = refreshDeathmatchParticipants;
   window.deathmatchState = deathmatchState;
 }
-// Pełna inicjalizacja aktywnej areny ze startowego adresu URL (?arena=3 / ?arena=2 / arena-1)
+// Pełna inicjalizacja aktywnej areny ze startowego adresu URL (?arena=5 / ?arena=4 / ?arena=3 / ?arena=2)
 const initialArena = getActiveArena();
-const initialArenaId = initialArena?.id || 'arena-1';
-switchArena(initialArenaId, player, getActiveBots(), ball);
+const initialArenaId = initialArena?.id || 'arena-2';
+switchArena(initialArenaId, player, getActiveBots());
 window.activeArenaId = activeArenaId;
 syncDevArenaButtonUI();
 syncDevBotButtonUI();
@@ -234,8 +230,6 @@ export function teleportToDistance(meters) {
   player.vx = 0;
   player.vy = 0;
   player.isJumping = false;
-  player.isSliding = false;
-  player.isIntro = false;
   player.isCharging = false;
   player.isStickCharging = false;
   player.isJumpCharging = false;
@@ -244,13 +238,6 @@ export function teleportToDistance(meters) {
   inputSession.isJetpackActive = false;
   inputSession.jetpackAirborneSession = false;
   leftStick.jetpackAirborneSession = false;
-
-  ball.x = targetX + (30 * (player.facing || 1));
-  ball.y = floorY - ball.radius;
-  ball.vx = 0;
-  ball.vy = 0;
-  ball.spin = 0;
-  ball.trail = [];
 
   camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
   camera.x = camera.targetX;
@@ -374,7 +361,6 @@ export function startRound() {
       b.knockbackVy = 0;
     }
   }
-  resetBallToPlayer(player, GROUND_Y);
 }
 window.startRound = startRound;
 
@@ -387,7 +373,6 @@ export function concludeMatchAndReturnToLobby(options = {}) {
   isMatchConcluding = true;
 
   // 1. Zakończenie rozgrywki i reset wszystkich stanów bitewnych
-  resetMatchWinState();
   resetDeathmatchState();
   if (typeof resetKillstreak === 'function') {
     resetKillstreak();
@@ -528,13 +513,9 @@ export function selectPlayerClass(targetClass) {
   player.vy = 0;
   player.airVx = 0;
   player.isJumping = false;
-  player.isSliding = false;
-  player.isIntro = false;
   player.onGround = true;
   player.currentGroundY = player.y + player.h;
   player.jetFuel = player.jetMax || 100;
-
-  resetBallToPlayer(player, GROUND_Y);
 
   if (canvas && canvas.parentElement) {
     canvas.parentElement.classList.remove('cursor-visible');
@@ -645,15 +626,6 @@ function update() {
   const gravMult = (typeof currentArena?.gravityMultiplier === 'number') ? currentArena.gravityMultiplier : 1.0;
   CONFIG.GRAVITY = 0.38 * gravMult;
 
-  const isDeathmatch = (
-    activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
-    activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
-    activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' ||
-    activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES' ||
-    activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER' ||
-    (ball && !ball.active)
-  );
-
   const isA5Active = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
   const isA4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
   const isA3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
@@ -663,7 +635,7 @@ function update() {
     : (isA2Active ? 1600 : (isA3Active ? 1200 : (isA4Active ? 1200 : GROUND_Y)));
 
   if (consumeHitstop()) {
-    updateCamera(player, isDeathmatch ? null : ball);
+    updateCamera(player, null);
     return;
   }
 
@@ -682,13 +654,13 @@ function update() {
   if (GAME_STATE.current === 'CREATOR' || (GAME_STATE.current === 'ARMORY' && !isSettingsInLiveMatch) || GAME_STATE.current === 'ARENA_SELECT' || (GAME_STATE.current === 'SETTINGS' && !isSettingsInLiveMatch)) {
     mouseState.lmbDown = false;
     mouseState.rmbDown = false;
-    updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
+    updateCamera(player, null, { disableAimLead: true });
     updateParticles();
     updateAudio(1 / 60, { gameState: GAME_STATE.current });
     return;
   }
 
-  // Stan wyboru klasy: pauzujemy fizykę gracza, botów i piłki (kompatybilność wsteczna)
+  // Stan wyboru klasy: pauzujemy fizykę gracza i botów (kompatybilność wsteczna)
   if (gameState === GAME_STATES.CLASS_SELECT) {
     if (canvas.parentElement && !canvas.parentElement.classList.contains('cursor-visible')) {
       canvas.parentElement.classList.add('cursor-visible');
@@ -700,7 +672,7 @@ function update() {
     mouseState.rmbDown = false;
 
     // Ambientowe tło i ruch kamery bez symulacji fizyki
-    updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
+    updateCamera(player, null, { disableAimLead: true });
     updateParticles();
     updateAudio(1 / 60, { gameState: GAME_STATE.current });
     return;
@@ -756,10 +728,10 @@ function update() {
 
   if (player.isAiTestControlled) {
     const aiCombatants = [player, ...activeBots, ...activeRemotePlayers, ...activeZombies];
-    updateBotBrain(isDeathmatch ? null : ball, activeBots[0] || null, effectiveGroundY, spawnGrass, player, aiCombatants);
+    updateBotBrain(null, activeBots[0] || null, effectiveGroundY, spawnGrass, player, aiCombatants);
   } else {
-    updateMobileControlStates(player, leftStick, btnCluster, { ball: isDeathmatch ? null : ball });
-    updatePlayer(keys, leftStick, effectiveGroundY, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
+    updateMobileControlStates(player, leftStick, btnCluster);
+    updatePlayer(keys, leftStick, effectiveGroundY, null, spawnGrass, player, mainMeleeTargets);
   }
   sendPlayerState(player);
 
@@ -773,202 +745,10 @@ function update() {
 
   // Aktualizacja cyklu życia specyficznego dla aktywnej areny (np. spadające skały, łańcuchy, wózki)
   const activeArena = getActiveArena();
-  activeArena?.update?.((FRAME_DURATION / 1000) || (1 / 60), headEntities, isDeathmatch ? null : ball);
+  activeArena?.update?.((FRAME_DURATION / 1000) || (1 / 60), headEntities);
 
-  if (!isDeathmatch) {
-    if (!isMatchClient()) {
-      if (activeArenaId === 'ARENA_1' && arena1State.waitingForKickoff) {
-        // Piłka lewituje w powietrzu na środku areny w snopie światła i czeka na pierwszy kontakt
-        const time = performance.now() * 0.003;
-        ball.x = arena1State.altarX || 1800;
-        ball.y = (arena1State.altarY || 570) + Math.sin(time) * 5;
-        ball.prevX = ball.x;
-        ball.prevY = ball.y;
-        ball.vx = 0;
-        ball.vy = 0;
-        ball.spin = 0;
-        ball.rotation += 0.015;
-        ball.trail = [];
-      } else {
-        updateBall(effectiveGroundY);
-      }
-      checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
-      checkPlayerPlatformLanding(player, effectiveGroundY);
-      for (const rp of activeRemotePlayers) {
-        checkBallPlayerCollisions(rp, effectiveGroundY, spawnGrass);
-      }
-      if (activeArenaId === 'ARENA_1' && arena1State.waitingForKickoff && Math.hypot(ball.vx, ball.vy) > 0.5) {
-        arena1State.waitingForKickoff = false;
-        triggerScreenShake(7);
-        spawnAltarShockwave(ball.x, ball.y);
-      }
-      checkObstacleCollisions(ball, effectiveGroundY, player, getActiveBots());
-      if (isMatchActive()) {
-        sendBallState(ball);
-      }
-    } else {
-      // Klient – autorytatywna pozycja piłki z sieci P2P (zdalni gracze nie sa przepychami przez lokalna fizyke)
-      checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
-      checkPlayerPlatformLanding(player, effectiveGroundY);
-      checkObstacleCollisions(ball, effectiveGroundY, player, getActiveBots());
-    }
-    checkMatchWin(activeArenaId, arenaScore);
-    updateMatchWinState(arenaScore);
-  } else {
-    // W trybie Team Deathmatch (Arena 2 & 3) piłka jest całkowicie wycofana z gry
-    if (ball.active) {
-      ball.active = false;
-      ball.x = -9999;
-      ball.y = -9999;
-      ball.vx = 0;
-      ball.vy = 0;
-    }
-    checkPlayerPlatformLanding(player, effectiveGroundY);
-    checkObstacleCollisions(null, effectiveGroundY, null, null);
-  }
-
-  // Zliczanie fragów i eliminacji poza dedykowanym modułem Deathmatch (Areny 2, 3, 4 i 5 są obsługiwane przez updateDeathmatch)
-  if (!isA2Active && !isA3Active && !isA4Active && !isA5Active) {
-    if (player.isDead) {
-      if (!player._fragRecorded) {
-        recordDeath();
-        resetKillstreak();
-        player._fragRecorded = true;
-        if (!player._calloutDeathRecorded) {
-          player._calloutDeathRecorded = true;
-          const pKiller = player.killer || player.lastAttacker || null;
-          onPlayerDeathCallout(pKiller, {
-            killerName: (pKiller && pKiller.name) || null,
-            killerPeerId: (pKiller && pKiller.peerId) || null,
-            killerId: (pKiller && pKiller.id) || null,
-            isHazard: !pKiller || typeof pKiller === 'string' || Boolean(pKiller.isHazard || pKiller.isSelf),
-            isZombie: Boolean(pKiller && pKiller.isZombie)
-          });
-        }
-        const kName = (typeof player.killer === 'string')
-          ? player.killer
-          : (player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO'));
-        const isHazard = isHazardName(kName) || player.killer?.isSelf || (player.killer?.cause);
-        triggerCombatFeedEvent({
-          type: 'PLAYER_DEATH',
-          victim: player,
-          killer: player.killer,
-          killerName: kName,
-          cause: isHazard ? kName : ''
-        });
-      }
-    } else {
-      player._fragRecorded = false;
-      player._calloutDeathRecorded = false;
-      player.killerBulletId = null;
-      player.killedByHeadshot = false;
-    }
-
-    for (const b of activeBots) {
-      if (b.isDead) {
-        if (!b._fragRecorded) {
-          b._fragRecorded = true;
-          const kRef = b.killer || b.lastAttacker;
-          const isHaz = typeof kRef === 'string' || (kRef && (kRef.isSelf || kRef.isHazard || isHazardName(kRef.name || kRef)));
-          if (kRef === player) {
-            recordKill();
-            registerKillstreakKill();
-            registerCalloutKill(player, b, {
-              bulletId: b.killerBulletId || null,
-              victimId: b.id || null,
-              victimName: b.name || null,
-              isZombie: Boolean(b.isZombie),
-              isHeadshot: Boolean(b.killedByHeadshot),
-              x: b.x,
-              y: b.y - 52
-            });
-            triggerCombatFeedEvent({
-              type: 'PLAYER_KILL',
-              killer: player,
-              victim: b,
-              victimName: b.name || 'BOT',
-              victimTeam: b.team
-            });
-          } else if (kRef && kRef !== b && !isHaz) {
-            triggerCombatFeedEvent({
-              type: 'COMBAT_KILL',
-              killer: kRef,
-              killerName: (typeof kRef === 'string') ? kRef : (kRef.name || 'OPERATOR'),
-              killerTeam: kRef.team || null,
-              victim: b,
-              victimName: b.name || 'BOT',
-              victimTeam: b.team
-            });
-          } else {
-            const hName = (typeof b.killer === 'string') ? b.killer : (b.killer?.name || (b.killer?.cause || 'ŚRODOWISKO'));
-            triggerCombatFeedEvent({
-              type: 'COMBAT_HAZARD',
-              victim: b,
-              victimName: b.name || 'BOT',
-              victimTeam: b.team,
-              cause: hName
-            });
-          }
-        }
-      } else {
-        b._fragRecorded = false;
-        b.killerBulletId = null;
-        b.killedByHeadshot = false;
-      }
-    }
-
-    for (const rp of activeRemotePlayers) {
-      if (rp.isDead) {
-        if (!rp._fragRecorded) {
-          rp._fragRecorded = true;
-          const kRef = rp.killer || rp.lastAttacker;
-          const isHaz = typeof kRef === 'string' || (kRef && (kRef.isSelf || kRef.isHazard || isHazardName(kRef.name || kRef)));
-          if (kRef === player) {
-            recordKill();
-            registerKillstreakKill();
-            registerCalloutKill(player, rp, {
-              bulletId: rp.killerBulletId || null,
-              victimId: rp.peerId || rp.id || null,
-              victimName: rp.name || null,
-              isZombie: Boolean(rp.isZombie),
-              isHeadshot: Boolean(rp.killedByHeadshot),
-              x: rp.x,
-              y: rp.y - 52
-            });
-            triggerCombatFeedEvent({
-              type: 'PLAYER_KILL',
-              killer: player,
-              victim: rp,
-              victimName: rp.name || 'GRACZ',
-              victimTeam: rp.team
-            });
-          } else if (kRef && kRef !== rp && !isHaz) {
-            triggerCombatFeedEvent({
-              type: 'COMBAT_KILL',
-              killer: kRef,
-              killerName: (typeof kRef === 'string') ? kRef : (kRef.name || 'OPERATOR'),
-              killerTeam: kRef.team || null,
-              victim: rp,
-              victimName: rp.name || 'GRACZ',
-              victimTeam: rp.team
-            });
-          } else {
-            const hName = (typeof rp.killer === 'string') ? rp.killer : (rp.killer?.name || (rp.killer?.cause || 'ŚRODOWISKO'));
-            triggerCombatFeedEvent({
-              type: 'COMBAT_HAZARD',
-              victim: rp,
-              victimName: rp.name || 'GRACZ',
-              victimTeam: rp.team,
-              cause: hName
-            });
-          }
-        }
-      } else {
-        rp._fragRecorded = false;
-        rp.killedByHeadshot = false;
-      }
-    }
-  }
+  checkPlayerPlatformLanding(player, effectiveGroundY);
+  checkObstacleCollisions(null, effectiveGroundY, null, null);
 
   // Aktualizacja logiki serii zabójstw (Killstreaks) oraz podnoszenia broni (Pickups)
   const curActiveBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot?.active ? [bot] : []);
@@ -1010,10 +790,7 @@ function update() {
 
   if (!isMatchClient()) {
     for (const b of activeBots) {
-      updateBotBrain(isDeathmatch ? null : ball, player, effectiveGroundY, spawnGrass, b, combatants);
-      if (!isDeathmatch) {
-        checkBallPlayerCollisions(b, effectiveGroundY, spawnGrass);
-      }
+      updateBotBrain(null, player, effectiveGroundY, spawnGrass, b, combatants);
       checkPlayerPlatformLanding(b, effectiveGroundY);
     }
     if (isMatchHost() && isMatchActive() && activeBots.length > 0) {
@@ -1023,9 +800,6 @@ function update() {
     // Klient w grze sieciowej: odbiera autorytatywne pozycje botów od Hosta
     updateRemoteBots(activeBots, effectiveGroundY);
     for (const b of activeBots) {
-      if (!isDeathmatch) {
-        checkBallPlayerCollisions(b, effectiveGroundY, spawnGrass);
-      }
       checkPlayerPlatformLanding(b, effectiveGroundY);
     }
   }
@@ -1034,8 +808,8 @@ function update() {
     activeArena?.resolvePenetration?.(combatants);
   }
 
-  updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);
-  updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
+  updateBullets(effectiveGroundY, obstacles, null, combatants);
+  updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, null);
   updateLighting(1 / 60);
   updateZombieSystem(1 / 60, player, activeBots, effectiveGroundY);
   if (isMatchHost()) {
@@ -1044,18 +818,11 @@ function update() {
   updateHazards((FRAME_DURATION / 1000) || (1 / 60), combatants, effectiveGroundY);
   updateAudio(1 / 60, { gameState: GAME_STATE.current, player, bots: activeBots, remotePlayers: activeRemotePlayers });
 
-  updateCamera(player, isDeathmatch ? null : ball, {
+  updateCamera(player, null, {
     disableAimLead: !!(editorState?.active || isChatActive || isPauseOrSettingsOverlay)
   });
-  if (isA2Active || isA3Active || isA4Active || isA5Active) {
-    updateDeathmatch(1 / 60, player, activeBots, activeRemotePlayers, arenaScore);
-  } else {
-    updateCombatFeed(1 / 60);
-  }
+  updateDeathmatch(1 / 60, player, activeBots, activeRemotePlayers, arenaScore);
   updateCallouts(1 / 60);
-  if (!isDeathmatch) {
-    updateDistance(ball.x);
-  }
 }
 
 let hasDismissedLoading = false;
@@ -1321,20 +1088,7 @@ function draw() {
 
   beginSection('fx_misc');
 
-  const isDeathmatch = (
-    activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
-    activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
-    activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' ||
-    activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES' ||
-    activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER' ||
-    (ball && !ball.active)
-  );
-
-  if (!isDeathmatch) {
-    drawBall(ctx);
-  }
-
-  drawBurningEffects(ctx, [player, ...activeBots, ...activeRemotePlayers, ...(typeof getActiveZombies === 'function' ? getActiveZombies() : [])], isDeathmatch ? null : ball);
+  drawBurningEffects(ctx, [player, ...activeBots, ...activeRemotePlayers, ...(typeof getActiveZombies === 'function' ? getActiveZombies() : [])], null);
   drawBarrelSmoke(ctx);
 
   const devMenuEl = document.getElementById('dev-menu');
@@ -1379,7 +1133,7 @@ function draw() {
   beginSection('fx_lighting');
   const isDebugCol = (typeof isDebugCollidersEnabled === 'function') ? isDebugCollidersEnabled() : DEBUG_COLLIDERS;
   if (isDebugCol && typeof drawDebugColliders === 'function') {
-    drawDebugColliders(ctx, effectiveDrawGroundY, player, { activeBots, remotePlayer, ball });
+    drawDebugColliders(ctx, effectiveDrawGroundY, player, { activeBots, remotePlayer });
   }
 
   drawShockwaves(ctx, camera);
@@ -1408,8 +1162,7 @@ function draw() {
   beginSection('hud');
   const isMatchRunning = (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED' || (GAME_STATE.current === 'SETTINGS' && GAME_STATE.previous !== 'MENU'));
   if (isMatchRunning) {
-    const inKickRange = (!isDeathmatch && ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
-    drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
+    drawHUD(ctx, player, leftStick, btnCluster, rightStick, null, false, { activeArenaId, arenaScore, bot, remotePlayer });
     const currentActiveBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
     const activeRemotes = (typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : (remotePlayer.active ? [remotePlayer] : []);
     const combatants = [player, ...currentActiveBots, ...activeRemotes];
@@ -1667,7 +1420,7 @@ if (typeof window !== 'undefined') {
       const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [bot];
       try {
         if (typeof window.switchArena === 'function') {
-          window.switchArena(arenaId, player, activeBots, ball);
+          window.switchArena(arenaId, player, activeBots);
         }
       } catch (err) {
         console.error('[ARENA SWITCH ERROR]', err);
@@ -1727,15 +1480,10 @@ if (typeof window !== 'undefined') {
       const arena = getActiveArena();
       const arenaName = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER') ? 'Prefabrykator Orbitalny' :
                         (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'OIL_RIG_TYPHOON' || activeArenaId === 'TYPHOON' || activeArenaId === 'TYFON' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES') ? 'Obsidian Caldera' :
-                        (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2') ? 'Toksyczna Rafineria' :
                         (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3') ? 'Tajemnicza Dżungla' :
-                        (arena?.name || 'Neonowe Miasto');
-      const isDm = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
-                    activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
-                    activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' ||
-                    activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
+                        (arena?.name || 'Toksyczna Rafineria');
       let goalText = '';
-      if (isDm && deathmatchState && deathmatchState.active) {
+      if (deathmatchState && deathmatchState.active) {
         const cond = deathmatchState.winCondition || 'BOTH';
         const frags = deathmatchState.fragLimit || 25;
         const mins = Math.round((deathmatchState.matchDuration || 300) / 60);
@@ -1743,7 +1491,7 @@ if (typeof window !== 'undefined') {
         else if (cond === 'TIME') goalText = `   CZAS: ${mins} MIN`;
         else goalText = `   CEL: ${frags} FRAGOW / ${mins} MIN`;
       }
-      return `ARENA: ${arenaName.toUpperCase()}   KLASA: ${player.currentClass?.name || 'PLAYMAKER'}${goalText}`;
+      return `ARENA: ${arenaName.toUpperCase()}   KLASA: ${player.currentClass?.name || 'STRIKER'}${goalText}`;
     }
   });
 

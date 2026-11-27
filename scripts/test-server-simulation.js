@@ -191,9 +191,9 @@ async function runSimulation() {
   console.log('--- ETAP 2: Test obciazenia i przepełnienia pokoju (6 graczy + 7. w nowym pokoju) ---');
   const wsClients = [];
   for (let i = 1; i <= 6; i++) {
-    wsClients.push(await connectWsMatchmaker(`SimBot_${i}`, 'arena-1'));
+    wsClients.push(await connectWsMatchmaker(`SimBot_${i}`, 'arena-2'));
   }
-  const p7 = await connectWsMatchmaker('SimBot_7', 'arena-1');
+  const p7 = await connectWsMatchmaker('SimBot_7', 'arena-2');
   wsClients.push(p7);
   assert.notStrictEqual(wsClients[0].msg.roomId, p7.msg.roomId, '7. gracz musi trafic do 2. pokoju');
 

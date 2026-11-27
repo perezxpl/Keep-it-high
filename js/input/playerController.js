@@ -30,7 +30,7 @@ export function triggerPlayerShoot(p, wep) {
   if (wep && wep.id === 'AXE' && p.axeThrown && !p.isRemote) {
     return;
   }
-  if (wep && wep.id === 'MINIGUN' && !p.isBot && !p.isRemote && !p.isSliding && !p.kickMode && typeof p.aimX === 'number' && !isNaN(p.aimX)) {
+  if (wep && wep.id === 'MINIGUN' && !p.isBot && !p.isRemote && !p.kickMode && typeof p.aimX === 'number' && !isNaN(p.aimX)) {
     const centerX = p.x + (p.w || 24) * 0.5;
     p.facing = (p.aimX < centerX) ? -1 : 1;
   }
@@ -238,11 +238,11 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   const isTouchFlight = !!(isStickRaised && isAirborne);
   const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne && player.jetpackKeyNeutralized);
   const isRaptor = (!player.currentClass || player.currentClass.id === 'RAPTOR');
-  const isFlightActive = isRaptor && (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
+  const isFlightActive = isRaptor && (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
   if (isFlightActive) {
     player.isJetpacking = true;
 
-    const curArenaId = activeArenaId || (typeof window !== 'undefined' ? window.activeArenaId : 'ARENA_1');
+    const curArenaId = activeArenaId || (typeof window !== 'undefined' ? window.activeArenaId : 'ARENA_2');
     const isA5Flight = (curArenaId === 'ARENA_5' || curArenaId === 'arena-5' || curArenaId === 'PREFAB_TOWER');
     const isA4Flight = (curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARMORED_TRAIN' || curArenaId === 'SPACE_STATION' || curArenaId === 'ARES');
     const camTopY = (camera && typeof camera.y === 'number') ? camera.y : 0;

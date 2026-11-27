@@ -79,12 +79,6 @@ export const SOUND_CATALOG = {
   player_death: { bus: 'sfx', volume: 0.28, pitchJitter: 0.04, cooldownMs: 90, spatial: true, maxDistance: 1200 },
   gore_gib: { bus: 'sfx', volume: 0.50, pitchJitter: 0.05, cooldownMs: 75, spatial: true, maxDistance: 1300 },
 
-  // --- Pilka i Bramki ---
-  ball_kick: { bus: 'sfx', volume: 0.56, pitchJitter: 0.05, cooldownMs: 65, spatial: true, maxDistance: 1550 },
-  ball_bounce: { bus: 'sfx', volume: 0.34, pitchJitter: 0.05, cooldownMs: 110, spatial: true, maxDistance: 1200 },
-  ball_post_clang: { bus: 'sfx', volume: 0.58, pitchJitter: 0.03, cooldownMs: 100, spatial: true, maxDistance: 1750 },
-  goal_horn: { bus: 'sfx', volume: 0.58, pitchJitter: 0.0, cooldownMs: 700, spatial: false, allowInAnyState: false },
-
   // --- Arena 2 i UI ---
   acid_siren: { bus: 'sfx', volume: 0.55, pitchJitter: 0.0, cooldownMs: 1200, spatial: false, allowInAnyState: false },
   ui_click: { bus: 'ui', volume: 0.40, pitchJitter: 0.02, cooldownMs: 25, spatial: false, allowInAnyState: true },

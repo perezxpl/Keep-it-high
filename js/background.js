@@ -202,5 +202,3 @@ export function drawPandoraBackground(ctx, camera) {
   drawArena2Background(ctx, camera);
 }
 export { drawArena2Background };
-
-export { drawArena1Background } from './arenas/arena1.js';

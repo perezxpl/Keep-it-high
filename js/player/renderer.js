@@ -5,10 +5,9 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js';
+import { getBiomechanicFootTrajectory } from './locomotion.js';
 import {
-  isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
-  getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
+  getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
@@ -329,9 +328,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     p.crouchFactor = 0;
     p.crouchToggled = false;
     p.crouchHoldTimer = 0;
-    p.sliding = false;
-    p.isSliding = false;
-    p.slideTimer = 0;
     p.rollTimer = 0;
     p.isProne = false;
     p.staggerTimer = 0;
@@ -429,10 +425,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   let rawBackSwing = -0.03, rawBackElbow = 0.26;
 
   const isVisualCharging = (p.isCharging && speed < 0.8);
-
-  const isGroundKicking = !p.isIntro && !p.isSliding && !p.isJumping &&
-    p.kickMode === 'GROUND' &&
-    (isVisualCharging || p.kickState === 'SWING' || p.kickState === 'RECOVER');
 
   if (p.isDead) {
     if (p.isZombie) {
@@ -552,26 +544,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.36 + Math.max(0, walkSwing) * 0.18;
     rawBackSwing  = -0.05 - walkSwing;
     rawBackElbow  = 0.32 + Math.max(0, -walkSwing) * 0.18;
-  } else if (p.isIntro) {
-    const choreo = getFreestyleChoreography(p.juggleTimer, hipX, hipY, floorY, p.facing, 8);
-    hipX += choreo.hipShiftX;
-    rawFootFrontTargetX = choreo.footFrontX;
-    rawFootFrontTargetY = choreo.footFrontY;
-    rawFootFrontAnkle = choreo.footFrontAnkle;
-    rawFootBackTargetX = choreo.footBackX;
-    rawFootBackTargetY = choreo.footBackY;
-    rawFootBackAnkle = choreo.footBackAnkle;
-
-    const armWave = Math.sin((p.juggleTimer / 22) * Math.PI);
-    rawFrontSwing = 0.16 + armWave * 0.08;
-    rawFrontElbow = 0.85;
-    rawBackSwing = -0.14 - armWave * 0.08;
-    rawBackElbow = 0.80;
-
-    p.lastHipShiftX = choreo.hipShiftX;
-    p.lastFootFrontX = rawFootFrontTargetX;
-    p.lastFootFrontY = rawFootFrontTargetY;
-    p.lastFootFrontAnkle = rawFootFrontAnkle;
   } else if (p.staggerTimer > 0) {
     // Sylwetka leży płasko na plecach (efekt ścięcia z nóg i lądowania na łopatkach):
     // Kończyny dolne: nogi ułożone luźno na podłożu, lekko ugięte w kolanach, spoczywające płasko na ziemi
@@ -588,54 +560,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.85;
     rawBackSwing = -1.50;
     rawBackElbow = 0.20;
-  } else if (p.kickMode === 'BACKFLIP') {
-    const flip = getBackflipTargets(p.bicycleTimer, p.bicycleDuration, hipX, hipY, p.facing);
-    rawFootFrontTargetX = flip.kicking.x;
-    rawFootFrontTargetY = flip.kicking.y;
-    rawFootFrontAnkle = flip.kicking.ankle;
-
-    rawFootBackTargetX = flip.guide.x;
-    rawFootBackTargetY = flip.guide.y;
-    rawFootBackAnkle = flip.guide.ankle;
-
-    const uFlip = p.bicycleTimer / p.bicycleDuration;
-    if (uFlip < 0.28) {
-      rawFrontSwing = 0.90; rawFrontElbow = 0.50;
-      rawBackSwing = 0.90; rawBackElbow = 0.50;
-    } else if (uFlip < 0.68) {
-      rawFrontSwing = -0.30; rawFrontElbow = 1.25;
-      rawBackSwing = -0.30; rawBackElbow = 1.25;
-    } else {
-      rawFrontSwing = 0.40; rawFrontElbow = 0.65;
-      rawBackSwing = -0.40; rawBackElbow = 0.65;
-    }
-  } else if (p.kickMode === 'BACKFLIP_LAND') {
-    rawFootFrontTargetX = hipX + (6 * p.facing);
-    rawFootFrontTargetY = plantFloorY;
-    rawFootFrontAnkle = 0.10 * p.facing;
-
-    rawFootBackTargetX = hipX - (6 * p.facing);
-    rawFootBackTargetY = plantFloorY;
-    rawFootBackAnkle = -0.10 * p.facing;
-
-    rawFrontSwing = 0.35;
-    rawFrontElbow = 0.85;
-    rawBackSwing = -0.35;
-    rawBackElbow = 0.85;
-  } else if (p.kickMode === 'SCISSOR' && p.kickState === 'SWING') {
-    const targets = getScissorLegTargets(p.scissorTimer, p.scissorDuration, hipX, hipY, p.facing, p.kickPower);
-    rawFootFrontTargetX = targets.front.x;
-    rawFootFrontTargetY = targets.front.y;
-    rawFootFrontAnkle = targets.front.ankle;
-
-    rawFootBackTargetX = targets.back.x;
-    rawFootBackTargetY = targets.back.y;
-    rawFootBackAnkle = targets.back.ankle;
-
-    rawFrontSwing = -0.35;
-    rawFrontElbow = 0.85;
-    rawBackSwing = 0.45;
-    rawBackElbow = 0.75;
   } else if (p.isGroundSlamming) {
     // Postura tąpnięcia z powietrza (Ground Slam / Meteor Drop): kolana ugięte, stopy skierowane w dół ku ziemi, ramiona dynamicznie rozstawione
     rawFootFrontTargetX = hipX + 6 * p.facing;
@@ -650,7 +574,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.95;
     rawBackSwing = 0.65;
     rawBackElbow = 0.85;
-  } else if (p.kickMode === 'SPARTAN') {
+  } else if (p.kickMode === 'SPARTAN' && p.kickState !== 'IDLE') {
     const targets = getSpartanKickTargets(p.spartanTimer || 0, p.spartanDuration || 22, hipX, hipY, p.facing, plantFloorY);
     const isFrontKicking = (p.kickLeg === 'front');
 
@@ -720,78 +644,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.85 + 0.35 * p.jumpChargePower;
     rawBackSwing = -0.65 * p.jumpChargePower;
     rawBackElbow = 0.85 + 0.35 * p.jumpChargePower;
-  } else if (isGroundKicking) {
-    const kickPhase = isVisualCharging ? 'CHARGE' : p.kickState;
-    const kickPow = isVisualCharging ? p.chargePower : p.kickPower;
-    const kickTraj = getGroundKickTrajectory(kickPhase, p.kickAngle, kickPow, hipX, hipY, floorY, p.facing, speed, p.kickPlantWorldX);
-
-    const isFrontKicking = (p.kickLeg === 'front');
-
-    if (isFrontKicking) {
-      rawFootFrontTargetX = kickTraj.kicking.x;
-      rawFootFrontTargetY = kickTraj.kicking.y;
-      rawFootFrontAnkle = kickTraj.kicking.ankle;
-
-      rawFootBackTargetX = kickTraj.support.x;
-      rawFootBackTargetY = kickTraj.support.y;
-      rawFootBackAnkle = kickTraj.support.ankle;
-    } else {
-      rawFootBackTargetX = kickTraj.kicking.x;
-      rawFootBackTargetY = kickTraj.kicking.y;
-      rawFootBackAnkle = kickTraj.kicking.ankle;
-
-      rawFootFrontTargetX = kickTraj.support.x;
-      rawFootFrontTargetY = kickTraj.support.y;
-      rawFootFrontAnkle = kickTraj.support.ankle;
-    }
-
-    const kickArmSwing = speed > 1.2 ? -0.88 : -0.68;
-    const suppArmSwing = speed > 1.2 ? 0.72 : 0.52;
-    const kickArmElbow = speed > 1.2 ? 0.75 : 0.60;
-    const suppArmElbow = speed > 1.2 ? 1.20 : 0.90;
-
-    if (isFrontKicking) {
-      rawFrontSwing = kickArmSwing;
-      rawFrontElbow = kickArmElbow;
-      rawBackSwing = suppArmSwing;
-      rawBackElbow = suppArmElbow;
-    } else {
-      rawFrontSwing = suppArmSwing;
-      rawFrontElbow = suppArmElbow;
-      rawBackSwing = kickArmSwing;
-      rawBackElbow = kickArmElbow;
-    }
-  } else if (p.isSliding) {
-    const fullLegReach = (p.thighLen + p.shinLen);
-    const verticalDrop = Math.max(0, plantFloorY - hipY);
-    const straightReachX = Math.sqrt(Math.max(1, fullLegReach * fullLegReach - verticalDrop * verticalDrop));
-
-    rawFootFrontTargetX = hipX + (straightReachX + 6.0) * p.facing;
-    rawFootFrontTargetY = plantFloorY;
-    rawFootFrontAnkle = 0.08 * p.facing;
-
-    rawFootBackTargetX = hipX - (5.0 * p.facing);
-    rawFootBackTargetY = hipY + 13.0;
-    rawFootBackAnkle = -0.70 * p.facing;
-
-    rawFrontSwing = 0.85;
-    rawFrontElbow = 0.75;
-    rawBackSwing = -0.90;
-    rawBackElbow = 0.40;
-  } else if (p.kickMode === 'SPIN_VOLLEY') {
-    const u = p.spinVolleyTimer / p.spinVolleyDuration;
-    rawFootFrontTargetX = hipX + Math.cos(u * Math.PI) * 36 * p.facing;
-    rawFootFrontTargetY = hipY + 4;
-    rawFootFrontAnkle = 0.55 * p.facing;
-
-    rawFootBackTargetX = hipX - (6 * p.facing);
-    rawFootBackTargetY = plantFloorY;
-    rawFootBackAnkle = 0.05 * p.facing;
-
-    rawFrontSwing = -0.60;
-    rawFrontElbow = 0.85;
-    rawBackSwing = 0.60;
-    rawBackElbow = 0.85;
   } else if (p.isJumping || !isGrounded || Math.abs(p.vy) > 1.2 || p.vy > 100) {
     if (p.jumpTakeoffTimer > 0) {
       // -------------------------------------------------------------------
@@ -918,23 +770,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.35;
     rawBackSwing = -0.05 - breathe;
     rawBackElbow = 0.30;
-
-    if (p.kneeJuggleWeight > 0) {
-      const kw = p.kneeJuggleWeight;
-      const snap = Math.max(0, Math.sin(performance.now() * 0.014)) * 3.5;
-      const kneeFootX = hipX + (13 * p.facing);
-      const kneeFootY = hipY + 8 - snap;
-      const kneeAnkle = 0.35 * p.facing;
-
-      rawFootFrontTargetX = rawFootFrontTargetX * (1 - kw) + kneeFootX * kw;
-      rawFootFrontTargetY = rawFootFrontTargetY * (1 - kw) + kneeFootY * kw;
-      rawFootFrontAnkle = rawFootFrontAnkle * (1 - kw) + kneeAnkle * kw;
-
-      rawFrontSwing = -0.25;
-      rawFrontElbow = 0.75;
-      rawBackSwing = 0.25;
-      rawBackElbow = 0.75;
-    }
   } else {
     const legBackTraj = getBiomechanicFootTrajectory(p.stridePhase + Math.PI, p.gaitMode, speed, p);
     const legFrontTraj = getBiomechanicFootTrajectory(p.stridePhase, p.gaitMode, speed, p);
@@ -976,23 +811,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       rawBackSwing -= p.jumpChargePower * 0.40;
       rawFrontElbow += p.jumpChargePower * 0.25;
       rawBackElbow += p.jumpChargePower * 0.25;
-    }
-
-    if (p.kneeJuggleWeight > 0) {
-      const kw = p.kneeJuggleWeight;
-      const snap = Math.max(0, Math.sin(performance.now() * 0.014)) * 3.5;
-      const kneeFootX = hipX + (13 * p.facing);
-      const kneeFootY = hipY + 8 - snap;
-      const kneeAnkle = 0.35 * p.facing;
-
-      rawFootFrontTargetX = rawFootFrontTargetX * (1 - kw) + kneeFootX * kw;
-      rawFootFrontTargetY = rawFootFrontTargetY * (1 - kw) + kneeFootY * kw;
-      rawFootFrontAnkle = rawFootFrontAnkle * (1 - kw) + kneeAnkle * kw;
-
-      rawFrontSwing = -0.25;
-      rawFrontElbow = 0.75;
-      rawBackSwing = 0.25;
-      rawBackElbow = 0.75;
     }
   }
 
@@ -1207,25 +1025,13 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       armBlend = 0.55;
     } else if (!isGrounded && p.vy > 0.8) {
       footBlend = 0.45;
-    } else if (p.kickMode === 'BACKFLIP') {
-      footBlend = 0.85;
-      armBlend = 0.65;
-    } else if (p.kickMode === 'BACKFLIP_LAND') {
-      footBlend = 0.60;
-      armBlend = 0.45;
     } else if (isGrounded && p.isJumpCharging && speed < 0.8) {
       footBlend = 0.40;
       armBlend = 0.35;
     } else if (p.kickState === 'SWING') {
       footBlend = 0.65;
       armBlend = 0.45;
-    } else if (p.isSliding || p.kickMode === 'SCISSOR') {
-      footBlend = 0.50;
-      armBlend = 0.35;
-    } else if (p.kickMode === 'SPIN_VOLLEY') {
-      footBlend = 0.75;
-      armBlend = 0.45;
-    } else if (p.kickMode === 'SPARTAN') {
+    } else if (p.kickMode === 'SPARTAN' && p.kickState !== 'IDLE') {
       footBlend = 0.75;
       armBlend = 0.55;
     } else if (p.staggerTimer > 0) {
@@ -1253,15 +1059,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       pose.footBackY += deltaY;
     }
 
-    if (p.isSliding) {
-      pose.footFrontX = rawFootFrontTargetX;
-      pose.footFrontY = rawFootFrontTargetY;
-      pose.footFrontAnkle = rawFootFrontAnkle;
-    } else {
-      pose.footFrontX += (rawFootFrontTargetX - pose.footFrontX) * footBlend;
-      pose.footFrontY += (rawFootFrontTargetY - pose.footFrontY) * footBlend;
-      pose.footFrontAnkle = lerpAngle(pose.footFrontAnkle, rawFootFrontAnkle, footBlend);
-    }
+    pose.footFrontX += (rawFootFrontTargetX - pose.footFrontX) * footBlend;
+    pose.footFrontY += (rawFootFrontTargetY - pose.footFrontY) * footBlend;
+    pose.footFrontAnkle = lerpAngle(pose.footFrontAnkle, rawFootFrontAnkle, footBlend);
 
     pose.footBackX += (rawFootBackTargetX - pose.footBackX) * footBlend;
     pose.footBackY += (rawFootBackTargetY - pose.footBackY) * footBlend;
@@ -1275,14 +1075,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     if (p.isDead || p.isZombie) {
       pose.torsoTilt = p.torsoTilt;
       pose.headPitch = p.headPitch;
-    } else if (p.kickMode === 'BACKFLIP') {
-      pose.torsoTilt = p.torsoTilt;
-      pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
     } else if (p.staggerTimer > 0) {
       // Sylwetka leży płasko na plecach: tors i głowa płasko równolegle do platformy (-90 stopni odchylenia)
       pose.torsoTilt = -Math.PI / 2 * p.facing;
       pose.headPitch = 0;
-    } else if (p.kickMode === 'SPARTAN') {
+    } else if (p.kickMode === 'SPARTAN' && p.kickState !== 'IDLE') {
       const t = p.spartanTimer || 0;
       if (t <= 4) {
         // Faza 1: Chambering (klatki 0-4): korpus lekko pochylony ku celowi
@@ -1970,11 +1767,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     let lookX = 0.55;
     let lookY = 0.0;
 
-    if (!p.isDead && p.lastBallX !== undefined && p.lastBallY !== undefined) {
+    if (!p.isDead && typeof p.aimX === 'number' && typeof p.aimY === 'number' && !isNaN(p.aimX) && !isNaN(p.aimY)) {
       const headWorldX = hipX + (28 * Math.sin(pose.torsoTilt));
       const headWorldY = hipY - (28 * Math.cos(pose.torsoTilt)) - 10;
-      const dxLook = (p.lastBallX - headWorldX) * p.facing;
-      const dyLook = p.lastBallY - headWorldY;
+      const dxLook = (p.aimX - headWorldX) * p.facing;
+      const dyLook = p.aimY - headWorldY;
 
       const lookAngle = Math.atan2(dyLook, Math.max(6, dxLook));
       const relAngle = lookAngle - (pose.torsoTilt * p.facing) - pose.headPitch;

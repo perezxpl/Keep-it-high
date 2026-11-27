@@ -28,21 +28,14 @@ export const RaptorClass = {
     sprintMax: 7.4,
     accel: 0.28,
     decel: 0.84,
-    slideDecel: 0.968,
     jumpForce: 11.4,
-    slideDashSpeed: 11.5,
     chargeSpeed: 0.038,
     hitReach: 58,
     whiffReach: 92,
-    baseKickSpeed: 20.6,
-    kickPowerMult: 1.12,
-    spinMult: 1.2,
     jetMax: 150,
     spartanKnockback: 9.5,
     spartanStagger: 14,
     spartanDamage: 8,
-    kickForce: 0.85,
-    kickForceMultiplier: 0.85,
     knockback: 0.70,
     knockbackMultiplier: 0.70,
     kickCooldown: 0.35
@@ -103,18 +96,6 @@ export const RaptorClass = {
   onPrePhysics(player, keys) {},
   onPostPhysics(player) {},
   onJump(player, spawnGrass) {},
-  onSlide(player, spawnGrass) {},
-
-  // Kopnięcie Akrobaty: wzmocnienie wektora piłki w powietrzu / spin volley
-  onKick(player, ball, context) {
-    if (player.isJumping || context?.isSpinVolley) {
-      ball.vx *= 1.22;
-      ball.vy *= 1.22;
-      ball.lowGravityFrames = Math.max(ball.lowGravityFrames || 0, 16);
-    }
-  },
-
-  onBallPassiveContact(player, ball) {},
   onDrawUnder(ctx, player) {},
   onDrawOverlay(ctx, player) {}
 };

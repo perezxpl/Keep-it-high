@@ -9,7 +9,7 @@ async function connectPlayer(name) {
       ws.send(JSON.stringify({
         type: 'MATCHMAKE',
         name,
-        preferredArena: 'arena-1',
+        preferredArena: 'arena-2',
         mode: 'TEAMS',
         classId: 'STRIKER'
       }));

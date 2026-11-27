@@ -18,7 +18,6 @@ import {
 } from '../world.js';
 import { player } from '../player.js';
 import { bot, isBotEnabled, setBotEnabled } from '../bot.js';
-import { ball } from '../ball.js';
 import { switchArena, activeArenaId } from '../obstacles.js';
 import { getActiveArena, isDebugCollidersEnabled, toggleDebugColliders } from '../renderer.js';
 import { sendArenaSwitch, updateCursorVisibility } from '../network.js';
@@ -129,18 +128,12 @@ export function syncDevArenaButtonUI() {
     devArenaBtn.style.borderColor = '#22c55e';
     devArenaBtn.style.color = '#86efac';
     devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
-  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA' || curId === 'ARENA_2_SECTOR_X') {
+  } else {
     devArenaBtn.textContent = 'Arena: 2 (Sektor X)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(16, 185, 129, 0.25))';
     devArenaBtn.style.borderColor = '#f59e0b';
     devArenaBtn.style.color = '#fde68a';
     devArenaBtn.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.55)';
-  } else {
-    devArenaBtn.textContent = 'Arena: 1';
-    devArenaBtn.style.background = '';
-    devArenaBtn.style.borderColor = '#06b6d4';
-    devArenaBtn.style.color = '#22d3ee';
-    devArenaBtn.style.boxShadow = '';
   }
 }
 
@@ -154,22 +147,20 @@ export const toggleArena = (e) => {
   if (now - lastArenaToggleTime < 300) return;
   lastArenaToggleTime = now;
 
-  let nextArena = 'ARENA_1';
+  let nextArena = 'ARENA_2';
   const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
   const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
-  if (curId === 'arena-1' || curId === 'ARENA_1') {
-    nextArena = 'ARENA_2';
-  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA' || curId === 'ARENA_2_SECTOR_X') {
+  if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA' || curId === 'ARENA_2_SECTOR_X') {
     nextArena = 'ARENA_3';
   } else if (curId === 'arena-3' || curId === 'ARENA_3' || curId === 'ARENA_FOUNDRY') {
     nextArena = 'ARENA_4';
   } else if (curId === 'arena-4' || curId === 'ARENA_4' || curId === 'ARMORED_TRAIN' || curId === 'SPACE_STATION' || curId === 'ARES') {
     nextArena = 'ARENA_5';
   } else {
-    nextArena = 'ARENA_1';
+    nextArena = 'ARENA_2';
   }
   const currentBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function') ? window.getActiveBots() : bot;
-  switchArena(nextArena, player, currentBots, ball);
+  switchArena(nextArena, player, currentBots);
   window.activeArenaId = activeArenaId;
   sendArenaSwitch(nextArena);
   syncDevArenaButtonUI();
@@ -293,7 +284,6 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
         bot.vy = 0;
         bot.facing = -(player.facing || 1);
         bot.isJumping = false;
-        bot.isSliding = false;
         bot.isCharging = false;
         bot.kickState = 'IDLE';
         bot.gaitMode = 'IDLE';
@@ -364,7 +354,7 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
   window.toggleArena = toggleArena;
   window.switchArena = (id) => {
     const currentBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function') ? window.getActiveBots() : bot;
-    switchArena(id, player, currentBots, ball);
+    switchArena(id, player, currentBots);
     window.activeArenaId = activeArenaId;
     sendArenaSwitch(id);
     syncDevArenaButtonUI();
@@ -372,8 +362,7 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
       if (typeof uiManager.updateMpArenaUI === 'function') uiManager.updateMpArenaUI(id);
       const norm = (id === 'ARENA_5' || id === 'arena-5' || id === 'PREFAB_TOWER') ? 'ARENA_5' :
                    ((id === 'ARENA_4' || id === 'arena-4') ? 'ARENA_4' :
-                   ((id === 'ARENA_3' || id === 'arena-3') ? 'ARENA_3' :
-                   ((id === 'ARENA_2' || id === 'arena-2') ? 'ARENA_2' : 'ARENA_1')));
+                   ((id === 'ARENA_3' || id === 'arena-3') ? 'ARENA_3' : 'ARENA_2'));
       const curSelected = uiManager.briefingArenas?.[uiManager.currentBriefingIndex]?.id;
       if (curSelected !== norm && typeof uiManager.updateArenaSelectUI === 'function') {
         uiManager.updateArenaSelectUI(id);

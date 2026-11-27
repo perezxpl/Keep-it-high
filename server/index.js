@@ -20,7 +20,7 @@ let nextRoomSeq = 1;
  * Struktura pokoju meczowego dla maksymalnie 6 graczy
  */
 class GameRoom {
-  constructor(id, arenaId = 'arena-1', mode = 'TEAMS') {
+  constructor(id, arenaId = 'arena-2', mode = 'TEAMS') {
     this.id = id;
     this.arenaId = arenaId;
     this.mode = mode;
@@ -161,7 +161,7 @@ wss.on('connection', (ws) => {
     switch (msg.type) {
       // 1. ZADANIE DOSTEPNEGO MECZU (MATCHMAKING)
       case 'MATCHMAKE': {
-        const preferredArena = msg.preferredArena || 'arena-1';
+        const preferredArena = msg.preferredArena || 'arena-2';
         const mode = msg.mode === 'FFA' ? 'FFA' : 'TEAMS';
         const playerName = (typeof msg.name === 'string' && msg.name.trim().length > 0)
           ? msg.name.trim().substring(0, 20)
@@ -331,16 +331,12 @@ wss.on('connection', (ws) => {
       case 'a3_sync':
       case 'a4_geyser_sync':
       case 'a4_sync':
-      case 'goal_scored':
       case 'arena_sync':
       case 'deathmatch_sync':
       case 'dm_sync':
       case 'acid_sync':
       case 'bots_state':
       case 'bot_shoot':
-      case 'b_state':
-      case 'ball':
-      case 'kick_ball':
       case 'zombies_state':
       case 'zombie_sync':
       case 'start_game': {

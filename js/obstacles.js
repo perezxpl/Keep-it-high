@@ -11,9 +11,16 @@ import {
   activeArenaId,
   ARENA_PLATFORMS,
   GROUND_BARRICADES,
-  GOALS,
-  drawBarrelExplosionParticles
+  drawBarrelExplosionParticles,
+  updateBarrelExplosionParticles
 } from './obstacles/state.js';
+
+export function checkObstacleCollisions(_ballUnused, groundY) {
+  updateBarrelExplosionParticles();
+  for (const obs of customObstacles) {
+    if (obs.hitTimer > 0) obs.hitTimer--;
+  }
+}
 import {
   drawSandbags,
   drawCrate,
@@ -21,15 +28,12 @@ import {
   drawJungleWoodStructure,
   drawCatwalk,
   drawRockIsland,
-  drawSingleObstacleByType,
-  drawNeonGoals,
-  drawAltarSpotlightAndLevitation
+  drawSingleObstacleByType
 } from './obstacles/renderer.js';
 
 export * from './obstacles/palette.js';
 export * from './obstacles/state.js';
 export * from './obstacles/playerPhysics.js';
-export * from './obstacles/ballPhysics.js';
 export * from './obstacles/raycast.js';
 export * from './obstacles/renderer.js';
 export { killByHazard } from './arenas/arena4.js';
@@ -110,12 +114,4 @@ export function drawObstacles(ctx, groundY) {
   }
 
   drawBarrelExplosionParticles(ctx, viewLeft, viewRight);
-
-  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'arena-3' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA' && activeArenaId !== 'arena-2' && activeArenaId !== 'ARENA_2_SECTOR_X' && !isA4) {
-    drawNeonGoals(ctx, groundY, GOALS);
-  }
-
-  if (activeArenaId === 'ARENA_1') {
-    drawAltarSpotlightAndLevitation(ctx, groundY);
-  }
 }

@@ -33,6 +33,7 @@ globalThis.document = {
     height: 1080
   }),
   getElementById: () => null,
+  querySelector: () => null,
   querySelectorAll: () => [],
   addEventListener: () => {},
   removeEventListener: () => {}
@@ -81,8 +82,8 @@ console.log('--- TEST 1: Gaszenie ognia na postaci przy zgonie i odrodzeniu (gra
 {
   clearFlamethrowerState();
   resetHazardsState();
-  switchArena('ARENA_1');
-  const groundY = 1000;
+  switchArena('ARENA_2');
+  const groundY = 1440;
 
   const p = createPlayerInstance({ isBot: false, team: 'CYAN', x: 300, y: 790 });
   const b = createPlayerInstance({ isBot: true, active: true, team: 'ORANGE', x: 2500, y: 790 });
@@ -143,9 +144,9 @@ console.log('--- TEST 2: Respawn omija plonace miejsca oraz szuka bezpiecznego m
 {
   clearFlamethrowerState();
   resetHazardsState();
-  switchArena('ARENA_1');
+  switchArena('ARENA_2');
   const activeArena = getActiveArena();
-  const groundY = 1000;
+  const groundY = 1440;
   const p = createPlayerInstance({ isBot: false, team: 'CYAN', x: 300, y: 790 });
   const enemy = createPlayerInstance({ isBot: true, active: true, team: 'ORANGE', x: 2500, y: 790 });
 
@@ -174,22 +175,15 @@ console.log('--- TEST 2: Respawn omija plonace miejsca oraz szuka bezpiecznego m
   console.log('PASS: Respawn unika rozlanego ognia i dynamicznie szuka bezpiecznego miejsca.');
 }
 
-console.log('--- TEST 3: Arena 1 - unikanie dziur w podlozu, laser gate i wybuchajacej beczki ---');
+console.log('--- TEST 3: Arena 2 - unikanie laser gate i wybuchajacej beczki ---');
 {
   clearFlamethrowerState();
   resetHazardsState();
   customObstacles.length = 0;
-  switchArena('ARENA_1');
+  switchArena('ARENA_2');
   const activeArena = getActiveArena();
-  const groundY = 1000;
-  const p = createPlayerInstance({ isBot: false, team: 'CYAN', x: 400, y: 928 });
-
-  // Wytnij dziure w gruncie pod X=500..650 i sprawdz bezpiecznosc punktu przy gruncie
-  for (const seg of groundSegments) {
-    if (seg.x >= 460 && seg.x <= 660) seg.destroyed = true;
-  }
-  const holeSpawnCheck = evaluateSpawnSafety({ x: 540, y: 928, facing: 1 }, activeArena, p, groundY);
-  assert.strictEqual(holeSpawnCheck.lethalSafe, false, 'Spawn nad wybita dziura w podlozu musi byc odrzucony');
+  const groundY = 1440;
+  const p = createPlayerInstance({ isBot: false, team: 'CYAN', x: 530, y: 350 });
 
   // Postaw laser_gate oraz tykajaca beczke na spawnie [0]
   const sp0 = activeArena.spawns[0];
@@ -204,7 +198,7 @@ console.log('--- TEST 3: Arena 1 - unikanie dziur w podlozu, laser gate i wybuch
   assert.strictEqual(isSpawnPointSafe(sp1, activeArena, p, groundY), false, 'Spawn obok tykajacej beczki musi byc odrzucony');
 
   customObstacles.length = 0;
-  console.log('PASS: Dziury w podlozu, laser_gate i tykajace beczki sa poprawnie blokowane.');
+  console.log('PASS: laser_gate i tykajace beczki sa poprawnie blokowane.');
 }
 
 console.log('--- TEST 4: Arena 2 - unikanie podniesionego kwasu oraz kaluz kwasu ---');

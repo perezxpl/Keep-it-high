@@ -27,7 +27,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 ### Postać Gracza (`js/player/`)
 - `js/player/state.js` — domyślne statystyki (`DEFAULT_STATS`, `DEFAULT_BODY`), fabryka instancji (`createPlayerInstance`), zmiana klasy (`setPlayerClass`) oraz inicjalizacja skoku (`initiatePlayerJump`).
 - `js/player/index.js` — główna pętla fizyki i cyklu życia postaci w klatce (`updatePlayer`).
-- `js/player/actions.js` — akcje bojowe i piłkarskie: kopnięcia (zwykłe, nożyce, przewrotka, Spartan Kick), wślizg (`playerSlide`), rzut granatem (`prepareGrenadeThrow`, `releaseGrenadeThrow`).
+- `js/player/actions.js` — akcje bojowe: kopnięcie Spartan Kick (`triggerSpartanKick`), rzut granatem (`prepareGrenadeThrow`, `releaseGrenadeThrow`).
 - `js/player/locomotion.js` — trajektorie stóp, chód, bieg, sprint i kucanie (`evaluateCrouchState`).
 - `js/player/ik.js` — kinematyka odwrotna (2-bone IK) dla rąk i nóg.
 - `js/player/death.js` — fizyka ragdolla, śmierć i rozczłonkowanie.
@@ -68,7 +68,6 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 
 ### Areny (`js/arenas/`)
 - `js/arenas/index.js` — rejestr i przełączanie aren (`getActiveArena`).
-- `js/arenas/arena1.js` — Arena 1 (Neonowe Miasto / Stadion).
 - `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`, `blackout.js`, `sewerPipes.js`, `submergedSkeletons.js`.
 - `js/arenas/arena3/` — Arena 3 (Tajemnicza Dżungla): `state.js`, `background.js` (proceduralne nocne niebo, gwiazdy, księżyc, góry, świetliki), `renderer.js`, `destruction.js`, `weatheredAssets.js` (spójna estetyka postarzałego i zniszczonego drewna, ciosanego kamienia, żelaznych okuć, nitów i mchu dla wszystkich elementów).
 - `js/arenas/arena4/` i `js/arenas/arena4.js` — Arena 4 (Obsidian Caldera): wulkaniczny krater magmowy (3800x1500) oparty na pionowych kontrastach: fasetowane kolumny bazaltowe (heksagonalne pryzmy ze zróżnicowanymi odcieniami i ściętymi uskokami skalnymi), pęknięcia termiczne z dynamicznie pulsującym żarem magmy w trybie lighter, masywne rampy lawowe ze stalową kratownicą roboczą z wycięciami antypoślizgowymi, podwieszana platforma na podwójnych stalowych łańcuchach ogniwowych z naciągami hydraulicznymi i ramą nośną z dwuteowników (I-beams), wielowarstwowe tło z paralaksą rurociągów geotermalnych i odległych iglic, wielowarstwowe wrzące jezioro magmy na dnie (deathY = 1400) z dryfującymi krami bazaltowymi, 2 aktywne gejzery termiczne z trójwarstwowym słupem ognia i gazu pre-renderowane w OffscreenCanvas (0 shadowBlur, stabilne 60 FPS) (`state.js`, `geometry.js`, `renderer.js`, `index.js`).
@@ -84,7 +83,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/obstacles/state.js` — stan przeszkód, wyniki (`arenaScore`), platformy (`ARENA_PLATFORMS`) i przełączanie aren (`switchArena`).
 - `js/obstacles/palette.js` — katalog obiektów edytora (`OBSTACLE_PALETTE`, `getObstacleDef`).
 - `js/obstacles/platforms.js` — fizyka lądowania na platformach i powierzchniach (`checkPlayerPlatformLanding`, `getPlatformSurfaceY`).
-- `js/obstacles/collisions.js` — kolizje piłki, gracza i bota z przeszkodami (`checkObstacleCollisions`).
+- `js/obstacles/collisions.js` — kolizje gracza i bota z przeszkodami (`checkObstacleCollisions`).
 - `js/obstacles/renderer.js` — rysowanie przeszkód i platform (`drawObstacles`).
 - `js/obstacles/materials.js` — proceduralne, zbuforowane tekstury materiałów (`CanvasPattern`): blacha ryflowana, zbrojony beton wojskowy, szczotkowana stal oraz funkcja `drawTexturedPlatformBox` z fazowaniem 3D i okuciami.
 - `js/obstacles/procedural.js` — proceduralne generowanie przeszkód i ptaków na dystansie.
@@ -117,7 +116,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/dev/physicsWatchdog.js` — silnikowy watchdog fizyki i wydajności (PhysicsWatchdog): wykrywanie w każdej klatce anomalii postaci (teleporty dx/dy, penetracje bloków > 6px, missed squash, migotanie onGround), desynchronizacji klocków (Arena 5 grid desync, pływające belki Arena 3 z solid=true) oraz przycięć klatek (FRAME_STUTTER > 28ms), agregacja statystyk (średni FPS, 1% low, p99, exec ms) i eksport raportów getSummaryMarkdown() oraz getReportJSON().
 
 ### Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
-- `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) z odblokowaniami nagród (`unlocks`: bronie, perki, serie zabójstw, kamuflaże) oraz statystyk bojowych gracza w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getPlayerStatsSummary`, `recordMatchResult`, `recordKill`, `recordDeath`, `recordGoal`, `resetPlayerStats`).
+- `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) z odblokowaniami nagród (`unlocks`: bronie, perki, serie zabójstw, kamuflaże) oraz statystyk bojowych gracza w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getPlayerStatsSummary`, `recordMatchResult`, `recordKill`, `recordDeath`, `resetPlayerStats`).
 - `js/ui/rankHud.js` — wizualna prezentacja stopni wojskowych i paska XP w HUD, animowane powiadomienia XP oraz baner zwycięstwa w meczu (+40 XP).
 
 ### Serie Zabójstw — Killstreaks (`js/killstreaks/`)
@@ -136,7 +135,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/callouts/index.js` — główny punkt wejścia i eksport modułu medali bojowych.
 
 ### Żywy Zwiastun w Tle Menu — Live Menu Showcase (`js/menuShowcase.js`, `js/menuFight/`)
-- `js/menuShowcase.js` — dedykowany moduł reżyserii tła menu: globalna flaga `window.isMenuShowcase`, cykliczna rotacja po 5 arenach co 8–10s, hot-drop 6 botów w centrum i na platformach z miksem klas (Raptor, Striker, Enforcer), pre-symulacja (pre-warm 45 klatek), agresja bot vs bot, reżyserska kamera akcji (`lerp ~0.04`, zoom `0.86`) oraz taktyczny efekt przejścia (Tactical Feed Cut ~0.55s) z dyskretnym wskaźnikiem LIVE FEED.
+- `js/menuShowcase.js` — dedykowany moduł reżyserii tła menu: globalna flaga `window.isMenuShowcase`, cykliczna rotacja po 4 arenach co 8–10s, hot-drop 6 botów w centrum i na platformach z miksem klas (Raptor, Striker, Enforcer), pre-symulacja (pre-warm 45 klatek), agresja bot vs bot, reżyserska kamera akcji (`lerp ~0.04`, zoom `0.86`) oraz taktyczny efekt przejścia (Tactical Feed Cut ~0.55s) z dyskretnym wskaźnikiem LIVE FEED.
 - `js/menuFight/index.js` — warstwa kompatybilności wstecznej re-eksportująca API do `js/menuShowcase.js`.
 
 ### System Audio i Hybrydowe Efekty Dźwiękowe (`js/audio/`, `assets/audio/`)
@@ -152,7 +151,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
    - **Miękki limit (~800–1000 linii)**: Gdy plik przekracza 1000 linii, wydziel nowe funkcje do osobnego podmodułu w odpowiednim katalogu.
    - **Twardy limit (1500 linii)**: Żaden plik logiki nie może rosnąć powyżej 1500 linii. Jeśli istniejący plik (np. renderer) jest już duży, nową zawartość (np. nowe efekty lub typy obiektów) umieszczaj w osobnym pliku pomocniczym i importuj.
 2. **Bezpieczeństwo stanu między modułami ES**:
-   - Zmienne modyfikowane z wielu modułów (np. `mouseState`, `inputSession`, `gamepadState`, `arena1State`, `worldState`) przechowuj zawsze jako właściwości eksportowanych obiektów (`state.prop = ...`), a NIE jako prymitywy `export let`, których nie da się nadpisać z innego modułu.
+   - Zmienne modyfikowane z wielu modułów (np. `mouseState`, `inputSession`, `gamepadState`, `worldState`) przechowuj zawsze jako właściwości eksportowanych obiektów (`state.prop = ...`), a NIE jako prymitywy `export let`, których nie da się nadpisać z innego modułu.
 3. **Obowiązkowa aktualizacja `importmap` w `index.html`**:
    - Po utworzeniu każdego nowego pliku `.js` dopisz go do `<script type="importmap">` w `index.html` i zaktualizuj wersję cache-bustera `?v=...`.
    - W samych plikach `.js` używaj czystych ścieżek względnych (np. `import { ... } from './state.js';` bez `?v=...`), ponieważ wersjonowaniem zarządza `importmap` w `index.html`.

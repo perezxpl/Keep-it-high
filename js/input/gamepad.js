@@ -13,7 +13,7 @@ export const gamepadState = {
   triggers: { l2: 0, r2: 0 },
   buttons: {
     south: false,     // A / Cross (Skok / Zatwierdź)
-    east: false,      // B / Circle (Wślizg / Kucanie / Wstecz)
+    east: false,      // B / Circle (Kucanie / Leżenie / Wstecz)
     west: false,      // X / Square (Przeładuj / Kopniak)
     north: false,     // Y / Triangle (Zmiana broni)
     l1: false,        // LB / L1 (Granat / Kopniak)

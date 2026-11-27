@@ -568,18 +568,7 @@ export function detonateMolotovExplosion(
     }
   }
 
-  // 4. Podpalenie i odrzut piłki
-  if (ball) {
-    const bDist = Math.hypot(ball.x - expX, ball.y - expY);
-    if (bDist <= radius + (ball.colRadius || 5.2)) {
-      ball.burnTimer = 180;
-      const bFactor = Math.max(0, 1.0 - (bDist / radius));
-      ball.vx += ((ball.x - expX) / (bDist || 1)) * bFactor * 12.0;
-      ball.vy += ((ball.y - expY) / (bDist || 1)) * bFactor * 12.0 - 2.5;
-    }
-  }
-
-  // 4B. Obrażenia i podpalenie pobliskich beczek wybuchowych/toksycznych
+  // 4. Obrażenia i podpalenie pobliskich beczek wybuchowych/toksycznych
   const activeHazBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels))
     ? window.hazardsBarrels
     : [];

@@ -27,7 +27,6 @@ import {
 import { triggerEnforcerBlastJump } from '../classes/enforcer.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
 import { cyclePocket1, equipPocket1Slot } from '../loadout/index.js';
-import { ball } from '../ball.js';
 import { bot, getActiveBots } from '../bot.js';
 import { remotePlayer } from '../network.js';
 import { obstacles } from '../obstacles.js';
@@ -53,7 +52,6 @@ import {
   cancelMortarStrikeTargeting
 } from '../killstreaks/index.js';
 import { deathmatchState } from '../deathmatch/index.js';
-import { matchWinState } from '../ui/rankHud.js';
 import {
   pickupPromptState,
   performWeaponSwap,
@@ -202,16 +200,13 @@ canvas.addEventListener('touchstart', (e) => {
     }
   }
 
-  // Obsługa dotknięcia ekranu podczas prezentacji wyników (podium / zwycięstwo)
+  // Obsługa dotknięcia ekranu podczas prezentacji wyników (podium)
   const isDmEnded = (deathmatchState.matchEnded && deathmatchState.endCelebrationTimer > 0);
-  const isWinEnded = (matchWinState.won && matchWinState.timer > 0);
-  if (isDmEnded || isWinEnded) {
+  if (isDmEnded) {
     const t0 = e.changedTouches[0];
-    const b = isDmEnded ? deathmatchState.returnButtonBounds : matchWinState.returnButtonBounds;
+    const b = deathmatchState.returnButtonBounds;
     const isOverBtn = b && t0 && (t0.clientX >= b.x && t0.clientX <= b.x + b.w && t0.clientY >= b.y && t0.clientY <= b.y + b.h);
-    const canSkip = isDmEnded
-      ? ((deathmatchState.maxEndCelebrationTimer - deathmatchState.endCelebrationTimer) > 60)
-      : ((matchWinState.maxTimer - matchWinState.timer) > 60);
+    const canSkip = ((deathmatchState.maxEndCelebrationTimer - deathmatchState.endCelebrationTimer) > 60);
     if (isOverBtn || canSkip) {
       if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
         window.concludeMatchAndReturnToLobby();
@@ -378,7 +373,6 @@ canvas.addEventListener('touchstart', (e) => {
         pAct.id = t.identifier;
         const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
         handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, {
-          ball: ball,
           targets: [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean),
           obstacles: obstacles
         });
@@ -573,7 +567,7 @@ canvas.addEventListener('touchmove', (e) => {
       const craneVy = isOnFallingCrane ? (crane.vy || 0) : 0;
       const relVy = (player.vy || 0) - craneVy;
 
-      const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isIntro && (player.onGround || (((player.coyoteTimer || 0) > 0) && Math.abs(relVy) < 5.0));
+      const isFirmlyGrounded = !player.isJumping && (player.onGround || (((player.coyoteTimer || 0) > 0) && Math.abs(relVy) < 5.0));
 
       // Enforcer: rejestracja szybkiego wychylenia w dół (krok 1 kombinacji dół-góra do 300ms)
       if (isEnforcer) {
@@ -650,7 +644,7 @@ canvas.addEventListener('touchmove', (e) => {
           if (isEnforcer) {
             const isDownUpCombo = (enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300)) ||
               (player._lastDownPressTime && ((now - player._lastDownPressTime) <= 300));
-            if (isDownUpCombo && leftStick.axisY < -0.45 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && isFirmlyGrounded) {
+            if (isDownUpCombo && leftStick.axisY < -0.45 && !leftStick.jumpTriggered && isFirmlyGrounded) {
               // ZDOLNOŚĆ SPECJALNA ENFORCERA: KINETIC PISTON LEAP (W OKNIE DO 300MS)
               enforcerFlickDownDetected = false;
               enforcerFlickDownTime = 0;
@@ -673,7 +667,7 @@ canvas.addEventListener('touchmove', (e) => {
               triggerEnforcerBlastJump(player, leftStick.axisX, spawnGrass);
               leftStick.jumpTriggered = true;
               leftStick.jetpackNeutralized = false;
-            } else if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro) {
+            } else if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered) {
               // Zwykły skok Enforcera z nóg (gdy nie wykonano szybkiej sekwencji dół-góra)
               enforcerFlickDownDetected = false;
               enforcerFlickDownTime = 0;
@@ -690,7 +684,7 @@ canvas.addEventListener('touchmove', (e) => {
             }
           } else {
             // Skok dla pozostałych klas (Raptor, Striker)
-            if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro) {
+            if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered) {
               initiatePlayerJump(player, spawnGrass);
               leftStick.jumpTriggered = true;
               leftStick.jetpackNeutralized = false; // Po skoku z ziemi wymagamy puszczenia/odchylenia drążka

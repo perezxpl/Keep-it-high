@@ -650,22 +650,7 @@ export class ThrownTomahawk {
         spawnRicochetSparks(this.x, this.y, -1, 0, 4);
       }
 
-      // 2. Interakcja kinetyczna z piłką (Kinetic Ball Push / Spike)
-      if (ball && !ball.isPocketed) {
-        const dBall = Math.hypot(ball.x - this.x, ball.y - this.y);
-        if (dBall <= this.radius + (ball.radius || 12)) {
-          ball.vx += this.vx * 0.95;
-          ball.vy += this.vy * 0.95;
-          ball.spin = (this.vx > 0 ? 1 : -1) * 0.8;
-          spawnRicochetSparks(this.x, this.y, Math.sign(this.vx), -0.5, 6);
-          triggerScreenShake(4.5);
-          this.vx *= 0.45;
-          this.vy *= 0.45;
-          this.vRot *= -0.5;
-        }
-      }
-
-      // 3. Trafienie w przeciwników (Combatants Hit / Decapitation / Cleave)
+      // 2. Trafienie w przeciwników (Combatants Hit / Decapitation / Cleave)
       if (Array.isArray(combatants)) {
         const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || window.networkState?.isConnected);
         const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
@@ -1482,26 +1467,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     }
   }
 
-  // 2. Potężny impuls odrzucający piłkę
-  if (ball) {
-    const ballDx = ball.x - expX;
-    const ballDy = ball.y - expY;
-    const ballDist = Math.hypot(ballDx, ballDy);
-
-    if (ballDist <= radius) {
-      ball.isLevitating = false;
-      const factor = Math.max(0, 1 - (ballDist / radius));
-      const ballImpulse = factor * 28.0;
-      const bNormX = ballDist > 0.001 ? ballDx / ballDist : 0;
-      const bNormY = ballDist > 0.001 ? ballDy / ballDist : -1;
-
-      ball.vx += bNormX * ballImpulse;
-      ball.vy += bNormY * ballImpulse - 5.5;
-      ball.spin = (Math.random() - 0.5) * 0.45;
-    }
-  }
-
-  // 2B. Obrażenia i impuls kinetyczny dla wybuchowych/toksycznych beczek
+  // 2. Obrażenia i impuls kinetyczny dla wybuchowych/toksycznych beczek
   const activeHazBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels))
     ? window.hazardsBarrels
     : [];

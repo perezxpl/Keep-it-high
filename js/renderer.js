@@ -11,10 +11,6 @@ export {
   drawBunkerBlock,
   drawCyberCatwalk,
   drawNeonBarrier,
-  drawNeonGoals,
-  goalTriggerLeft,
-  goalTriggerRight,
-  ARENA_1_GOALS,
   drawJumpPad,
   drawCyberPillar,
   drawExplosiveBarrel,
@@ -45,8 +41,7 @@ export {
 
 export {
   drawMineCaveBackground,
-  drawPandoraBackground,
-  drawArena1Background
+  drawPandoraBackground
 } from './background.js';
 
 export {
@@ -158,7 +153,6 @@ import { camera } from './camera.js';
 import { getActiveArena, setActiveArena, ARENAS } from './arenas/index.js';
 import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js';
 import { arena5State, CELL_SIZE, getGridX } from './arenas/arena5/state.js';
-import { ball } from './ball.js';
 import { getActiveBots } from './bot.js';
 import { remotePlayer } from './network.js';
 import { activeCarePackages } from './killstreaks/carePackage.js';
@@ -414,22 +408,7 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
       strokeClippedBox(obs.x, topY, obs.w, obs.h || 20, `[OBS: ${obs.type || 'obstacle'} ${Math.round(obs.w)}x${Math.round(obs.h || 20)}]`);
     }
 
-    // 4. Strop dolnej komory bojowej (wyłącznie Arena 1)
-    const isA1 = (curArenaId === 'arena-1' || curArenaId === 'ARENA_1' || !curArenaId);
-    if (isA1 && typeof LOWER_CAVERN_CEILING_PROFILE !== 'undefined' && Array.isArray(LOWER_CAVERN_CEILING_PROFILE)) {
-      ctx.beginPath();
-      for (let i = 0; i < LOWER_CAVERN_CEILING_PROFILE.length; i++) {
-        const pt = LOWER_CAVERN_CEILING_PROFILE[i];
-        if (i === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.stroke();
-      if (isDebugMode && 1550 >= camL && 1550 <= camR && 770 >= camT && 770 <= camB) {
-        ctx.fillText('[STROP DOLNY: CEILING CLAMP]', 1550, 770);
-      }
-    }
-
-    // 5. Arena 5: Klocki wieży i spadająca figura suwnicy
+    // 4. Arena 5: Klocki wieży i spadająca figura suwnicy
     const isA5 = (curArenaId === 'arena-5' || curArenaId === 'ARENA_5' || curArenaId === 'PREFAB_TOWER');
     const a5 = (typeof arena5State !== 'undefined' && arena5State) ? arena5State : ((typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null);
     if (isA5 && a5) {
@@ -533,21 +512,7 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
       strokeClippedBox(rPlayer.x, rColY, rPlayer.w || 26, rColH, `[ZDALNY: ${rPlayer.name || 'P2P'}]`);
     }
 
-    // 8. Piłka
-    const activeBall = extra.ball || (typeof ball !== 'undefined' ? ball : (typeof window !== 'undefined' && window.ball ? window.ball : null));
-    if (activeBall && activeBall.active) {
-      const bRad = activeBall.radius || 12;
-      if (activeBall.x + bRad >= camL && activeBall.x - bRad <= camR && activeBall.y + bRad >= camT && activeBall.y - bRad <= camB) {
-        ctx.beginPath();
-        ctx.arc(activeBall.x, activeBall.y, bRad, 0, Math.PI * 2);
-        ctx.stroke();
-        if (isDebugMode) {
-          ctx.fillText(`[PIŁKA r:${bRad}]`, activeBall.x - 18, activeBall.y - bRad - 4);
-        }
-      }
-    }
-
-    // 9. Elementy taktyczne (Care Package i Sentry Gun)
+    // 8. Elementy taktyczne (Care Package i Sentry Gun)
     if (typeof activeCarePackages !== 'undefined' && Array.isArray(activeCarePackages)) {
       for (const cp of activeCarePackages) {
         if (!cp || cp.state === 'CAPTURED') continue;

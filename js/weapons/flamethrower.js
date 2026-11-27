@@ -605,19 +605,7 @@ export class FlameParticle {
       }
     }
 
-    // 2. Interakcja z piłką
-    if (ball) {
-      const cR = ball.colRadius || 5.2;
-      const dToBall = distPointToSegment(ball.x, ball.y, this.prevX, this.prevY, endX, endY);
-      if (dToBall <= cR + this.radius) {
-        ball.vx += this.vx * 0.28;
-        ball.vy += this.vy * 0.28 - 0.4;
-        ball.spin += (this.vx > 0 ? 0.35 : -0.35);
-        ball.burnTimer = Math.max(ball.burnTimer || 0, 80);
-      }
-    }
-
-    // 3. Kolizje z postaciami (Gracze, boty i zombie)
+    // 2. Kolizje z postaciami (Gracze, boty i zombie)
     const targets = Array.isArray(combatants) ? combatants : [];
     const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
       (deathmatchState && deathmatchState.mode === 'FFA') ||
@@ -1142,17 +1130,6 @@ export class SurfaceFire {
       }
     }
 
-    // 3. Podpalenie piłki przetaczającej się przez kałużę ognia
-    if (ball) {
-      const ballHalfW = this.width * 0.55;
-      const bDistX = Math.abs(ball.x - this.x);
-      const bDistY = Math.abs(ball.y - this.y);
-      if (bDistX < ballHalfW + (ball.colRadius || 5.2) && bDistY < 24) {
-        ball.burnTimer = Math.max(ball.burnTimer || 0, 90);
-        ball.vx += (this.x < ball.x ? 0.15 : -0.15);
-      }
-    }
-
     return true;
   }
 
@@ -1526,11 +1503,6 @@ export function updateFlamethrower(groundY, platforms, customObs, combatants, ba
         extinguishCombatant(ch);
       }
     }
-  }
-
-  // 4. Obsługa płonącej piłki
-  if (ball && ball.burnTimer && ball.burnTimer > 0) {
-    ball.burnTimer--;
   }
 }
 
@@ -2747,20 +2719,6 @@ export function drawBurningEffects(ctx, combatants, ball) {
     if (!ch.burnTimer || ch.burnTimer <= 0) continue;
 
     drawCharacterFire(ctx, ch, now, isLyingZombie, sheet);
-  }
-
-  // Płomienie na piłce
-  if (ball && ball.burnTimer && ball.burnTimer > 0) {
-    ctx.save();
-    ctx.translate(ball.x, ball.y);
-    if (sheet && sheet.complete && sheet.naturalWidth > 0) {
-      const frameIdx = Math.floor(now * 2.0) % 8;
-      const sx = frameIdx * FLAME_CELL_SIZE;
-      const sy = FLAME_ROW_STREAM * FLAME_CELL_SIZE;
-      ctx.globalAlpha = 0.88;
-      ctx.drawImage(sheet, sx, sy, FLAME_CELL_SIZE, FLAME_CELL_SIZE, -20, -20, 40, 40);
-    }
-    ctx.restore();
   }
 }
 

@@ -33,14 +33,12 @@ import {
   drawBullets, 
   drawBurningEffects 
 } from './weapons.js';
-import { 
-  updateProjectiles, 
-  activeProjectiles, 
-  drawProjectiles 
+import {
+  updateProjectiles,
+  activeProjectiles,
+  drawProjectiles
 } from './projectiles.js';
-import { ball, updateBall, drawBall } from './ball.js';
-import { drawGround } from './world/terrain.js';
-import { 
+import {
   updateParticles, 
   drawParticles, 
   updateJetpackParticles, 
@@ -73,31 +71,10 @@ import {
 import { updateArena2 } from './arenas/arena2/state.js';
 import { updateArena3 } from './arenas/arena3.js';
 
-// Cykl aren: wszystkie 5 aren
-export const SHOWCASE_ARENAS = ['ARENA_1', 'ARENA_2', 'ARENA_3', 'ARENA_4', 'ARENA_5'];
+// Cykl aren: wszystkie 4 aktywne areny
+export const SHOWCASE_ARENAS = ['ARENA_2', 'ARENA_3', 'ARENA_4', 'ARENA_5'];
 
 export const SHOWCASE_ARENA_CONFIG = {
-  ARENA_1: {
-    id: 'ARENA_1',
-    name: 'CYBER STADION // NEONOWE MIASTO',
-    tag: 'LIVE FEED // SEKTOR 01: CYBER STADION',
-    deathY: 1300,
-    safeFloorY: 1200,
-    minX: 400,
-    maxX: 3200,
-    centerX: 1800,
-    centerY: 950,
-    zoom: 0.86,
-    hasBall: true,
-    spawns: [
-      { x: 1450, y: 770, facing: 1, classKey: 'RAPTOR', team: 'CYAN' },
-      { x: 1650, y: 610, facing: 1, classKey: 'STRIKER', team: 'CYAN' },
-      { x: 1720, y: 1128, facing: 1, classKey: 'ENFORCER', team: 'CYAN' },
-      { x: 1880, y: 1128, facing: -1, classKey: 'ENFORCER', team: 'ORANGE' },
-      { x: 1950, y: 610, facing: -1, classKey: 'STRIKER', team: 'ORANGE' },
-      { x: 2150, y: 770, facing: -1, classKey: 'RAPTOR', team: 'ORANGE' }
-    ]
-  },
   ARENA_2: {
     id: 'ARENA_2',
     name: 'TOKSYCZNA RAFINERIA // SEKTOR X',
@@ -192,7 +169,7 @@ const TRANSITION_TOTAL_DURATION = TRANSITION_OUT_DURATION + TRANSITION_IN_DURATI
 export const menuShowcaseState = {
   active: false,
   initialized: false,
-  currentArenaId: 'ARENA_1',
+  currentArenaId: 'ARENA_2',
   arenaTimer: 0,
   totalTime: 0,
   savedSettings: {
@@ -226,7 +203,7 @@ export function isMenuShowcaseActive() {
  * Rozmieszcza boty na kluczowych centralnych platformach danej mapy
  */
 export function deployShowcaseBots(arenaId) {
-  const config = SHOWCASE_ARENA_CONFIG[arenaId] || SHOWCASE_ARENA_CONFIG.ARENA_1;
+  const config = SHOWCASE_ARENA_CONFIG[arenaId] || SHOWCASE_ARENA_CONFIG.ARENA_2;
   const activeBots = getActiveBots();
   const spawns = config.spawns;
 
@@ -277,19 +254,6 @@ export function deployShowcaseBots(arenaId) {
     b.reloadTimer = 0;
     b.shootCooldown = Math.floor(Math.random() * 8);
   }
-
-  // Obsługa piłki na Arenie 1 (Cyber Stadion)
-  if (config.hasBall && ball) {
-    ball.active = true;
-    ball.x = 1800;
-    ball.y = 800;
-    ball.vx = (Math.random() - 0.5) * 6;
-    ball.vy = -5;
-    ball.goalAnimation = null;
-  } else if (ball) {
-    ball.active = false;
-    ball.goalAnimation = null;
-  }
 }
 
 /**
@@ -297,7 +261,7 @@ export function deployShowcaseBots(arenaId) {
  * aby gracz po mignięciu od razu widział toczącą się bitwę w locie.
  */
 export function runPreWarmSimulation(arenaId, frameCount = 45) {
-  const config = SHOWCASE_ARENA_CONFIG[arenaId] || SHOWCASE_ARENA_CONFIG.ARENA_1;
+  const config = SHOWCASE_ARENA_CONFIG[arenaId] || SHOWCASE_ARENA_CONFIG.ARENA_2;
   const effectiveGroundY = config.deathY + 100;
   const activeBots = getActiveBots();
 
@@ -311,7 +275,7 @@ export function runPreWarmSimulation(arenaId, frameCount = 45) {
     for (let i = 0; i < activeBots.length; i++) {
       const b = activeBots[i];
       if (!b || !b.active || b.isDead) continue;
-      updateBotBrain(config.hasBall ? ball : null, null, effectiveGroundY, null, b, activeBots);
+      updateBotBrain(null, null, effectiveGroundY, null, b, activeBots);
       checkPlayerPlatformLanding(b, effectiveGroundY);
     }
 
@@ -319,21 +283,16 @@ export function runPreWarmSimulation(arenaId, frameCount = 45) {
     updateBullets(effectiveGroundY, ARENA_PLATFORMS, null, activeBots);
     updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, activeBots, null);
 
-    // 3. Piłka na Arenie 1
-    if (config.hasBall && ball && ball.active) {
-      updateBall(effectiveGroundY);
-    }
-
-    // 4. Mechaniki specyficzne dla map
+    // 3. Mechaniki specyficzne dla map
     if (arenaId === 'ARENA_2') {
       try { updateArena2(dt, activeBots); } catch (_) {}
     } else if (arenaId === 'ARENA_3') {
-      try { updateArena3(dt, activeBots, ball); } catch (_) {}
+      try { updateArena3(dt, activeBots); } catch (_) {}
     } else {
       try {
         const curArena = getActiveArena();
         if (curArena && typeof curArena.update === 'function') {
-          curArena.update(dt, activeBots, ball);
+          curArena.update(dt, activeBots);
         }
       } catch (_) {}
     }
@@ -362,7 +321,7 @@ function generateGlitchScanlines() {
  * Zero drgań, zero przesunięć, zero wstrząsów – pełna stabilność widoku w menu.
  */
 export function updateStationaryCamera(arenaId) {
-  const config = SHOWCASE_ARENA_CONFIG[arenaId] || SHOWCASE_ARENA_CONFIG.ARENA_1;
+  const config = SHOWCASE_ARENA_CONFIG[arenaId] || SHOWCASE_ARENA_CONFIG.ARENA_2;
   const canvasWidth = (typeof getCanvasLogicalWidth === 'function') ? getCanvasLogicalWidth() : 1920;
   const canvasHeight = (typeof getCanvasLogicalHeight === 'function') ? getCanvasLogicalHeight() : 1080;
   const targetZoom = calculateMenuShowcaseZoom(canvasWidth, canvasHeight, arenaId, config);
@@ -427,7 +386,7 @@ export function startMenuShowcase() {
 
   // Załaduj mapę
   try {
-    switchArena(startArena, null, getActiveBots(), ball);
+    switchArena(startArena, null, getActiveBots());
     if (typeof setCameraArenaId === 'function') {
       setCameraArenaId(startArena);
     }
@@ -489,8 +448,8 @@ export function updateMenuShowcase(dt = 1 / 60) {
   menuShowcaseState.arenaTimer += dt;
   menuShowcaseState.badge.timer += dt;
 
-  const currentArenaId = menuShowcaseState.currentArenaId || 'ARENA_1';
-  const config = SHOWCASE_ARENA_CONFIG[currentArenaId] || SHOWCASE_ARENA_CONFIG.ARENA_1;
+  const currentArenaId = menuShowcaseState.currentArenaId || 'ARENA_2';
+  const config = SHOWCASE_ARENA_CONFIG[currentArenaId] || SHOWCASE_ARENA_CONFIG.ARENA_2;
   const effectiveGroundY = config.deathY + 100;
   const activeBots = getActiveBots();
 
@@ -519,7 +478,7 @@ export function updateMenuShowcase(dt = 1 / 60) {
       menuShowcaseState.currentArenaId = nextId;
 
       try {
-        switchArena(nextId, null, activeBots, ball);
+        switchArena(nextId, null, activeBots);
         if (typeof setCameraArenaId === 'function') {
           setCameraArenaId(nextId);
         }
@@ -639,19 +598,15 @@ export function updateMenuShowcase(dt = 1 / 60) {
     }
 
     // AI walki bot vs bot (humanPlayer = null, allCombatants = activeBots)
-    updateBotBrain(config.hasBall ? ball : null, null, effectiveGroundY, null, b, activeBots);
+    updateBotBrain(null, null, effectiveGroundY, null, b, activeBots);
     checkPlayerPlatformLanding(b, effectiveGroundY);
   }
 
   // -------------------------------------------------------------------------
-  // 3. FIZYKA POCISKÓW, PIŁKI, CZĄSTECZEK I OŚWIETLENIA
+  // 3. FIZYKA POCISKÓW, CZĄSTECZEK I OŚWIETLENIA
   // -------------------------------------------------------------------------
   updateBullets(effectiveGroundY, ARENA_PLATFORMS, null, activeBots);
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, activeBots, null);
-
-  if (config.hasBall && ball && ball.active) {
-    updateBall(effectiveGroundY);
-  }
 
   updateParticles();
   updateJetpackParticles();
@@ -662,12 +617,12 @@ export function updateMenuShowcase(dt = 1 / 60) {
   if (currentArenaId === 'ARENA_2') {
     try { updateArena2(dt, activeBots); } catch (_) {}
   } else if (currentArenaId === 'ARENA_3') {
-    try { updateArena3(dt, activeBots, ball); } catch (_) {}
+    try { updateArena3(dt, activeBots); } catch (_) {}
   } else {
     try {
       const curArena = getActiveArena();
       if (curArena && typeof curArena.update === 'function') {
-        curArena.update(dt, activeBots, ball);
+        curArena.update(dt, activeBots);
       }
     } catch (_) {}
   }
@@ -686,8 +641,8 @@ export function drawMenuShowcase(ctx, camera) {
 
   const canvasWidth = (typeof getCanvasLogicalWidth === 'function') ? getCanvasLogicalWidth() : ctx.canvas.width;
   const canvasHeight = (typeof getCanvasLogicalHeight === 'function') ? getCanvasLogicalHeight() : ctx.canvas.height;
-  const currentArenaId = menuShowcaseState.currentArenaId || 'ARENA_1';
-  const config = SHOWCASE_ARENA_CONFIG[currentArenaId] || SHOWCASE_ARENA_CONFIG.ARENA_1;
+  const currentArenaId = menuShowcaseState.currentArenaId || 'ARENA_2';
+  const config = SHOWCASE_ARENA_CONFIG[currentArenaId] || SHOWCASE_ARENA_CONFIG.ARENA_2;
   const effectiveGroundY = config.deathY + 100;
   const activeBots = getActiveBots();
 
@@ -704,14 +659,7 @@ export function drawMenuShowcase(ctx, camera) {
   ctx.scale(camera.zoom, camera.zoom);
   ctx.translate(-camera.x, -camera.y);
 
-  const worldLeft = camera.x;
-  const worldRight = camera.x + (camera.viewWidth || (canvasWidth / camera.zoom));
-  const worldWidth = worldRight - worldLeft;
-
-  // Podłoże i platformy
-  if (currentArenaId === 'ARENA_1') {
-    drawGround(ctx, worldLeft, worldWidth);
-  }
+  // Platformy i geometria areny
   drawObstacles(ctx, effectiveGroundY);
   renderArenaForeground(ctx, camera);
 
@@ -720,11 +668,6 @@ export function drawMenuShowcase(ctx, camera) {
   drawBloodDecals(ctx);
   drawBullets(ctx);
   drawProjectiles(ctx);
-
-  // Piłka (na Arenie 1)
-  if (config.hasBall && ball && ball.active) {
-    drawBall(ctx);
-  }
 
   // Postacie botów bojowych (bez HUD-a, bez pasków zdrowia, bez celowników)
   for (let i = 0; i < activeBots.length; i++) {

@@ -29,21 +29,14 @@ export var DEFAULT_STATS = {
   sprintMax: 6.8,
   accel: 0.24,
   decel: 0.84,
-  slideDecel: 0.978,
   jumpForce: 9.8,
-  slideDashSpeed: 13.5,
   chargeSpeed: 0.035,
   hitReach: 56,
   whiffReach: 88,
-  baseKickSpeed: 30.0,
-  kickPowerMult: 1.0,
-  spinMult: 1.0,
   jetMax: 100,
   spartanKnockback: 11.0,
   spartanStagger: 25,
   spartanDamage: 10,
-  kickForce: 1.0,
-  kickForceMultiplier: 1.0,
   knockback: 1.0,
   knockbackMultiplier: 1.0,
   kickCooldown: 0.50
@@ -105,7 +98,7 @@ export function mergeClassWithSchema(classDef) {
     w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13
   };
   const baseStats = (typeof DEFAULT_STATS !== 'undefined' && DEFAULT_STATS) ? DEFAULT_STATS : {
-    hp: 100, maxHp: 100, walkMax: 2.2, jogMax: 4.2, sprintMax: 6.8, accel: 0.24, decel: 0.84, slideDecel: 0.978, jumpForce: 9.8, slideDashSpeed: 13.5, chargeSpeed: 0.035, hitReach: 56, whiffReach: 88, baseKickSpeed: 30.0, kickPowerMult: 1.0, spinMult: 1.0, jetMax: 100, spartanKnockback: 11.0, spartanStagger: 25, spartanDamage: 10, kickForce: 1.0, kickForceMultiplier: 1.0, knockback: 1.0, knockbackMultiplier: 1.0, kickCooldown: 0.50
+    hp: 100, maxHp: 100, walkMax: 2.2, jogMax: 4.2, sprintMax: 6.8, accel: 0.24, decel: 0.84, jumpForce: 9.8, chargeSpeed: 0.035, hitReach: 56, whiffReach: 88, jetMax: 100, spartanKnockback: 11.0, spartanStagger: 25, spartanDamage: 10, knockback: 1.0, knockbackMultiplier: 1.0, kickCooldown: 0.50
   };
   const baseVisuals = (typeof DEFAULT_VISUALS !== 'undefined' && DEFAULT_VISUALS) ? DEFAULT_VISUALS : {};
   const schema = (typeof DEFAULT_CLASS_SCHEMA !== 'undefined' && DEFAULT_CLASS_SCHEMA) ? DEFAULT_CLASS_SCHEMA : {
@@ -160,8 +153,8 @@ export function createPlayerInstance(overrides = {}) {
     helmetHits: 2,
     headshotImmunityTimer: 0,
     currentWeapon: WEAPONS.AK47,
-    isHolstered: (typeof activeArenaId !== 'undefined' ? (activeArenaId === 'ARENA_1') : true),
-    holsterWeight: (typeof activeArenaId !== 'undefined' && activeArenaId !== 'ARENA_1' ? 0.0 : 1.0),
+    isHolstered: false,
+    holsterWeight: 0.0,
     shootCooldown: 0,
     grenadeCooldown: 0,
     grenadeMaxCooldown: 3.5, // 3.5 sekundy czasu odnowienia
@@ -307,8 +300,6 @@ export function createPlayerInstance(overrides = {}) {
     yaw: 0,
     turnMode: 'FRONT',
 
-    isIntro: false,
-    juggleTimer: 0,
     intendedVx: 0,
     groundY: 0,
     currentGroundY: 0,
@@ -320,25 +311,13 @@ export function createPlayerInstance(overrides = {}) {
     jumpPower: 0,
 
     kickCooldown: 0,
-    kickMode: 'GROUND',
+    kickMode: 'SPARTAN',
     kickPower: 0,
-    scissorTimer: 0,
-    scissorDuration: 22,
-
-    bicycleTimer: 0,
-    bicycleDuration: 30,
-    landingTurnTimer: 0,
 
     kickingFootX: 0,
     kickingFootY: 0,
     kickPlantWorldX: 0,
     kickRecoverSpeed: 0.14,
-
-    frontLegOverBall: false,
-    lastFootFrontX: 0,
-    lastFootFrontY: 0,
-    lastFootFrontAnkle: 0,
-    lastHipShiftX: 0,
 
     thighLen: mergedClass.body.thighLen,
     shinLen: mergedClass.body.shinLen,
@@ -348,9 +327,7 @@ export function createPlayerInstance(overrides = {}) {
     stridePhase: 0,
     torsoTilt: 0,
     torsoTiltVel: 0,
-    gaitMode: 'PODBICIE Z ZIEMI',
-
-    kneeJuggleWeight: 0,
+    gaitMode: 'IDLE',
 
     headBob: 0,
     headBobVel: 0,
@@ -382,9 +359,6 @@ export function createPlayerInstance(overrides = {}) {
     landingSquatMax: 5,
     landingSquatIntensity: 0,
     jetpackKeyNeutralized: true,
-    isSliding: false,
-    slideTimer: 0,
-    slideCooldown: 0,
     sprintDuration: 0,
     coyoteTimer: 0,
     coyoteMax: 8,
@@ -396,12 +370,9 @@ export function createPlayerInstance(overrides = {}) {
     dropThroughTimer: 0,
     dropThroughPlatform: null,
     isMovingBackwards: false,
-    spinVolleyTimer: 0,
-    spinVolleyDuration: 24,
     spartanTimer: 0,
     spartanDuration: 22,
     spartanTarget: null,
-    _ball: null,
     _targets: null,
 
     kickLeg: 'front',
@@ -416,8 +387,6 @@ export function createPlayerInstance(overrides = {}) {
     kickBufferTimer: 0,
 
     headPitch: 0,
-    lastBallX: undefined,
-    lastBallY: undefined,
 
     _spawnGrass: null,
 
@@ -473,7 +442,7 @@ export function createPlayerInstance(overrides = {}) {
   return instance;
 }
 
-export const player = createPlayerInstance({ isIntro: true });
+export const player = createPlayerInstance();
 
 export function setPlayerClass(newClass, p = player) {
   if (!newClass || !p) return;
@@ -523,7 +492,7 @@ export function setPlayerClass(newClass, p = player) {
  * @returns {boolean} Czy skok został pomyślnie zainicjowany
  */
 export function initiatePlayerJump(p = player, spawnGrass = null) {
-  if (!p || p.isDead || p.isIntro || p.isSliding || (p.staggerTimer > 0) || p.isAcidDying) return false;
+  if (!p || p.isDead || (p.staggerTimer > 0) || p.isAcidDying) return false;
   if (p.isJumping) return false;
 
   const a5State = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;

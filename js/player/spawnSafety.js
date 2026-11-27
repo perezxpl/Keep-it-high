@@ -19,13 +19,13 @@ import { activeMortarStrikes } from '../killstreaks/supportStrikes.js';
  * Normalizuje identyfikator aktywnej areny do kanonicznego klucza.
  */
 export function normalizeSpawnArenaKey(activeArena) {
-  const raw = activeArena?.id || activeArena?.alias || (typeof window !== 'undefined' ? window.activeArenaId : '') || 'ARENA_1';
+  const raw = activeArena?.id || activeArena?.alias || (typeof window !== 'undefined' ? window.activeArenaId : '') || 'ARENA_2';
   const s = String(raw).toUpperCase();
   if (s.includes('ARENA_2') || s === 'ARENA-2' || s.includes('SECTOR_X') || s.includes('PANDORA')) return 'ARENA_2';
   if (s.includes('ARENA_3') || s === 'ARENA-3' || s.includes('JUNGLE') || s.includes('FOUNDRY')) return 'ARENA_3';
   if (s.includes('ARENA_4') || s === 'ARENA-4' || s.includes('CALDERA') || s.includes('OBSIDIAN')) return 'ARENA_4';
   if (s.includes('ARENA_5') || s === 'ARENA-5' || s.includes('PREFAB') || s.includes('TOWER')) return 'ARENA_5';
-  return 'ARENA_1';
+  return 'ARENA_2';
 }
 
 function getPlatformsForArena(activeArena) {
@@ -462,9 +462,9 @@ export function findDynamicSafeSpawns(activeArena, respawningChar = null, ground
         testAndPush(px, colTop, c < COLS * 0.5 ? 1 : -1);
       }
     }
-  } else if (arenaKey === 'ARENA_1' || arenaKey === 'ARENA_3') {
-    const startScanX = arenaKey === 'ARENA_3' ? 260 : 120;
-    const endScanX = arenaKey === 'ARENA_3' ? 4140 : 3480;
+  } else if (arenaKey === 'ARENA_3') {
+    const startScanX = 260;
+    const endScanX = 4140;
     for (let px = startScanX; px <= endScanX; px += 120) {
       const supY = getSafeFloorYAtX(px + charW * 0.5, groundY, activeArena, groundY, 320);
       if (supY !== null) {

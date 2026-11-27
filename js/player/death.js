@@ -628,7 +628,6 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     player.knockbackVx = 0;
     player.knockbackVy = 0;
     player.isJumping = false;
-    player.isSliding = false;
     player.isCharging = false;
     player.kickState = 'IDLE';
   }

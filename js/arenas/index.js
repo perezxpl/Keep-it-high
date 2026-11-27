@@ -4,20 +4,17 @@
 // Wzorzec: Plugin / Lifecycle Hooks Pattern
 // =========================================================================
 
-import arena1 from './arena1.js';
 import arena2 from './arena2.js';
 import arena3 from './arena3.js';
 import arena4 from './arena4.js';
 import arena5 from './arena5/index.js';
 
 export const ARENAS = {
-  get 'arena-1'() { return arena1; },
   get 'arena-2'() { return arena2; },
   get 'arena-3'() { return arena3; },
   get 'arena-4'() { return arena4; },
   get 'arena-5'() { return arena5; },
   // Aliasy kompatybilności
-  get 'ARENA_1'() { return arena1; },
   get 'ARENA_2'() { return arena2; },
   get 'ARENA_2_SECTOR_X'() { return arena2; },
   get 'SECTOR_X'() { return arena2; },
@@ -28,7 +25,6 @@ export const ARENAS = {
   get 'ARENA_3'() { return arena3; },
   get 'ARENA_4'() { return arena4; },
   get 'ARENA_5'() { return arena5; },
-  get '1'() { return arena1; },
   get '2'() { return arena2; },
   get '3'() { return arena3; },
   get '4'() { return arena4; },
@@ -86,18 +82,17 @@ export const ARENAS = {
 };
 
 function normalizeArenaId(rawId) {
-  if (!rawId) return 'arena-1';
+  if (!rawId) return 'arena-2';
   const str = String(rawId).trim();
   const lower = str.toLowerCase();
   const cleaned = lower.replace(/[-_]/g, '');
-  if (cleaned === '1' || cleaned === 'arena1') return 'arena-1';
   if (cleaned === '2' || cleaned === 'arena2' || cleaned === 'pandora' || cleaned === 'arena2pandora' || cleaned === 'hallelujah' || cleaned === 'cyber' || cleaned === 'cyberstadium' || cleaned === 'sectorx' || cleaned === 'sektorx' || cleaned === 'arena2sectorx') return 'arena-2';
   if (cleaned === '3' || cleaned === 'arena3' || cleaned === 'foundry' || cleaned === 'jungle' || cleaned === 'junglearena' || cleaned === 'dzungla' || cleaned === 'militarnadzungla' || cleaned === 'mine' || cleaned === 'aero' || cleaned === 'refinery' || cleaned === 'aerorafineria' || cleaned === 'sky' || cleaned === 'aerorefinery' || cleaned === 'skydistrict' || cleaned === 'podniebnydystrykt') return 'arena-3';
   if (cleaned === '4' || cleaned === 'arena4' || cleaned === 'obsidian' || cleaned === 'caldera' || cleaned === 'obsidiancaldera' || cleaned === 'krater' || cleaned === 'wulkan' || cleaned === 'magma' || cleaned === 'titan' || cleaned === 'usstitan' || cleaned === 'lotniskowiec' || cleaned === 'carrier' || cleaned === 'aircraftcarrier' || cleaned === 'typhoon' || cleaned === 'tyfon' || cleaned === 'oilrig' || cleaned === 'platforma' || cleaned === 'platformawiertnicza' || cleaned === 'platformamorska' || cleaned === 'rig08' || cleaned === 'offshorerig' || cleaned === 'rig' || cleaned === 'space' || cleaned === 'spacestation' || cleaned === 'ares' || cleaned === 'aresstation' || cleaned === 'stacjaares' || cleaned === 'stacjaorbitalnaares' || cleaned === 'train' || cleaned === 'armoredtrain' || cleaned === 'pociag' || cleaned === 'pociąg' || cleaned === 'pedzacypociag' || cleaned === 'pędzącypociąg') return 'arena-4';
   if (cleaned === '5' || cleaned === 'arena5' || cleaned === 'prefab' || cleaned === 'prefaby' || cleaned === 'prefabrykaty' || cleaned === 'prefabrykat' || cleaned === 'prefabrykator' || cleaned === 'prefabtower' || cleaned === 'tetris' || cleaned === 'tower' || cleaned === 'sektor5' || cleaned === 'sektor05' || cleaned === 'sector5' || cleaned === 'sector05') return 'arena-5';
   if (ARENAS[str]) return ARENAS[str].id;
   if (ARENAS[lower]) return ARENAS[lower].id;
-  return 'arena-1';
+  return 'arena-2';
 }
 
 // Pobieranie ID startowej areny z parametru URL (np. ?arena=arena-2 lub ?arena=3)
@@ -110,9 +105,9 @@ var activeArena = null;
 export function getActiveArena() {
   if (!activeArena) {
     const initialUrlId = (typeof window !== 'undefined' && window.location)
-      ? (new URLSearchParams(window.location.search).get('arena') || 'arena-1')
-      : 'arena-1';
-    activeArena = ARENAS[normalizeArenaId(initialUrlId)] || arena1;
+      ? (new URLSearchParams(window.location.search).get('arena') || 'arena-2')
+      : 'arena-2';
+    activeArena = ARENAS[normalizeArenaId(initialUrlId)] || arena2;
   }
   return activeArena;
 }
@@ -131,7 +126,7 @@ export function onArenaChange(fn) {
 
 /**
  * Przełącza aktywną arenę na podany obiekt lub ID
- * @param {string|Object} idOrArena - Identyfikator ('arena-1', 'arena-2', 'arena-3') lub obiekt wtyczki
+ * @param {string|Object} idOrArena - Identyfikator ('arena-2', 'arena-3', 'arena-4', 'arena-5') lub obiekt wtyczki
  * @returns {Object} Nowo aktywna arena
  */
 export function setActiveArena(idOrArena) {
@@ -159,5 +154,5 @@ export function setActiveArena(idOrArena) {
   return activeArena;
 }
 
-export { arena1, arena2, arena3, arena4 };
+export { arena2, arena3, arena4, arena5 };
 

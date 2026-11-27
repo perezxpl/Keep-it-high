@@ -10,7 +10,7 @@ import {
   bodyGibs
 } from './world.js';
 import { DEFAULT_VISUALS } from './player/hair.js';
-import { checkRayObstacleCollision, obstacles, registerHitSparkCallback, arena1State, spawnAltarShockwave, ARENA_PLATFORMS } from './obstacles.js';
+import { checkRayObstacleCollision, obstacles, registerHitSparkCallback, ARENA_PLATFORMS } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
@@ -175,7 +175,6 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     phase: 'WINDUP',
     aimAngle,
     hitTargets: new Set(),
-    hitBall: false,
     hitObstacles: false
   };
 
@@ -566,28 +565,7 @@ function updateMeleeCollision(shooter, ms) {
     }
   }
 
-  // 2. Kolizja z piłką (Ball physics interaction)
-  if (typeof window !== 'undefined' && window.ball && window.ball.active !== false && !ms.hitBall) {
-    const b = window.ball;
-    const dBall = distPointToSegment(b.x, b.y, p1.x, p1.y, p2.x, p2.y);
-    const ballR = b.r || 14;
-    if (dBall <= ballR + (cfg.width || 24) * 0.5) {
-      ms.hitBall = true;
-      if (cfg.ballPush) {
-        b.vx = facing * cfg.ballPush.vx;
-        b.vy = cfg.ballPush.vy;
-        if (typeof b.spin === 'number') {
-          b.spin = cfg.ballPush.spin * facing;
-        }
-      }
-      triggerHitstop(Math.max(1, (cfg.hitstopFrames || 3) - 1));
-      triggerScreenShake((cfg.screenShake || 6) * 0.7);
-      spawnJetpackSparks(b.x, b.y, -facing * 2.5, -2.5, 6);
-      playSound('ball_kick', { x: b.x, y: b.y });
-    }
-  }
-
-  // 2B. Kolizja broni białej z beczkami (Melee attack on hazard barrels)
+  // 2. Kolizja broni białej z beczkami (Melee attack on hazard barrels)
   const meleeBarrels = (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels))
     ? window.hazardsBarrels
     : [];
@@ -872,7 +850,6 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       damage: weapon.damage,
-      ballPush: weapon.ballPush,
       bodyPush: weapon.bodyPush || (weapon.id === 'SNIPER' ? 0.22 : 0.03),
       ragdollPushMult: weapon.ragdollPushMult || (weapon.id === 'SNIPER' ? 3.5 : 1.0),
       color: weapon.bulletColor,
@@ -1404,31 +1381,6 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     const endX = mapHit ? mapHit.x : b.x;
     const endY = mapHit ? mapHit.y : b.y;
     const maxT = mapHit ? mapHit.t : 1.0;
-
-    let hitBall = false;
-    if (ball) {
-      const cR = ball.colRadius || 5.2;
-      const distToBall = distPointToSegment(ball.x, ball.y, b.prevX, b.prevY, endX, endY);
-
-      if (distToBall <= cR + 5) {
-        ball.isLevitating = false;
-        if (arena1State && arena1State.waitingForKickoff) {
-          arena1State.waitingForKickoff = false;
-          triggerScreenShake(7);
-          if (typeof spawnAltarShockwave === 'function') {
-            spawnAltarShockwave(ball.x, ball.y);
-          }
-        }
-        ball.vx += b.vx * b.ballPush;
-        ball.vy += b.vy * b.ballPush;
-        ball.spin += (b.vx > 0 ? 0.25 : -0.25);
-        spawnBulletSparks(endX, endY, '#38bdf8', 4);
-        bullets.splice(i, 1);
-        hitBall = true;
-        continue;
-      }
-    }
-    if (hitBall) continue;
 
     // Przechwycenie trafienia pocisku w unikalne elementy mapy (Plugin Lifecycle Hook)
     const activeArena = getActiveArena();

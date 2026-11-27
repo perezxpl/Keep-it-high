@@ -183,7 +183,7 @@ export function startDedicatedMatchmaking(playerName, options = {}) {
   const url = options.serverUrl || getDefaultServerUrl();
   wsState.serverUrl = url;
   wsState.status = 'connecting';
-  wsState.arenaId = options.arenaId || activeArenaId || 'arena-1';
+  wsState.arenaId = options.arenaId || activeArenaId || 'arena-2';
 
   if (wsState.socket) {
     try { wsState.socket.close(); } catch (_) {}
@@ -266,7 +266,7 @@ export function startDedicatedMatchmaking(playerName, options = {}) {
       ws.send(JSON.stringify({
         type: 'MATCHMAKE',
         name: playerName || player.name || 'Operator',
-        preferredArena: options.arenaId || activeArenaId || 'arena-1',
+        preferredArena: options.arenaId || activeArenaId || 'arena-2',
         mode: options.mode || 'TEAMS',
         classId: player.currentClass?.id || player.classId || 'STRIKER',
         customVisuals: currentVisuals,
@@ -372,7 +372,7 @@ export function enterMultiplayerMatch(options = {}) {
   }
 
   // 2. Przełączenie areny jeśli inna niż bieżąca
-  const targetArena = options.arenaId || wsState.arenaId || activeArenaId || 'arena-1';
+  const targetArena = options.arenaId || wsState.arenaId || activeArenaId || 'arena-2';
   if (typeof switchArena === 'function') {
     switchArena(targetArena, player);
   }
@@ -613,9 +613,6 @@ function handleServerMessage(rawData) {
         }
         if (typeof window.sendDeathmatchSync === 'function' && typeof window.deathmatchState !== 'undefined') {
           window.sendDeathmatchSync(window.deathmatchState);
-        }
-        if (typeof window.sendBallState === 'function' && window.ball) {
-          window.sendBallState(window.ball);
         }
         if (typeof window.sendZombiesState === 'function' && typeof window.isZombieModeActive === 'function' && window.isZombieModeActive()) {
           window.sendZombiesState();

@@ -12,21 +12,17 @@ export const CONFIG = {
   JUMP_FORCE: 9.8,
   ACCEL: 0.24,
   DECEL: 0.84,
-  SLIDE_DECEL: 0.978,
   CROUCH_SPEED: 1.6,
   WALK_MAX: 2.2,
   JOG_MAX: 4.2,
   SPRINT_MAX: 6.8,
-  SLIDE_DASH_SPEED: 13.5,
-  MIN_RUN_SPEED: 2.5,         // Minimalna prędkość biegu do wykonania ślizgu (~150 px/s przy 60 FPS)
 
   // SYSTEM EFEKTÓW GORE / ROZCZŁONKOWANIA
   GORE_ENABLED: true,
   MAX_BLOOD_DECALS: 60,
 
-  // SYSTEM BALANSU KOPNIĘCIA (GLOBAL NERF ~45-50% I BAZOWE SIŁY)
-  BASE_KICK_FORCE: 19.5,      // Bazowa siła wykopu piłki (osłabienie o ~45% z 36)
-  BASE_KNOCKBACK: 10.5,       // Bazowy knockback dla postaci (osłabienie o ~50% z 22)
+  // SYSTEM BALANSU KOPNIĘCIA BOJOWEGO (SPARTAN KICK)
+  BASE_KNOCKBACK: 10.5,       // Bazowy knockback dla postaci
   BASE_BARREL_IMPULSE: 9.5,   // Bazowy impuls dla ruchomych przeszkód (beczek)
 
   // SYSTEM OGRANICZENIA KAMERY (CAMERA CLAMPING) I CELOWANIA (SOLDAT STYLE LOOK-AHEAD)
@@ -47,7 +43,6 @@ export const CONFIG = {
 // STATYSTYKI KOPNIĘCIA PRZYPISANE DO RÓL KLAS
 // =========================================================================
 export const KICK_CONFIG = {
-  BASE_KICK_FORCE: 19.5,
   BASE_KNOCKBACK: 10.5,
   BASE_BARREL_IMPULSE: 9.5,
   CLASSES: {
@@ -98,13 +93,6 @@ export const ARENA_RIGHT = START_X + ARENA_WIDTH; // 3600
 // OFICJALNA KONFIGURACJA MAP I AREN BITWY
 // =========================================================================
 export const ARENA_CONFIGS = {
-  ARENA_1: {
-    id: 'ARENA_1',
-    name: 'Neonowe Miasto',
-    displayName: 'Neonowe Miasto',
-    sector: 'SEKTOR 01',
-    desc: 'Futurystyczne wieżowce, dynamiczne linie strzału i miejski klimat.'
-  },
   ARENA_2: {
     id: 'ARENA_2',
     name: 'Toksyczna Rafineria',

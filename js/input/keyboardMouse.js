@@ -11,11 +11,10 @@ import {
 } from '../world.js';
 import {
   player, initiatePlayerJump, startKickCharge, executeReleaseKick,
-  playerSlide, prepareGrenadeThrow, releaseGrenadeThrow,
+  prepareGrenadeThrow, releaseGrenadeThrow,
   prepareTomahawkThrow, releaseTomahawkThrow,
   throwTacticalGrenade, isCeilingBlockingStand
 } from '../player.js';
-import { ball, resetBallToPlayer } from '../ball.js';
 import {
   getObstacleDef, calculateObstaclePlacement, undoCustomObstacle
 } from '../obstacles.js';
@@ -46,7 +45,6 @@ import {
   cancelMortarStrikeTargeting
 } from '../killstreaks/index.js';
 import { deathmatchState } from '../deathmatch/index.js';
-import { matchWinState } from '../ui/rankHud.js';
 import { equipPocket1Slot, cyclePocket1, quickSwitchPocket1 } from '../loadout/index.js';
 import { pickupPromptState, performWeaponSwap } from '../pickup/index.js';
 import { notifyKeyboardMouseActivity } from './gamepad.js';
@@ -66,7 +64,6 @@ export const keys = {
   up: false,
   space: false,
   shift: false,
-  slide: false,
   ctrl: false,
   crouch: false,
   KeyX: false,
@@ -252,26 +249,33 @@ export function initKeyboardMouseHandlers({
       return; // Blokada pozostałych klawiszy gry w Menu
     }
 
-    // Obsługa klawiszy na ekranie wyboru areny (1-3 wybiera arenę, Spacja / Enter zatwierdza aktywną)
+    // Obsługa klawiszy na ekranie wyboru areny (1-4 wybiera arenę, Spacja / Enter zatwierdza aktywną)
     if (GAME_STATE.current === 'ARENA_SELECT') {
       if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
-        e.preventDefault();
-        playUiClick();
-        if (typeof window.switchArena === 'function') window.switchArena('ARENA_1');
-        setGameState('CLASS_SELECT');
-        return;
-      }
-      if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
         e.preventDefault();
         playUiClick();
         if (typeof window.switchArena === 'function') window.switchArena('ARENA_2');
         setGameState('CLASS_SELECT');
         return;
       }
-      if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
+      if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
         e.preventDefault();
         playUiClick();
         if (typeof window.switchArena === 'function') window.switchArena('ARENA_3');
+        setGameState('CLASS_SELECT');
+        return;
+      }
+      if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
+        e.preventDefault();
+        playUiClick();
+        if (typeof window.switchArena === 'function') window.switchArena('ARENA_4');
+        setGameState('CLASS_SELECT');
+        return;
+      }
+      if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
+        e.preventDefault();
+        playUiClick();
+        if (typeof window.switchArena === 'function') window.switchArena('ARENA_5');
         setGameState('CLASS_SELECT');
         return;
       }
@@ -344,7 +348,7 @@ export function initKeyboardMouseHandlers({
       const isGameKey = (
         e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' ||
         e.code === 'KeyC' || e.code === 'KeyR' || e.code === 'KeyG' || e.code === 'KeyE' ||
-        e.code === 'KeyQ' || e.code === 'KeyB' || e.code === 'KeyZ' ||
+        e.code === 'KeyQ' || e.code === 'KeyZ' ||
         e.code === 'Space' ||
         (typeof e.code === 'string' && (e.code.startsWith('Arrow') || e.code.startsWith('Digit') || e.code.startsWith('Numpad')))
       );
@@ -451,7 +455,7 @@ export function initKeyboardMouseHandlers({
         inputSession.isJetpackActive = true;
         player.isJetpacking = true;
         inputSession.jetpackAirborneSession = true;
-      } else if (!player.isJumping && !player.isSliding && !player.isIntro) {
+      } else if (!player.isJumping) {
         if (player.currentClass?.id === 'ENFORCER') {
           const belt = player.blastBelt;
           const isDownCombo = (belt && belt.downTapDetected && ((now - belt.downTapTime) <= 300)) ||
@@ -490,12 +494,7 @@ export function initKeyboardMouseHandlers({
       startKickCharge(player, meleeTargets);
     }
     if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') && !e.repeat && !keys.shift) {
-      keys.slide = true;
       keys.shift = true;
-      player.crouchToggled = false;
-      if (player.onGround) {
-        playerSlide(spawnGrass, GROUND_Y, player);
-      }
     }
     if ((e.code === 'KeyX' || e.key === 'x' || e.key === 'X') && !e.repeat) {
       keys.KeyX = true;
@@ -518,9 +517,6 @@ export function initKeyboardMouseHandlers({
           prepareGrenadeThrow(player);
         }
       }
-    }
-    if (e.code === 'KeyB') {
-      resetBallToPlayer(player, GROUND_Y);
     }
 
     if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
@@ -562,8 +558,7 @@ export function initKeyboardMouseHandlers({
 
     if (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape') {
       const isDmEnded = (deathmatchState.matchEnded && deathmatchState.endCelebrationTimer > 0);
-      const isWinEnded = (matchWinState.won && matchWinState.timer > 0);
-      if (isDmEnded || isWinEnded) {
+      if (isDmEnded) {
         if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
           window.concludeMatchAndReturnToLobby();
           return;
@@ -624,7 +619,7 @@ export function initKeyboardMouseHandlers({
       keys.crouch = false;
 
       // Krótkie kliknięcie klawisza Ctrl (< 320 ms) przełącza stan kucania (Toggle Crouch)
-      if (pressDuration < 320 && !player.isProne && !player.isSliding && !player.isJumping) {
+      if (pressDuration < 320 && !player.isProne && !player.isJumping) {
         if (inputSession.ctrlWasToggledOnKeyDown) {
           // Jeśli postać była już w trybie kucania, ponowne krótkie kliknięcie podrywa ją na nogi
           if (!isCeilingBlockingStand(player, GROUND_Y)) {
@@ -668,10 +663,9 @@ export function initKeyboardMouseHandlers({
       keys.space = false;
       const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
       const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-      executeReleaseKick(ball, player, 0, meleeTargets);
+      executeReleaseKick(player, meleeTargets);
     }
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC' || e.key === 'Shift') {
-      keys.slide = false;
       keys.shift = false;
     }
     if (e.code === 'KeyX' || e.key === 'x' || e.key === 'X') {
@@ -705,9 +699,8 @@ export function initKeyboardMouseHandlers({
     }
 
     const isDmEnded = (deathmatchState.matchEnded && deathmatchState.endCelebrationTimer > 0);
-    const isWinEnded = (matchWinState.won && matchWinState.timer > 0);
-    if (isDmEnded || isWinEnded) {
-      const b = isDmEnded ? deathmatchState.returnButtonBounds : matchWinState.returnButtonBounds;
+    if (isDmEnded) {
+      const b = deathmatchState.returnButtonBounds;
       const isOverBtn = b && (mouseState.screenX >= b.x && mouseState.screenX <= b.x + b.w && mouseState.screenY >= b.y && mouseState.screenY <= b.y + b.h);
       canvas.style.cursor = isOverBtn ? 'pointer' : 'default';
     }
@@ -787,13 +780,10 @@ export function initKeyboardMouseHandlers({
 
     // Obsługa kliknięcia w przycisk "POWRÓT DO LOBBY" na ekranie zakończenia meczu
     const isDmEnded = (deathmatchState.matchEnded && deathmatchState.endCelebrationTimer > 0);
-    const isWinEnded = (matchWinState.won && matchWinState.timer > 0);
-    if ((isDmEnded || isWinEnded) && e.button === 0) {
-      const b = isDmEnded ? deathmatchState.returnButtonBounds : matchWinState.returnButtonBounds;
+    if (isDmEnded && e.button === 0) {
+      const b = deathmatchState.returnButtonBounds;
       const isOverBtn = b && (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h);
-      const canSkip = isDmEnded
-        ? ((deathmatchState.maxEndCelebrationTimer - deathmatchState.endCelebrationTimer) > 60)
-        : ((matchWinState.maxTimer - matchWinState.timer) > 60);
+      const canSkip = ((deathmatchState.maxEndCelebrationTimer - deathmatchState.endCelebrationTimer) > 60);
       if (isOverBtn || canSkip) {
         if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
           window.concludeMatchAndReturnToLobby();
@@ -1048,7 +1038,7 @@ export function initKeyboardMouseHandlers({
       } else {
         const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
         const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-        executeReleaseKick(ball, player, 0, meleeTargets);
+        executeReleaseKick(player, meleeTargets);
       }
     }
   });

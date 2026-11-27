@@ -3,9 +3,8 @@ import { activateJuggernautMode } from './player/juggernaut.js';
 import { WEAPONS, shootWeapon, spawnBulletSparks, shouldDecapitateHeadshot, isMeleeStrikeWeapon } from './weapons.js';
 import { spawnArmorRicochetEffects, resolveHelmetImpact, resolveTorsoVestImpact } from './weapons/armorBallistics.js';
 import { isEnforcerPoiseActive } from './classes/enforcer.js';
-import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType, arenaScore } from './obstacles.js';
-import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, triggerGoalCelebration, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
-import { ball } from './ball.js';
+import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
+import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
 import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses, getBotDifficulty, setBotDifficulty, getStoredBotEnabled, setBotEnabled } from './bot.js';
 import { refreshDeathmatchParticipants, deathmatchState, TEAMS, finishDeathmatch } from './deathmatch/index.js';
@@ -219,7 +218,6 @@ export function sendPlayerState(localPlayer) {
     Math.abs(localPlayer.vy || 0) < 0.05 &&
     !localPlayer.isAiming &&
     !localPlayer.isJetpacking &&
-    !localPlayer.isSliding &&
     !localPlayer.isJumping &&
     !localPlayer.isKickCharging
   );
@@ -261,7 +259,6 @@ export function sendPlayerState(localPlayer) {
       relAimY: Math.round((GROUND_Y - localPlayer.aimY) * 10) / 10,
       aimAngle: Math.round((localPlayer.aimAngle || 0) * 100) / 100,
       isJumping: !!localPlayer.isJumping,
-      isSliding: !!localPlayer.isSliding,
       isCrouching: !!localPlayer.isCrouching,
       isProne: !!localPlayer.isProne,
       staggerTimer: localPlayer.staggerTimer || 0,
@@ -319,44 +316,6 @@ export function sendKillstreakEvent(payload, owner = null) {
   }
 }
 
-export function sendBallState(localBall) {
-  // Tylko host zarządza autorytatywnie piłką i wysyła jej pozycję
-  if (!isMatchHost() || !isMatchActive()) return;
-
-  const now = performance.now();
-  const isSleeping = !localBall || (Math.hypot(localBall.vx || 0, localBall.vy || 0) < 0.05 && localBall.isGrounded);
-  const minInterval = (wsState && wsState.connected) ? (isSleeping ? 120 : 33) : 25;
-  if (now - (networkState.lastBallStateSent || 0) < minInterval) return;
-  networkState.lastBallStateSent = now;
-
-  try {
-    broadcastNetworkPacket({
-      type: 'b_state',
-      x: Math.round(localBall.x * 10) / 10,
-      y: Math.round(localBall.y * 10) / 10,
-      relY: Math.round((GROUND_Y - localBall.y) * 10) / 10,
-      vx: Math.round(localBall.vx * 100) / 100,
-      vy: Math.round(localBall.vy * 100) / 100,
-      rot: Math.round((localBall.rot || 0) * 100) / 100,
-      isGrounded: !!localBall.isGrounded,
-      cyan: (typeof arenaScore !== 'undefined') ? (arenaScore.cyan || 0) : 0,
-      orange: (typeof arenaScore !== 'undefined') ? (arenaScore.orange || 0) : 0
-    });
-  } catch (e) { }
-}
-
-export function sendGoalScored(scoringTeam, cyan, orange) {
-  if (!isMatchHost() || !isMatchActive()) return;
-  try {
-    broadcastNetworkPacket({
-      type: 'goal_scored',
-      scoringTeam,
-      cyan,
-      orange
-    });
-  } catch (_) {}
-}
-
 export function sendShootEvent(weaponId, muzzleX, muzzleY, aimAngle) {
   if (!isNetworkActive()) return;
   try {
@@ -367,18 +326,6 @@ export function sendShootEvent(weaponId, muzzleX, muzzleY, aimAngle) {
       y: Math.round(muzzleY * 10) / 10,
       relY: Math.round((GROUND_Y - muzzleY) * 10) / 10,
       aimAngle: Math.round(aimAngle * 1000) / 1000
-    });
-  } catch (e) { }
-}
-
-export function sendKickEvent(vx, vy, spin = 0) {
-  if (!isNetworkActive()) return;
-  try {
-    broadcastNetworkPacket({
-      type: 'kick_ball',
-      vx: Math.round(vx * 100) / 100,
-      vy: Math.round(vy * 100) / 100,
-      spin: Math.round(spin * 100) / 100
     });
   } catch (e) { }
 }
@@ -443,7 +390,6 @@ export function sendBotsState(activeBotsList) {
         relAimY: Math.round((GROUND_Y - (b.aimY || 0)) * 10) / 10,
         aimAngle: Math.round((b.aimAngle || 0) * 100) / 100,
         isJumping: !!b.isJumping,
-        isSliding: !!b.isSliding,
         isProne: !!b.isProne,
         isRunning: !!b.isRunning,
         isJetpacking: !!b.isJetpacking,
@@ -572,7 +518,6 @@ if (typeof window !== 'undefined') {
   window.sendTomahawkThrow = sendTomahawkThrow;
   window.sendDeathmatchSync = sendDeathmatchSync;
   window.sendAcidSurgeSync = sendAcidSurgeSync;
-  window.sendGoalScored = sendGoalScored;
 }
 
 export function applyLocalPlayerDamage(data, senderPeerId = null) {
@@ -614,7 +559,6 @@ export function applyLocalPlayerDamage(data, senderPeerId = null) {
     if (data.facing !== undefined) player.facing = data.facing;
     player.isCharging = false;
     player.isShooting = false;
-    player.isSliding = false;
     player.isCrouching = false;
     player.crouchToggled = false;
     player.isProne = false;
@@ -787,7 +731,6 @@ export function applyRemoteBotDamage(data, senderPeerId = null) {
     if (data.facing !== undefined) b.facing = data.facing;
     b.isCharging = false;
     b.isShooting = false;
-    b.isSliding = false;
     b.isCrouching = false;
     b.isProne = false;
 
@@ -1025,7 +968,7 @@ export function handleNetworkData(data, senderPeerId = null) {
   switch (data.type) {
     case 'init_sync': {
       if (data.arenaId && data.arenaId !== activeArenaId) {
-        switchArena(data.arenaId, player, remotePlayer, ball);
+        switchArena(data.arenaId, player, remotePlayer);
         updateDevArenaButtonUI(data.arenaId);
         if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.updateMpArenaUI === 'function') {
           window.uiManager.updateMpArenaUI(data.arenaId);
@@ -1053,12 +996,6 @@ export function handleNetworkData(data, senderPeerId = null) {
       refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
       if (typeof window !== 'undefined' && typeof window.syncMpRosterUI === 'function') {
         window.syncMpRosterUI();
-      }
-      if (data.ball) {
-        ball.x = data.ball.x;
-        ball.y = (data.ball.relY !== undefined) ? (GROUND_Y - data.ball.relY) : data.ball.y;
-        ball.vx = data.ball.vx;
-        ball.vy = data.ball.vy;
       }
       if (data.deathmatch) {
         deathmatchState.timeRemaining = data.deathmatch.timeRemaining;
@@ -1174,7 +1111,6 @@ export function handleNetworkData(data, senderPeerId = null) {
       targetRp.aimY = (data.relAimY !== undefined) ? (GROUND_Y - data.relAimY) : data.aimY;
       targetRp.aimAngle = data.aimAngle;
       targetRp.isJumping = !!data.isJumping;
-      targetRp.isSliding = !!data.isSliding;
       if (data.isCrouching !== undefined) targetRp.isCrouching = !!data.isCrouching;
       if (data.isProne !== undefined) targetRp.isProne = !!data.isProne;
       if (data.staggerTimer !== undefined) targetRp.staggerTimer = data.staggerTimer;
@@ -1249,37 +1185,6 @@ export function handleNetworkData(data, senderPeerId = null) {
       break;
     }
 
-    case 'b_state': {
-      // Tylko klient przyjmuje pozycję piłki od hosta
-      if (isMatchClient()) {
-        const targetBallY = (typeof data.y === 'number') ? data.y : ((data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y);
-        const dx = data.x - ball.x;
-        const dy = targetBallY - ball.y;
-        if (Math.hypot(dx, dy) > 90) {
-          ball.x = data.x;
-          ball.y = targetBallY;
-        } else {
-          ball.x += dx * 0.45;
-          ball.y += dy * 0.45;
-        }
-        ball.vx = data.vx;
-        ball.vy = data.vy;
-        ball.rot = data.rot;
-        ball.isGrounded = data.isGrounded;
-
-        if (typeof data.cyan === 'number' && typeof data.orange === 'number') {
-          arenaScore.cyan = data.cyan;
-          arenaScore.orange = data.orange;
-        }
-        if (Math.hypot(data.vx, data.vy) > 0.5) {
-          if (typeof window !== 'undefined' && window.arena1State) {
-            window.arena1State.waitingForKickoff = false;
-          }
-        }
-      }
-      break;
-    }
-
     case 'shoot': {
       const pid = data.senderId || senderPeerId;
       let targetRp = (pid && remotePlayers.get(pid)) ? remotePlayers.get(pid) : null;
@@ -1312,18 +1217,6 @@ export function handleNetworkData(data, senderPeerId = null) {
 
     case 'hb': {
       lastReceivedDataTime = performance.now();
-      break;
-    }
-
-    case 'kick_ball': {
-      if (isMatchHost()) {
-        ball.vx = data.vx;
-        ball.vy = data.vy;
-        if (data.spin !== undefined) ball.spin = data.spin;
-        if (typeof window !== 'undefined' && window.arena1State && window.arena1State.waitingForKickoff) {
-          window.arena1State.waitingForKickoff = false;
-        }
-      }
       break;
     }
 
@@ -1376,7 +1269,7 @@ export function handleNetworkData(data, senderPeerId = null) {
         if (typeof data.zombieMode === 'boolean') {
           setZombieModeActive(data.zombieMode, { isRemote: true });
         }
-        switchArena(data.arenaId, player, remotePlayer, ball);
+        switchArena(data.arenaId, player, remotePlayer);
         updateDevArenaButtonUI(data.arenaId);
         if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.updateMpArenaUI === 'function') {
           window.uiManager.updateMpArenaUI(data.arenaId);
@@ -1465,7 +1358,6 @@ export function handleNetworkData(data, senderPeerId = null) {
         localBot.aimY = (rBot.relAimY !== undefined) ? (GROUND_Y - rBot.relAimY) : rBot.aimY;
         localBot.aimAngle = rBot.aimAngle;
         localBot.isJumping = rBot.isJumping;
-        localBot.isSliding = rBot.isSliding;
         localBot.isProne = rBot.isProne;
         localBot.isRunning = rBot.isRunning;
         localBot.isJetpacking = rBot.isJetpacking;
@@ -1753,16 +1645,6 @@ export function handleNetworkData(data, senderPeerId = null) {
       break;
     }
 
-    case 'goal_scored': {
-      if (typeof data.cyan === 'number' && typeof data.orange === 'number') {
-        arenaScore.cyan = data.cyan;
-        arenaScore.orange = data.orange;
-      }
-      triggerScreenShake(16);
-      triggerGoalCelebration(data.scoringTeam, data.scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800');
-      break;
-    }
-
     case 'a4_geyser_sync': {
       if (typeof window !== 'undefined' && window.arena4 && Array.isArray(window.arena4.geysers)) {
         const g = window.arena4.geysers[data.geyserIdx];
@@ -1985,13 +1867,6 @@ function setupConnection(conn, isHost) {
         botCount: getTotalMpBotCount(),
         botDifficulty: getBotDifficulty(),
         customObstacles: customObstacles,
-        ball: {
-          x: ball.x,
-          y: ball.y,
-          relY: GROUND_Y - ball.y,
-          vx: ball.vx,
-          vy: ball.vy
-        },
         deathmatch: {
           timeRemaining: Math.round(deathmatchState.timeRemaining * 10) / 10,
           mode: deathmatchState.mode,
@@ -2320,7 +2195,6 @@ export function initNetwork() {
     window.isMatchActive = isMatchActive;
     window.isNetworkActive = isNetworkActive;
     window.getLocalNetworkId = getLocalNetworkId;
-    window.sendBallState = sendBallState;
     window.sendArenaSwitch = sendArenaSwitch;
     window.sendBotsState = sendBotsState;
     window.broadcastNetworkPacket = broadcastNetworkPacket;

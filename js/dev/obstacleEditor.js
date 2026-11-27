@@ -180,8 +180,8 @@ export function renderEditorPalette() {
   if (!devPaletteContainer) return;
   devPaletteContainer.innerHTML = '';
 
-  const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : ((activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
-  const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.ARENA_1;
+  const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : 'ARENA_2';
+  const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.DEFAULT || OBSTACLE_PALETTE.ARENA_2;
 
   const catTitles = (arenaKey === 'ARENA_2' || arenaKey === 'ARENA_2_PANDORA' || arenaKey === 'ARENA_2_SECTOR_X') ? {
     platforms: 'Belki / Pomosty',

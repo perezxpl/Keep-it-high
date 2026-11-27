@@ -2,7 +2,7 @@
 // BOT.JS - SZTUCZNA INTELIGENCJA PRZECIWNIKA (AI CASUAL / INTERMEDIATE)
 // =========================================================================
 
-import { createPlayerInstance, updatePlayer, executeReleaseKick, playerSlide, throwTacticalGrenade, getJetpackNozzlePos, player, setPlayerClass } from './player.js';
+import { createPlayerInstance, updatePlayer, executeReleaseKick, throwTacticalGrenade, getJetpackNozzlePos, player, setPlayerClass } from './player.js';
 import { CLASSES } from './classes/index.js';
 import { triggerStrikerAirDash, triggerStrikerGroundDash } from './classes/striker.js';
 import { triggerEnforcerBlastJump, triggerEnforcerGroundSlam } from './classes/enforcer.js';
@@ -28,8 +28,7 @@ export const botKeys = {
   right: false,
   up: false,
   down: false,
-  space: false,
-  slide: false
+  space: false
 };
 
 export const BOT_CLASS_PROFILES = {
@@ -397,7 +396,7 @@ export function createBotInstance(index = 0, isActive = undefined) {
   const effectiveActive = (isActive !== undefined) ? !!isActive : isBotEnabled();
   const profile = BOT_PROFILES[index % BOT_PROFILES.length];
   const botClass = (CLASSES && CLASSES[profile.classKey]) ? CLASSES[profile.classKey] : (CLASSES?.STRIKER || CLASSES?.RAPTOR);
-  const instanceKeys = (index === 0) ? botKeys : { left: false, right: false, up: false, down: false, space: false, slide: false };
+  const instanceKeys = (index === 0) ? botKeys : { left: false, right: false, up: false, down: false, space: false };
 
   const instance = createPlayerInstance({
     isBot: true,
@@ -645,7 +644,6 @@ export const BOT_DIFFICULTY_CONFIG = {
     akBurstShots: 2,       // Krótkie 2-strzałowe serie z AK-47
     akBurstPause: 65,      // Długa pauza (~1.1s) pomiędzy seriami
     shotHesitation: 20,    // Wahanie przed pociągnięciem za spust (~0.33s)
-    slideChance: 0.08,     // Rzadkie wślizgi
     kickChance: 0.35,      // Rzadkie kopnięcia w zwarciu
     kitingEnabled: false   // Raptor nie ucieka wysoko w niebo
   },
@@ -664,7 +662,6 @@ export const BOT_DIFFICULTY_CONFIG = {
     akBurstShots: 3,       // 3-strzałowe serie
     akBurstPause: 40,      // Średnia pauza (~0.66s)
     shotHesitation: 9,     // Krótkie wahanie (~0.15s)
-    slideChance: 0.22,
     kickChance: 0.70,
     kitingEnabled: true
   },
@@ -683,7 +680,6 @@ export const BOT_DIFFICULTY_CONFIG = {
     akBurstShots: 4,       // Długie 4-strzałowe serie
     akBurstPause: 25,      // Krótka pauza (~0.4s)
     shotHesitation: 0,     // Błyskawiczny strzał bez wahania
-    slideChance: 0.40,
     kickChance: 1.0,
     kitingEnabled: true
   }
@@ -726,26 +722,19 @@ export function isBotVisibleToPlayer(botTarget, margin = 24) {
 /**
  * Główna pętla sztucznej inteligencji bota (reakcje, taktyka, celowanie, fizyka)
  */
-export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget = bot, allCombatants = null) {
+export function updateBotBrain(_unusedBall, humanPlayer, groundY, spawnGrass, botTarget = bot, allCombatants = null) {
   if (!botTarget || !botTarget.active) return;
   updateWeaponState(botTarget);
   const bKeys = botTarget.botKeys || botKeys;
 
   const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const currentArenaId = (curArenaObj?.id) || activeArenaId || 'ARENA_1';
-  const isA1 = (currentArenaId === 'arena-1' || currentArenaId === 'ARENA_1');
+  const currentArenaId = (curArenaObj?.id) || activeArenaId || 'ARENA_2';
   const isA2 = (currentArenaId === 'arena-2' || currentArenaId === 'ARENA_2' || currentArenaId === 'ARENA_2_SECTOR_X' || currentArenaId === 'ARENA_2_PANDORA');
   const isA3 = (currentArenaId === 'arena-3' || currentArenaId === 'ARENA_3' || currentArenaId === 'ARENA_FOUNDRY');
   const isA5 = (currentArenaId === 'arena-5' || currentArenaId === 'ARENA_5' || currentArenaId === 'PREFAB_TOWER');
 
-  // W Arenie 1 (mecz piłkarski) broń palna jest regulaminowo schowana w kaburze
-  if (isA1) {
-    botTarget.isHolstered = true;
-    botTarget.holsterWeight = 1.0;
-  } else {
-    botTarget.isHolstered = false;
-    botTarget.holsterWeight = 0.0;
-  }
+  botTarget.isHolstered = false;
+  botTarget.holsterWeight = 0.0;
 
   // Podczas odliczania przedmeczowego (Lockdown 3s) bot stoi w pozycji gotowości i nie atakuje
   if (!window?.isMenuShowcase && deathmatchState && deathmatchState.active && deathmatchState.matchPhase === 'COUNTDOWN') {
@@ -755,13 +744,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     bKeys.down = false;
     bKeys.shoot = false;
     bKeys.jump = false;
-    bKeys.slide = false;
     bKeys.jetpack = false;
     botTarget.vx = 0;
     botTarget.airVx = 0;
     botTarget.isShooting = false;
     botTarget.isJumping = false;
-    botTarget.isSliding = false;
     if (humanPlayer) {
       botTarget.aimX = humanPlayer.x + (humanPlayer.w || 24) / 2;
       botTarget.aimY = humanPlayer.y + 20;
@@ -823,13 +810,12 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     bKeys.up = false;
     bKeys.down = false;
     bKeys.space = false;
-    bKeys.slide = false;
     botTarget.isJetpacking = false;
     botTarget.jetpackPower = 0;
     botTarget.isShooting = false;
     botTarget.isCharging = false;
     botTarget.isJumpCharging = false;
-    updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, allCombatants || meleeTargets);
+    updatePlayer(bKeys, null, groundY, null, spawnGrass, botTarget, allCombatants || meleeTargets);
     return;
   }
 
@@ -840,14 +826,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     bKeys.up = false;
     bKeys.down = false;
     bKeys.space = false;
-    bKeys.slide = false;
     botTarget.isJetpacking = false;
     botTarget.jetpackPower = 0;
     botTarget.isShooting = false;
     botTarget.isCharging = false;
     botTarget.decisionTimer = 0;
     botTarget.shootPoseTimer = 0;
-    updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
+    updatePlayer(bKeys, null, groundY, null, spawnGrass, botTarget, meleeTargets);
     return;
   }
 
@@ -860,7 +845,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     bKeys.up = false;
     bKeys.down = false;
     bKeys.space = false;
-    bKeys.slide = false;
     botTarget.isJetpacking = false;
     botTarget.jetpackPower = 0;
     botTarget.vx = 0;
@@ -868,7 +852,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     botTarget.isShooting = false;
     botTarget.isCharging = false;
     botTarget.shootPoseTimer = 0;
-    updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
+    updatePlayer(bKeys, null, groundY, null, spawnGrass, botTarget, meleeTargets);
     return;
   }
 
@@ -904,7 +888,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   const distToEnemy = targetEnemy ? Math.hypot((targetEnemy.x + targetEnemy.w / 2) - botCenterX, (targetEnemy.y + targetEnemy.h / 2) - botCenterY) : Infinity;
 
-  if (!isA1) {
+  {
     const curWepId = botTarget.currentWeapon?.id || 'AK47';
     if (isRaptor) {
       // Raptor: karabin wyborowy z histerezą (zbliżenie <= 180px -> AK-47, oddalenie >= 250px -> SNIPER)
@@ -933,12 +917,12 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     }
   }
 
-  // Taktyczny rzut granatem odłamkowym (Arena 2 i 3)
+  // Taktyczny rzut granatem odłamkowym
   const isShowcase = (typeof window !== 'undefined' && window.isMenuShowcase);
   const isTargetingHuman = targetEnemy ? (!targetEnemy.isBot || targetEnemy === humanPlayer) : false;
   const canEngageTarget = targetEnemy ? (isShowcase || !isTargetingHuman || isBotVisibleToPlayer(botTarget)) : false;
 
-  if (!isA1 && targetEnemy && !targetEnemy.isDead && (botTarget.grenadeCooldown <= 0)) {
+  if (targetEnemy && !targetEnemy.isDead && (botTarget.grenadeCooldown <= 0)) {
     if (canEngageTarget && distToEnemy >= 230 && distToEnemy <= 520 && botTarget.decisionTimer <= 1) {
       const grenadeRoll = Math.random();
       if (diffCfg.grenadeChance > 0 && grenadeRoll < diffCfg.grenadeChance) {
@@ -951,12 +935,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   // 2. CZAS REAKCJI I TAKTYCZNA MASZYNA STANÓW
   // =========================================================================
-  const hasBall = (ball && ball.active);
-  const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (targetEnemy ? targetEnemy.y : (isA2 ? 420 : (isA3 ? 1130 : groundY)));
+  const targetY = targetEnemy ? targetEnemy.y : (isA2 ? 420 : (isA3 ? 1130 : groundY));
   const hitReach = botTarget.currentClass?.stats?.hitReach || 56;
   const hipX = botCenterX;
   const hipY = botTarget.y + botTarget.h - 40 + (botTarget.pelvisY || 0);
-  const ballDistFromHip = hasBall ? Math.hypot(ball.x - hipX, ball.y - hipY) : Infinity;
 
   // Inteligentna ewaluacja nawigacji pod przeszkodami i figurami (w każdej klatce)
   const currentTargetX = (typeof botTarget.lastTargetX === 'number') ? botTarget.lastTargetX : (targetEnemy ? (targetEnemy.x + targetEnemy.w / 2) : botCenterX);
@@ -974,13 +956,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
 
     // Punkt docelowy nawigacji
     let targetX;
-    if (hasBall) {
-      const predOffset = Math.sin(performance.now() * 0.002) * 20;
-      targetX = ball.x + (ball.vx * 12) + predOffset;
-    } else if (targetEnemy && (!targetEnemy.isDead || (targetEnemy.isZombie && targetEnemy.hasHead && !targetEnemy.decapitated))) {
+    if (targetEnemy && (!targetEnemy.isDead || (targetEnemy.isZombie && targetEnemy.hasHead && !targetEnemy.decapitated))) {
       const isLyingZombie = !!(targetEnemy.isZombie && targetEnemy.isDead);
       const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);
-      if (isEnemyDown && !isA1) {
+      if (isEnemyDown) {
         const enemyX = targetEnemy.x + (targetEnemy.w || 24) / 2;
         const dirFromEnemy = Math.sign(botCenterX - enemyX) || (botTarget.facing ? -botTarget.facing : 1);
         targetX = enemyX + dirFromEnemy * (isLyingZombie ? 110 : 140);
@@ -1072,7 +1051,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
 
     // Nawigacja wertykalna: wspinaczka (zablokowana pod figurami)
     if (targetY < botTarget.y - 48 && !isUnderFigure) {
-      if (!botTarget.isJumping && !botTarget.isSliding) {
+      if (!botTarget.isJumping) {
         if (isEnforcer && botTarget.enforcerBlastCooldown <= 0 && botTarget.onGround) {
           // Kolos wykonuje potężny wyskok pneumatyczny z kruszeniem ziemi na wyższą platformę
           const blastDirX = Math.abs(diffX) > 25 ? (Math.sign(diffX) * 0.9) : (botTarget.facing || 1) * 0.3;
@@ -1104,20 +1083,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         }
       }
     }
-
-    // Wślizg taktyczny (Soldat Slide Tackle) – WYŁĄCZNIE w trybie z piłką (Arena 1)
-    if (hasBall && isA1) {
-      const ballSpeed = Math.hypot(ball.vx, ball.vy);
-      const dxToBall = ball.x - botCenterX;
-      const isBallMovingTowardsBot = (ball.vx * dxToBall < 0);
-      const distToBallX = Math.abs(dxToBall);
-
-      if (distToBallX >= 60 && distToBallX <= 110 && Math.abs(botTarget.vx) > 3.0 && (ballSpeed > 3.0 || isBallMovingTowardsBot)) {
-        if (Math.random() < 0.40) {
-          playerSlide(spawnGrass, groundY, botTarget);
-        }
-      }
-    }
   }
 
   // =========================================================================
@@ -1127,7 +1092,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
 
   // A. KLASA CIĘŻKA: ENFORCER – KINETIC PISTON LEAP (BLAST JUMP) & GROUND SLAM
   if (isEnforcer) {
-    if (botTarget.onGround && !botTarget.isJumping && !botTarget.isSliding && botTarget.enforcerBlastCooldown <= 0) {
+    if (botTarget.onGround && !botTarget.isJumping && botTarget.enforcerBlastCooldown <= 0) {
       let shouldBlast = false;
       let bDirX = 0;
 
@@ -1136,13 +1101,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         shouldBlast = true;
         bDirX = Math.sign(targetEnemy.x - botCenterX) * 0.6;
       }
-      // 2. Kinetyczny wystrzał piłki na bramkę w Arenie 1
-      else if (hasBall && ballDistFromHip < 110) {
-        shouldBlast = true;
-        const enemyGoalX = (botTarget.team === 'CYAN') ? 3460 : 140;
-        bDirX = Math.sign(enemyGoalX - botCenterX);
-      }
-      // 3. Awaryjna ucieczka przed kwasem / rwącą rzeką
+      // 2. Awaryjna ucieczka przed kwasem / rwącą rzeką
       else if ((isA2 && botTarget.y > 900) || (isA3 && botCenterX >= 1540 && botCenterX <= 2860 && botTarget.y > 1150)) {
         shouldBlast = true;
         bDirX = (botCenterX < 2000 ? 1.0 : -1.0);
@@ -1171,7 +1130,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // B. KLASA ŚREDNIA: STRIKER – ROCKET BOOTS (AIR DASH & GROUND DASH)
   if (isStriker && botTarget.strikerDashCooldown <= 0) {
     const isAirborneNow = botTarget.isJumping || !botTarget.onGround;
-    const isGroundedNow = botTarget.onGround && !botTarget.isJumping && !botTarget.isSliding;
+    const isGroundedNow = botTarget.onGround && !botTarget.isJumping;
 
     // 1. Air Dash w powietrzu (wymaga >= 50 paliwa)
     if (isAirborneNow && (botTarget.jetFuel || 0) >= 50) {
@@ -1186,15 +1145,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         const dMag = Math.hypot(dxE, dyE) || 1;
         nx = dxE / dMag;
         ny = Math.max(-0.8, Math.min(0.6, dyE / dMag));
-        triggerAir = true;
-      }
-      // Przechwyt piłki w powietrzu w Arenie 1
-      else if (hasBall && ballDistFromHip > 80 && ballDistFromHip < 320) {
-        const dxB = ball.x - botCenterX;
-        const dyB = ball.y - botCenterY;
-        const bMag = Math.hypot(dxB, dyB) || 1;
-        nx = dxB / bMag;
-        ny = dyB / bMag;
         triggerAir = true;
       }
       // Awaryjny doskok do bezpiecznej kładki nad kwasem/wodą/próżnią
@@ -1225,9 +1175,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         triggerGround = true;
       } else if (targetEnemy && !targetEnemy.isDead && botTarget.hp < 35 && distToEnemy < 180) {
         gDir = -Math.sign(targetEnemy.x - botCenterX) || -botTarget.facing || -1;
-        triggerGround = true;
-      } else if (hasBall && ballDistFromHip > 180) {
-        gDir = Math.sign(ball.x - botCenterX) || botTarget.facing || 1;
         triggerGround = true;
       }
 
@@ -1307,9 +1254,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
           botTarget.vy = Math.min(botTarget.vy * 0.45, 0.35);
           wantsJetpack = true;
         }
-      } else if (hasBall && ball.y < groundY - 60 && ballDistFromHip < 280 && !isUnderFigure) {
-        bKeys.up = true;
-        wantsJetpack = true;
       }
     }
   }
@@ -1332,7 +1276,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   // 4. STRAFE BOJOWY I ZACHOWANIA TAKTYCZNE
   // =========================================================================
-  if (!hasBall && targetEnemy && !targetEnemy.isDead) {
+  if (targetEnemy && !targetEnemy.isDead) {
     // W trybie bojowym: taktyczne manewry w zależności od posiadanej broni
     if (botTarget.idleDecisionTimer <= 0) {
       botTarget.idleDecisionTimer = Math.floor(Math.random() * 45 + 30);
@@ -1358,50 +1302,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         bKeys.right = false;
       }
     }
-  } else if (hasBall) {
-    const distToBallTotal = Math.hypot(ball.x - botCenterX, ball.y - botCenterY);
-    if (distToBallTotal > 260) {
-      if (botTarget.idleDecisionTimer <= 0) {
-        botTarget.idleDecisionTimer = Math.floor(Math.random() * 60 + 60);
-        const roll = Math.random();
-        if (roll < 0.40) {
-          botTarget.strafeDir = Math.random() < 0.5 ? -1 : 1;
-          botTarget.strafeTimer = Math.floor(Math.random() * 16 + 12);
-        } else if (roll < 0.65) {
-          if (!botTarget.isJumping && !botTarget.isSliding) {
-            bKeys.up = true;
-          }
-        }
-      }
-      if (botTarget.strafeTimer > 0) {
-        if (botTarget.strafeDir > 0) {
-          bKeys.right = true;
-          bKeys.left = false;
-        } else if (botTarget.strafeDir < 0) {
-          bKeys.left = true;
-          bKeys.right = false;
-        }
-      }
-    }
   }
 
   // =========================================================================
-  // 5. CELOWANIE (PIŁKA NA BRAMKĘ / WRÓG W WALCE)
+  // 5. CELOWANIE (WRÓG W WALCE)
   // =========================================================================
   let aimTargetX, aimTargetY;
-  if (hasBall) {
-    // W Arenie 1 celowanie w piłkę przy prowadzeniu, a w bramkę rywala przy strzale
-    const enemyGoalX = (botTarget.team === 'CYAN') ? 3460 : 140;
-    const enemyGoalY = 580;
-
-    if (ballDistFromHip <= hitReach + 20 || botTarget.isCharging) {
-      aimTargetX = enemyGoalX;
-      aimTargetY = enemyGoalY;
-    } else {
-      aimTargetX = ball.x + (ball.vx * 3);
-      aimTargetY = ball.y + (ball.vy * 3);
-    }
-  } else if (targetEnemy) {
+  if (targetEnemy) {
     if (canEngageTarget) {
       const isLyingZombie = !!(targetEnemy.isZombie && (targetEnemy.isDead || (targetEnemy.riseTimer && targetEnemy.riseTimer > 0.4)));
       const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);
@@ -1436,10 +1343,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   botTarget.aimY += (desiredAimY - botTarget.aimY) * aimLerp;
 
   // =========================================================================
-  // 6. OSTRZAŁ BOTA (TYLKO POZA ARENĄ 1)
+  // 6. OSTRZAŁ BOTA
   // =========================================================================
   const isLyingZombieTarget = !!(targetEnemy && targetEnemy.isZombie && targetEnemy.isDead && targetEnemy.hasHead && !targetEnemy.decapitated);
-  if (!isA1 && targetEnemy && (!targetEnemy.isDead || isLyingZombieTarget)) {
+  if (targetEnemy && (!targetEnemy.isDead || isLyingZombieTarget)) {
     if (canEngageTarget) {
       const isLyingZombie = !!(targetEnemy.isZombie && (targetEnemy.isDead || (targetEnemy.riseTimer && targetEnemy.riseTimer > 0.4)));
       const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);
@@ -1527,25 +1434,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // =========================================================================
-  // 7. KOPANIE PIŁKI I SPARTAN MELEE KICK
+  // 7. SPARTAN MELEE KICK
   // =========================================================================
-  if (hasBall) {
-    if (ballDistFromHip <= hitReach + 10) {
-      if (!botTarget.isCharging && botTarget.kickState === 'IDLE' && botTarget.kickCooldown <= 0) {
-        botTarget.isCharging = true;
-        botTarget.chargePower = 0;
-        botTarget.chargeTarget = Math.random() * 0.55 + 0.30;
-      } else if (botTarget.isCharging) {
-        if (botTarget.chargePower >= botTarget.chargeTarget) {
-          executeReleaseKick(ball, botTarget, 0, meleeTargets);
-        }
-      }
-    } else if (botTarget.isCharging) {
-      if (botTarget.chargePower >= botTarget.chargeTarget || ballDistFromHip > hitReach + 40) {
-        executeReleaseKick(ball, botTarget, 0, meleeTargets);
-      }
-    }
-  } else if (targetEnemy && !targetEnemy.isDead) {
+  if (targetEnemy && !targetEnemy.isDead) {
     // Tryb Deathmatch: Spartan Kick wręcz we wroga
     const isTargetVulnerableToKick = !(targetEnemy.staggerTimer > 0) && !((targetEnemy.staggerImmunityTimer || 0) > 0) && !targetEnemy.isProne;
     const distToEnemyFromHip = Math.hypot((targetEnemy.x + targetEnemy.w / 2) - hipX, (targetEnemy.y + targetEnemy.h / 2) - hipY);
@@ -1558,12 +1449,12 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         }
       } else if (botTarget.isCharging) {
         if (botTarget.chargePower >= botTarget.chargeTarget) {
-          executeReleaseKick(null, botTarget, 0, meleeTargets);
+          executeReleaseKick(botTarget, meleeTargets);
         }
       }
     } else if (botTarget.isCharging) {
       if (isTargetVulnerableToKick) {
-        executeReleaseKick(null, botTarget, 0, meleeTargets);
+        executeReleaseKick(botTarget, meleeTargets);
       } else {
         botTarget.isCharging = false;
         botTarget.chargePower = 0;
@@ -1572,7 +1463,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // 8. WYWOŁANIE FIZYKI POSTACI
-  updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
+  updatePlayer(bKeys, null, groundY, null, spawnGrass, botTarget, meleeTargets);
 }
 
 if (typeof window !== 'undefined') {

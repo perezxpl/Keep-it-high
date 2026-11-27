@@ -126,9 +126,9 @@ console.log('--- TEST 3: Dynamiczne podloze: brak lewitacji po wycieciu krateru 
 
 console.log('--- TEST 4: Dynamiczne podloze dla kaluzy kwasu (opadanie i znikanie) ---');
 {
-  setActiveArena('arena-1');
+  setActiveArena('arena-2');
   resetHazardsState();
-  hazardsState.currentArenaId = 'arena-1';
+  hazardsState.currentArenaId = 'arena-2';
   hazardsState.acidPools.push({
     x: 500,
     y: 738,
@@ -139,7 +139,21 @@ console.log('--- TEST 4: Dynamiczne podloze dla kaluzy kwasu (opadanie i znikani
   });
 
   // 1. Zapadniecie platformy do 780
+  const { ARENA_PLATFORMS: A_PLATS_T4 } = await import('../js/obstacles/state.js');
+  const testSinkPlat = {
+    id: 'test_sink_plat_t4',
+    x: 400,
+    y: 780,
+    w: 200,
+    h: 20,
+    solid: true,
+    isPlatform: true,
+    intact: true
+  };
+  A_PLATS_T4.push(testSinkPlat);
   updateHazards(1 / 60, [], 780);
+  const sinkIdx = A_PLATS_T4.indexOf(testSinkPlat);
+  if (sinkIdx !== -1) A_PLATS_T4.splice(sinkIdx, 1);
   assert.strictEqual(hazardsState.acidPools[0].y, 780, 'Kaluza kwasu musi natychmiast opasc na nowe dno krateru');
 
   // 2. Wpadniecie w przepasc / wode (Arena 3 river: >= 1280)
@@ -156,8 +170,8 @@ console.log('--- TEST 4: Dynamiczne podloze dla kaluzy kwasu (opadanie i znikani
   });
   updateHazards(1 / 60, [], 1380);
   assert.strictEqual(hazardsState.acidPools.length, 0, 'Kaluza kwasu wpadajaca do rzeki musi natychmiast zniknac');
-  setActiveArena('arena-1');
-  hazardsState.currentArenaId = 'arena-1';
+  setActiveArena('arena-2');
+  hazardsState.currentArenaId = 'arena-2';
   console.log('PASS: Kaluza kwasu opada na nowe dno krateru i znika w rzece.');
 }
 
@@ -185,7 +199,7 @@ console.log('--- TEST 6: Calkowity brak airdropu i respawnu beczek w trakcie mec
   hazardsState.barrels.push(createBarrelInstance({ type: 'EXPLOSIVE', x: 500, y: 700 }));
 
   // Proba airdropu w trakcie meczu musi zostac calkowicie zablokowana (zwraca false)
-  const spawned = spawnAirdropBarrel('arena-1', 738, []);
+  const spawned = spawnAirdropBarrel('arena-2', 738, []);
   assert.strictEqual(spawned, false, 'spawnAirdropBarrel musi zawsze zwracac false (brak zrzutow w trakcie meczu)');
   assert.strictEqual(hazardsState.barrels.length, 1, 'Liczba beczek nie moze wzrosnac w trakcie meczu');
 
@@ -259,7 +273,7 @@ console.log('--- TEST 9: Przycinanie (Clamping) kaluzy kwasu do krawedzi platfor
     timer: 8.0
   };
 
-  const ok = fitAcidPoolToTerrain(pool, 800, 'arena-1');
+  const ok = fitAcidPoolToTerrain(pool, 800, 'arena-2');
   assert.strictEqual(ok, true, 'Kaluza na platformie 100px powinna sie zmiescic');
   // Prawa krawedz platformy to 500, wiec z marginesem 4px: max right = 496
   const rightEdge = pool.x + pool.radius;
@@ -300,7 +314,7 @@ console.log('--- TEST 10: Anulowanie kaluzy kwasu gdy dostepna szerokosc podloza
     timer: 8.0
   };
 
-  const ok = fitAcidPoolToTerrain(pool, 800, 'arena-1');
+  const ok = fitAcidPoolToTerrain(pool, 800, 'arena-2');
   assert.strictEqual(ok, false, 'Kaluza na waskiej platformie (< 28px) musi zostac calkowicie anulowana');
 
   // Sprzatanie
@@ -418,7 +432,7 @@ console.log('--- TEST 16: Jednorazowe losowe rozstawienie beczek na start meczu 
 {
   const { initHazardsForArena } = await import('../js/hazards/logic.js');
 
-  for (const aId of ['arena-1', 'arena-2', 'arena-3', 'arena-4', 'arena-5']) {
+  for (const aId of ['arena-2', 'arena-3', 'arena-4', 'arena-5']) {
     hazardsState.currentArenaId = null;
     hazardsState.barrels.length = 0;
     setActiveArena(aId);
@@ -455,14 +469,14 @@ console.log('--- TEST 16: Jednorazowe losowe rozstawienie beczek na start meczu 
       }
     }
   }
-  console.log('PASS: Wszystkie areny (1-5) poprawnie generuja jednorazowe losowe rozstawienie beczek na start.');
+  console.log('PASS: Wszystkie areny (2-5) poprawnie generuja jednorazowe losowe rozstawienie beczek na start.');
 }
 
 console.log('--- TEST 17: Brak trzepania i poprawne staczanie z rampy/krawedzi ---');
 {
-  setActiveArena('arena-1');
+  setActiveArena('arena-2');
   resetHazardsState();
-  hazardsState.currentArenaId = 'arena-1';
+  hazardsState.currentArenaId = 'arena-2';
   const barrel = createBarrelInstance({ type: 'EXPLOSIVE', x: 500, y: 700 });
   barrel.onGround = true;
   barrel.vx = 0;
@@ -472,11 +486,25 @@ console.log('--- TEST 17: Brak trzepania i poprawne staczanie z rampy/krawedzi -
   // Symulacja podloza bedacego rampa (lewa strona wyzsza = mniejsze Y, prawa strona nizsza = wieksze Y)
   // W Canvasie wieksze Y = nizej, wiec rampa opada w prawo (slideDir = 1)
   globalThis.isGroundAt = () => true;
+  const { ARENA_PLATFORMS: A_PLATS_T17 } = await import('../js/obstacles/state.js');
+  const testT17Plat = {
+    id: 'test_plat_t17',
+    x: 400,
+    y: 738,
+    w: 200,
+    h: 20,
+    solid: true,
+    isPlatform: true,
+    intact: true
+  };
+  A_PLATS_T17.push(testT17Plat);
 
   // Sprawdzamy symulacje 10 klatek - beczka nie moze trzepac vy ani wpadac w pętlę lostGround
   for (let k = 0; k < 10; k++) {
     updateHazards(1 / 60, [], 738);
   }
+  const t17Idx = A_PLATS_T17.indexOf(testT17Plat);
+  if (t17Idx !== -1) A_PLATS_T17.splice(t17Idx, 1);
 
   assert.strictEqual(barrel.isDead, false, 'Beczka nie powinna wybuchnac od zwyklego staczania');
   assert.ok(Math.abs(barrel.vy) < 2.0, 'Beczka na podlozu nie powinna gwaltownie skakac pionowo');

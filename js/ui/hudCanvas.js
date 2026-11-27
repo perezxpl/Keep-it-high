@@ -11,10 +11,9 @@ import {
   weaponButtons,
   currentFps,
   updateFps,
-  _worldArenaState,
-  goalCelebration
+  _worldArenaState
 } from '../world/state.js';
-import { drawRankHUD, drawMatchVictoryHUD } from './rankHud.js';
+import { drawRankHUD } from './rankHud.js';
 import { drawMobileTopLeftHUD } from './mobileTopHud.js';
 import { drawDeathmatchHUD, drawDeathmatchPodium, deathmatchState } from '../deathmatch/index.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
@@ -99,30 +98,7 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  if (mode === 'SLIDE') {
-    // 1. Wektorowa sylwetka wślizgu bojowego (Slide)
-    ctx.beginPath();
-    ctx.arc(-6, -4, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(-5, -1);
-    ctx.lineTo(-2, 3);
-    ctx.lineTo(8, 3);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(-2, 3);
-    ctx.lineTo(2, 0);
-    ctx.stroke();
-
-    ctx.strokeStyle = faintColor;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(-9, 5);
-    ctx.lineTo(10, 5);
-    ctx.stroke();
-  } else if (mode === 'PRONE') {
+  if (mode === 'PRONE') {
     // 2. Wektorowa sylwetka leżenia (Prone)
     const pFacing = player ? (player.facing || 1) : 1;
     ctx.beginPath();
@@ -492,7 +468,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   const effPockets = (btnCluster && (btnCluster.firearm || btnCluster.action)) ? btnCluster : (window.pockets || btnCluster || {});
   const pFirearm = effPockets.firearm || window.pockets?.firearm;
   const pThrowable = effPockets.throwable || effPockets.grenade || window.pockets?.throwable;
-  const pAction = effPockets.action || effPockets.kick || effPockets.slide || window.pockets?.action;
+  const pAction = effPockets.action || effPockets.kick || window.pockets?.action;
   const pMelee = effPockets.melee || window.pockets?.melee;
 
   // 3A. KIESZEŃ NA BROŃ PALNĄ – WYŻEJ
@@ -930,88 +906,6 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
  */
 export function drawEntityHealthBar(ctx, entity, yOffset = 0) {
   // Zastąpione przez minimalistyczne paski HP i JET nad głową w drawPlayer
-}
-
-export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
-  if (!ball || !camera) return;
-
-  const screenX = (ball.x - camera.x) * camera.zoom;
-  const screenY = (ball.y - camera.y) * camera.zoom;
-
-  const margin = 35;
-  const minX = margin;
-  const maxX = W - margin;
-  const minY = margin;
-  const maxY = H - margin;
-
-  const isOffscreen = (screenX < minX || screenX > maxX || screenY < minY || screenY > maxY);
-  if (!isOffscreen) return;
-
-  const cx = W / 2;
-  const cy = H / 2;
-  const dx = screenX - cx;
-  const dy = screenY - cy;
-  if (dx === 0 && dy === 0) return;
-
-  const angle = Math.atan2(dy, dx);
-  let t = Infinity;
-
-  if (dx > 0) {
-    const tCandidate = (maxX - cx) / dx;
-    if (tCandidate > 0 && tCandidate < t) t = tCandidate;
-  } else if (dx < 0) {
-    const tCandidate = (minX - cx) / dx;
-    if (tCandidate > 0 && tCandidate < t) t = tCandidate;
-  }
-
-  if (dy > 0) {
-    const tCandidate = (maxY - cy) / dy;
-    if (tCandidate > 0 && tCandidate < t) t = tCandidate;
-  } else if (dy < 0) {
-    const tCandidate = (minY - cy) / dy;
-    if (tCandidate > 0 && tCandidate < t) t = tCandidate;
-  }
-
-  const ix = Math.max(minX, Math.min(maxX, cx + dx * t));
-  const iy = Math.max(minY, Math.min(maxY, cy + dy * t));
-
-  ctx.save();
-  ctx.translate(ix, iy);
-  ctx.rotate(angle);
-
-  ctx.beginPath();
-  ctx.moveTo(14, 0);
-  ctx.lineTo(-10, -9);
-  ctx.lineTo(-5, 0);
-  ctx.lineTo(-10, 9);
-  ctx.closePath();
-  ctx.fillStyle = '#38bdf8';
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 0;
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.8;
-  ctx.stroke();
-
-  ctx.restore();
-
-  const pX = player ? (player.x + player.w / 2) : camera.x;
-  const pY = player ? (player.y + player.h / 2) : camera.y;
-  const distMeters = Math.round(Math.hypot(ball.x - pX, ball.y - pY) / 14);
-
-  ctx.save();
-  ctx.font = 'bold 12px monospace';
-  ctx.fillStyle = '#facc15';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 0;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  const textDist = 24;
-  const textX = ix - Math.cos(angle) * textDist;
-  const textY = iy - Math.sin(angle) * textDist;
-  ctx.fillText(`${distMeters}m`, textX, textY);
-  ctx.restore();
 }
 
 
@@ -1626,9 +1520,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   if (arenaInfo?.remotePlayer && arenaInfo.remotePlayer.active && !arenaInfo.remotePlayer.isDead) {
     checkEntityHudDist(arenaInfo.remotePlayer, 14, 26, 8);
   }
-  if (ball && ball.active) {
-    checkEntityHudDist(ball, 10, 10, 10);
-  }
 
   const minHudAlpha = 0.15;
   let targetHudAlpha = isMobile ? 0.65 : 1.0;
@@ -2070,105 +1961,15 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   }
 
   // =========================================================================
-  // 3. TABLICA WYNIKÓW (GÓRA EKRANU)
+  // 3. TABLICA WYNIKÓW DEATHMATCH (GÓRA EKRANU)
   // =========================================================================
-  const aState = arenaInfo || _worldArenaState;
-  const curArenaId = aState.activeArenaId;
-  const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
-  const curA1State = aState.arena1State;
-  const isDeathmatch = (curArenaId === 'ARENA_5' || curArenaId === 'arena-5' || curArenaId === 'PREFAB_TOWER' || curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
-  const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
-  const isMatchArena = (curArenaId === 'ARENA_1');
-  const isDmArena = (deathmatchState?.active || isSectorXArena || isDeathmatch);
-
-  if (isDmArena) {
-    drawDeathmatchHUD(ctx, W, H, isMobile, player);
-  } else if (isMatchArena) {
-    const scoreBoxW = isMobile ? 180 : 230;
-    const scoreBoxH = isMobile ? 26 : 34;
-    const scoreBoxX = (W - scoreBoxW) / 2;
-    const scoreBoxY = isMobile ? 10 : 16;
-
-    ctx.save();
-    ctx.globalAlpha = isMobile ? 0.80 : 0.88;
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = 1.2;
-    if (ctx.roundRect) ctx.roundRect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 6);
-    else ctx.rect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 12px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#06b6d4';
-    ctx.shadowColor = '#06b6d4';
-    ctx.shadowBlur = 0;
-    ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 17 : 22));
-
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowBlur = 0;
-    ctx.fillText(':', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 16 : 21));
-
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#f97316';
-    ctx.shadowColor = '#f97316';
-    ctx.shadowBlur = 0;
-    ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 17 : 22));
-
-    if (curArenaId === 'ARENA_1' && curA1State?.waitingForKickoff) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.005);
-      ctx.textAlign = 'center';
-      ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 10px monospace';
-      ctx.fillStyle = `rgba(56, 189, 248, ${0.80 + pulse * 0.20})`;
-      ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = 0;
-      ctx.fillText('KICKOFF: PIŁKA LEWITUJE W CENTRUM (PIERWSZY KONTAKT)', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 16));
-    }
-
-    ctx.restore();
-  }
-
-  // 4. BANER CELEBRACJI GOLA (tylko w trybie meczowym z piłką)
-  if (!isDmArena && goalCelebration.active && goalCelebration.timer > 0) {
-    goalCelebration.timer--;
-    if (goalCelebration.timer <= 0) goalCelebration.active = false;
-
-    ctx.save();
-    ctx.fillStyle = goalCelebration.color;
-    ctx.globalAlpha = Math.min(0.40, (goalCelebration.timer / 110) * 0.40);
-    ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '900 36px monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = goalCelebration.color;
-    ctx.shadowBlur = 0;
-    ctx.fillText(`${goalCelebration.team} GOAL!`, W / 2, H * 0.32);
-    ctx.restore();
-  }
-
-  // 5. OBSŁUGA ZWYCIĘSTWA W MECZU (ARENA 1) LUB PODIUM DEATHMATCH (ARENY 2 I 3)
-  if (!isDmArena) {
-    drawMatchVictoryHUD(ctx, W, H, isMobile);
-  } else {
-    // 6. OBSŁUGA PODIUM I NAGRÓD DEATHMATCH (ARENY 2 I 3 - ROZLICZANE NA KONIEC BITWY 5:00)
-    drawDeathmatchPodium(ctx, W, H, isMobile);
-  }
+  drawDeathmatchHUD(ctx, W, H, isMobile, player);
+  drawDeathmatchPodium(ctx, W, H, isMobile);
 
   ctx.restore();
 
-  if (ball && ball.active && !isDmArena) {
-    drawOffscreenBallIndicator(ctx, ball, camera, player);
-  }
-
   if (isTouchDevice) {
-    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, isDmArena ? null : ball, inKickRange);
+    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, null, inKickRange);
   }
 
   drawCombatFeedBanner(ctx, W, H, isMobile);

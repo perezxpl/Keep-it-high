@@ -1284,9 +1284,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
       playerRef.crouchTimer = 0;
       playerRef.crouchToggled = false;
       playerRef.crouchHoldTimer = 0;
-      playerRef.sliding = false;
-      playerRef.isSliding = false;
-      playerRef.slideTimer = 0;
       playerRef.rollTimer = 0;
       playerRef.isProne = false;
       playerRef.staggerTimer = 0;
@@ -1314,14 +1311,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const isSpecialKickOrProne = !!(playerRef && (
     playerRef.isProne ||
-    playerRef.kickMode === 'SPARTAN' ||
-    playerRef.kickMode === 'BACKFLIP' ||
-    playerRef.kickMode === 'SPIN_VOLLEY' ||
-    playerRef.kickMode === 'SCISSOR' ||
+    (playerRef.kickMode === 'SPARTAN' && playerRef.kickState !== 'IDLE') ||
     playerRef.kickState === 'SWING' ||
-    playerRef.isSliding ||
-    playerRef.kneeJuggleWeight > 0 ||
-    playerRef.isIntro ||
     (playerRef.jumpTakeoffTimer > 0 && (playerRef.jumpLaunchSpeed || 0) > 0.8)
   ));
 
@@ -1946,7 +1937,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const shinDy = ik.footY - ik.kneeY;
   const localShinAng = Math.atan2(shinDy, shinDx);
 
-  const isSpecialKick = playerRef && (playerRef.kickState === 'SWING' || playerRef.isCharging || playerRef.kickMode === 'BACKFLIP');
+  const isSpecialKick = playerRef && (playerRef.kickState === 'SWING' || playerRef.isCharging);
 
   let targetEffAnkle = ankleRot;
   let targetFlex = 0;
@@ -1984,7 +1975,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   if (playerRef && playerRef.isDead) {
     flexSmooth = 0.85;
     ankleSmooth = 0.85;
-  } else if (isSpecialKick || (playerRef && playerRef.kickMode === 'BACKFLIP')) {
+  } else if (isSpecialKick) {
     flexSmooth = 0.45;
     ankleSmooth = 0.55;
   }

@@ -557,10 +557,6 @@ export function drawSky(ctx) {
     // Tło Areny 3 (The Foundry) renderowane jest bezpośrednio przez wtyczkę arena3.js
     return;
   }
-  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
-    drawPandoraBackground(ctx, camera);
-  } else {
-    drawNeonNightOpsSky(ctx, camCenterX);
-  }
+  drawPandoraBackground(ctx, camera);
 }
 
